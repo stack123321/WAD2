@@ -1,0 +1,58 @@
+<script setup>
+// Owner: Hugo (UI kit). Basic version so the app runs; restyle to match Figma.
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+</script>
+
+<template>
+  <nav class="navbar navbar-expand-sm bg-white border-bottom">
+    <div class="container">
+      <RouterLink class="navbar-brand brand" :to="{ name: 'landing' }">Midway</RouterLink>
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#mainNav"
+        aria-controls="mainNav"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div id="mainNav" class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto align-items-sm-center gap-sm-2">
+          <li class="nav-item">
+            <RouterLink class="nav-link" :to="{ name: 'dashboard' }">My hangouts</RouterLink>
+          </li>
+          <li class="nav-item">
+            <RouterLink class="nav-link" :to="{ name: 'preferences' }">Preferences</RouterLink>
+          </li>
+          <li class="nav-item">
+            <button
+              v-if="auth.isLoggedIn"
+              class="btn btn-outline-primary btn-sm"
+              @click="auth.signOut()"
+            >
+              Log out
+            </button>
+            <RouterLink v-else class="btn btn-primary btn-sm" :to="{ name: 'auth' }"
+              >Log in</RouterLink
+            >
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</template>
+
+<style scoped>
+.brand {
+  font-weight: 800;
+  color: var(--mw-primary);
+}
+
+.nav-link.router-link-active {
+  color: var(--mw-primary);
+  font-weight: 600;
+}
+</style>
