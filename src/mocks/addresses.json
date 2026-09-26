@@ -1,0 +1,152 @@
+[
+  {
+    "label": "Ang Mo Kio MRT (sample)",
+    "lat": 1.37,
+    "lng": 103.8496,
+    "postal": null
+  },
+  {
+    "label": "Bedok MRT (sample)",
+    "lat": 1.324,
+    "lng": 103.93,
+    "postal": null
+  },
+  {
+    "label": "Bishan MRT (sample)",
+    "lat": 1.3508,
+    "lng": 103.8485,
+    "postal": null
+  },
+  {
+    "label": "Bugis MRT (sample)",
+    "lat": 1.3009,
+    "lng": 103.8559,
+    "postal": null
+  },
+  {
+    "label": "Buona Vista MRT (sample)",
+    "lat": 1.3072,
+    "lng": 103.7903,
+    "postal": null
+  },
+  {
+    "label": "Choa Chu Kang MRT (sample)",
+    "lat": 1.3853,
+    "lng": 103.7443,
+    "postal": null
+  },
+  {
+    "label": "City Hall MRT (sample)",
+    "lat": 1.2931,
+    "lng": 103.852,
+    "postal": null
+  },
+  {
+    "label": "Clementi MRT (sample)",
+    "lat": 1.3151,
+    "lng": 103.7652,
+    "postal": null
+  },
+  {
+    "label": "Dhoby Ghaut MRT (sample)",
+    "lat": 1.299,
+    "lng": 103.8456,
+    "postal": null
+  },
+  {
+    "label": "HarbourFront MRT (sample)",
+    "lat": 1.2653,
+    "lng": 103.822,
+    "postal": null
+  },
+  {
+    "label": "Jurong East MRT (sample)",
+    "lat": 1.3331,
+    "lng": 103.7423,
+    "postal": null
+  },
+  {
+    "label": "Novena MRT (sample)",
+    "lat": 1.3204,
+    "lng": 103.8438,
+    "postal": null
+  },
+  {
+    "label": "Orchard MRT (sample)",
+    "lat": 1.304,
+    "lng": 103.8318,
+    "postal": null
+  },
+  {
+    "label": "Outram Park MRT (sample)",
+    "lat": 1.2803,
+    "lng": 103.8395,
+    "postal": null
+  },
+  {
+    "label": "Paya Lebar MRT (sample)",
+    "lat": 1.3177,
+    "lng": 103.8926,
+    "postal": null
+  },
+  {
+    "label": "Punggol MRT (sample)",
+    "lat": 1.4052,
+    "lng": 103.9024,
+    "postal": null
+  },
+  {
+    "label": "Raffles Place MRT (sample)",
+    "lat": 1.284,
+    "lng": 103.8515,
+    "postal": null
+  },
+  {
+    "label": "Serangoon MRT (sample)",
+    "lat": 1.3498,
+    "lng": 103.8737,
+    "postal": null
+  },
+  {
+    "label": "Tampines MRT (sample)",
+    "lat": 1.3547,
+    "lng": 103.9452,
+    "postal": null
+  },
+  {
+    "label": "Toa Payoh MRT (sample)",
+    "lat": 1.3327,
+    "lng": 103.8474,
+    "postal": null
+  },
+  {
+    "label": "Woodlands MRT (sample)",
+    "lat": 1.437,
+    "lng": 103.7865,
+    "postal": null
+  },
+  {
+    "label": "Yishun MRT (sample)",
+    "lat": 1.4295,
+    "lng": 103.835,
+    "postal": null
+  },
+  {
+    "label": "SMU, 80 Stamford Road (sample)",
+    "lat": 1.2966,
+    "lng": 103.8502,
+    "postal": "178902"
+  },
+  {
+    "label": "NUS, 21 Lower Kent Ridge Road (sample)",
+    "lat": 1.2966,
+    "lng": 103.7764,
+    "postal": "119077"
+  },
+  {
+    "label": "NTU, 50 Nanyang Avenue (sample)",
+    "lat": 1.3483,
+    "lng": 103.6831,
+    "postal": "639798"
+  }
+]
