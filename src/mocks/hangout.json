@@ -1,0 +1,120 @@
+{
+  "id": "demo",
+  "name": "Friday dinner after class",
+  "starts_at": "2026-10-16T19:00:00+08:00",
+  "vibe": ["chill", "food"],
+  "host_id": "u-ryan",
+  "invite_code": "demo1234",
+  "status": "voting",
+  "optimise_for": "fairest",
+  "midpoint_name": "Bishan",
+  "midpoint_lat": 1.3508,
+  "midpoint_lng": 103.8485,
+  "avg_mins": 31,
+  "gap_mins": 9,
+  "vote_deadline": "2026-10-15T21:00:00+08:00",
+  "final_shortlist_id": null,
+  "members": [
+    {
+      "user_id": "u-ryan",
+      "display_name": "Ryan",
+      "avatar_color": "#0E7C6B",
+      "start_label": "Tampines MRT",
+      "start_lat": 1.3547,
+      "start_lng": 103.9452,
+      "mode": "mrt",
+      "travel_mins": 34,
+      "travel_cost": 1.79,
+      "joined_at": "2026-10-10T12:00:00+08:00"
+    },
+    {
+      "user_id": "u-nicole",
+      "display_name": "Nicole",
+      "avatar_color": "#F2684A",
+      "start_label": "Jurong East MRT",
+      "start_lat": 1.3331,
+      "start_lng": 103.7423,
+      "mode": "mrt",
+      "travel_mins": 36,
+      "travel_cost": 1.86,
+      "joined_at": "2026-10-10T12:05:00+08:00"
+    },
+    {
+      "user_id": "u-surya",
+      "display_name": "Surya",
+      "avatar_color": "#6C63FF",
+      "start_label": "Woodlands MRT",
+      "start_lat": 1.437,
+      "start_lng": 103.7865,
+      "mode": "bus",
+      "travel_mins": 27,
+      "travel_cost": 1.52,
+      "joined_at": "2026-10-10T12:20:00+08:00"
+    },
+    {
+      "user_id": "u-hugo",
+      "display_name": "Hugo",
+      "avatar_color": "#E0A100",
+      "start_label": "Punggol MRT",
+      "start_lat": 1.4052,
+      "start_lng": 103.9024,
+      "mode": "car",
+      "travel_mins": 27,
+      "travel_cost": 9.5,
+      "joined_at": "2026-10-10T13:00:00+08:00"
+    }
+  ],
+  "shortlist": [
+    {
+      "id": "demo-spot-1",
+      "added_by": "u-hugo",
+      "source": "osm",
+      "source_place_id": "mock-1",
+      "name": "Mock Cafe (sample data)",
+      "category": "cafe",
+      "lat": 1.3512,
+      "lng": 103.8479,
+      "rating": 4.4,
+      "price_level": 2,
+      "image_url": null,
+      "match_pct": 86
+    },
+    {
+      "id": "demo-spot-2",
+      "added_by": "u-nicole",
+      "source": "osm",
+      "source_place_id": "mock-2",
+      "name": "Mock Board Game Cafe (sample data)",
+      "category": "activity",
+      "lat": 1.3503,
+      "lng": 103.8492,
+      "rating": 4.6,
+      "price_level": 2,
+      "image_url": null,
+      "match_pct": 78
+    },
+    {
+      "id": "demo-spot-3",
+      "added_by": "u-ryan",
+      "source": "osm",
+      "source_place_id": "mock-3",
+      "name": "Mock Hawker Centre (sample data)",
+      "category": "food",
+      "lat": 1.3496,
+      "lng": 103.8501,
+      "rating": 4.2,
+      "price_level": 1,
+      "image_url": null,
+      "match_pct": 71
+    }
+  ],
+  "votes": [
+    { "user_id": "u-ryan", "shortlist_id": "demo-spot-1", "voted_at": "2026-10-14T20:00:00+08:00" },
+    {
+      "user_id": "u-nicole",
+      "shortlist_id": "demo-spot-2",
+      "voted_at": "2026-10-14T20:10:00+08:00"
+    },
+    { "user_id": "u-hugo", "shortlist_id": "demo-spot-1", "voted_at": "2026-10-14T21:30:00+08:00" }
+  ]
+}
