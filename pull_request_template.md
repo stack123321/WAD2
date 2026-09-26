@@ -12,4 +12,4 @@
 - [ ] `npm run lint` passes
 - [ ] Only touched my own files (or said why below)
 - [ ] No keys or `.env.local` in the diff
-- [ ] Colours and radius use `var(--mw-...)`, no hard-coded hex codes
+- [ ] Colours and radius use `var(--fp-...)`, no hard-coded hex codes

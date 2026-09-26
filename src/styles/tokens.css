@@ -1,64 +1,64 @@
 /*
   Owner: Hugo. The ONLY global CSS file in the project.
-  Holds the Figma design values as CSS variables. Components use var(--mw-...) inside
+  Holds the Figma design values as CSS variables. Components use var(--fp-...) inside
   <style scoped> and never hard-code hex codes.
   Font: Plus Jakarta Sans, loaded in index.html.
 */
 
 :root {
   /* Brand (from Figma) */
-  --mw-primary: #0e7c6b; /* teal */
-  --mw-primary-dark: #0a5f52; /* hover/pressed. Hugo: confirm against Figma */
-  --mw-accent: #f2684a; /* coral */
-  --mw-bg: #f6f4ef; /* page background */
-  --mw-surface: #ffffff; /* cards */
+  --fp-primary: #0e7c6b; /* teal */
+  --fp-primary-dark: #0a5f52; /* hover/pressed. Hugo: confirm against Figma */
+  --fp-accent: #f2684a; /* coral */
+  --fp-bg: #f6f4ef; /* page background */
+  --fp-surface: #ffffff; /* cards */
 
   /* Text. Hugo: confirm against Figma */
-  --mw-ink: #1d2322;
-  --mw-muted: #5f6b69;
-  --mw-border: #e3e0d8;
+  --fp-ink: #1d2322;
+  --fp-muted: #5f6b69;
+  --fp-border: #e3e0d8;
 
   /* Shape */
-  --mw-radius: 16px;
-  --mw-radius-sm: 10px;
-  --mw-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+  --fp-radius: 16px;
+  --fp-radius-sm: 10px;
+  --fp-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
 
   /* Type */
-  --mw-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Point Bootstrap at our values so its components pick up the theme */
-  --bs-body-font-family: var(--mw-font);
-  --bs-body-bg: var(--mw-bg);
-  --bs-body-color: var(--mw-ink);
-  --bs-secondary-color: var(--mw-muted);
-  --bs-border-color: var(--mw-border);
-  --bs-border-radius: var(--mw-radius-sm);
-  --bs-border-radius-lg: var(--mw-radius);
-  --bs-primary: var(--mw-primary);
+  --bs-body-font-family: var(--fp-font);
+  --bs-body-bg: var(--fp-bg);
+  --bs-body-color: var(--fp-ink);
+  --bs-secondary-color: var(--fp-muted);
+  --bs-border-color: var(--fp-border);
+  --bs-border-radius: var(--fp-radius-sm);
+  --bs-border-radius-lg: var(--fp-radius);
+  --bs-primary: var(--fp-primary);
   --bs-primary-rgb: 14, 124, 107;
-  --bs-link-color: var(--mw-primary);
+  --bs-link-color: var(--fp-primary);
   --bs-link-color-rgb: 14, 124, 107;
-  --bs-link-hover-color: var(--mw-primary-dark);
+  --bs-link-hover-color: var(--fp-primary-dark);
   --bs-link-hover-color-rgb: 10, 95, 82;
 }
 
 /* Bootstrap buttons set their colours per class, so they need their own mapping */
 .btn-primary {
-  --bs-btn-bg: var(--mw-primary);
-  --bs-btn-border-color: var(--mw-primary);
-  --bs-btn-hover-bg: var(--mw-primary-dark);
-  --bs-btn-hover-border-color: var(--mw-primary-dark);
-  --bs-btn-active-bg: var(--mw-primary-dark);
-  --bs-btn-active-border-color: var(--mw-primary-dark);
-  --bs-btn-disabled-bg: var(--mw-primary);
-  --bs-btn-disabled-border-color: var(--mw-primary);
+  --bs-btn-bg: var(--fp-primary);
+  --bs-btn-border-color: var(--fp-primary);
+  --bs-btn-hover-bg: var(--fp-primary-dark);
+  --bs-btn-hover-border-color: var(--fp-primary-dark);
+  --bs-btn-active-bg: var(--fp-primary-dark);
+  --bs-btn-active-border-color: var(--fp-primary-dark);
+  --bs-btn-disabled-bg: var(--fp-primary);
+  --bs-btn-disabled-border-color: var(--fp-primary);
 }
 
 .btn-outline-primary {
-  --bs-btn-color: var(--mw-primary);
-  --bs-btn-border-color: var(--mw-primary);
-  --bs-btn-hover-bg: var(--mw-primary);
-  --bs-btn-hover-border-color: var(--mw-primary);
-  --bs-btn-active-bg: var(--mw-primary-dark);
-  --bs-btn-active-border-color: var(--mw-primary-dark);
+  --bs-btn-color: var(--fp-primary);
+  --bs-btn-border-color: var(--fp-primary);
+  --bs-btn-hover-bg: var(--fp-primary);
+  --bs-btn-hover-border-color: var(--fp-primary);
+  --bs-btn-active-bg: var(--fp-primary-dark);
+  --bs-btn-active-border-color: var(--fp-primary-dark);
 }

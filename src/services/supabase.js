@@ -9,7 +9,7 @@ export const hasSupabase = Boolean(url && anonKey)
 
 if (!hasSupabase) {
   console.info(
-    '[midway] No Supabase keys in .env.local: using mock data from src/mocks/hangout.json',
+    '[fairpoint] No Supabase keys in .env.local: using mock data from src/mocks/hangout.json',
   )
 }
 

@@ -1,4 +1,4 @@
--- Midway database schema. Owner: Matrix.
+-- Fairpoint database schema. Owner: Matrix.
 -- DRAFT from the kickoff "data shape" suggestions: confirm at the kickoff, then run it in
 -- Supabase → SQL Editor. After that, change the database only through a PR that edits this file.
 --

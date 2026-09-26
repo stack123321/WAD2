@@ -1,6 +1,6 @@
-# Midway
+# Fairpoint
 
-Meet-in-the-middle hangout planner (IS216 WAD2). Each friend adds where they're coming from and how they're travelling. Midway finds the fairest midpoint, shows crowd levels and weather, suggests nearby spots ranked by the group's preferences, and the group votes on the final spot.
+Meet-in-the-middle hangout planner (IS216 WAD2). Each friend adds where they're coming from and how they're travelling. Fairpoint finds the fairest midpoint, shows crowd levels and weather, suggests nearby spots ranked by the group's preferences, and the group votes on the final spot.
 
 Figma: https://www.figma.com/design/VPDZrAHBK7HWniY3HM2wUY
 
@@ -12,13 +12,13 @@ You need Node 22.18 or newer (`node -v` to check).
 
 ```bash
 git clone <repo-url>
-cd midway
+cd WAD2
 npm install
 cp .env.example .env.local     # then paste in your keys
 npm run dev                    # http://localhost:5173
 ```
 
-The app runs without any keys: every service falls back to `src/mocks/hangout.json`. Open `/hangouts/demo/start` (or any `/hangouts/demo/...` page) to see the mock hangout.
+The app runs without any keys: everything falls back to sample data (see [Sample data](#sample-data)). Open `/hangouts/demo/start` (or any `/hangouts/demo/...` page) to see the sample hangout.
 
 | Command | What it does |
 |---|---|
@@ -30,7 +30,7 @@ The app runs without any keys: every service falls back to `src/mocks/hangout.js
 | `npm run test:e2e` | Run the end-to-end tests in `tests/e2e/` |
 | `npx playwright test --ui` | Same, but watch the tests run |
 
-The functions in `api/` only run on Vercel. To try them locally, install the Vercel CLI (`npm i -g vercel`) and run `vercel dev` instead of `npm run dev`.
+`npm run dev` also runs the serverless functions in `api/` (via `scripts/dev-api.js`), so `/api/route`, `/api/crowd` and `/api/places` work locally with no extra setup. On Vercel the same files run as real serverless functions.
 
 ## Who owns what
 
@@ -69,6 +69,23 @@ One file = one owner. If you need to change someone else's file, ask them first 
 | 11 | Group voting | `/hangouts/:id/vote` | `VoteView.vue` | Eashvar |
 | 12 | Final plan | `/hangouts/:id/plan` | `FinalPlanView.vue` | Eashvar (routes: Nicole) |
 
+## Sample data
+
+Everyone can build their page before the database and APIs are ready. There are two kinds of data, and both have samples:
+
+| Kind | Real source | Sample until it's ready | Swap happens in |
+|---|---|---|---|
+| Saved: hangout, members, shortlist, votes | Supabase | `src/mocks/hangout.json` | `src/services/hangouts.js` (automatic once `.env.local` has Supabase keys) |
+| Address search | OneMap Search | `src/mocks/addresses.json` | `src/services/onemap.js` |
+| Weather | data.gov.sg | `src/mocks/weather.json` | `src/services/weather.js` |
+| Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) | `api/route.js` |
+| Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) | `api/crowd.js` |
+| Nearby places | Google Places or OpenStreetMap | `api/_mocks/places.js` ("Sample …" places) | `api/places.js` |
+
+Pages call the service functions and never know which one they got. When you build the real call, keep the same response shape (it's written in the comment above each function) and nobody else's page changes. The keyed APIs keep answering with samples when their key is missing from `.env.local`, so teammates without that key can still work.
+
+Sample responses are marked with "sample" in names and labels so they never get mistaken for real data in the demo.
+
 ## Rules
 
 **Code**
@@ -80,7 +97,7 @@ One file = one owner. If you need to change someone else's file, ask them first 
 **CSS**
 
 1. Bootstrap handles the grid, spacing and breakpoints.
-2. `src/styles/tokens.css` is the only global CSS. Components use `<style scoped>` and `var(--mw-...)`. No hard-coded hex codes.
+2. `src/styles/tokens.css` is the only global CSS. Components use `<style scoped>` and `var(--fp-...)`. No hard-coded hex codes.
 3. Nobody adds their own global CSS file.
 
 **Keys**

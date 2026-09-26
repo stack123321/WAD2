@@ -33,15 +33,15 @@ defineProps({
 
 <style scoped>
 .placeholder-card {
-  background: var(--mw-surface);
-  border: 1px dashed var(--mw-border);
-  border-radius: var(--mw-radius);
+  background: var(--fp-surface);
+  border: 1px dashed var(--fp-border);
+  border-radius: var(--fp-radius);
   padding: 2rem;
   max-width: 760px;
 }
 
 .eyebrow {
-  color: var(--mw-accent);
+  color: var(--fp-accent);
   font-weight: 700;
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -50,6 +50,6 @@ defineProps({
 }
 
 .purpose {
-  color: var(--mw-muted);
+  color: var(--fp-muted);
 }
 </style>

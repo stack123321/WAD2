@@ -8,7 +8,7 @@ const auth = useAuthStore()
 <template>
   <nav class="navbar navbar-expand-sm bg-white border-bottom">
     <div class="container">
-      <RouterLink class="navbar-brand brand" :to="{ name: 'landing' }">Midway</RouterLink>
+      <RouterLink class="navbar-brand brand" :to="{ name: 'landing' }">Fairpoint</RouterLink>
       <button
         class="navbar-toggler"
         type="button"
@@ -48,11 +48,11 @@ const auth = useAuthStore()
 <style scoped>
 .brand {
   font-weight: 800;
-  color: var(--mw-primary);
+  color: var(--fp-primary);
 }
 
 .nav-link.router-link-active {
-  color: var(--mw-primary);
+  color: var(--fp-primary);
   font-weight: 600;
 }
 </style>
