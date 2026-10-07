@@ -5,6 +5,10 @@ import CandidateCard from './CandidateCard.vue'
 defineProps({
   shortlist: { type: Array, required: true },
   counts: { type: Object, required: true }, // { [spotId]: number of votes }
+  votersBySpot: { type: Object, required: true }, // { [spotId]: [{ userId, name, color }] }
+  totalVotes: { type: Number, required: true },
+  leaderId: { type: String, default: null }, // null when nobody has voted yet
+  tied: { type: Boolean, default: false },
   myVoteId: { type: String, default: null },
   disabled: { type: Boolean, default: false },
 })
@@ -16,11 +20,15 @@ const emit = defineEmits(['vote'])
   <p v-if="shortlist.length === 0" class="empty small mb-0">
     Nothing has been shortlisted yet. Add spots from the nearby spots page first.
   </p>
-  <ul v-else class="list-unstyled row g-3 mb-0">
-    <li v-for="spot in shortlist" :key="spot.id" class="col-12">
+  <ul v-else class="list-unstyled d-flex flex-column gap-3 mb-0">
+    <li v-for="spot in shortlist" :key="spot.id">
       <CandidateCard
         :spot="spot"
         :count="counts[spot.id] ?? 0"
+        :total-votes="totalVotes"
+        :voters="votersBySpot[spot.id] ?? []"
+        :leading="spot.id === leaderId"
+        :tied="tied"
         :selected="spot.id === myVoteId"
         :disabled="disabled"
         @vote="emit('vote', $event)"

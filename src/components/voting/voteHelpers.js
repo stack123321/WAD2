@@ -101,7 +101,7 @@ export function isSameSgtDay(isoA, isoB) {
   return day(isoA) === day(isoB)
 }
 
-/** "2d 4h left", "3h 20m left", "45 min left", or null once the deadline has passed. */
+/** Time until the deadline: "2d 4h", "3h 20m", "45 min", or null once it has passed. */
 export function timeLeft(deadlineIso, nowMs) {
   const ms = new Date(deadlineIso).getTime() - nowMs
   if (ms <= 0) return null
@@ -109,9 +109,9 @@ export function timeLeft(deadlineIso, nowMs) {
   const days = Math.floor(totalMins / 1440)
   const hours = Math.floor((totalMins % 1440) / 60)
   const mins = totalMins % 60
-  if (days > 0) return `${days}d ${hours}h left`
-  if (hours > 0) return `${hours}h ${mins}m left`
-  return `${mins} min left`
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${mins}m`
+  return `${mins} min`
 }
 
 /**
