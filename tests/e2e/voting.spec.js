@@ -25,6 +25,7 @@ test.describe('11 Group voting', () => {
       await expect(page.getByRole('heading', { name: spot, exact: true })).toBeVisible()
     }
     await expect(page.getByText('3 of 4 voted')).toBeVisible()
+    await expect(page.getByText('Waiting on Surya')).toBeVisible()
   })
 
   test('voting for a spot updates its tally', async ({ page }) => {
