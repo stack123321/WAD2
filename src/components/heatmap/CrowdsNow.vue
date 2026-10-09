@@ -30,6 +30,11 @@ const busiest = computed(() => {
   return list
 })
 
+// True when LTA was unavailable and api/crowd.js sent sample data instead
+const isSample = computed(
+  () => stations.value.length > 0 && stations.value[0].station.includes('(sample)'),
+)
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -54,6 +59,9 @@ onMounted(async () => {
 
       <p v-if="loading" class="text-muted small mb-0">Loading crowd levels…</p>
       <p v-else-if="error" class="text-danger small mb-0">{{ error }}</p>
+      <p v-else-if="isSample" class="text-muted small mb-3">
+        LTA is unavailable, so these are sample crowd levels.
+      </p>
 
       <div v-for="s in busiest" :key="s.station" class="mb-3">
         <div class="d-flex justify-content-between small mb-1">

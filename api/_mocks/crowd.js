@@ -46,6 +46,6 @@ export function sampleCrowd(at) {
     else if (day) score += interchange ? 0.4 : 0.2
     else if (!night) score += 0.3
     const level = score >= 0.8 ? 'h' : score >= 0.45 ? 'm' : 'l'
-    return { station, lat, lng, level }
+    return { station: `${station} (sample)`, lat, lng, level }
   })
 }

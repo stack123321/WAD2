@@ -64,6 +64,16 @@ d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: SG
 ```
 Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the date block and start time.
 
+## Text
+
+### `text.includes(part)`
+`true` if `part` appears anywhere inside `text`. Capitals matter: `'Bishan'.includes('bishan')` is `false`.
+```js
+'Bishan (sample)'.includes('(sample)') // true
+'Bishan'.includes('(sample)') // false
+```
+Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) and [CrowdsNow.vue](../src/components/heatmap/CrowdsNow.vue) to tell when api/crowd.js sent sample data because LTA was unavailable.
+
 ## Maths
 
 ### `Math.abs(n)`
