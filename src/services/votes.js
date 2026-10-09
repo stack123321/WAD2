@@ -1,9 +1,16 @@
-// Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime).
+// Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime),
+// and the host closing the vote (11) and marking the hangout done (12).
+// Every function does nothing for mock hangouts (no keys, or id "demo"). Host updates use
+// .select() because Row Level Security skips a non-host's update without an error.
 import { supabase, hasSupabase } from './supabase'
+
+export function isMockHangout(hangoutId) {
+  return hangoutId === 'demo' || !hasSupabase
+}
 
 /** Cast or change my vote (one row per person per hangout). */
 export async function castVote(hangoutId, userId, shortlistId) {
-  if (!hasSupabase) return
+  if (isMockHangout(hangoutId)) return
   const { error } = await supabase.from('votes').upsert({
     hangout_id: hangoutId,
     user_id: userId,
@@ -15,7 +22,7 @@ export async function castVote(hangoutId, userId, shortlistId) {
 
 /** All votes for a hangout. */
 export async function getVotes(hangoutId) {
-  if (!hasSupabase) return []
+  if (isMockHangout(hangoutId)) return []
   const { data, error } = await supabase.from('votes').select('*').eq('hangout_id', hangoutId)
   if (error) throw error
   return data
@@ -26,7 +33,7 @@ export async function getVotes(hangoutId) {
  * @returns {() => void} call this in onUnmounted to stop listening
  */
 export function subscribeToVotes(hangoutId, onChange) {
-  if (!hasSupabase) return () => {}
+  if (isMockHangout(hangoutId)) return () => {}
   const channel = supabase
     .channel(`votes:${hangoutId}`)
     .on(
@@ -36,4 +43,23 @@ export function subscribeToVotes(hangoutId, onChange) {
     )
     .subscribe()
   return () => supabase.removeChannel(channel)
+}
+
+export async function closeVote(hangoutId, shortlistId) {
+  await updateHangout(hangoutId, { status: 'confirmed', final_shortlist_id: shortlistId })
+}
+
+export async function markHangoutDone(hangoutId) {
+  await updateHangout(hangoutId, { status: 'done' })
+}
+
+async function updateHangout(hangoutId, fields) {
+  if (isMockHangout(hangoutId)) return
+  const { data, error } = await supabase
+    .from('hangouts')
+    .update(fields)
+    .eq('id', hangoutId)
+    .select('id')
+  if (error) throw error
+  if (data.length === 0) throw new Error('Only the host can do this.')
 }
