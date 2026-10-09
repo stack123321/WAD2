@@ -78,7 +78,8 @@ function titleCase(text) {
       const upper = word.toUpperCase()
       // keep codes like (CC21), 21A and acronyms like MRT in capitals
       if (/\d/.test(word) || ACRONYMS.includes(upper.replace(/[()]/g, ''))) return upper
-      return word.charAt(0).toUpperCase() + word.slice(1)
+      // capitalise the first letter, even after a bracket: "(car" → "(Car"
+      return word.replace(/[a-z]/, (ch) => ch.toUpperCase())
     })
     .join(' ')
 }
