@@ -1,12 +1,13 @@
 <script setup>
-// Owner: Eashvar. A member's initial in a coloured circle (11 Group voting cards, waiting row, feed).
-// Decorative only: the parent always writes the person's name in text as well.
+// Owner: Eashvar. A member's initial in a circle of their avatar_color (grey if they have none),
+// sized in px. Used on 11 Group voting's cards, waiting row and feed. Decorative only: the parent
+// always writes the person's name in text as well.
 import { computed } from 'vue'
 
 const props = defineProps({
   name: { type: String, required: true },
-  color: { type: String, default: null }, // the member's avatar_color from their profile
-  size: { type: Number, default: 24 }, // px
+  color: { type: String, default: null },
+  size: { type: Number, default: 24 },
 })
 
 const initial = computed(() => props.name.charAt(0).toUpperCase())
@@ -41,7 +42,6 @@ const initial = computed(() => props.name.charAt(0).toUpperCase())
   line-height: 1;
 }
 
-/* No colour saved on the profile yet */
 .avatar--plain {
   background: var(--fp-muted);
 }

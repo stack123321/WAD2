@@ -1,17 +1,18 @@
 <script setup>
-// Owner: Eashvar. One shortlisted spot on 11 Group voting: its details, its live tally
-// (bar, votes, who voted for it) and the vote button.
+// Owner: Eashvar. One shortlisted spot on 11 Group voting: photo, name, category, rating,
+// price and match %, its live tally (bar, votes and % of votes cast, avatars of who voted for it),
+// and a vote button that shows "✓ Your vote" when it's my choice. Emits vote(spotId).
 import { computed } from 'vue'
 import MemberAvatar from './MemberAvatar.vue'
 
 const props = defineProps({
   spot: { type: Object, required: true },
   count: { type: Number, default: 0 },
-  totalVotes: { type: Number, default: 0 }, // votes cast across all spots, for the percentage
-  voters: { type: Array, default: () => [] }, // [{ userId, name, color }] who voted for this spot
+  totalVotes: { type: Number, default: 0 },
+  voters: { type: Array, default: () => [] },
   leading: { type: Boolean, default: false },
-  tied: { type: Boolean, default: false }, // the lead is a tie, won on group match
-  selected: { type: Boolean, default: false }, // true when this is my current vote
+  tied: { type: Boolean, default: false },
+  selected: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
 })
 
@@ -86,7 +87,6 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
       </div>
     </div>
 
-    <!-- aria-label stays "Vote for …" while aria-pressed says whether it's my vote -->
     <button
       type="button"
       class="vote-btn btn btn-sm"
@@ -110,7 +110,6 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
   padding: 1rem;
 }
 
-/* My choice: teal border, plus the "Your vote" button text so it isn't colour alone */
 .candidate--selected {
   border-color: var(--fp-primary);
   box-shadow: 0 0 0 1px var(--fp-primary);
@@ -135,7 +134,6 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
   font-weight: 700;
 }
 
-/* Wide enough for the name and bar; on phones the button drops to its own row */
 .body {
   flex: 1 1 13rem;
   min-width: 0;
@@ -168,7 +166,6 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
   background: var(--fp-primary);
 }
 
-/* Avatars overlap slightly, like a stack */
 .voters > :not(:first-child) {
   margin-left: -6px;
 }
@@ -178,7 +175,6 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
   font-weight: 600;
 }
 
-/* White button with a grey border, as in Figma (Bootstrap's own grey isn't one of our tokens) */
 .vote-btn--idle {
   --bs-btn-bg: var(--fp-surface);
   --bs-btn-color: var(--fp-ink);

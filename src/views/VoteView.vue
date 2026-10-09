@@ -1,8 +1,12 @@
 <script setup>
 // 11 Group voting
 // Owner: Eashvar · Vet by: Ryan
-// Figma frame "11". Everyone votes for one shortlisted spot; the tally updates live
-// (Supabase Realtime) and the host closes the vote, which leads to 12 Final plan.
+// Figma frame "11". Everyone votes for one shortlisted spot and can change it until the deadline
+// (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally updates
+// straight away (also in demo mode), re-fetches all votes on every Realtime change, and lists
+// activity seen while open. "Me" is the logged-in user, or in demo mode the host, so the host
+// controls can be tried without keys. The host picks the winner and closes the vote; the store is
+// then updated directly (a forced reload would reset the demo hangout) and 12 Final plan opens.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
@@ -30,11 +34,10 @@ const auth = useAuthStore()
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
 
-// Page-only state
-const votes = ref([]) // this page's copy of the votes; the tally is worked out from it
-const history = ref([]) // activity seen while the page is open (the database keeps only the latest vote)
-const now = ref(Date.now()) // ticks every 30 s so the countdown stays current
-const pickedWinnerId = ref(null) // the host's choice in the "Winner" box, null = follow the leader
+const votes = ref([])
+const history = ref([])
+const now = ref(Date.now())
+const pickedWinnerId = ref(null)
 const actionError = ref('')
 const closing = ref(false)
 
@@ -44,16 +47,12 @@ let timer = null
 
 const hangout = computed(() => store.hangout)
 
-// Who "me" is. In demo mode nobody is logged in, so we fall back to the hangout's host
-// (Ryan in the mock). That lets the host-only controls be tried without keys.
-// With real data we never guess: no logged-in user means no voting.
 const myId = computed(() => auth.user?.id ?? (isMock ? (hangout.value?.host_id ?? null) : null))
 const isHost = computed(() => myId.value !== null && myId.value === hangout.value?.host_id)
 const myVoteId = computed(
   () => votes.value.find((v) => v.user_id === myId.value)?.shortlist_id ?? null,
 )
 
-// Tally
 const rows = computed(() => countVotes(store.shortlist, votes.value))
 const counts = computed(() => {
   const result = {}
@@ -63,12 +62,11 @@ const counts = computed(() => {
 const leader = computed(() => pickLeader(rows.value))
 const leaderId = computed(() => (leader.value?.count > 0 ? leader.value.spot.id : null))
 const tied = computed(() => isTied(rows.value))
-const totalVotes = computed(() => votes.value.length) // one row per person, so also "how many voted"
+const totalVotes = computed(() => votes.value.length)
 
 function memberOf(userId) {
   return store.members.find((m) => m.user_id === userId) ?? null
 }
-// The people behind each spot's votes, shown as avatars on its card
 const votersBySpot = computed(() => {
   const result = {}
   for (const v of votes.value) {
@@ -82,7 +80,6 @@ const votersBySpot = computed(() => {
   }
   return result
 })
-// Members who haven't voted yet
 const waiting = computed(() =>
   store.members.filter((m) => !votes.value.some((v) => v.user_id === m.user_id)),
 )
@@ -94,7 +91,6 @@ const waitingText = computed(() => {
 
 const winnerId = computed(() => pickedWinnerId.value ?? leader.value?.spot.id ?? null)
 
-// Deadline
 const deadline = computed(() => hangout.value?.vote_deadline ?? null)
 const timeLeftText = computed(() => (deadline.value ? timeLeft(deadline.value, now.value) : null))
 const deadlinePassed = computed(() => deadline.value !== null && timeLeftText.value === null)
@@ -102,12 +98,10 @@ const status = computed(() => hangout.value?.status)
 const votingOpen = computed(() => status.value === 'voting' && !deadlinePassed.value)
 const canVote = computed(() => votingOpen.value && myId.value !== null)
 
-// Activity feed, newest first, with user and spot ids turned into names
 function spotName(spotId) {
   return store.shortlist.find((s) => s.id === spotId)?.name ?? 'a removed spot'
 }
 const feedItems = computed(() =>
-  // Event ids count up in the order this page saw them, so the highest id is the newest
   [...history.value]
     .sort((a, b) => b.id - a.id)
     .map((event) => ({
@@ -124,9 +118,7 @@ const feedItems = computed(() =>
     })),
 )
 
-/** Replace this page's votes, logging what changed in the activity feed. Returns the new events. */
 function applyVotes(next) {
-  // Oldest first before numbering, so the votes already in the database are numbered in time order
   const events = diffVotes(votes.value, next, new Date().toISOString())
     .sort((a, b) => new Date(a.at) - new Date(b.at))
     .map((event) => ({ ...event, id: nextEventId++ }))
@@ -135,8 +127,6 @@ function applyVotes(next) {
   return events
 }
 
-// Called on every Realtime change. We fetch all the votes again rather than reading the
-// event itself: it's simpler, and delete events don't include the whole row.
 async function refreshVotes() {
   try {
     applyVotes(await getVotes(hangoutId))
@@ -150,12 +140,10 @@ async function vote(spotId) {
   actionError.value = ''
   const before = votes.value
   const mine = { user_id: myId.value, shortlist_id: spotId, voted_at: new Date().toISOString() }
-  // Update the tally straight away. In demo mode castVote does nothing, so this is the only update.
   const added = applyVotes([...before.filter((v) => v.user_id !== myId.value), mine])
   try {
     await castVote(hangoutId, myId.value, spotId)
   } catch (e) {
-    // Undo the early update so the tally matches the database again
     votes.value = before
     history.value = history.value.filter((event) => !added.includes(event))
     actionError.value = `Your vote wasn't saved: ${e.message}`
@@ -167,9 +155,6 @@ async function onClose(spotId) {
   actionError.value = ''
   try {
     await closeVote(hangoutId, spotId)
-    // Update the store ourselves instead of load(id, { force: true }). A forced reload of the
-    // demo hangout would bring back the original mock data and lose this session's votes and
-    // winner. With real data the database already has these values, so no extra fetch is needed.
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = spotId
     store.hangout.votes = votes.value
@@ -182,7 +167,6 @@ async function onClose(spotId) {
 }
 
 onMounted(async () => {
-  // Subscribe first, so onUnmounted can always clean up even if loading fails
   unsubscribe = subscribeToVotes(hangoutId, refreshVotes)
   timer = setInterval(() => {
     now.value = Date.now()
@@ -191,9 +175,8 @@ onMounted(async () => {
   await store.load(hangoutId)
   if (store.error) return
   try {
-    // Demo votes come from the mock. Real votes are fetched fresh, in case the store is old.
     const start = isMock ? store.votes.map((v) => ({ ...v })) : await getVotes(hangoutId)
-    applyVotes(start) // starts the feed with one "voted" entry per vote
+    applyVotes(start)
   } catch (e) {
     actionError.value = `Couldn't load the votes: ${e.message}`
   }
@@ -208,7 +191,6 @@ onUnmounted(() => {
 <template>
   <main class="container py-4">
     <div class="row g-4">
-      <!-- Left (Figma: about two thirds): title, turnout, candidates -->
       <div class="col-12 col-lg-8">
         <header class="mb-3">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
@@ -301,7 +283,6 @@ onUnmounted(() => {
         </template>
       </div>
 
-      <!-- Right (Figma: about one third): activity, then the host's card -->
       <div v-if="hangout && !store.loading && !store.error" class="col-12 col-lg-4">
         <div class="d-flex flex-column gap-3">
           <ActivityFeed :items="feedItems" />
@@ -321,7 +302,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* "Closes in …" pill next to the title */
 .deadline {
   display: inline-flex;
   align-items: center;

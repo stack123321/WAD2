@@ -1,6 +1,6 @@
 <script setup>
-// Owner: Eashvar. Turnout on 11 Group voting: "3 of 4 voted" and a bar showing how much of the
-// group has voted. The default slot holds the text on the left of the count (the page's intro line).
+// Owner: Eashvar. Turnout on 11 Group voting: "3 of 4 voted" and a bar with the % of the group
+// that has voted. The default slot is the intro text shown to the left of the count.
 import { computed } from 'vue'
 
 const props = defineProps({

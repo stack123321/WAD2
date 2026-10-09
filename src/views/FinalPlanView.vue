@@ -1,8 +1,11 @@
 <script setup>
 // 12 Final plan & itinerary
 // Owner: Eashvar (routes section: Nicole) · Vet by: Ryan
-// Figma frame "12". The confirmed spot, everyone's trip side by side (the fairness promise),
-// leave-by times, calendar and share, the backup plan, and the host marks the hangout done.
+// Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
+// a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
+// spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done". "Me"
+// follows the same demo-mode rule as 11. Labelled boxes hold space for Nicole's routes and Surya's
+// map and weather.
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
@@ -37,12 +40,9 @@ const hangout = computed(() => store.hangout)
 const status = computed(() => hangout.value?.status)
 const startsAt = computed(() => hangout.value?.starts_at ?? null)
 
-// Same rule as 11 Group voting: in demo mode nobody is logged in, so "me" falls back to the
-// host (Ryan in the mock) so "Mark as done" can be tried without keys.
 const myId = computed(() => auth.user?.id ?? (isMock ? (hangout.value?.host_id ?? null) : null))
 const isHost = computed(() => myId.value !== null && myId.value === hangout.value?.host_id)
 
-// The spot: the host's confirmed choice, or (before the vote is closed) the current leader
 const rows = computed(() => countVotes(store.shortlist, store.votes))
 const confirmedSpot = computed(
   () => store.shortlist.find((s) => s.id === hangout.value?.final_shortlist_id) ?? null,
@@ -63,7 +63,6 @@ const calendarLink = computed(() => {
   })
 })
 
-// Plain-text plan for the group chat
 const summary = computed(() => {
   if (!hangout.value || !spot.value) return ''
   const lines = [hangout.value.name]
@@ -84,7 +83,7 @@ const summary = computed(() => {
 let copyTimer = null
 
 async function copyPlan() {
-  clearTimeout(copyTimer) // a second click shouldn't be hidden early by the first click's timer
+  clearTimeout(copyTimer)
   try {
     await navigator.clipboard.writeText(summary.value)
     copyFailed.value = false
@@ -93,7 +92,6 @@ async function copyPlan() {
       copyMessage.value = ''
     }, 3000)
   } catch {
-    // Some browsers block the clipboard; the message stays and the text is shown to copy by hand
     copyFailed.value = true
     copyMessage.value = "Couldn't copy automatically. Select the text below and copy it instead."
   }
@@ -104,7 +102,6 @@ async function markDone() {
   actionError.value = ''
   try {
     await markHangoutDone(hangoutId)
-    // Update the store ourselves, as 11 does after closing the vote (works in demo mode too)
     store.hangout.status = 'done'
   } catch (e) {
     actionError.value = `Couldn't mark the hangout as done: ${e.message}`
@@ -113,7 +110,6 @@ async function markDone() {
   }
 }
 
-// After 11 closes the vote the store already holds the result, so this doesn't fetch again
 onMounted(() => store.load(hangoutId))
 </script>
 
@@ -170,7 +166,6 @@ onMounted(() => store.load(hangoutId))
 
           <TripTable :members="store.members" :starts-at="startsAt" :my-id="myId" />
 
-          <!-- Nicole: replace this box with the route list from components/transport/ -->
           <section class="owner-box" aria-labelledby="routes-heading">
             <h2 id="routes-heading" class="h6 mb-1">Getting there</h2>
             <p class="small mb-0">
@@ -181,7 +176,6 @@ onMounted(() => store.load(hangoutId))
 
         <div class="col-12 col-lg-5 d-flex flex-column gap-4">
           <div class="row g-3">
-            <!-- Surya: replace these two boxes with the map and weather card -->
             <div class="col-12 col-md-6 col-lg-12">
               <section class="owner-box owner-box--tall h-100" aria-labelledby="map-heading">
                 <h2 id="map-heading" class="h6 mb-1">Map</h2>
@@ -306,7 +300,6 @@ onMounted(() => store.load(hangoutId))
   color: var(--fp-surface);
 }
 
-/* Labelled spaces for teammates' components that don't exist yet */
 .owner-box {
   border: 2px dashed var(--fp-border);
   border-radius: var(--fp-radius);

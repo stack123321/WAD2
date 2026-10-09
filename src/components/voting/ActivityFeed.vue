@@ -1,16 +1,14 @@
 <script setup>
-// Owner: Eashvar. Vote activity on 11 Group voting, newest first.
+// Owner: Eashvar. "Group activity" on 11 Group voting: who voted, changed or removed their vote,
+// newest first, with an avatar and the time in SGT (date included if it wasn't today).
 // The database keeps only each person's latest vote, so changes are listed only while the page is open.
 import MemberAvatar from './MemberAvatar.vue'
 import { formatDateTime, formatTime, isSameSgtDay } from './voteHelpers'
 
 defineProps({
-  // [{ id, kind: 'voted' | 'changed' | 'removed', isMe, name, displayName, color, toName, fromName, at }]
-  // name is "You" for me; displayName is always the real name (for the avatar)
   items: { type: Array, required: true },
 })
 
-// Today's votes show just the time; older ones show the date as well
 function when(iso) {
   return isSameSgtDay(iso, new Date().toISOString()) ? formatTime(iso) : formatDateTime(iso)
 }

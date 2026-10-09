@@ -1,12 +1,13 @@
 <script setup>
-// Owner: Eashvar. Host-only card on 11 Group voting: pick the winner and close the vote.
-// The parent owns the chosen winner (selectedId), so it can default to the live leader.
+// Owner: Eashvar. Host-only card on 11 Group voting: a "Winner" dropdown and the
+// "Close vote & confirm plan" button. The parent holds the chosen winner (selectedId) so it can
+// default to the live leader; this card emits select(spotId) and close(spotId).
 defineProps({
   shortlist: { type: Array, required: true },
   selectedId: { type: String, default: null },
-  deadlineText: { type: String, default: null }, // e.g. "Thu, 15 Oct, 9:00 pm"
+  deadlineText: { type: String, default: null },
   disabled: { type: Boolean, default: false },
-  closing: { type: Boolean, default: false }, // true while the close request is running
+  closing: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['select', 'close'])

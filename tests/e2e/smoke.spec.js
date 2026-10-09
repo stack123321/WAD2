@@ -1,6 +1,7 @@
-// Owner: Eashvar (testing lead). Smoke test: every page opens, and the main flow can be
-// clicked through from 01 to 12 using the demo hangout. Each user journey has its own spec
-// with deeper checks (e.g. voting.spec.js).
+// Owner: Eashvar (testing lead). Smoke test: every page opens with the right <h1>, and the main
+// flow clicks through from 01 to 12 on the demo hangout, finding each step's link or button by
+// its accessible name. TODO(Hugo): page 10 has no fixed <h1> or link to the vote page yet, so its
+// title is only checked for any text and the flow jumps straight to /hangouts/demo/vote.
 import { test, expect } from '@playwright/test'
 
 const pages = [
@@ -13,7 +14,6 @@ const pages = [
   ['/hangouts/demo/transport', 'Mode of transport'],
   ['/hangouts/demo/midpoint', 'Midpoint + crowd heat map'],
   ['/hangouts/demo/explore', 'Nearby cafes & activities'],
-  // TODO(Hugo): page 10's <h1> will be the spot's name, so for now only check that it has one
   ['/hangouts/demo/spots/demo-spot-1', /\S/],
   ['/hangouts/demo/vote', 'Group voting'],
   ['/hangouts/demo/plan', 'Final plan & itinerary'],
@@ -26,9 +26,6 @@ for (const [path, title] of pages) {
   })
 }
 
-// Each step: [role, accessible name] of the thing to click, then the <h1> of the page it opens.
-// Clicking by name (not "the only link in <section>") keeps working when a page has several
-// links and buttons, like 11 Group voting, where the next step is the host's "Close vote" button.
 const flowTo10 = [
   ['link', 'Sign up', 'Log in / Sign up'],
   ['link', 'Continue', 'User preferences'],
@@ -50,12 +47,9 @@ test('main flow clicks through from landing to final plan', async ({ page }) => 
     await expect(h1).toHaveText(title)
   }
 
-  // TODO(Hugo): page 10 has no link to the vote page yet, so go there directly.
-  // Swap this for a click once SpotDetailsView links to { name: 'vote' }.
   await page.goto('/hangouts/demo/vote')
   await expect(h1).toHaveText('Group voting')
 
-  // In demo mode "me" is the host, so the Close vote button is there
   await page.getByRole('button', { name: 'Close vote' }).click()
   await expect(h1).toHaveText('Final plan & itinerary')
 })

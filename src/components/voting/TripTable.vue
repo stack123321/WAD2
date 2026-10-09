@@ -1,6 +1,8 @@
 <script setup>
-// Owner: Eashvar. "Fair for everyone" on 12 Final plan: everyone's trip side by side,
-// the gap between the longest and shortest trip, and when each person should leave.
+// Owner: Eashvar. "Fair for everyone" on 12 Final plan: the gap, longest and shortest trip,
+// then a table of each person's start point, mode, trip time, cost and leave-by time
+// (starts_at − travel_mins). Longest/shortest rows are tagged only when the trips differ, and
+// on phones the From and Cost columns move under the person's name.
 import { computed } from 'vue'
 import { formatCost, formatTime, leaveBy, modeLabel, tripRange } from './voteHelpers'
 
@@ -15,7 +17,6 @@ const range = computed(() => tripRange(props.members))
 const rows = computed(() =>
   props.members.map((m) => {
     const hasTime = m.travel_mins != null
-    // Only flag longest/shortest when the trips actually differ
     const differs = range.value !== null && range.value.gap > 0
     return {
       ...m,
@@ -83,7 +84,6 @@ const rows = computed(() =>
             <span v-if="row.isMe" class="badge tag tag--me">You</span>
             <span v-if="row.isLongest" class="badge tag tag--long">Longest</span>
             <span v-if="row.isShortest" class="badge tag tag--short">Shortest</span>
-            <!-- On phones the From and Cost columns are hidden, so show them here instead -->
             <span class="d-block d-md-none small muted fw-normal">
               {{ row.start_label ?? '—' }} · {{ formatCost(row.travel_cost) }}
             </span>
@@ -120,7 +120,6 @@ const rows = computed(() =>
   padding: 0.75rem 0.25rem;
 }
 
-/* The gap is the app's main promise, so it stands out from the other two numbers */
 .stat--gap {
   background: var(--fp-primary);
   color: var(--fp-surface);

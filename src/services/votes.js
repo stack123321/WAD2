@@ -1,11 +1,9 @@
 // Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime),
-// and the host's status changes after voting (11 close vote, 12 mark as done).
+// and the host closing the vote (11) and marking the hangout done (12).
+// Every function does nothing for mock hangouts (no keys, or id "demo"). Host updates use
+// .select() because Row Level Security skips a non-host's update without an error.
 import { supabase, hasSupabase } from './supabase'
 
-/**
- * True when this hangout uses mock data: no Supabase keys, or the "demo" id.
- * Every function below does nothing in that case, so pages keep their own copy of the votes.
- */
 export function isMockHangout(hangoutId) {
   return hangoutId === 'demo' || !hasSupabase
 }
@@ -47,23 +45,16 @@ export function subscribeToVotes(hangoutId, onChange) {
   return () => supabase.removeChannel(channel)
 }
 
-/**
- * Host only: end the vote and save the winning spot. Used by 11 Group voting.
- * @param {string} shortlistId the winning shortlist row
- */
 export async function closeVote(hangoutId, shortlistId) {
   await updateHangout(hangoutId, { status: 'confirmed', final_shortlist_id: shortlistId })
 }
 
-/** Host only: mark the hangout as finished. Used by 12 Final plan. */
 export async function markHangoutDone(hangoutId) {
   await updateHangout(hangoutId, { status: 'done' })
 }
 
 async function updateHangout(hangoutId, fields) {
   if (isMockHangout(hangoutId)) return
-  // .select() returns the updated rows. Row Level Security quietly skips the update for
-  // anyone who isn't the host (no error, zero rows), so an empty result means "not allowed".
   const { data, error } = await supabase
     .from('hangouts')
     .update(fields)

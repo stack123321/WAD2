@@ -1,13 +1,14 @@
 <script setup>
-// Owner: Eashvar. The shortlisted spots on 11 Group voting, one CandidateCard each.
+// Owner: Eashvar. The shortlisted spots on 11 Group voting, one CandidateCard each, with each
+// spot's vote count and voters looked up by spot id. Passes each card's vote(spotId) up.
 import CandidateCard from './CandidateCard.vue'
 
 defineProps({
   shortlist: { type: Array, required: true },
-  counts: { type: Object, required: true }, // { [spotId]: number of votes }
-  votersBySpot: { type: Object, required: true }, // { [spotId]: [{ userId, name, color }] }
+  counts: { type: Object, required: true },
+  votersBySpot: { type: Object, required: true },
   totalVotes: { type: Number, required: true },
-  leaderId: { type: String, default: null }, // null when nobody has voted yet
+  leaderId: { type: String, default: null },
   tied: { type: Boolean, default: false },
   myVoteId: { type: String, default: null },
   disabled: { type: Boolean, default: false },
