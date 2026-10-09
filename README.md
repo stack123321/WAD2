@@ -76,8 +76,8 @@ Everyone can build their page before the database and APIs are ready. There are 
 | Kind | Real source | Sample until it's ready | Swap happens in |
 |---|---|---|---|
 | Saved: hangout, members, shortlist, votes | Supabase | `src/mocks/hangout.json` | `src/services/hangouts.js` (automatic once `.env.local` has Supabase keys) |
-| Address search | OneMap Search | `src/mocks/addresses.json` | `src/services/onemap.js` |
-| Weather | data.gov.sg | `src/mocks/weather.json` | `src/services/weather.js` |
+| Address search | OneMap Search | `src/mocks/addresses.json` (until `.env.local` has `ONEMAP_EMAIL` / `ONEMAP_PASSWORD`) | `api/search.js` |
+| Weather + haze | data.gov.sg (NEA) + Open-Meteo | None needed: both are free with no key, so it's always real data | `src/services/weather.js` |
 | Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) | `api/route.js` |
 | Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) | `api/crowd.js` |
 | Nearby places | Google Places or OpenStreetMap | `api/_mocks/places.js` ("Sample …" places) | `api/places.js` |
