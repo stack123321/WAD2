@@ -52,6 +52,18 @@ date.setHours(18, 30, 0, 0) // today at 6:30:00.000 pm
 ```
 Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) to turn a slider position into a time today.
 
+### `date.toLocaleDateString(locale, options)` and `date.toLocaleTimeString(locale, options)`
+Turn a `Date` into readable text. The course uses `toLocaleTimeString()` with no options (Week 5 `Example12.vue`); passing options picks exactly which parts you get. `timeZone` makes it show Singapore time even on a laptop set to another time zone.
+```js
+const d = new Date('2026-10-16T19:00:00+08:00')
+const SG = 'Asia/Singapore'
+d.toLocaleDateString('en-SG', { weekday: 'short', timeZone: SG }) // "Fri"
+d.toLocaleDateString('en-SG', { day: 'numeric', timeZone: SG }) // "16"
+d.toLocaleDateString('en-SG', { month: 'short', timeZone: SG }) // "Oct"
+d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: SG }) // "7:00 pm"
+```
+Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the date block and start time.
+
 ## Maths
 
 ### `Math.abs(n)`
@@ -106,6 +118,15 @@ Scoped styles only reach elements Vue made in this component's template. Element
 }
 ```
 Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue).
+
+### `.a + .a` (adjacent sibling selector)
+Selects an element that comes straight after another one, inside the same parent. `.avatar + .avatar` matches every avatar except the first, which is handy for spacing "between" items.
+```css
+.avatar + .avatar {
+  margin-left: -8px; /* each circle tucks under the one before it */
+}
+```
+Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the overlapping member circles.
 
 ## Comments
 
