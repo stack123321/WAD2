@@ -32,15 +32,30 @@ export async function getMyHangouts() {
   return []
 }
 
+/** A short, easy-to-type invite code like "F7K2QX" (no 0/O or 1/I). */
+export function makeInviteCode(length = 6) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')
+}
+
 /**
  * Create a hangout and add the host as its first member. Used by 05 Create hangout.
- * @param {{ name: string, starts_at: string, vibe: string[] }} input
- * @returns {Promise<object>} the new hangout row (includes invite_code)
+ * @param {{ name: string, starts_at: string, vibe: string[], vote_deadline: string | null, invite_code: string }} input
+ * @returns {Promise<object>} the new hangout row
  */
 export async function createHangout(input) {
   if (!hasSupabase) return { ...structuredClone(mockHangout), ...input }
-  // TODO(Matrix): insert into hangouts, then insert the host's hangout_members row
-  throw new Error('createHangout not built yet')
+
+  const { data: hangout, error } = await supabase.from('hangouts').insert(input).select().single()
+  if (error) throw error
+
+  const { error: memberError } = await supabase
+    .from('hangout_members')
+    .insert({ hangout_id: hangout.id, user_id: hangout.host_id })
+  if (memberError) throw memberError
+
+  return hangout
 }
 
 /**
