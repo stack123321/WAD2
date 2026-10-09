@@ -1,19 +1,562 @@
 <script setup>
 // 03 User preferences
 // Owner: Matrix · Vet by: Hugo
-// Figma frame "03". Replace the placeholder below with the real page.
-import PagePlaceholder from '@/components/ui/PagePlaceholder.vue'
+// Figma frame "03". Reads and writes the logged-in user's profiles row.
+// ?setup=1 (sent by sign up) shows the onboarding progress bar and "Skip for now".
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { hasSupabase } from '@/services/supabase'
+import { defaultPreferences, getProfile, saveProfile } from '@/services/profiles'
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+const isSetup = computed(() => route.query.setup === '1')
+
+// Values are what gets stored in profiles.activities / profiles.dietary
+const activityOptions = [
+  { value: 'cafes', label: 'Cafes' },
+  { value: 'food', label: 'Food spots' },
+  { value: 'board_games', label: 'Board games' },
+  { value: 'outdoor', label: 'Outdoor & parks' },
+  { value: 'museums', label: 'Museums' },
+  { value: 'shopping', label: 'Shopping' },
+  { value: 'arcades', label: 'Arcades' },
+  { value: 'karaoke', label: 'Karaoke' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'movies', label: 'Movies' },
+  { value: 'study', label: 'Study spots' },
+]
+
+const dietaryOptions = [
+  { value: 'halal', label: 'Halal' },
+  { value: 'vegetarian', label: 'Vegetarian' },
+  { value: 'no_beef', label: 'No beef' },
+  { value: 'no_seafood', label: 'No seafood' },
+]
+
+const budgetOptions = [
+  { value: 1, symbol: '$', label: 'Under $15' },
+  { value: 2, symbol: '$$', label: '$15–30' },
+  { value: 3, symbol: '$$$', label: '$30+' },
+]
+
+const comfortOptions = [
+  {
+    key: 'indoor_if_rain',
+    label: 'Go indoors when it rains',
+    hint: 'Uses live weather to favour indoor spots',
+  },
+  {
+    key: 'avoid_crowds',
+    label: 'Avoid crowded places',
+    hint: 'Uses the crowd heat map to rank quieter spots',
+  },
+  { key: 'step_free', label: 'Step-free access only', hint: 'Lifts and ramps at the venue' },
+]
+
+const travel = { min: 10, max: 90, step: 5 }
+
+const prefs = reactive(structuredClone(defaultPreferences))
+const displayName = ref('')
+const loading = ref(true)
+const saving = ref(false)
+const error = ref('')
+const saved = ref(false)
+
+const userId = computed(() => auth.user?.id ?? (hasSupabase ? null : 'mock-user'))
+
+// Load once we know who is logged in
+watch(
+  () => auth.ready && userId.value,
+  async (id) => {
+    if (!auth.ready) return
+    if (!id) {
+      loading.value = false
+      return
+    }
+    loading.value = true
+    error.value = ''
+    try {
+      const profile = await getProfile(id)
+      for (const key of Object.keys(defaultPreferences)) prefs[key] = profile[key]
+      displayName.value =
+        profile.display_name ||
+        auth.user?.user_metadata?.display_name ||
+        auth.user?.email?.split('@')[0] ||
+        'Friend'
+    } catch (e) {
+      error.value = e.message || 'Could not load your preferences.'
+    } finally {
+      loading.value = false
+    }
+  },
+  { immediate: true },
+)
+
+function toggle(list, value) {
+  const i = list.indexOf(value)
+  if (i === -1) list.push(value)
+  else list.splice(i, 1)
+}
+
+const noRestrictions = computed(() => prefs.dietary.length === 0)
+
+// Slider fill: CSS needs the % of the track that's filled
+const travelFill = computed(
+  () => `${((prefs.max_travel_mins - travel.min) / (travel.max - travel.min)) * 100}%`,
+)
+
+watch(prefs, () => (saved.value = false))
+
+async function save() {
+  error.value = ''
+  saving.value = true
+  try {
+    await saveProfile(userId.value, displayName.value, { ...prefs })
+    if (isSetup.value) {
+      router.push({ name: 'dashboard' })
+    } else {
+      saved.value = true
+    }
+  } catch (e) {
+    error.value = e.message || 'Could not save. Please try again.'
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
-  <PagePlaceholder
-    number="03"
-    title="User preferences"
-    owner="Matrix"
-    purpose="Activities, dietary, budget, max travel time, indoor if rain, avoid crowds, step-free."
-    reads="profiles"
-    writes="profiles"
-    :next="{ name: 'dashboard' }"
-    next-label="Save and continue"
-  />
+  <main class="container prefs">
+    <header class="prefs__header">
+      <div>
+        <h1 class="prefs__title">Tell us what you like</h1>
+        <p class="prefs__sub">Fairpoint uses this to rank cafes and activities for your group.</p>
+      </div>
+      <div v-if="isSetup" class="progress-step">
+        <span>Profile setup · 2 of 2</span>
+        <div class="progress-step__bar"><span></span></div>
+      </div>
+    </header>
+
+    <div v-if="!userId && auth.ready" class="panel text-center">
+      <p class="mb-3">Log in to set your preferences.</p>
+      <RouterLink
+        class="btn btn-primary"
+        :to="{ name: 'auth', query: { redirect: route.fullPath } }"
+      >
+        Log in
+      </RouterLink>
+    </div>
+
+    <div v-else-if="loading" class="text-center py-5 text-secondary">
+      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+      Loading your preferences…
+    </div>
+
+    <form v-else id="prefs-form" novalidate @submit.prevent="save">
+      <div class="prefs__grid">
+        <div class="prefs__col">
+          <section class="panel">
+            <h2 class="panel__title">What do you enjoy?</h2>
+            <p class="panel__sub">Pick as many as you like</p>
+            <div class="chips">
+              <button
+                v-for="o in activityOptions"
+                :key="o.value"
+                type="button"
+                class="chip"
+                :class="{ 'is-on': prefs.activities.includes(o.value) }"
+                :aria-pressed="prefs.activities.includes(o.value)"
+                @click="toggle(prefs.activities, o.value)"
+              >
+                {{ o.label }}
+              </button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">Dietary needs</h2>
+            <p class="panel__sub">We only suggest food spots that fit everyone</p>
+            <div class="chips">
+              <button
+                v-for="o in dietaryOptions"
+                :key="o.value"
+                type="button"
+                class="chip"
+                :class="{ 'is-on': prefs.dietary.includes(o.value) }"
+                :aria-pressed="prefs.dietary.includes(o.value)"
+                @click="toggle(prefs.dietary, o.value)"
+              >
+                {{ o.label }}
+              </button>
+              <button
+                type="button"
+                class="chip"
+                :class="{ 'is-on': noRestrictions }"
+                :aria-pressed="noRestrictions"
+                @click="prefs.dietary = []"
+              >
+                No restrictions
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div class="prefs__col">
+          <section class="panel">
+            <h2 class="panel__title">Budget per person</h2>
+            <p class="panel__sub">Used to filter spots by price level</p>
+            <div class="segmented" role="radiogroup" aria-label="Budget per person">
+              <button
+                v-for="o in budgetOptions"
+                :key="o.value"
+                type="button"
+                role="radio"
+                class="segmented__opt"
+                :class="{ 'is-on': prefs.budget === o.value }"
+                :aria-checked="prefs.budget === o.value"
+                @click="prefs.budget = o.value"
+              >
+                {{ o.symbol }} {{ o.label }}
+              </button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
+
+            <div class="travel">
+              <label for="prefs-travel" class="travel__label">Max travel time</label>
+              <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
+            </div>
+            <input
+              id="prefs-travel"
+              v-model.number="prefs.max_travel_mins"
+              class="range"
+              type="range"
+              :min="travel.min"
+              :max="travel.max"
+              :step="travel.step"
+              :style="{ '--fill': travelFill }"
+            />
+
+            <ul class="toggles">
+              <li v-for="o in comfortOptions" :key="o.key" class="toggle-row">
+                <div>
+                  <label :for="`prefs-${o.key}`" class="toggle-row__label">{{ o.label }}</label>
+                  <p class="toggle-row__hint">{{ o.hint }}</p>
+                </div>
+                <div class="form-check form-switch mb-0">
+                  <input
+                    :id="`prefs-${o.key}`"
+                    v-model="prefs[o.key]"
+                    class="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                  />
+                </div>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+      <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
+
+      <footer class="actions">
+        <p class="actions__note">You can change these anytime from Preferences.</p>
+        <div class="actions__buttons">
+          <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
+          <RouterLink v-if="isSetup" class="btn btn-light btn-skip" :to="{ name: 'dashboard' }">
+            Skip for now
+          </RouterLink>
+          <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
+            <span
+              v-if="saving"
+              class="spinner-border spinner-border-sm me-2"
+              aria-hidden="true"
+            ></span>
+            Save preferences
+          </button>
+        </div>
+      </footer>
+    </form>
+  </main>
 </template>
+
+<style scoped>
+.prefs {
+  max-width: 1060px;
+  padding-block: 2rem 4rem;
+}
+
+.prefs__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.prefs__title {
+  margin-bottom: 0.4rem;
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.prefs__sub {
+  margin: 0;
+  color: var(--fp-muted);
+}
+
+.progress-step {
+  width: 190px;
+  color: var(--fp-muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.progress-step__bar {
+  height: 4px;
+  margin-top: 0.6rem;
+  border-radius: 999px;
+  background: var(--fp-border);
+  overflow: hidden;
+}
+
+.progress-step__bar span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--fp-primary);
+}
+
+.prefs__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.prefs__col {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.panel {
+  padding: 1.5rem;
+  background: var(--fp-surface);
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius);
+}
+
+.panel__title {
+  margin-bottom: 0.2rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.panel__sub {
+  margin-bottom: 1rem;
+  color: var(--fp-muted);
+  font-size: 0.8rem;
+}
+
+/* Chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.chip {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--fp-border);
+  border-radius: 999px;
+  background: var(--fp-surface);
+  color: var(--fp-ink);
+  font-size: 0.85rem;
+}
+
+.chip:hover {
+  border-color: var(--fp-primary);
+}
+
+.chip.is-on {
+  border-color: var(--fp-primary);
+  background: var(--fp-primary);
+  color: var(--fp-surface);
+}
+
+/* Budget */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 4px;
+  border-radius: var(--fp-radius-sm);
+  background: var(--fp-bg);
+}
+
+.segmented__opt {
+  padding: 0.55rem 0.25rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fp-muted);
+  font-size: 0.85rem;
+}
+
+.segmented__opt.is-on {
+  background: var(--fp-surface);
+  color: var(--fp-ink);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+/* Travel slider */
+.travel {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.travel__value {
+  color: var(--fp-primary);
+  font-weight: 700;
+}
+
+.range {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--fp-primary) var(--fill), var(--fp-bg) var(--fill));
+  appearance: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--fp-primary);
+  border-radius: 50%;
+  background: var(--fp-surface);
+  appearance: none;
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--fp-primary);
+  border-radius: 50%;
+  background: var(--fp-surface);
+}
+
+.range:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--fp-primary) 40%, transparent);
+  outline-offset: 6px;
+}
+
+/* Toggles */
+.toggles {
+  padding: 0;
+  margin: 1.25rem 0 0;
+  border-top: 1px solid var(--fp-border);
+  list-style: none;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.toggle-row__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.toggle-row__hint {
+  margin: 0;
+  color: var(--fp-muted);
+  font-size: 0.8rem;
+}
+
+.form-switch .form-check-input {
+  width: 2.6em;
+  height: 1.4em;
+  cursor: pointer;
+}
+
+.form-check-input:checked {
+  background-color: var(--fp-primary);
+  border-color: var(--fp-primary);
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fp-primary) 15%, transparent);
+}
+
+/* Footer */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.actions__note {
+  margin: 0;
+  color: var(--fp-muted);
+  font-size: 0.9rem;
+}
+
+.actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.actions__saved {
+  color: var(--fp-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.btn-skip,
+.btn-save {
+  padding: 0.7rem 1.25rem;
+  font-weight: 600;
+}
+
+.btn-skip {
+  border-color: var(--fp-border);
+  background: var(--fp-surface);
+}
+
+@media (max-width: 767.98px) {
+  .prefs__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actions__buttons {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+
+  .actions__buttons .btn {
+    width: 100%;
+  }
+}
+</style>
