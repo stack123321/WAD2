@@ -6,6 +6,7 @@ import { onMounted, ref } from 'vue'
 import { getDayForecast, getHaze, getTodayForecast, weatherKind } from '@/services/weather'
 import WeatherIcon from './WeatherIcon.vue'
 import HazeBadge from './HazeBadge.vue'
+import WeatherFrame from './WeatherFrame.vue'
 
 const days = ref([])
 const haze = ref(null)
@@ -41,11 +42,11 @@ function weekday(date) {
 </script>
 
 <template>
-  <section class="weather-card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+  <WeatherFrame>
+    <template #header>
       <h2 class="h6 fw-bold mb-0">Weather this week</h2>
       <span class="source-tag" title="Forecast from NEA (data.gov.sg)">NEA</span>
-    </div>
+    </template>
 
     <div v-if="loading" class="days" aria-busy="true">
       <div v-for="n in 5" :key="n" class="day">
@@ -65,21 +66,13 @@ function weekday(date) {
       </li>
     </ul>
 
-    <div v-if="haze" class="mt-3">
+    <template v-if="haze" #footer>
       <HazeBadge :haze="haze" />
-    </div>
-  </section>
+    </template>
+  </WeatherFrame>
 </template>
 
 <style scoped>
-.weather-card {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.5rem;
-}
-
 .source-tag {
   background: var(--fp-bg);
   border-radius: 999px;
