@@ -30,11 +30,16 @@ test('/api/route rejects a missing mode', async ({ request }) => {
 })
 
 test('/api/crowd gives a level per station', async ({ request }) => {
-  const res = await request.get('/api/crowd', { params: { at: '2026-10-16T18:00:00+08:00' } })
+  const res = await request.get('/api/crowd') // no ?at= → now: real-time with a key, sample data without
   expect(res.ok()).toBeTruthy()
   const stations = await res.json()
   expect(stations.length).toBeGreaterThan(0)
   for (const s of stations) expect(['l', 'm', 'h']).toContain(s.level)
+})
+
+test('/api/crowd rejects a date that is not a date', async ({ request }) => {
+  const res = await request.get('/api/crowd', { params: { at: 'banana' } })
+  expect(res.status()).toBe(400)
 })
 
 test('/api/places gives shortlist-shaped places near the centre', async ({ request }) => {
