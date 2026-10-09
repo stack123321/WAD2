@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "name": "Mock Cafe",
+    "category": "cafe",
+    "imageUrl": null,
+    "lat": 1.3512,
+    "lng": 103.8479,
+    "rating": 4.4,
+    "reviewCount": 120,
+    "stationDistanceM": 300,
+    "priceLevel": 2,
+    "matchPct": 86,
+    "crowdLevel": 1,
+    "tags": ["Quiet", "Outdoor seating"]
+  },
+  {
+    "id": 2,
+    "name": "Mock Board Game Cafe",
+    "category": "activity",
+    "imageUrl": null,
+    "lat": 1.3503,
+    "lng": 103.8492,
+    "rating": 4.6,
+    "reviewCount": 85,
+    "stationDistanceM": 450,
+    "priceLevel": 2,
+    "matchPct": 78,
+    "crowdLevel": 2,
+    "tags": ["Moderate", "Good for groups"]
+  },
+  {
+    "id": 3,
+    "name": "Mock Hawker Centre",
+    "category": "restaurant",
+    "imageUrl": null,
+    "lat": 1.3496,
+    "lng": 103.8501,
+    "rating": 4.2,
+    "reviewCount": 342,
+    "stationDistanceM": 1200,
+    "priceLevel": 1,
+    "matchPct": 71,
+    "crowdLevel": 3,
+    "tags": ["Busy", "Cheap eats"]
+  }
+]

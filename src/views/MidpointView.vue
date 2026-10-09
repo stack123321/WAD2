@@ -5,6 +5,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
+import WeatherCard from '@/components/weather/WeatherCard.vue'
 
 const route = useRoute()
 const store = useHangoutStore()
@@ -23,9 +24,20 @@ const midpoint = computed(() => {
 
 <template>
   <main class="container py-4">
-    <h1 class="h3 mb-3">Midpoint</h1>
-    <CrowdHeatmap v-if="midpoint" :midpoint="midpoint" />
-    <!-- Surya: weather card goes here -->
+    <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
+    <div v-if="midpoint" class="row g-4">
+      <div class="col-lg-8">
+        <CrowdHeatmap :midpoint="midpoint" />
+      </div>
+      <div class="col-lg-4">
+        <WeatherCard
+          :lat="midpoint.lat"
+          :lng="midpoint.lng"
+          :place="midpoint.name"
+          :at="store.hangout.starts_at"
+        />
+      </div>
+    </div>
     <router-link
       :to="{ name: 'explore', params: { id: route.params.id } }"
       class="btn btn-primary mt-3"

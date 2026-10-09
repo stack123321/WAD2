@@ -5,6 +5,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getMyHangouts } from '@/services/hangouts'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
+import WeekForecast from '@/components/weather/WeekForecast.vue'
 
 const hangouts = ref([])
 const loading = ref(false)
@@ -100,7 +101,7 @@ onMounted(async () => {
       </div>
 
       <div class="col-lg-4 d-flex flex-column gap-4">
-        <!-- Surya: "Weather this week" card goes here (getDayForecast() in services/weather.js) -->
+        <WeekForecast />
         <CrowdsNow :heat-map-link="heatMapLink" />
       </div>
     </div>

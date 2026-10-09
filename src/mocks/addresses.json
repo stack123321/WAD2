@@ -60,6 +60,12 @@
     "postal": null
   },
   {
+    "label": "Holland Village MRT (sample)",
+    "lat": 1.3117,
+    "lng": 103.7961,
+    "postal": null
+  },
+  {
     "label": "Jurong East MRT (sample)",
     "lat": 1.3331,
     "lng": 103.7423,
