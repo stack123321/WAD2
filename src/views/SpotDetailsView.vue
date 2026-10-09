@@ -2,9 +2,33 @@
 // 10 Spot details
 // Owner: Hugo · Vet by: Matrix
 // Figma frame "10". Layout is done; sections hold placeholder content until wired to live data.
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import BaseMap from '@/components/map/BaseMap.vue'
+import spotsMock from '@/mocks/spots.json'
 
 const route = useRoute()
+
+const categoryLabels = {
+  cafe: 'Cafe',
+  activity: 'Activity',
+  restaurant: 'Restaurant',
+}
+
+// Placeholder lookup until wired to the places service
+const spot = computed(() => spotsMock.find((s) => String(s.id) === route.params.spotId))
+
+const price = computed(() => {
+  const level = spot.value?.priceLevel
+  if (level === undefined || level === null) return null
+  return level === 0 ? 'Free' : '$'.repeat(level)
+})
+
+const distance = computed(() => {
+  const m = spot.value?.stationDistanceM
+  if (m === undefined || m === null) return null
+  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`
+})
 </script>
 
 <template>
@@ -29,22 +53,31 @@ const route = useRoute()
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="12 19 5 12 12 5" />
         </svg>
-        Back to spots
+        Back to exploring
       </RouterLink>
     </header>
 
     <section class="spot__preview card-box">
-      <div class="preview-placeholder">Photo / map preview</div>
+      <div v-if="spot?.imageUrl" class="preview-image">
+        <img :src="spot.imageUrl" :alt="spot.name" />
+      </div>
+      <BaseMap
+        v-else-if="spot"
+        class="preview-map"
+        :center="[spot.lat, spot.lng]"
+        :markers="[{ id: spot.id, lat: spot.lat, lng: spot.lng, label: spot.name }]"
+      />
+      <div v-else class="preview-placeholder">Photo / map preview</div>
     </section>
 
     <section class="spot__info d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div>
-        <h1 class="h3 mb-1">Spot name</h1>
-        <div class="d-flex flex-wrap align-items-center column-gap-3">
-          <p class="text-secondary mb-0">Type of place</p>
-          <p class="mb-0">&#9733; 4.5 · 120 reviews</p>
-          <p class="text-secondary mb-0">$$</p>
-          <p class="text-secondary mb-0">300 m from nearest MRT station</p>
+        <h1 class="h3 mb-1">{{ spot?.name ?? 'Spot not found' }}</h1>
+        <div v-if="spot" class="d-flex flex-wrap align-items-center column-gap-3">
+          <p class="text-secondary mb-0">{{ categoryLabels[spot.category] ?? spot.category }}</p>
+          <p class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
+          <p v-if="price" class="text-secondary mb-0">{{ price }}</p>
+          <p v-if="distance" class="text-secondary mb-0">{{ distance }} from nearest MRT station</p>
         </div>
       </div>
       <div class="d-flex flex-wrap gap-2">
@@ -133,6 +166,18 @@ const route = useRoute()
   border-radius: var(--fp-radius);
   box-shadow: var(--fp-shadow);
   padding: 1.25rem;
+}
+
+.preview-image img {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: var(--fp-radius-sm);
+}
+
+.preview-map {
+  height: 360px;
 }
 
 .preview-placeholder {
