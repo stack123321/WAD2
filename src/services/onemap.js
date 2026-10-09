@@ -1,19 +1,17 @@
 // Owner: Surya. OneMap Search: address / MRT / postal code autocomplete for 06 Starting points.
-// Docs: https://www.onemap.gov.sg/apidocs/
-import sampleAddresses from '@/mocks/addresses.json'
+// OneMap Search needs a token, so the real call lives in api/search.js (server side) and this
+// function just asks it. Without ONEMAP_EMAIL / ONEMAP_PASSWORD in .env.local, api/search.js
+// answers with the sample places in src/mocks/addresses.json.
 
 /**
  * @param {string} query what the user typed, e.g. "Tampines MRT" or "529510"
- * @returns {Promise<Array<{ label: string, lat: number, lng: number, postal: string | null }>>}
+ * @returns {Promise<Array<{ label: string, address: string | null, lat: number, lng: number, postal: string | null }>>}
  */
 export async function searchAddress(query) {
-  const q = query.trim().toLowerCase()
+  const q = query.trim()
   if (q.length < 2) return []
 
-  // ── Sample data until the real call is built ──
-  // TODO(Surya): call the OneMap search endpoint and map each result to { label, lat, lng, postal }.
-  // Keep the same shape so page 06 doesn't change.
-  return sampleAddresses
-    .filter((a) => a.label.toLowerCase().includes(q) || a.postal?.startsWith(q))
-    .slice(0, 8)
+  const res = await fetch(`/api/search?${new URLSearchParams({ q })}`)
+  if (!res.ok) throw new Error(`search failed: ${res.status}`)
+  return res.json()
 }
