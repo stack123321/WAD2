@@ -5,6 +5,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { getHaze, getHourlyForecast, hourLabel, sgHourKey } from '@/services/weather'
 import WeatherIcon from './WeatherIcon.vue'
+import WeatherFrame from './WeatherFrame.vue'
 
 const props = defineProps({
   lat: { type: Number, required: true },
@@ -65,7 +66,7 @@ const rainNote = computed(() => {
 </script>
 
 <template>
-  <section class="weather-strip">
+  <WeatherFrame compact>
     <div v-if="loading" class="placeholder-glow w-100" aria-busy="true">
       <span class="placeholder col-8 rounded"></span>
     </div>
@@ -88,21 +89,10 @@ const rainNote = computed(() => {
         </div>
       </div>
     </template>
-  </section>
+  </WeatherFrame>
 </template>
 
 <style scoped>
-.weather-strip {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.25rem 1.5rem;
-}
-
 .min-w-0 {
   min-width: 0;
 }

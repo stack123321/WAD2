@@ -14,6 +14,7 @@ import {
 } from '@/services/weather'
 import WeatherIcon from './WeatherIcon.vue'
 import HazeBadge from './HazeBadge.vue'
+import WeatherFrame from './WeatherFrame.vue'
 
 const props = defineProps({
   lat: { type: Number, required: true },
@@ -81,11 +82,11 @@ const rainWarning = computed(() => {
 </script>
 
 <template>
-  <section class="weather-card">
-    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+  <WeatherFrame>
+    <template #header>
       <h2 class="h6 fw-bold mb-0">Weather at {{ place }}</h2>
       <span class="time-chip">{{ dayTimeLabel(when) }}</span>
-    </div>
+    </template>
 
     <div v-if="loading" class="placeholder-glow" aria-busy="true">
       <span class="placeholder col-6 rounded mb-3" style="height: 48px"></span>
@@ -133,19 +134,11 @@ const rainWarning = computed(() => {
       </p>
     </template>
 
-    <p class="source small mb-0">Source: Open-Meteo (forecast) · data.gov.sg (NEA haze)</p>
-  </section>
+    <template #footer>Source: Open-Meteo (forecast) · data.gov.sg (NEA haze)</template>
+  </WeatherFrame>
 </template>
 
 <style scoped>
-.weather-card {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.5rem;
-}
-
 .time-chip,
 .chip {
   background: var(--fp-bg);
@@ -203,9 +196,5 @@ const rainWarning = computed(() => {
   height: 8px;
   border-radius: 50%;
   background: currentColor;
-}
-
-.source {
-  color: var(--fp-muted);
 }
 </style>
