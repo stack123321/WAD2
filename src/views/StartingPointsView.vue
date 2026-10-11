@@ -9,6 +9,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { reverseGeocode } from '@/services/onemap'
 import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
@@ -45,9 +46,20 @@ function setMyStart(place) {
   me.value.start_lng = place.lng
 }
 
-/** You dragged your pin on the map: keep the name, move the point. */
-function onPinMoved({ lat, lng }) {
-  setMyStart({ label: me.value.start_label, lat, lng })
+// You dragged your pin on the map: move the point straight away, then look up the new spot's name.
+let latestMove = 0 // if you drag again before the name arrives, ignore the older answer
+
+async function onPinMoved({ lat, lng }) {
+  const moveId = ++latestMove
+  setMyStart({ label: 'Finding address…', lat, lng })
+  try {
+    const place = await reverseGeocode(lat, lng)
+    if (moveId !== latestMove) return
+    setMyStart({ label: place?.label ?? 'Dropped pin', lat, lng })
+  } catch (err) {
+    console.error(err)
+    if (moveId === latestMove) setMyStart({ label: 'Dropped pin', lat, lng })
+  }
 }
 </script>
 

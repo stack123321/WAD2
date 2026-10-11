@@ -15,3 +15,14 @@ export async function searchAddress(query) {
   if (!res.ok) throw new Error(`search failed: ${res.status}`)
   return res.json()
 }
+
+/**
+ * The name of the place at a point, e.g. after dragging your pin. Asks api/reverse.js.
+ * @returns {Promise<{ label: string, address: string | null, lat: number, lng: number, postal: string | null } | null>}
+ *   null when there's no address nearby (e.g. a point in the sea)
+ */
+export async function reverseGeocode(lat, lng) {
+  const res = await fetch(`/api/reverse?${new URLSearchParams({ lat, lng })}`)
+  if (!res.ok) throw new Error(`reverse geocode failed: ${res.status}`)
+  return res.json()
+}

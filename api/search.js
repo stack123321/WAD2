@@ -4,25 +4,9 @@
 //
 // Replies with up to 8 places: [{ label, address, lat, lng, postal }]. postal is null for MRT stations.
 import sampleAddresses from '../src/mocks/addresses.json' with { type: 'json' }
-import { getOneMapToken, hasOneMapLogin } from './_onemap.js'
+import { getOneMapToken, hasOneMapLogin, toPlace } from './_onemap.js'
 
 const MAX_RESULTS = 8
-
-// Short words OneMap writes in capitals that should stay in capitals
-const ACRONYMS = [
-  'MRT',
-  'LRT',
-  'HDB',
-  'SMU',
-  'NUS',
-  'NTU',
-  'SUTD',
-  'SIT',
-  'SUSS',
-  'ITE',
-  'CC',
-  'YMCA',
-]
 
 export default async function handler(req, res) {
   const q = (req.query.q ?? '').trim()
@@ -39,49 +23,32 @@ export default async function handler(req, res) {
     pageNum: '1',
   })
 
-  const token = await getOneMapToken()
-  const onemap = await fetch(url, { headers: { Authorization: token } })
-  if (!onemap.ok) return res.status(502).json({ error: `OneMap search failed: ${onemap.status}` })
+  try {
+    const token = await getOneMapToken()
+    const onemap = await fetch(url, { headers: { Authorization: token } })
+    if (!onemap.ok) throw new Error(`OneMap search failed: ${onemap.status}`)
 
-  const data = await onemap.json()
-  const places = []
-  for (const r of data.results ?? []) {
-    const place = toPlace(r)
-    // OneMap often returns the same building once per entrance; keep the first
-    if (!places.some((p) => p.label === place.label)) places.push(place)
-    if (places.length === MAX_RESULTS) break
+    const data = await onemap.json()
+    const places = []
+    for (const r of data.results ?? []) {
+      const place = toPlace({
+        building: r.BUILDING,
+        block: r.BLK_NO,
+        road: r.ROAD_NAME,
+        postal: r.POSTAL,
+        lat: r.LATITUDE,
+        lng: r.LONGITUDE,
+      })
+      // OneMap often returns the same building once per entrance; keep the first
+      if (!places.some((p) => p.label === place.label)) places.push(place)
+      if (places.length === MAX_RESULTS) break
+    }
+    return res.json(places)
+  } catch (err) {
+    // e.g. wrong OneMap password, or OneMap is down
+    console.error('[api/search]', err.message)
+    return res.status(502).json({ error: err.message })
   }
-  return res.json(places)
-}
-
-/** One OneMap result → { label, address, lat, lng, postal }. address is the short street, e.g. "4 Tampines Central 5". */
-function toPlace(r) {
-  const clean = (value) => (value && value !== 'NIL' ? value : '')
-  const street = `${clean(r.BLK_NO)} ${clean(r.ROAD_NAME)}`.trim()
-  const building = clean(r.BUILDING)
-  return {
-    label: titleCase(building || street),
-    // without a building the label is already the street, so don't repeat it
-    address: building && street ? titleCase(street) : null,
-    lat: Number(r.LATITUDE),
-    lng: Number(r.LONGITUDE),
-    postal: r.POSTAL && r.POSTAL !== 'NIL' ? r.POSTAL : null,
-  }
-}
-
-/** "HOLLAND VILLAGE MRT STATION (CC21)" → "Holland Village MRT Station (CC21)" */
-function titleCase(text) {
-  return text
-    .toLowerCase()
-    .split(' ')
-    .map((word) => {
-      const upper = word.toUpperCase()
-      // keep codes like (CC21), 21A and acronyms like MRT in capitals
-      if (/\d/.test(word) || ACRONYMS.includes(upper.replace(/[()]/g, ''))) return upper
-      // capitalise the first letter, even after a bracket: "(car" → "(Car"
-      return word.replace(/[a-z]/, (ch) => ch.toUpperCase())
-    })
-    .join(' ')
 }
 
 function searchSample(q) {
