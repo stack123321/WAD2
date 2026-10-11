@@ -2,6 +2,7 @@
 // Numbers match the Figma frames (01–12).
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '@/views/LandingView.vue'
+import { supabase, hasSupabase } from '@/services/supabase'
 
 const routes = [
   // Before a hangout exists
@@ -80,15 +81,16 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-// Login guard. Switched off until Matrix's login works, so everyone can open every page
-// with mock data. Ryan turns it on once sign up / log in is merged.
-//
-// import { useAuthStore } from '@/stores/auth'
-// router.beforeEach((to) => {
-//   const auth = useAuthStore()
-//   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-//     return { name: 'auth', query: { redirect: to.fullPath } }
-//   }
-// })
+// Login guard: pages with meta.requiresAuth need someone logged in, otherwise go to /login and
+// come back afterwards (AuthView reads ?redirect=). Only runs with Supabase keys: without them,
+// login is pretend and forgotten on refresh, so every page stays open for demos and tests.
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth || !hasSupabase) return true
+
+  // Ask Supabase directly: on a fresh page load the auth store may not know yet
+  const { data } = await supabase.auth.getSession()
+  if (data.session) return true
+  return { name: 'auth', query: { redirect: to.fullPath } }
+})
 
 export default router

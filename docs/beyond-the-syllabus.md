@@ -138,6 +138,39 @@ Selects an element that comes straight after another one, inside the same parent
 ```
 Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the overlapping member circles.
 
+## Vue Router
+
+### `router.beforeEach((to) => ...)` and route `meta`
+A **navigation guard**: a function the router runs before *every* page change, including the first page load. What it returns decides what happens: `true` lets the page open; a route like `{ name: 'auth' }` sends the user there instead. `to` is the page they're trying to open, and `to.meta` is whatever you put in that route's `meta: { ... }`.
+```js
+// in the routes list
+{ path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } }
+
+// after createRouter
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) return true // public page
+  if (await isLoggedIn()) return true
+  return { name: 'auth', query: { redirect: to.fullPath } } // log in, then come back
+})
+```
+`to.fullPath` is the whole address including `?query`, so after logging in the user lands exactly where they were going.
+
+Used in: [router/index.js](../src/router/index.js) for the login guard.
+
+## Supabase
+
+### `supabase.auth.getSession()`
+Asks Supabase whether someone is logged in in this browser. It reads the login Supabase saved in the browser, so it's quick. Replies with `{ data: { session } }`, where `session` is `null` when nobody is logged in.
+```js
+const { data } = await supabase.auth.getSession()
+if (data.session) {
+  // logged in: data.session.user is who
+}
+```
+`const { data } = ...` takes just the `data` field out of the reply (object destructuring).
+
+Used in: [router/index.js](../src/router/index.js), because on a fresh page load the auth store hasn't heard back from Supabase yet.
+
 ## Testing with Playwright
 
 The Week 4–6 project setup includes Playwright with one example test (`e2e/vue.spec.js`: `test`, `expect`, `page.goto`, `page.locator`, `toHaveText`). These are the extra pieces our tests use. Run them with `npm run test:e2e`, or `npx playwright test --ui` to watch.

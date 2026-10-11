@@ -3,6 +3,7 @@
 // Owner: Ryan · Vet by: Eashvar
 import { ref, computed, onMounted } from 'vue'
 import { getMyHangouts } from '@/services/hangouts'
+import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
@@ -11,6 +12,7 @@ const hangouts = ref([])
 const loading = ref(false)
 const error = ref('')
 const tab = ref('upcoming') // which list is showing: 'upcoming' or 'past'
+const auth = useAuthStore()
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -18,6 +20,17 @@ const greeting = computed(() => {
   if (hour < 18) return 'Good afternoon'
   return 'Good evening'
 })
+
+// The name they typed at sign up, or '' when nobody is logged in (or they used Google)
+const name = computed(() => {
+  if (!auth.user) return ''
+  return auth.user.user_metadata.display_name || ''
+})
+
+// "Good evening, Ryan!" or just "Good evening!" when we don't know the name
+const heading = computed(() =>
+  name.value ? `${greeting.value}, ${name.value}!` : `${greeting.value}!`,
+)
 
 const upcoming = computed(() => hangouts.value.filter((h) => h.status !== 'done'))
 const past = computed(() => hangouts.value.filter((h) => h.status === 'done'))
@@ -45,7 +58,7 @@ onMounted(async () => {
   <main class="container py-4">
     <div class="row g-4">
       <div class="col-lg-8">
-        <h1 class="h2 mb-1">{{ greeting }}!</h1>
+        <h1 class="h2 mb-1">{{ heading }}</h1>
         <p class="text-muted">
           You have {{ upcoming.length }} {{ upcoming.length === 1 ? 'hangout' : 'hangouts' }} in
           progress.
