@@ -6,75 +6,78 @@
 // Replies with the nearest address within 100 m: { label, address, lat, lng, postal },
 // where lat/lng are the point you asked about (not the building's). Replies null if there's
 // nothing nearby, e.g. a point in the sea.
+import axios from 'axios'
 import sampleAddresses from '../src/mocks/addresses.json' with { type: 'json' }
 import { getOneMapToken, hasOneMapLogin, toPlace } from './_onemap.js'
 
-// A box around Singapore, to reject points that can't be a starting point
-const SG = { minLat: 1.15, maxLat: 1.48, minLng: 103.6, maxLng: 104.1 }
+const REVERSE_URL = 'https://www.onemap.gov.sg/api/public/revgeocode'
 
 export default async function handler(req, res) {
   const lat = Number(req.query.lat)
   const lng = Number(req.query.lng)
-  if (Number.isNaN(lat) || Number.isNaN(lng) || req.query.lat == null || req.query.lng == null) {
+
+  // Part (a) Validation
+  if (req.query.lat == null || req.query.lng == null || isNaN(lat) || isNaN(lng)) {
     return res.status(400).json({ error: 'Need lat and lng' })
   }
-  if (lat < SG.minLat || lat > SG.maxLat || lng < SG.minLng || lng > SG.maxLng) {
+  // a box around Singapore: anything outside can't be a starting point
+  if (lat < 1.15 || lat > 1.48 || lng < 103.6 || lng > 104.1) {
     return res.status(400).json({ error: 'That point is outside Singapore' })
   }
 
   // No OneMap login in .env.local → the nearest sample place instead
-  if (!hasOneMapLogin()) return res.json(reverseSample(lat, lng))
+  if (!hasOneMapLogin()) {
+    return res.json(reverseSample(lat, lng))
+  }
 
-  const url = new URL('https://www.onemap.gov.sg/api/public/revgeocode')
-  url.search = new URLSearchParams({
-    location: `${lat},${lng}`,
-    buffer: '100', // metres to look around the point
-    addressType: 'All',
-    otherFeatures: 'N',
-  })
-
+  // Part (b) Ask OneMap
   try {
     const token = await getOneMapToken()
-    const onemap = await fetch(url, { headers: { Authorization: token } })
-    if (!onemap.ok) throw new Error(`OneMap reverse geocode failed: ${onemap.status}`)
+    const response = await axios.get(REVERSE_URL, {
+      params: { location: `${lat},${lng}`, buffer: 100, addressType: 'All', otherFeatures: 'N' },
+      headers: { Authorization: token },
+    })
 
-    const data = await onemap.json()
-    const found = data.GeocodeInfo ?? []
-    if (found.length === 0) return res.json(null)
+    const found = response.data.GeocodeInfo
+    if (!found || found.length === 0) {
+      return res.json(null)
+    }
 
-    // OneMap doesn't sort by distance, so pick the closest one ourselves
-    const nearest = closest(found, lat, lng, (r) => [Number(r.LATITUDE), Number(r.LONGITUDE)])
+    // OneMap doesn't sort by distance, so find the closest one ourselves
+    let nearest = found[0]
+    let nearestDist = Infinity
+    for (const r of found) {
+      const dist = (Number(r.LATITUDE) - lat) ** 2 + (Number(r.LONGITUDE) - lng) ** 2
+      if (dist < nearestDist) {
+        nearest = r
+        nearestDist = dist
+      }
+    }
+
     const place = toPlace({
       building: nearest.BUILDINGNAME,
       block: nearest.BLOCK,
       road: nearest.ROAD,
       postal: nearest.POSTALCODE,
-      lat,
-      lng,
+      lat: lat,
+      lng: lng,
     })
     return res.json(place)
-  } catch (err) {
-    console.error('[api/reverse]', err.message)
-    return res.status(502).json({ error: err.message })
+  } catch (error) {
+    console.error('[api/reverse]', error.message)
+    return res.status(502).json({ error: 'OneMap reverse geocode failed: ' + error.message })
   }
-}
-
-/** The item nearest (lat, lng). position(item) → [lat, lng]. */
-function closest(items, lat, lng, position) {
-  let best = items[0]
-  let bestDist = Infinity
-  for (const item of items) {
-    const [itemLat, itemLng] = position(item)
-    const d = (itemLat - lat) ** 2 + (itemLng - lng) ** 2
-    if (d < bestDist) {
-      best = item
-      bestDist = d
-    }
-  }
-  return best
 }
 
 function reverseSample(lat, lng) {
-  const near = closest(sampleAddresses, lat, lng, (a) => [a.lat, a.lng])
-  return { label: `Near ${near.label}`, address: null, lat, lng, postal: null }
+  let nearest = sampleAddresses[0]
+  let nearestDist = Infinity
+  for (const a of sampleAddresses) {
+    const dist = (a.lat - lat) ** 2 + (a.lng - lng) ** 2
+    if (dist < nearestDist) {
+      nearest = a
+      nearestDist = dist
+    }
+  }
+  return { label: `Near ${nearest.label}`, address: null, lat: lat, lng: lng, postal: null }
 }

@@ -13,16 +13,17 @@ const haze = ref(null)
 const loading = ref(true)
 const error = ref(false)
 
-onMounted(async () => {
+// Part (a) Load the forecast and haze when the card appears
+async function loadData() {
   try {
-    const [today, next4] = await Promise.all([getTodayForecast(), getDayForecast()])
-    days.value = [today, ...next4]
+    const today = await getTodayForecast()
+    const nextFourDays = await getDayForecast()
+    days.value = [today, ...nextFourDays]
   } catch (err) {
     console.error(err)
     error.value = true
-  } finally {
-    loading.value = false
   }
+  loading.value = false
 
   // Haze is extra: if it fails, the card still shows the forecast
   try {
@@ -30,9 +31,11 @@ onMounted(async () => {
   } catch (err) {
     console.error(err)
   }
-})
+}
 
-/** "2026-10-10" → "Sat" */
+onMounted(loadData)
+
+// "2026-10-10" → "Sat"
 function weekday(date) {
   return new Date(date + 'T12:00:00Z').toLocaleDateString('en-SG', {
     weekday: 'short',

@@ -21,16 +21,32 @@ const STEPS = [
   { label: 'Final plan', route: 'final-plan' },
 ]
 
-const currentIndex = computed(() => STEPS.findIndex((s) => s.route === props.current))
+// Which step we're on: steps before it show a ✓, the current one is highlighted
+const currentIndex = computed(() => STEPS.findIndex((step) => step.route === props.current))
 
-/** "Fri 16 Oct · 7 PM" */
+// "Fri 16 Oct · 7 PM"
 const startsAt = computed(() => {
-  if (!props.hangout.starts_at) return ''
-  const d = new Date(props.hangout.starts_at)
-  const day = d.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' })
-  const hour = d.getHours() % 12 || 12
-  const mins = d.getMinutes() ? ':' + String(d.getMinutes()).padStart(2, '0') : ''
-  return `${day.replace(',', '')} · ${hour}${mins} ${d.getHours() < 12 ? 'AM' : 'PM'}`
+  if (!props.hangout.starts_at) {
+    return ''
+  }
+  const date = new Date(props.hangout.starts_at)
+  const day = date
+    .toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(',', '')
+
+  let hour = date.getHours() % 12
+  if (hour === 0) {
+    hour = 12
+  }
+  let minutes = ''
+  if (date.getMinutes() !== 0) {
+    minutes = ':' + String(date.getMinutes()).padStart(2, '0')
+  }
+  let amPm = 'PM'
+  if (date.getHours() < 12) {
+    amPm = 'AM'
+  }
+  return `${day} · ${hour}${minutes} ${amPm}`
 })
 </script>
 

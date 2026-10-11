@@ -3,34 +3,33 @@
 // on the server instead of in the browser. Docs: https://www.onemap.gov.sg/apidocs/search
 //
 // Replies with up to 8 places: [{ label, address, lat, lng, postal }]. postal is null for MRT stations.
+import axios from 'axios'
 import sampleAddresses from '../src/mocks/addresses.json' with { type: 'json' }
 import { getOneMapToken, hasOneMapLogin, toPlace } from './_onemap.js'
 
+const SEARCH_URL = 'https://www.onemap.gov.sg/api/common/elastic/search'
 const MAX_RESULTS = 8
 
 export default async function handler(req, res) {
   const q = (req.query.q ?? '').trim()
-  if (q.length < 2) return res.json([])
+  if (q.length < 2) {
+    return res.json([])
+  }
 
-  // No OneMap login in .env.local → sample data, so teammates without keys can still work.
-  if (!hasOneMapLogin()) return res.json(searchSample(q))
-
-  const url = new URL('https://www.onemap.gov.sg/api/common/elastic/search')
-  url.search = new URLSearchParams({
-    searchVal: q,
-    returnGeom: 'Y',
-    getAddrDetails: 'Y',
-    pageNum: '1',
-  })
+  // No OneMap login in .env.local → sample data, so teammates without keys can still work
+  if (!hasOneMapLogin()) {
+    return res.json(searchSample(q))
+  }
 
   try {
     const token = await getOneMapToken()
-    const onemap = await fetch(url, { headers: { Authorization: token } })
-    if (!onemap.ok) throw new Error(`OneMap search failed: ${onemap.status}`)
+    const response = await axios.get(SEARCH_URL, {
+      params: { searchVal: q, returnGeom: 'Y', getAddrDetails: 'Y', pageNum: 1 },
+      headers: { Authorization: token },
+    })
 
-    const data = await onemap.json()
     const places = []
-    for (const r of data.results ?? []) {
+    for (const r of response.data.results) {
       const place = toPlace({
         building: r.BUILDING,
         block: r.BLK_NO,
@@ -39,22 +38,33 @@ export default async function handler(req, res) {
         lat: r.LATITUDE,
         lng: r.LONGITUDE,
       })
-      // OneMap often returns the same building once per entrance; keep the first
-      if (!places.some((p) => p.label === place.label)) places.push(place)
-      if (places.length === MAX_RESULTS) break
+
+      // OneMap often returns the same building once per entrance, so skip repeats
+      const alreadyAdded = places.find((p) => p.label === place.label)
+      if (!alreadyAdded) {
+        places.push(place)
+      }
+      if (places.length === MAX_RESULTS) {
+        break
+      }
     }
     return res.json(places)
-  } catch (err) {
+  } catch (error) {
     // e.g. wrong OneMap password, or OneMap is down
-    console.error('[api/search]', err.message)
-    return res.status(502).json({ error: err.message })
+    console.error('[api/search]', error.message)
+    return res.status(502).json({ error: 'OneMap search failed: ' + error.message })
   }
 }
 
 function searchSample(q) {
   const lower = q.toLowerCase()
-  return sampleAddresses
-    .filter((a) => a.label.toLowerCase().includes(lower) || a.postal?.startsWith(lower))
-    .slice(0, MAX_RESULTS)
-    .map((a) => ({ address: null, ...a }))
+  const results = []
+  for (const a of sampleAddresses) {
+    const matchesName = a.label.toLowerCase().includes(lower)
+    const matchesPostal = a.postal !== null && a.postal.startsWith(lower)
+    if (matchesName || matchesPostal) {
+      results.push({ label: a.label, address: null, lat: a.lat, lng: a.lng, postal: a.postal })
+    }
+  }
+  return results.slice(0, MAX_RESULTS)
 }

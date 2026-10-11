@@ -17,63 +17,88 @@ const query = ref('')
 const results = ref([])
 const searching = ref(false)
 const searchError = ref('')
-const activeIndex = ref(0) // result highlighted with the arrow keys
-let timer = null
-let latestSearch = 0 // ignore answers to older searches that arrive late
+const activeIndex = ref(0) // the result highlighted with the arrow keys
 
 const showResults = computed(() => query.value.trim().length >= 2)
 
-// Wait until the user stops typing for 300 ms, then search
+// Part (a) Search as you type
+// We wait until the user stops typing for 0.3 s before searching, so we don't call OneMap on
+// every single key press. Each new key press cancels the timer from the one before.
+let timer = null
+
 watch(query, (text) => {
   emit('typing', text.trim() !== '')
   clearTimeout(timer)
   searchError.value = ''
   activeIndex.value = 0
+
   if (text.trim().length < 2) {
     results.value = []
     searching.value = false
     return
   }
+
   searching.value = true
-  timer = setTimeout(() => runSearch(text), 300)
+  timer = setTimeout(runSearch, 300)
 })
 
-async function runSearch(text) {
-  const searchId = ++latestSearch
+async function runSearch() {
+  const searchedFor = query.value
+
   try {
-    const found = await searchAddress(text)
-    if (searchId !== latestSearch) return
+    const found = await searchAddress(searchedFor)
+
+    // If the user kept typing while we waited, this answer is for old text: ignore it
+    if (searchedFor !== query.value) {
+      return
+    }
     results.value = found
-  } catch (err) {
-    if (searchId !== latestSearch) return
+  } catch (error) {
+    console.error(error)
+    if (searchedFor !== query.value) {
+      return
+    }
     results.value = []
     searchError.value = "Search isn't working right now. Try again in a moment."
-    console.error(err)
-  } finally {
-    if (searchId === latestSearch) searching.value = false
   }
+  searching.value = false
 }
 
-/** "4 Tampines Central 5, S529510" under each result */
+// "4 Tampines Central 5, S529510", the grey line under each result
 function placeDetail(place) {
-  return [place.address, place.postal ? 'S' + place.postal : null].filter(Boolean).join(', ')
+  const parts = []
+  if (place.address) {
+    parts.push(place.address)
+  }
+  if (place.postal) {
+    parts.push('S' + place.postal)
+  }
+  return parts.join(', ')
 }
 
+// Part (b) Keyboard: ↓ and ↑ move the highlight (wrapping around), Enter picks it
 function moveDown() {
-  if (results.value.length) activeIndex.value = (activeIndex.value + 1) % results.value.length
+  if (results.value.length === 0) {
+    return
+  }
+  activeIndex.value = (activeIndex.value + 1) % results.value.length
 }
 
 function moveUp() {
-  if (results.value.length) {
-    activeIndex.value = (activeIndex.value - 1 + results.value.length) % results.value.length
+  if (results.value.length === 0) {
+    return
   }
+  activeIndex.value = (activeIndex.value - 1 + results.value.length) % results.value.length
 }
 
 function pickActive() {
   const place = results.value[activeIndex.value]
-  if (place) choose(place)
+  if (place) {
+    choose(place)
+  }
 }
 
+// Part (c) Picking a result: tell the parent, then empty the box
 function choose(place) {
   emit('choose', place)
   query.value = ''

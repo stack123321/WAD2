@@ -17,25 +17,39 @@ const props = defineProps({
 
 const emit = defineEmits(['select'])
 
-const hasStart = (m) => m.start_lat != null && m.start_lng != null
-const readyCount = computed(() => props.hangout.members.filter(hasStart).length)
+function hasStart(member) {
+  return member.start_lat != null && member.start_lng != null
+}
 
-// ── Remind ──
+// "5 of 6 added"
+const readyCount = computed(() => {
+  let count = 0
+  for (const member of props.hangout.members) {
+    if (hasStart(member)) {
+      count++
+    }
+  }
+  return count
+})
+
+// Remind
 // There's no notifications backend, so "Remind" copies a message with the invite link for you to
-// paste into the group chat.
-const copiedFor = ref(null) // user_id whose reminder was just copied
+// paste into the group chat. The button says "Copied!" for 2 seconds.
+const copiedFor = ref(null) // user_id of the member whose reminder was just copied
 
 async function remind(member) {
   const link = `${window.location.origin}/login?invite=${props.hangout.invite_code}`
   const text = `Hey ${member.display_name}, add where you're coming from for "${props.hangout.name}": ${link}`
+
   try {
     await navigator.clipboard.writeText(text)
     copiedFor.value = member.user_id
     setTimeout(() => {
-      if (copiedFor.value === member.user_id) copiedFor.value = null
+      copiedFor.value = null
     }, 2000)
-  } catch (err) {
-    console.error(err)
+  } catch (error) {
+    // some browsers block copying: show the message so it can be copied by hand
+    console.error(error)
     window.prompt('Copy this reminder:', text)
   }
 }

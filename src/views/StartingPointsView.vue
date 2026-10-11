@@ -22,46 +22,89 @@ const store = useHangoutStore()
 const auth = useAuthStore()
 
 // Until login works, the demo treats you as Surya, starting from Holland Village.
-const myId = computed(() => auth.user?.id ?? 'u-surya')
 const DEMO_START = { label: 'Holland Village MRT', lat: 1.3117, lng: 103.7961 }
+const myId = computed(() => {
+  if (auth.user) {
+    return auth.user.id
+  }
+  return 'u-surya'
+})
 
-const findMember = (id) => store.members.find((m) => m.user_id === id) ?? null
 const me = computed(() => findMember(myId.value))
-const hasStart = (m) => m.start_lat != null && m.start_lng != null
 
-// ── Host mode ──
+function findMember(id) {
+  const member = store.members.find((m) => m.user_id === id)
+  if (!member) {
+    return null
+  }
+  return member
+}
+
+function hasStart(member) {
+  return member.start_lat != null && member.start_lng != null
+}
+
+// Part (a) Load the hangout
+onMounted(async () => {
+  const firstLoad = !store.hangout || store.hangout.id !== route.params.id
+  await store.load(route.params.id)
+
+  // Demo only, and only on the first load, so a start you picked isn't reset when you come back
+  if (firstLoad && route.params.id === 'demo' && me.value) {
+    setStart(me.value, DEMO_START)
+  }
+})
+
+// Part (b) Host mode
 // 05 Create hangout sends the host here with ?entry=host when friends don't add their own.
 // TODO(Matrix): once the hangout saves this setting (e.g. a host_enters_starts column), it's read
 // below too, so it still works after a refresh. Only the host may enter other people's locations
 // (the demo lets you try it, although Ryan is the demo hangout's host).
-const isHost = computed(() => store.hangout?.host_id === myId.value || route.params.id === 'demo')
-const hostMode = computed(
-  () =>
-    isHost.value && (route.query.entry === 'host' || store.hangout?.host_enters_starts === true),
-)
+const hostMode = computed(() => {
+  if (!store.hangout) {
+    return false
+  }
+  const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
+  const turnedOn = route.query.entry === 'host' || store.hangout.host_enters_starts === true
+  return isHost && turnedOn
+})
 
-// Whose starting point the search box and the draggable pin are setting: you, or (host mode)
-// whichever friend you picked with Set / Change.
-const targetId = ref(null) // null = you
-const target = computed(() => (targetId.value ? findMember(targetId.value) : me.value))
-const targetIsMe = computed(() => target.value?.user_id === myId.value)
-const targetName = computed(() => (targetIsMe.value ? 'your' : `${target.value.display_name}'s`))
+// Whose starting point the search box and the draggable pin are setting:
+// you (targetId is null), or in host mode the friend you picked with Set / Change.
+const targetId = ref(null)
 
-// The row that shows "Editing": a friend you picked, or you while searching / until you've added yours
+const target = computed(() => {
+  if (targetId.value === null) {
+    return me.value
+  }
+  return findMember(targetId.value)
+})
+
+const targetIsMe = computed(() => target.value !== null && target.value.user_id === myId.value)
+
+// "your" or "Nicole's", for the placeholder and the map tip
+const targetName = computed(() => {
+  if (targetIsMe.value) {
+    return 'your'
+  }
+  return `${target.value.display_name}'s`
+})
+
+// Part (c) Which row shows "Editing"
+// A friend you picked, or you while you're typing or until you've added yours.
 const typing = ref(false)
+
 const editingId = computed(() => {
-  if (!target.value) return null
-  if (!targetIsMe.value || typing.value || !hasStart(target.value)) return target.value.user_id
+  if (!target.value) {
+    return null
+  }
+  if (!targetIsMe.value || typing.value || !hasStart(target.value)) {
+    return target.value.user_id
+  }
   return null
 })
 
-onMounted(async () => {
-  const firstLoad = store.hangout?.id !== route.params.id
-  await store.load(route.params.id)
-  // Only on the first load, so a start you pick here isn't reset when you come back to this page
-  if (firstLoad && route.params.id === 'demo' && me.value) setStart(me.value, DEMO_START)
-})
-
+// Part (d) Setting a starting point
 // TODO(Surya): this only changes the store, so starting points reset when the page refreshes and
 // friends don't see them. Once Matrix is ready, add updateMemberStart(hangoutId, userId, { start_label,
 // start_lat, start_lng }) to src/services/hangouts.js and call it here (ask Matrix first, it's their file).
@@ -71,35 +114,54 @@ function setStart(member, place) {
   member.start_lng = place.lng
 }
 
-/** Picked a place in the search box. In host mode, move on to the next friend who still needs one. */
+// Picked a place in the search box
 function onChoose(place) {
   setStart(target.value, place)
-  if (!hostMode.value) return
-  const next = store.members.find((m) => !hasStart(m))
-  startEditing(next ?? me.value)
+
+  // In host mode, move on to the next friend who still has no starting point (or back to you)
+  if (hostMode.value) {
+    const next = store.members.find((m) => !hasStart(m))
+    if (next) {
+      startEditing(next)
+    } else {
+      startEditing(me.value)
+    }
+  }
 }
 
-/** Host mode: Set / Change on a friend's row (or Done, which goes back to you). */
+// Host mode: Set / Change on a friend's row (or Done, which goes back to you)
 function startEditing(member) {
-  targetId.value = member.user_id === myId.value ? null : member.user_id
+  if (member.user_id === myId.value) {
+    targetId.value = null
+  } else {
+    targetId.value = member.user_id
+  }
   // the search box starts empty for the new person, so nobody is "typing" any more
   typing.value = false
 }
 
-// The pin was dragged: move it straight away, then look up the new spot's name.
-let latestMove = 0 // if you drag again before the name arrives, ignore the older answer
+// Part (e) Dragging a pin
+// Move the pin straight away, then ask OneMap for the name of the new spot.
+async function onPinMoved(position) {
+  const member = target.value // whose pin it was, even if you pick someone else while waiting
+  setStart(member, { label: 'Finding address…', lat: position.lat, lng: position.lng })
 
-async function onPinMoved({ lat, lng }) {
-  const member = target.value // whose pin it was, even if you pick someone else meanwhile
-  const moveId = ++latestMove
-  setStart(member, { label: 'Finding address…', lat, lng })
   try {
-    const place = await reverseGeocode(lat, lng)
-    if (moveId !== latestMove) return
-    setStart(member, { label: place?.label ?? 'Dropped pin', lat, lng })
-  } catch (err) {
-    console.error(err)
-    if (moveId === latestMove) setStart(member, { label: 'Dropped pin', lat, lng })
+    const place = await reverseGeocode(position.lat, position.lng)
+
+    // If the pin was dragged again while we waited, this answer is for the old spot: ignore it
+    if (member.start_lat !== position.lat || member.start_lng !== position.lng) {
+      return
+    }
+
+    if (place) {
+      member.start_label = place.label
+    } else {
+      member.start_label = 'Dropped pin' // nothing nearby, e.g. in the sea
+    }
+  } catch (error) {
+    console.error(error)
+    member.start_label = 'Dropped pin'
   }
 }
 </script>
