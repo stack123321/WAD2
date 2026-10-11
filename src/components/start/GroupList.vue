@@ -1,15 +1,21 @@
 <script setup>
 // Owner: Surya. "Your group" list on 06 Starting points: each member with where they're coming
-// from and a status on the right: ✓ added, "Editing" (you, while searching), or a Remind button.
-// Usage: <GroupList :hangout="store.hangout" :my-id="myId" :editing="editing" />
+// from and a status on the right: ✓ added, "Editing" (whoever's location is being chosen), or a
+// Remind button. In host mode (the host enters everyone's locations) each row instead has a
+// Set / Change button, which emits "select" with that member.
+// Usage: <GroupList :hangout="store.hangout" :my-id="myId" :editing-id="editingId"
+//          :host-mode="hostMode" @select="startEditing" />
 import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs name, invite_code, members
   myId: { type: String, required: true },
-  editing: { type: Boolean, default: false }, // is the logged-in user choosing a start right now?
+  editingId: { type: String, default: null }, // the member whose location is being chosen now
+  hostMode: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['select'])
 
 const hasStart = (m) => m.start_lat != null && m.start_lng != null
 const readyCount = computed(() => props.hangout.members.filter(hasStart).length)
@@ -49,23 +55,33 @@ async function remind(member) {
         v-for="m in hangout.members"
         :key="m.user_id"
         class="member"
-        :class="{ editing: m.user_id === myId && editing }"
+        :class="{ editing: m.user_id === editingId }"
       >
         <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="40" />
         <div class="min-w-0 flex-grow-1">
           <div class="fw-semibold">
             {{ m.display_name }}<span v-if="m.user_id === myId"> (you)</span>
           </div>
-          <div v-if="m.user_id === myId && editing" class="small text-secondary">Choosing…</div>
+          <div v-if="m.user_id === editingId" class="small text-secondary">Choosing…</div>
           <div v-else-if="hasStart(m)" class="small text-secondary text-truncate">
             {{ m.start_label }}
           </div>
+          <div v-else-if="hostMode" class="small text-secondary">Not set yet</div>
           <div v-else class="small text-secondary">Waiting for {{ m.display_name }}…</div>
         </div>
 
-        <span v-if="m.user_id === myId && editing" class="editing-tag">Editing</span>
+        <span v-if="m.user_id === editingId" class="editing-tag">Editing</span>
+        <button
+          v-else-if="hostMode"
+          type="button"
+          class="btn btn-link btn-sm row-action"
+          :aria-label="`${hasStart(m) ? 'Change' : 'Set'} ${m.display_name}'s starting point`"
+          @click="emit('select', m)"
+        >
+          {{ hasStart(m) ? 'Change' : 'Set' }}
+        </button>
         <span v-else-if="hasStart(m)" class="check" aria-label="Added">✓</span>
-        <button v-else type="button" class="btn btn-link btn-sm remind" @click="remind(m)">
+        <button v-else type="button" class="btn btn-link btn-sm row-action" @click="remind(m)">
           {{ copiedFor === m.user_id ? 'Copied!' : 'Remind' }}
         </button>
       </li>
@@ -107,7 +123,7 @@ async function remind(member) {
   font-size: 1.1rem;
 }
 
-.remind {
+.row-action {
   flex-shrink: 0;
   color: var(--fp-primary);
   font-weight: 600;
