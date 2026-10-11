@@ -19,12 +19,14 @@ const stations = ref([])
 const loading = ref(false)
 const error = ref('')
 
-// Busiest first: all the high ones, then moderate, then low, stopping at 4
+const shownCount = ref(4) // how many stations the card lists; "Show more" adds 6
+
+// Busiest first: all the high ones, then moderate, then low, stopping at shownCount
 const busiest = computed(() => {
   let list = []
   for (let level of ['h', 'm', 'l']) {
     for (let s of stations.value) {
-      if (s.level === level && list.length < 4) list.push(s)
+      if (s.level === level && list.length < shownCount.value) list.push(s)
     }
   }
   return list
@@ -75,6 +77,25 @@ onMounted(async () => {
             :style="{ width: LEVELS[s.level].width + '%' }"
           ></div>
         </div>
+      </div>
+
+      <div v-if="stations.length > 4" class="d-flex gap-3">
+        <button
+          v-if="shownCount < stations.length"
+          type="button"
+          class="btn btn-link btn-sm p-0"
+          @click="shownCount += 6"
+        >
+          Show more
+        </button>
+        <button
+          v-if="shownCount > 4"
+          type="button"
+          class="btn btn-link btn-sm p-0"
+          @click="shownCount = 4"
+        >
+          Show less
+        </button>
       </div>
     </div>
   </div>
