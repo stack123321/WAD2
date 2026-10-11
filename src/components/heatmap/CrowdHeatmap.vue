@@ -29,6 +29,11 @@ const timeLabel = computed(() => {
   return `${hour12}:${minutes} ${suffix}`
 })
 
+// True when LTA was unavailable and api/crowd.js sent sample data instead
+const isSample = computed(
+  () => stations.value.length > 0 && stations.value[0].station.includes('(sample)'),
+)
+
 // The slot that contains the current time
 function currentSlot() {
   const now = new Date()
@@ -108,6 +113,9 @@ onMounted(() => {
       <p v-else-if="error" class="text-danger small mb-2">{{ error }}</p>
       <p v-else-if="stations.length === 0" class="text-muted small mb-2">
         No crowd data for this time.
+      </p>
+      <p v-else-if="isSample" class="text-muted small mb-2">
+        LTA is unavailable, so these are sample crowd levels.
       </p>
 
       <div class="d-flex gap-2 small">

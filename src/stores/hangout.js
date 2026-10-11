@@ -9,22 +9,21 @@ export const useHangoutStore = defineStore('hangout', () => {
   const loading = ref(false)
   const error = ref(null)
 
-  const members = computed(() => hangout.value?.members ?? [])
-  const shortlist = computed(() => hangout.value?.shortlist ?? [])
-  const votes = computed(() => hangout.value?.votes ?? [])
+  const members = computed(() => (hangout.value ? hangout.value.members : []))
+  const shortlist = computed(() => (hangout.value ? hangout.value.shortlist : []))
+  const votes = computed(() => (hangout.value ? hangout.value.votes : []))
 
   /** Load a hangout by id (skips the fetch if it's already loaded). Use id "demo" for mock data. */
-  async function load(id, { force = false } = {}) {
-    if (!force && hangout.value?.id === id) return
+  async function load(id) {
+    if (hangout.value && hangout.value.id === id) return
     loading.value = true
     error.value = null
     try {
       hangout.value = await getHangout(id)
     } catch (e) {
       error.value = e
-    } finally {
-      loading.value = false
     }
+    loading.value = false
   }
 
   return { hangout, loading, error, members, shortlist, votes, load }

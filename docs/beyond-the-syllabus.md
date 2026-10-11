@@ -52,6 +52,28 @@ date.setHours(18, 30, 0, 0) // today at 6:30:00.000 pm
 ```
 Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) to turn a slider position into a time today.
 
+### `date.toLocaleDateString(locale, options)` and `date.toLocaleTimeString(locale, options)`
+Turn a `Date` into readable text. The course uses `toLocaleTimeString()` with no options (Week 5 `Example12.vue`); passing options picks exactly which parts you get. `timeZone` makes it show Singapore time even on a laptop set to another time zone.
+```js
+const d = new Date('2026-10-16T19:00:00+08:00')
+const SG = 'Asia/Singapore'
+d.toLocaleDateString('en-SG', { weekday: 'short', timeZone: SG }) // "Fri"
+d.toLocaleDateString('en-SG', { day: 'numeric', timeZone: SG }) // "16"
+d.toLocaleDateString('en-SG', { month: 'short', timeZone: SG }) // "Oct"
+d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: SG }) // "7:00 pm"
+```
+Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the date block and start time.
+
+## Text
+
+### `text.includes(part)`
+`true` if `part` appears anywhere inside `text`. Capitals matter: `'Bishan'.includes('bishan')` is `false`.
+```js
+'Bishan (sample)'.includes('(sample)') // true
+'Bishan'.includes('(sample)') // false
+```
+Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) and [CrowdsNow.vue](../src/components/heatmap/CrowdsNow.vue) to tell when api/crowd.js sent sample data because LTA was unavailable.
+
 ## Maths
 
 ### `Math.abs(n)`
@@ -106,6 +128,64 @@ Scoped styles only reach elements Vue made in this component's template. Element
 }
 ```
 Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue).
+
+### `.a + .a` (adjacent sibling selector)
+Selects an element that comes straight after another one, inside the same parent. `.avatar + .avatar` matches every avatar except the first, which is handy for spacing "between" items.
+```css
+.avatar + .avatar {
+  margin-left: -8px; /* each circle tucks under the one before it */
+}
+```
+Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the overlapping member circles.
+
+## Testing with Playwright
+
+The Week 4–6 project setup includes Playwright with one example test (`e2e/vue.spec.js`: `test`, `expect`, `page.goto`, `page.locator`, `toHaveText`). These are the extra pieces our tests use. Run them with `npm run test:e2e`, or `npx playwright test --ui` to watch.
+
+All of these are used in [dashboard.spec.js](../tests/e2e/dashboard.spec.js) and [midpoint.spec.js](../tests/e2e/midpoint.spec.js).
+
+### Finding elements: `getByRole`, `getByText`, `getByLabel`
+Find things the way a person (or screen reader) would, instead of by CSS class, so tests don't break when styling changes.
+```js
+page.getByRole('button', { name: 'Past' }) // a <button> whose text is "Past"
+page.getByRole('heading', { name: 'Friday dinner after class' }) // an <h1>–<h6> with that text
+page.getByText('No past hangouts yet.') // any element showing this text
+page.getByLabel(/Time today/) // the input whose <label> contains "Time today"
+```
+
+### Acting: `.click()` and `.fill(value)`
+`click()` clicks like a mouse. `fill()` types into an input; on a range slider it sets the value and fires the events, so `@change` runs.
+
+### Checking: `toBeVisible`, `toHaveURL`, `toHaveCount`
+```js
+await expect(page.getByText('Voting · 3 of 4 voted')).toBeVisible() // on screen
+await expect(page).toHaveURL('/hangouts/demo/vote') // the address bar
+await expect(page.locator('path.crowd-midpoint')).toHaveCount(1) // exactly one match
+```
+`expect(locator)` checks keep retrying for up to 5 seconds, so they wait for API data to arrive. `expect(number)` checks like `toBeLessThanOrEqual(4)` run once, straight away.
+
+### `page.waitForRequest(test)`
+Gives a promise that finishes when the page sends a request matching `test`. Start waiting *before* the action that triggers it, then `await` it after.
+```js
+const request = page.waitForRequest((r) => r.url().includes('/api/crowd'))
+await page.getByLabel(/Time today/).fill('38')
+await request // proves moving the slider called the API
+```
+
+### `request.get(url, { params })`
+Calls an API directly, without opening a page. Works like `axios.get`, but `res.ok()`, `res.status()` and `await res.json()` replace `response.data`.
+
+Used in: [api.spec.js](../tests/e2e/api.spec.js).
+
+## Regular expressions
+
+### `/pattern/`
+A pattern for matching text, written between slashes. `^` means "starts here", `$` means "ends here", and `(a|b|c)` means "one of these".
+```js
+/^Good (morning|afternoon|evening)!$/.test('Good morning!') // true
+/^Good (morning|afternoon|evening)!$/.test('Good night!') // false
+```
+Used in: [smoke.spec.js](../tests/e2e/smoke.spec.js) to match the dashboard greeting at any time of day, and `getByLabel(/Time today/)` in [midpoint.spec.js](../tests/e2e/midpoint.spec.js).
 
 ## Comments
 

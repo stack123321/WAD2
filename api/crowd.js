@@ -8,7 +8,7 @@ import { sampleCrowd } from './_mocks/crowd.js'
 import { STATIONS } from './_data/stations.js'
 
 const LTA = 'https://datamall2.mytransport.sg/ltaodataservice'
-const TRAIN_LINES = ['NSL', 'EWL', 'NEL', 'CCL', 'DTL', 'TEL']
+const TRAIN_LINES = ['NSL', 'EWL', 'NEL', 'CCL', 'DTL', 'TEL', 'CEL', 'CGL', 'BPL', 'SLRT', 'PLRT']
 const RANK = { l: 1, m: 2, h: 3 }
 const HALF_HOUR = 30 * 60 * 1000
 
