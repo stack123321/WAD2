@@ -15,6 +15,8 @@ onMounted(() => store.load(route.params.id))
 
 const midpoint = computed(() => {
   if (!store.hangout) return null
+  // No midpoint until page 07 has worked it out (Singapore's latitude is never 0)
+  if (!store.hangout.midpoint_lat) return null
   return {
     name: store.hangout.midpoint_name,
     lat: store.hangout.midpoint_lat,
@@ -40,29 +42,45 @@ const midpoint = computed(() => {
     </div>
   </div>
 
-  <div v-else-if="midpoint">
+  <div v-else-if="store.hangout">
     <HangoutBar :hangout="store.hangout" :members="store.members" current="midpoint" />
     <main class="container py-4">
       <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
-      <div class="row g-4">
-        <div class="col-lg-8">
-          <CrowdHeatmap :midpoint="midpoint" />
+
+      <template v-if="midpoint">
+        <div class="row g-4">
+          <div class="col-lg-8">
+            <CrowdHeatmap :midpoint="midpoint" />
+          </div>
+          <div class="col-lg-4">
+            <WeatherCard
+              :lat="midpoint.lat"
+              :lng="midpoint.lng"
+              :place="midpoint.name"
+              :at="store.hangout.starts_at"
+            />
+          </div>
         </div>
-        <div class="col-lg-4">
-          <WeatherCard
-            :lat="midpoint.lat"
-            :lng="midpoint.lng"
-            :place="midpoint.name"
-            :at="store.hangout.starts_at"
-          />
-        </div>
+        <router-link
+          :to="{ name: 'explore', params: { id: route.params.id } }"
+          class="btn btn-primary mt-3"
+        >
+          See nearby spots
+        </router-link>
+      </template>
+
+      <!-- Reached from the step bar before page 07 has found the midpoint -->
+      <div v-else class="alert alert-info" role="status">
+        <p class="mb-2">
+          No midpoint yet. Fairpoint finds it once everyone has picked how they're travelling.
+        </p>
+        <router-link
+          :to="{ name: 'transport', params: { id: route.params.id } }"
+          class="btn btn-primary btn-sm"
+        >
+          Go to transport →
+        </router-link>
       </div>
-      <router-link
-        :to="{ name: 'explore', params: { id: route.params.id } }"
-        class="btn btn-primary mt-3"
-      >
-        See nearby spots
-      </router-link>
     </main>
   </div>
 </template>
