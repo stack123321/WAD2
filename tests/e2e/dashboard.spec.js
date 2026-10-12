@@ -18,7 +18,10 @@ test('Past shows an empty message, Upcoming brings the card back', async ({ page
 
 test('Open vote goes to the voting page', async ({ page }) => {
   await page.goto('/dashboard')
-  await page.getByRole('link', { name: 'Open vote' }).click()
+  await page
+    .locator('.card', { hasText: 'Friday dinner after class' })
+    .getByRole('link', { name: 'Open vote' })
+    .click()
   await expect(page).toHaveURL('/hangouts/demo/vote')
 })
 
