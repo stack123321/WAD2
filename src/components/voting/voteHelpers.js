@@ -1,9 +1,20 @@
 // Owner: Eashvar. Plain helper functions (no Vue, no API calls) for 11 Group voting and
-// 12 Final plan: counting votes and picking the leader (ties go to the higher match_pct),
-// turning vote changes into activity events, Singapore-time formatting, the deadline countdown,
-// the longest/shortest trip and gap, leave-by times, and the Google Calendar link (2-hour event).
+// 12 Final plan: keeping one vote per current member (their latest; votes from people who left
+// the hangout don't count), counting votes and picking the leader (ties go to the higher
+// match_pct), turning vote changes into activity events, Singapore-time formatting, the deadline
+// countdown, the longest/shortest trip and gap, leave-by times, and the Google Calendar link.
 
 const SGT = 'Asia/Singapore'
+
+export function countableVotes(votes, members) {
+  const latest = {}
+  for (const vote of votes) {
+    if (!members.some((m) => m.user_id === vote.user_id)) continue
+    const kept = latest[vote.user_id]
+    if (!kept || new Date(vote.voted_at) > new Date(kept.voted_at)) latest[vote.user_id] = vote
+  }
+  return Object.values(latest)
+}
 
 export function countVotes(shortlist, votes) {
   return shortlist.map((spot) => ({

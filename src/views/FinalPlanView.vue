@@ -3,17 +3,20 @@
 // Owner: Eashvar (routes section: Nicole) · Vet by: Ryan
 // Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
 // a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
-// spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done". "Me"
-// follows the same demo-mode rule as 11. Labelled boxes hold space for Nicole's routes and Surya's
+// spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
+// only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
+// current members' latest votes count. Labelled boxes hold space for Nicole's routes and Surya's
 // map and weather.
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone } from '@/services/votes'
+import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import TripTable from '@/components/voting/TripTable.vue'
 import {
   calendarUrl,
+  countableVotes,
   countVotes,
   formatDateTime,
   formatTime,
@@ -35,15 +38,21 @@ const copyMessage = ref('')
 const copyFailed = ref(false)
 const actionError = ref('')
 const markingDone = ref(false)
+const now = ref(Date.now())
+
+let timer = null
 
 const hangout = computed(() => store.hangout)
 const status = computed(() => hangout.value?.status)
 const startsAt = computed(() => hangout.value?.starts_at ?? null)
+const hasStarted = computed(
+  () => startsAt.value !== null && new Date(startsAt.value).getTime() <= now.value,
+)
 
 const myId = computed(() => auth.user?.id ?? (isMock ? (hangout.value?.host_id ?? null) : null))
 const isHost = computed(() => myId.value !== null && myId.value === hangout.value?.host_id)
 
-const rows = computed(() => countVotes(store.shortlist, store.votes))
+const rows = computed(() => countVotes(store.shortlist, countableVotes(store.votes, store.members)))
 const confirmedSpot = computed(
   () => store.shortlist.find((s) => s.id === hangout.value?.final_shortlist_id) ?? null,
 )
@@ -98,6 +107,10 @@ async function copyPlan() {
 }
 
 async function markDone() {
+  if (!hasStarted.value) {
+    actionError.value = 'The hangout hasn’t started yet, so it can’t be marked as done.'
+    return
+  }
   markingDone.value = true
   actionError.value = ''
   try {
@@ -110,13 +123,25 @@ async function markDone() {
   }
 }
 
-onMounted(() => store.load(hangoutId))
+onMounted(() => {
+  timer = setInterval(() => {
+    now.value = Date.now()
+  }, 60000)
+  store.load(hangoutId)
+})
+
+onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
+  <HangoutBar
+    v-if="hangout && !store.loading"
+    :hangout="hangout"
+    :members="store.members"
+    current="final-plan"
+  />
   <main class="container py-4">
     <header class="mb-4">
-      <p v-if="hangout" class="eyebrow mb-1">{{ hangout.name }}</p>
       <h1 class="h2 mb-0">Final plan & itinerary</h1>
     </header>
 
@@ -220,12 +245,15 @@ onMounted(() => store.load(hangoutId))
                 v-if="isHost && status === 'confirmed'"
                 type="button"
                 class="btn btn-outline-primary"
-                :disabled="markingDone"
+                :disabled="markingDone || !hasStarted"
                 @click="markDone"
               >
                 Mark as done
               </button>
             </div>
+            <p v-if="isHost && status === 'confirmed' && !hasStarted" class="small muted mt-2 mb-0">
+              You can mark it done once the hangout has started.
+            </p>
             <div
               v-if="copyMessage"
               class="alert small mt-3 mb-0"
@@ -258,14 +286,6 @@ onMounted(() => store.load(hangoutId))
 </template>
 
 <style scoped>
-.eyebrow {
-  color: var(--fp-accent);
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .panel {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);

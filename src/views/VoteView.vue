@@ -5,19 +5,23 @@
 // (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally updates
 // straight away (also in demo mode), re-fetches all votes on every Realtime change, and lists
 // activity seen while open. "Me" is the logged-in user, or in demo mode the host, so the host
-// controls can be tried without keys. The host picks the winner and closes the vote; the store is
-// then updated directly (a forced reload would reset the demo hangout) and 12 Final plan opens.
+// controls can be tried without keys. Validation: only one vote is sent at a time, only each
+// current member's latest vote counts, and the host can't close a vote nobody has voted in.
+// The host picks the winner and closes the vote; the store is then updated directly (a forced
+// reload would reset the demo hangout) and 12 Final plan opens.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { castVote, closeVote, getVotes, isMockHangout, subscribeToVotes } from '@/services/votes'
+import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
 import {
+  countableVotes,
   countVotes,
   diffVotes,
   formatDateTime,
@@ -40,6 +44,7 @@ const now = ref(Date.now())
 const pickedWinnerId = ref(null)
 const actionError = ref('')
 const closing = ref(false)
+const savingId = ref(null)
 
 let nextEventId = 1
 let unsubscribe = () => {}
@@ -118,7 +123,8 @@ const feedItems = computed(() =>
     })),
 )
 
-function applyVotes(next) {
+function applyVotes(allVotes) {
+  const next = countableVotes(allVotes, store.members)
   const events = diffVotes(votes.value, next, new Date().toISOString())
     .sort((a, b) => new Date(a.at) - new Date(b.at))
     .map((event) => ({ ...event, id: nextEventId++ }))
@@ -128,6 +134,7 @@ function applyVotes(next) {
 }
 
 async function refreshVotes() {
+  if (!store.hangout) return
   try {
     applyVotes(await getVotes(hangoutId))
   } catch (e) {
@@ -136,8 +143,9 @@ async function refreshVotes() {
 }
 
 async function vote(spotId) {
-  if (!canVote.value || spotId === myVoteId.value) return
+  if (!canVote.value || savingId.value !== null || spotId === myVoteId.value) return
   actionError.value = ''
+  savingId.value = spotId
   const before = votes.value
   const mine = { user_id: myId.value, shortlist_id: spotId, voted_at: new Date().toISOString() }
   const added = applyVotes([...before.filter((v) => v.user_id !== myId.value), mine])
@@ -147,10 +155,16 @@ async function vote(spotId) {
     votes.value = before
     history.value = history.value.filter((event) => !added.includes(event))
     actionError.value = `Your vote wasn't saved: ${e.message}`
+  } finally {
+    savingId.value = null
   }
 }
 
 async function onClose(spotId) {
+  if (totalVotes.value === 0) {
+    actionError.value = 'Nobody has voted yet, so the vote can’t be closed.'
+    return
+  }
   closing.value = true
   actionError.value = ''
   try {
@@ -189,6 +203,12 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <HangoutBar
+    v-if="hangout && !store.loading"
+    :hangout="hangout"
+    :members="store.members"
+    current="vote"
+  />
   <main class="container py-4">
     <div class="row g-4">
       <div class="col-12 col-lg-8">
@@ -253,6 +273,7 @@ onUnmounted(() => {
             :leader-id="leaderId"
             :tied="tied"
             :my-vote-id="myVoteId"
+            :saving-id="savingId"
             :disabled="!canVote"
             @vote="vote"
           />
@@ -290,6 +311,7 @@ onUnmounted(() => {
             v-if="isHost && status === 'voting'"
             :shortlist="store.shortlist"
             :selected-id="winnerId"
+            :vote-count="totalVotes"
             :deadline-text="deadline ? formatDateTime(deadline) : null"
             :closing="closing"
             @select="pickedWinnerId = $event"

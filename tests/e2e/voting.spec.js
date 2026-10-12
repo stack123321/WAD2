@@ -1,9 +1,10 @@
-// Owner: Eashvar. Journey test for 11 Group voting and 12 Final plan on the demo hangout: the
-// candidates and turnout show, voting and changing a vote move the tally, the host closes the vote
-// and lands on the final plan, page 12 opened directly shows the leader as not confirmed, and
-// "Copy plan" fills the clipboard. In the mock, Ryan (the host, and "me" in demo mode) and Hugo
-// voted for Mock Cafe, Nicole for the Board Game Cafe, and Surya hasn't voted. The browser clock is
-// fixed before the demo deadline (15 Oct 2026, 9 pm SGT) so voting is always open.
+// Owner: Eashvar. Journey test for 11 Group voting and 12 Final plan on the demo hangout: the step
+// bar and candidates show, voting and changing a vote move the tally, a double-click counts once,
+// the host closes the vote and lands on the final plan, page 12 opened directly shows the leader as
+// not confirmed, "Copy plan" fills the clipboard, and "Mark as done" only works once the hangout
+// has started. In the mock, Ryan (the host, and "me" in demo mode) and Hugo voted for Mock Cafe,
+// Nicole for the Board Game Cafe, and Surya hasn't voted. The browser clock is fixed before the
+// demo deadline (15 Oct 2026, 9 pm SGT) so voting is open, except where a test moves it later.
 import { test, expect } from '@playwright/test'
 
 const cafe = 'Mock Cafe (sample data)'
@@ -26,6 +27,21 @@ test.describe('11 Group voting', () => {
     }
     await expect(page.getByText('3 of 4 voted')).toBeVisible()
     await expect(page.getByText('Waiting on Surya')).toBeVisible()
+  })
+
+  test('shows the step bar with Vote as the current step', async ({ page }) => {
+    await expect(page.getByText('Friday dinner after class')).toBeVisible()
+    await expect(page.getByRole('link', { name: '5 Vote', exact: true })).toHaveAttribute(
+      'aria-current',
+      'step',
+    )
+  })
+
+  test('double-clicking a vote only counts it once', async ({ page }) => {
+    await voteButton(page, hawker).dblclick()
+
+    await expect(tally(page, hawker)).toHaveAttribute('aria-valuenow', '1')
+    await expect(page.getByText('3 of 4 voted')).toBeVisible()
   })
 
   test('voting for a spot updates its tally', async ({ page }) => {
@@ -83,5 +99,25 @@ test.describe('12 Final plan', () => {
     const copied = await page.evaluate(() => navigator.clipboard.readText())
     expect(copied).toContain(`Where: ${cafe}, Bishan`)
     expect(copied).toContain('- Ryan: 6:26 pm (34 min by MRT)')
+  })
+
+  test('Mark as done waits until the hangout has started', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+    await page.getByRole('button', { name: 'Close vote' }).click()
+
+    await expect(page.getByRole('button', { name: 'Mark as done' })).toBeDisabled()
+    await expect(page.getByText('You can mark it done once the hangout has started.')).toBeVisible()
+  })
+
+  test('after the hangout starts, the host can mark it done', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-16T21:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+    await page.getByRole('button', { name: 'Close vote' }).click()
+
+    await page.getByRole('button', { name: 'Mark as done' }).click()
+
+    await expect(page.getByText('✓ Done')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Mark as done' })).toBeHidden()
   })
 })

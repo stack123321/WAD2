@@ -1,6 +1,7 @@
 <script setup>
 // Owner: Eashvar. The shortlisted spots on 11 Group voting, one CandidateCard each, with each
-// spot's vote count and voters looked up by spot id. Passes each card's vote(spotId) up.
+// spot's vote count and voters looked up by spot id. While a vote is saving (savingId), every
+// vote button is disabled so nobody can send two votes at once. Passes each card's vote(spotId) up.
 import CandidateCard from './CandidateCard.vue'
 
 defineProps({
@@ -11,6 +12,7 @@ defineProps({
   leaderId: { type: String, default: null },
   tied: { type: Boolean, default: false },
   myVoteId: { type: String, default: null },
+  savingId: { type: String, default: null },
   disabled: { type: Boolean, default: false },
 })
 
@@ -31,7 +33,8 @@ const emit = defineEmits(['vote'])
         :leading="spot.id === leaderId"
         :tied="tied"
         :selected="spot.id === myVoteId"
-        :disabled="disabled"
+        :saving="spot.id === savingId"
+        :disabled="disabled || savingId !== null"
         @vote="emit('vote', $event)"
       />
     </li>
