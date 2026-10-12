@@ -164,6 +164,17 @@ async function onPinMoved(position) {
     member.start_label = 'Dropped pin'
   }
 }
+
+// Validation: the map puts the pin back and tells us when it's dropped outside Singapore.
+// Show a message on the map for 4 seconds.
+const mapWarning = ref('')
+
+function onPinOutside() {
+  mapWarning.value = 'Starting points must be in Singapore, so the pin went back.'
+  setTimeout(() => {
+    mapWarning.value = ''
+  }, 4000)
+}
 </script>
 
 <template>
@@ -212,6 +223,7 @@ async function onPinMoved(position) {
             :placeholder="
               hasStart(target) ? `Change ${targetName} starting point` : 'e.g. Holland Village'
             "
+            :show-location="targetIsMe"
             @choose="onChoose"
             @typing="typing = $event"
           />
@@ -245,8 +257,10 @@ async function onPinMoved(position) {
           :highlight-id="target ? target.user_id : null"
           :draggable-id="me && target ? target.user_id : null"
           @move="onPinMoved"
+          @outside="onPinOutside"
         />
-        <div v-if="target && hasStart(target)" class="map-tip">
+        <div v-if="mapWarning" class="map-tip map-warning" role="alert">{{ mapWarning }}</div>
+        <div v-else-if="target && hasStart(target)" class="map-tip">
           <span class="fw-semibold tip-word">Tip</span> Drag
           {{ targetIsMe ? 'your' : targetName }} pin to fine-tune
           {{ targetIsMe ? 'your' : 'their' }} starting point
@@ -304,5 +318,10 @@ async function onPinMoved(position) {
 .tip-word {
   color: var(--fp-primary);
   margin-right: 0.35rem;
+}
+
+.map-warning {
+  color: var(--bs-danger);
+  font-weight: 600;
 }
 </style>

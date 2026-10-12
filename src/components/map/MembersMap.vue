@@ -5,17 +5,19 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { isInSingapore } from '@/services/onemap'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
   members: { type: Array, required: true },
   // this member's pin is drawn bigger (the logged-in user)
   highlightId: { type: String, default: null },
-  // this member's pin can be dragged; the map emits "move" with the new { lat, lng }
+  // this member's pin can be dragged; the map emits "move" with the new { lat, lng },
+  // or "outside" (and puts the pin back) if it was dropped outside Singapore
   draggableId: { type: String, default: null },
 })
 
-const emit = defineEmits(['move'])
+const emit = defineEmits(['move', 'outside'])
 
 const SINGAPORE = [1.3521, 103.8198]
 const mapEl = ref(null) // the <div> the map is drawn in
@@ -81,8 +83,16 @@ function drawPins() {
     })
     // When a drag ends, tell the parent where the pin is now
     marker.on('dragend', () => {
-      justDragged = true
       const position = marker.getLatLng()
+
+      // Validation: a starting point must be in Singapore. If not, put the pin back where it was.
+      if (!isInSingapore(position.lat, position.lng)) {
+        marker.setLatLng([m.start_lat, m.start_lng])
+        emit('outside')
+        return
+      }
+
+      justDragged = true
       emit('move', { lat: position.lat, lng: position.lng })
     })
     marker.addTo(pins)
