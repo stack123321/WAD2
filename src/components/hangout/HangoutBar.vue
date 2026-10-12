@@ -12,14 +12,20 @@ const props = defineProps({
   current: { type: String, required: true },
 })
 
+// The 6 steps, in 3 groups that say what each part of planning is for
 const STEPS = [
-  { label: 'Starting points', route: 'starting-points' },
-  { label: 'Transport', route: 'transport' },
-  { label: 'Midpoint', route: 'midpoint' },
-  { label: 'Spots', route: 'explore' },
-  { label: 'Vote', route: 'vote' },
-  { label: 'Final plan', route: 'final-plan' },
+  { label: 'Starting points', route: 'starting-points', group: 'Get there' },
+  { label: 'Transport', route: 'transport', group: 'Get there' },
+  { label: 'Midpoint', route: 'midpoint', group: 'Choose' },
+  { label: 'Spots', route: 'explore', group: 'Choose' },
+  { label: 'Vote', route: 'vote', group: 'Decide' },
+  { label: 'Final plan', route: 'final-plan', group: 'Decide' },
 ]
+
+// True for the first step of each group, where the group's name is shown
+function startsGroup(i) {
+  return i === 0 || STEPS[i - 1].group !== STEPS[i].group
+}
 
 // Which step we're on: steps before it show a ✓, the current one is highlighted
 const currentIndex = computed(() => STEPS.findIndex((step) => step.route === props.current))
@@ -58,21 +64,19 @@ const startsAt = computed(() => {
     </div>
 
     <ol class="steps d-none d-xl-flex">
-      <li
-        v-for="(step, i) in STEPS"
-        :key="step.route"
-        class="step"
-        :class="{ current: i === currentIndex, done: i < currentIndex }"
-      >
-        <RouterLink
-          :to="{ name: step.route, params: { id: hangout.id } }"
-          class="step-link"
-          :aria-current="i === currentIndex ? 'step' : null"
-        >
-          <span class="step-num">{{ i < currentIndex ? '✓' : i + 1 }}</span>
-          {{ step.label }}
-        </RouterLink>
-      </li>
+      <template v-for="(step, i) in STEPS" :key="step.route">
+        <li v-if="startsGroup(i)" class="step-group" aria-hidden="true">{{ step.group }}</li>
+        <li class="step" :class="{ current: i === currentIndex, done: i < currentIndex }">
+          <RouterLink
+            :to="{ name: step.route, params: { id: hangout.id } }"
+            class="step-link"
+            :aria-current="i === currentIndex ? 'step' : null"
+          >
+            <span class="step-num">{{ i < currentIndex ? '✓' : i + 1 }}</span>
+            {{ step.label }}
+          </RouterLink>
+        </li>
+      </template>
     </ol>
 
     <div class="avatar-stack d-none d-md-flex" :aria-label="`${members.length} members`">
@@ -132,6 +136,20 @@ const startsAt = computed(() => {
 .step.done + .step::before {
   height: 2px;
   background: var(--fp-primary);
+}
+
+/* "GET THERE", "CHOOSE", "DECIDE" before each group of steps */
+.step-group {
+  margin: 0 0.6rem 0 1.5rem;
+  color: var(--fp-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.step-group:first-child {
+  margin-left: 0;
 }
 
 .step-link {
