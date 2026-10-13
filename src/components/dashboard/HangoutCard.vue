@@ -5,7 +5,11 @@ import { computed } from 'vue'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // same shape as src/mocks/hangout.json
+  canDelete: { type: Boolean, default: false }, // true for the host: shows a Delete button
+  canLeave: { type: Boolean, default: false }, // true for other members: shows a Leave button
 })
+
+const emit = defineEmits(['delete', 'leave'])
 
 const SG = 'Asia/Singapore'
 const startsAt = computed(() => new Date(props.hangout.starts_at))
@@ -87,17 +91,42 @@ const status = computed(() => {
         </div>
       </div>
 
-      <router-link
-        :to="{ name: status.page, params: { id: hangout.id } }"
-        class="btn btn-outline-secondary btn-sm"
-      >
-        {{ status.action }}
-      </router-link>
+      <div class="d-flex flex-column align-items-end gap-1">
+        <router-link
+          :to="{ name: status.page, params: { id: hangout.id } }"
+          class="btn btn-outline-secondary btn-sm"
+        >
+          {{ status.action }}
+        </router-link>
+        <button
+          v-if="canDelete"
+          type="button"
+          class="btn btn-link btn-sm text-danger delete-btn"
+          :aria-label="`Delete ${hangout.name}`"
+          @click="emit('delete', hangout)"
+        >
+          Delete
+        </button>
+        <button
+          v-else-if="canLeave"
+          type="button"
+          class="btn btn-link btn-sm text-danger delete-btn"
+          :aria-label="`Leave ${hangout.name}`"
+          @click="emit('leave', hangout)"
+        >
+          Leave
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.delete-btn {
+  min-height: 44px; /* big enough to tap with a finger */
+  text-decoration: none;
+}
+
 .date-block {
   width: 64px;
   padding: 8px 0;

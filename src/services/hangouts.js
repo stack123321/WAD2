@@ -25,11 +25,28 @@ export async function getHangout(id) {
   return data
 }
 
-/** Hangouts the logged-in user is a member of, newest first. Used by 04 Dashboard. */
+/**
+ * Hangouts the logged-in user is in (as host or member), soonest first. Used by 04 Dashboard.
+ * Each one has the same shape as getHangout() (members, shortlist, votes).
+ */
 export async function getMyHangouts() {
   if (!hasSupabase) return [structuredClone(mockHangout)]
-  // TODO(Matrix): select hangouts joined through hangout_members for the current user
-  return []
+
+  // No filter needed: the security rules in schema.sql ("hangouts: members read") only let
+  // you read hangouts you host or are a member of, so Supabase returns just yours.
+  const { data, error } = await supabase
+    .from('hangouts')
+    .select(
+      '*, members:hangout_members(*, profile:profiles(display_name, avatar_color)), shortlist!hangout_id(*), votes(*)',
+    )
+    .order('starts_at', { ascending: true })
+  if (error) throw error
+
+  // Flatten profile fields so each hangout matches the mock's shape, like getHangout()
+  for (const hangout of data) {
+    hangout.members = hangout.members.map(({ profile, ...m }) => ({ ...m, ...profile }))
+  }
+  return data
 }
 
 /** A short, easy-to-type invite code like "F7K2QX" (no 0/O or 1/I). */
@@ -86,6 +103,61 @@ export async function updateMemberStart(hangoutId, userId, place) {
   // host), Supabase doesn't give an error: it just updates nothing. So check a row came back.
   if (data.length === 0) {
     throw new Error("You're not allowed to change this starting point.")
+  }
+}
+
+/**
+ * Delete a hangout. Its members, shortlist and votes go with it (on delete cascade in schema.sql).
+ * Only the host can: the security rules ("hangouts: host deletes") enforce that, not this function.
+ * Used by 04 Dashboard.
+ */
+export async function deleteHangout(id) {
+  if (id === 'demo' || !hasSupabase) {
+    throw new Error("The sample hangout can't be deleted.")
+  }
+
+  const { data, error } = await supabase.from('hangouts').delete().eq('id', id).select()
+  if (error) {
+    throw error
+  }
+  // If the security rules say no, Supabase deletes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('Only the host can delete this hangout.')
+  }
+}
+
+/**
+ * Leave a hangout you joined (members only; the host deletes it instead). Removes your vote and
+ * your member row, which holds your starting point and transport. The security rules
+ * ("votes: remove own", "members: leave or host removes") only allow removing your own.
+ * Used by 04 Dashboard.
+ */
+export async function leaveHangout(hangoutId, userId) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    throw new Error("You can't leave the sample hangout.")
+  }
+
+  // Your vote first, so it no longer counts once you've left
+  const { error: voteError } = await supabase
+    .from('votes')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+  if (voteError) {
+    throw voteError
+  }
+
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  if (data.length === 0) {
+    throw new Error("You're not a member of this hangout.")
   }
 }
 
