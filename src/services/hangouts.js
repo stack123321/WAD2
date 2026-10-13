@@ -59,6 +59,37 @@ export async function createHangout(input) {
 }
 
 /**
+ * Save one member's starting point. Used by 06 Starting points (Surya).
+ * You can save your own; in host mode the host can save anyone's. The security rules in
+ * supabase/schema.sql ("members: edit own row") enforce that, not this function.
+ * @param {string} hangoutId hangout uuid ("demo" is not saved)
+ * @param {string} userId whose starting point it is
+ * @param {{ label: string, lat: number, lng: number }} place
+ */
+export async function updateMemberStart(hangoutId, userId, place) {
+  // The demo hangout and mock mode have no database to save to
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ start_label: place.label, start_lat: place.lat, start_lng: place.lng })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+
+  // If the security rules say no (e.g. not logged in, or someone else's row and you're not the
+  // host), Supabase doesn't give an error: it just updates nothing. So check a row came back.
+  if (data.length === 0) {
+    throw new Error("You're not allowed to change this starting point.")
+  }
+}
+
+/**
  * Join a hangout from an invite link (/login?invite=CODE). Uses the join_hangout
  * database function in supabase/schema.sql.
  * @returns {Promise<string>} the hangout id
