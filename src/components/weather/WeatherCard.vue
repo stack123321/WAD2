@@ -30,7 +30,8 @@ const error = ref(false)
 
 const RAIN_LIKELY = 50 // % chance of rain we call "likely"
 
-async function load() {
+// Part (a) Load the hourly forecast and haze
+async function loadData() {
   loading.value = true
   error.value = false
   try {
@@ -38,46 +39,77 @@ async function load() {
   } catch (err) {
     console.error(err)
     error.value = true
-  } finally {
-    loading.value = false
   }
+  loading.value = false
+
   // Haze is extra: if it fails, the card still shows the forecast
-  getHaze(props.lat, props.lng)
-    .then((h) => (haze.value = h))
-    .catch((err) => console.error(err))
+  try {
+    haze.value = await getHaze(props.lat, props.lng)
+  } catch (err) {
+    console.error(err)
+  }
 }
 
-onMounted(load)
-watch(() => [props.lat, props.lng], load)
+onMounted(loadData)
+// load again if the midpoint changes
+watch(() => [props.lat, props.lng], loadData)
 
-const when = computed(() => props.at ?? new Date().toISOString())
-const index = computed(() => hours.value.findIndex((h) => h.time === sgHourKey(when.value)))
-const current = computed(() => hours.value[index.value] ?? null)
+// Part (b) Find the hour of the hangout
+// The hangout's time, or now if no time was given
+const when = computed(() => {
+  if (props.at) {
+    return props.at
+  }
+  return new Date().toISOString()
+})
+
+// Position of the hangout's hour in the hours list (-1 if it's not in the forecast)
+const index = computed(() => {
+  const key = sgHourKey(when.value)
+  return hours.value.findIndex((h) => h.time === key)
+})
+
+const current = computed(() => {
+  if (index.value === -1) {
+    return null
+  }
+  return hours.value[index.value]
+})
 
 // 2 hours before to 2 hours after the hangout
 const strip = computed(() => {
-  const i = index.value
-  if (i === -1) return []
-  return hours.value.slice(Math.max(0, i - 2), i + 3)
+  if (index.value === -1) {
+    return []
+  }
+  const start = Math.max(0, index.value - 2)
+  return hours.value.slice(start, index.value + 3)
 })
 
 // The forecast only covers today to 16 days ahead
 const outOfRange = computed(() => {
-  if (current.value || hours.value.length === 0) return ''
-  return new Date(when.value) < new Date()
-    ? 'This hangout has already happened.'
-    : 'The forecast for this day comes out about 2 weeks before.'
+  if (current.value || hours.value.length === 0) {
+    return ''
+  }
+  if (new Date(when.value) < new Date()) {
+    return 'This hangout has already happened.'
+  }
+  return 'The forecast for this day comes out about 2 weeks before.'
 })
 
-// "Showers likely from 8 PM": the first hour from the hangout onwards with a high rain chance
+// Part (c) "Showers likely from 8 PM": the first hour from the hangout onwards with a high rain chance
 const rainWarning = computed(() => {
-  const i = index.value
-  if (i === -1) return ''
-  const wet = hours.value.slice(i, i + 4).find((h) => h.rainChance >= RAIN_LIKELY)
-  if (!wet) return ''
-  return wet === current.value
-    ? `Rain likely at ${hourLabel(wet.time)} · indoor spots are a safer bet`
-    : `Showers likely from ${hourLabel(wet.time)} · indoor spots are a safer bet`
+  if (index.value === -1) {
+    return ''
+  }
+  const nextHours = hours.value.slice(index.value, index.value + 4)
+  const wet = nextHours.find((h) => h.rainChance >= RAIN_LIKELY)
+  if (!wet) {
+    return ''
+  }
+  if (wet === current.value) {
+    return `Rain likely at ${hourLabel(wet.time)} · indoor spots are a safer bet`
+  }
+  return `Showers likely from ${hourLabel(wet.time)} · indoor spots are a safer bet`
 })
 </script>
 

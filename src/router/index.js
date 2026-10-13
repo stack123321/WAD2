@@ -1,6 +1,9 @@
 // Owner: Ryan. All 12 pages are registered here, so page owners never need to touch this file.
 // Numbers match the Figma frames (01–12).
+import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { hasSupabase } from '@/services/supabase'
 import LandingView from '@/views/LandingView.vue'
 
 const routes = [
@@ -80,15 +83,37 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-// Login guard. Switched off until Matrix's login works, so everyone can open every page
-// with mock data. Ryan turns it on once sign up / log in is merged.
+// Login guard: pages with meta.requiresAuth (everything except 01 Landing and 02 Log in) need a
+// logged-in user. Logged-out users go to /login, and come back to the page they wanted afterwards.
 //
-// import { useAuthStore } from '@/stores/auth'
-// router.beforeEach((to) => {
-//   const auth = useAuthStore()
-//   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-//     return { name: 'auth', query: { redirect: to.fullPath } }
-//   }
-// })
+// Only when Supabase is connected: without keys (mock mode, and the e2e tests) there are no real
+// accounts, so every page stays open with the sample data.
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth || !hasSupabase) {
+    return
+  }
+
+  const auth = useAuthStore()
+
+  // After a refresh, Supabase takes a moment to restore the session. Wait for it, otherwise
+  // a logged-in user would be sent to the login page by mistake.
+  if (!auth.ready) {
+    await new Promise((resolve) => {
+      const stop = watch(
+        () => auth.ready,
+        (ready) => {
+          if (ready) {
+            stop()
+            resolve()
+          }
+        },
+      )
+    })
+  }
+
+  if (!auth.isLoggedIn) {
+    return { name: 'auth', query: { redirect: to.fullPath } }
+  }
+})
 
 export default router

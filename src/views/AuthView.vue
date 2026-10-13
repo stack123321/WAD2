@@ -293,7 +293,7 @@ const avatars = [
                 class="form-control"
                 :type="showPassword ? 'text' : 'password'"
                 :autocomplete="isSignup ? 'new-password' : 'current-password'"
-                :placeholder="isSignup ? 'At least 6 characters' : ''"
+                :placeholder="isSignup ? 'At least 8 characters' : ''"
                 required
               />
               <button
