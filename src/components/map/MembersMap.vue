@@ -23,6 +23,7 @@ const SINGAPORE = [1.3521, 103.8198]
 const mapEl = ref(null) // the <div> the map is drawn in
 let map = null
 let pins = null // Leaflet layer that holds the markers, so we can clear and redraw them
+let resizeWatcher = null // notices when the map's box changes size
 let justDragged = false // after a drag, redraw the pins but don't move the map around
 
 // Part (a) Create the map once the <div> is on the page
@@ -49,10 +50,20 @@ onMounted(() => {
 
   pins = L.layerGroup().addTo(map)
   drawPins()
+
+  // If the map's box changes size after it's drawn (e.g. the step bar appears above it, or the
+  // window is resized), tell Leaflet to measure it again. Otherwise part of the map stays grey.
+  resizeWatcher = new ResizeObserver(() => {
+    map.invalidateSize()
+  })
+  resizeWatcher.observe(mapEl.value)
 })
 
 // Remove the map when we leave the page
 onBeforeUnmount(() => {
+  if (resizeWatcher) {
+    resizeWatcher.disconnect()
+  }
   if (map) {
     map.remove()
   }
