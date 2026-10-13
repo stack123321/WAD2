@@ -1,33 +1,5 @@
 <template>
   <div class="nearby-page">
-    <section class="info">
-      
-      <time class="info-date" :datetime="startsAt">{{ hangout.hangout?.name }} | {{ formattedDate }}</time>
-
-      <ol class="steps">
-        <li
-          v-for="(step, i) in steps"
-          :key="step"
-          class="step"
-          :class="{ done: i < currentStep, current: i === currentStep }"
-        >
-          <span class="step-dot">{{ i + 1 }}</span>
-          <span class="step-label">{{ step }}</span>
-        </li>
-      </ol>
-
-      <ul class="people">
-        <li
-          v-for="person in people"
-          :key="person.name"
-          class="avatar"
-          :style="{ background: person.color }"
-          :title="person.name"
-        >
-          {{ person.name[0] }}
-        </li>
-      </ul>
-    </section>
 
     <div class="content">
     <section class="head">
@@ -101,27 +73,7 @@ const route = useRoute()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
 
-// Placeholder values until wired to the hangout store
-const startsAt = '2026-10-16T19:00:00+08:00'
-const formattedDate = computed(() =>
-  new Date(startsAt).toLocaleString('en-SG', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  }),
-)
-
-const steps = ['Starting points', 'Transport', 'Midpoint', 'Spots', 'Vote', 'Final plan']
-const currentStep = 3
-
-const people = [
-  { name: 'Ryan', color: '#0E7C6B' },
-  { name: 'Nicole', color: '#F2684A' },
-  { name: 'Surya', color: '#6C63FF' },
-  { name: 'Hugo', color: '#E0A100' },
-]
+// The hangout name, date, steps and avatars are in the shared step bar (HangoutBar, added in App.vue)
 
 // Placeholder spots until wired to the places service
 const spots = ref(spotsMock)

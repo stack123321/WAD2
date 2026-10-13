@@ -28,7 +28,14 @@ function startsGroup(i) {
 }
 
 // Which step we're on: steps before it show a ✓, the current one is highlighted
-const currentIndex = computed(() => STEPS.findIndex((step) => step.route === props.current))
+const currentIndex = computed(() => {
+  let current = props.current
+  // 10 Spot details is part of the "Spots" step
+  if (current === 'spot-details') {
+    current = 'explore'
+  }
+  return STEPS.findIndex((step) => step.route === current)
+})
 
 // "Fri 16 Oct · 7 PM"
 const startsAt = computed(() => {
