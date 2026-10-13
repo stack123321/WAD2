@@ -14,7 +14,7 @@ Goal: everyone sees the new use-case layout, agrees on the open questions below,
   5. Decide together: 11 Vote, 12 Final plan
 - **Midway is now Fairpoint** everywhere, including the invite link (`fairpoint.app/login?invite=…`, matching the app).
 - **Owners are up to date.** No more "Suggested · gap" or "Unassigned": every page shows its owner from the README, and "Who builds what" shows the current split.
-- **Step bar on 06–12.** Already there and matches `HangoutBar` (6 steps, ticks on finished steps, current step dark).
+- **Step bar on 06–12.** Matches `HangoutBar` (6 steps grouped as Get there · Choose · Decide, ticks on finished steps, current step dark). The app now shows it on every hangout page.
 - **Matched to what's built:**
   - "Explore" is hidden in the nav on 03–12. The app has no top-level Explore page, because exploring needs a hangout (`/hangouts/:id/explore`).
   - 04: "Show more" under Crowds right now.
@@ -30,7 +30,7 @@ Press Present from 01 and click through. At each section, the owners say in one 
 | 2 Plan a hangout | Ryan, Matrix | Keep the Invitation card on 04? (there's no invitations table) |
 | 3 Get there | Surya, Nicole, Ryan | 08 layout (below) |
 | 4 Choose a spot | Hugo | Where does the map go on 09? |
-| 5 Decide together | Eashvar | Step bar on 11 and 12 |
+| 5 Decide together | Eashvar | Closing a vote with no votes |
 
 Then the alternate paths (dashed arrows): returning user 02 → 04, quick vote 09 → 11, back to my hangouts 12 → 04.
 
@@ -43,6 +43,5 @@ Then the alternate paths (dashed arrows): returning user 02 → 04, quick vote 0
 
 ## Still different from the app (Figma is the target, no change needed)
 
-- 11 and 12 have no step bar yet in the app (Eashvar's task).
 - 12 map, weather and routes are still placeholders in the app.
 - The app nav has no "+ New hangout" or avatar yet (Hugo's task).

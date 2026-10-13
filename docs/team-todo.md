@@ -1,5 +1,7 @@
 # Team to-do
 
+**Last updated 13 Oct 2026**, checked against `main` after PR #10.
+
 Everything left to do, from three sources:
 
 - **[F]** written feedback on the proposal from Lay Foo Thiang and Dr Shar Lwin Khin (8–9 Oct 2026)
@@ -46,81 +48,84 @@ These replace "Responsive and validated" as a feature. [F] [M4] [M5] [M7]
 ## Who does what
 
 Size is a rough guess: **S** = under an hour, **M** = an afternoon, **L** = a day or more.
+Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on someone
 
 ### Ryan
-| Task | From | Size |
-|---|---|---|
-| Edit the proposal (accept the use-case regrouping, fold past places into recommendations, replace "Responsive and validated" with a Design principles section) and **send it to the prof**, with Surya | F, M2 | M |
-| ~~**Update the Figma**: regroup frames by use case, rename "Midway" to "Fairpoint", show the step bar on frames 06–12, match what's been built. Then run a team walkthrough of it.~~ **Done 11 Oct.** Walkthrough notes and open questions in `docs/figma-walkthrough.md` | F | L |
-| **"Past" tab on 04 Dashboard**: list past hangouts and where the group went (after Matrix saves history) | M3 | M |
-| Responsive and intuitive check on 04 and 08; swap in Hugo's spinner and banners; "Show more" on Crowds right now | M4, M7, F | M |
-| Step bar (`HangoutBar`) on 08, with loading and error states like page 06 | F | S |
-| Login guard and the name in the dashboard greeting (code ready for review) | C | S |
+| Task | From | Size | Status |
+|---|---|---|---|
+| Edit the proposal (accept the use-case regrouping, fold past places into recommendations, replace "Responsive and validated" with a Design principles section) and **send it to the prof**, with Surya | F, M2 | M | 🔜 |
+| **Update the Figma** (use-case sections, Midway → Fairpoint, step bar on 06–12), then run the team walkthrough with `docs/figma-walkthrough.md` | F | L | ✅ Figma · 🔜 walkthrough |
+| **"Past" tab on 04 Dashboard**: show where the group went. Unblocked: closing a vote now saves the final spot and `getMyHangouts()` returns it | M3 | M | 🔜 |
+| Responsive check on 04 and 08, "Show more" on Crowds right now, phone fix on hangout cards | M4, M7, F | M | ✅ |
+| Swap Hugo's spinner and banners into 04 and 08 | F | S | ⏸ Hugo |
+| Step bar on 08 | F | S | ✅ (App.vue adds it to every hangout page) |
+| Login guard and the name in the dashboard greeting | C | S | ✅ |
 
 ### Surya
-| Task | From | Size |
-|---|---|---|
-| **"Use my location" on 06**: the browser's location fills in your starting point (OneMap turns it into an address) | M1 | M |
-| Proposal edits and sending it, with Ryan | M2 | M |
-| **Validation on 06**: postal code must be 6 digits, the point must be in Singapore, clear message when search fails | M5 | S |
-| *(Optional)* Show the use-case groups in `HangoutBar`, e.g. "Get there · Choose · Decide" | F | S |
+| Task | From | Size | Status |
+|---|---|---|---|
+| **"Use my location" on 06** | M1 | M | ✅ |
+| Proposal edits and sending it, with Ryan | M2 | M | 🔜 |
+| **Validation on 06** | M5 | S | ✅ |
+| *(Optional)* Use-case groups in `HangoutBar` ("Get there · Choose · Decide") | F | S | ✅ |
 
 ### Matrix
-| Task | From | Size |
-|---|---|---|
-| **Save hangout history (do this first, Ryan and Hugo depend on it)**: store the final spot when a hangout is done (`supabase/schema.sql`, `services/hangouts.js`), and make `getMyHangouts()` real | M3, C | M |
-| **Different groups**: one user can create, join and switch between several hangouts with different people (invite links, membership) | M6 | L |
-| **Form validation** on login, sign up, preferences and create hangout: required fields, email format, password length, dates not in the past | M5 | M |
-| Decide the Invitation card on the dashboard (there's no invitations table) | C | S |
-| Test Ryan's login guard with real Supabase keys | C | S |
+| Task | From | Size | Status |
+|---|---|---|---|
+| **Save hangout history**: the final spot is saved when the vote closes (`closeVote`), `markHangoutDone` sets a hangout to done, `getMyHangouts()` is real | M3, C | M | ✅ |
+| **Different groups**: create, invite from 06, join, leave / delete, and see all your hangouts on 04 | M6 | L | 🟡 built; Eashvar's two-group test still to confirm nothing mixes |
+| **Form validation** on login, sign up, preferences and create hangout | M5 | M | 🟡 password length hint on sign up and "date in the future" on create are in; check the rest (required fields, email format) |
+| Decide the Invitation card on the dashboard (there's no invitations table) | C | S | 🔜 |
+| `matchScore.js`: score activities, dietary, budget, indoor-if-rain, avoid-crowds (still a TODO in the code) | C | M | 🔜 |
 
 ### Hugo
-| Task | From | Size |
-|---|---|---|
-| **Shared spinner and banner components** in `src/components/ui/` (do these early, everyone swaps them in) | F | M |
-| **Suggest past places on 09**: a "You've been here before" badge, or rank places the group liked higher (after Matrix saves history) | M3 | M |
-| **Map on 09 big enough to use**: tall enough to tap pins on a phone, not squeezed beside the list on a laptop (page 06's map: right side on laptop, at least 640 px tall; 60% of screen height on phone) | M4 | M |
-| **Responsive lead**: check every page at 576 / 768 / 992 / 1200 and fix shared styles in `tokens.css` and the nav bar (including "+ New hangout" and the avatar from the Figma) | M4 | L |
-| Step bar on 09 and 10, and a fixed `<h1>` on 10 | F, C | S |
+| Task | From | Size | Status |
+|---|---|---|---|
+| **Shared spinner and banner components** in `src/components/ui/` (everyone is waiting on these) | F | M | 🔜 |
+| **Suggest past places on 09**: "You've been here before" badge, or rank them higher. Unblocked: past hangouts and their final spots are now available | M3 | M | 🔜 |
+| **Map on 09 big enough to use** (page 06's map: right side on laptop, at least 640 px tall; 60% of screen height on phone) | M4 | M | 🔜 check |
+| **Responsive lead**: check every page at 576 / 768 / 992 / 1200, fix shared styles in `tokens.css` and the nav bar ("+ New hangout" and the avatar from the Figma) | M4 | L | 🔜 |
+| Step bar on 09 and 10, and an `<h1>` on 10 | F, C | S | ✅ |
 
 ### Nicole
-| Task | From | Size |
-|---|---|---|
-| **Midpoint for any group**: `pickFairestArea()` works for 2 to N people and skips anyone without a starting point | M6 | M |
-| **Validation on 07**: everyone needs a mode before "Find midpoint" works | M5 | S |
-| Step bar on 07 | F | S |
+| Task | From | Size | Status |
+|---|---|---|---|
+| **Midpoint for any group**: `pickFairestArea()` for 2 to N people, skipping anyone without a starting point (still a TODO in `utils/midpoint.js`) | M6 | M | 🔜 |
+| **Validation on 07**: everyone needs a mode before "Find midpoint" works | M5 | S | 🔜 |
+| Step bar on 07 | F | S | ✅ |
 
 ### Eashvar
-| Task | From | Size |
-|---|---|---|
-| **Intuitive check**: walk through 01 → 12 as a new user, list anything confusing (labels, empty states, error messages, back buttons), share it so each owner fixes their own | M7 | M |
-| **Test with different groups**: an end-to-end test with two separate hangouts and different members, checking they don't mix | M6 | M |
-| **Validation on 11 and 12**: can't vote twice, can't close a vote with no votes | M5 | S |
-| **Fix the smoke test** for the new headings on 01, 02, 03, 05 and 09 (6 tests fail on `main`) | C | S |
-| Step bar on 11 and 12 | F | S |
+| Task | From | Size | Status |
+|---|---|---|---|
+| **Intuitive check**: walk through 01 → 12 as a new user, list anything confusing, share it so each owner fixes their own | M7 | M | 🔜 |
+| **Test with different groups**: two separate hangouts with different members, checking they don't mix | M6 | M | 🔜 |
+| **Validation on 11 and 12**: can't vote twice, can't close a vote with no votes | M5 | S | 🟡 vote button is disabled when you can't vote; check closing with no votes |
+| **Fix the smoke test** for the new headings on 01, 02, 03, 05, 09 and the main flow ("Sign up" link is gone from 01). 6 tests fail on `main` | C | S | 🔜 |
+| Step bar on 11 and 12 | F | S | ✅ |
 
 ### Everyone
 - Your own pages work on a phone and make sense without explanation. [M4] [M7]
 - Validation on your own forms and buttons. [M5]
 - Swap in Hugo's spinner and banners once they're merged. [F]
 - Fix whatever Eashvar's intuitive check finds on your pages. [M7]
+- **Running the tests with Supabase keys in `.env.local`:** the login guard sends every test to `/login`. Blank the keys for the run: `VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= npx playwright test`
 
 ## Order that matters
 
-1. **History:** Matrix saves it → Ryan shows it on the dashboard → Hugo suggests from it. Matrix's part comes first.
+1. **History:** ~~Matrix saves it~~ ✅ → Ryan shows it on the dashboard → Hugo suggests from it. **Both are unblocked now.**
 2. **Shared UI:** Hugo's spinner and banners → everyone swaps them in.
-3. **Figma:** Ryan updates it (done 11 Oct) → team walkthrough → Eashvar's intuitive check on the real app.
+3. **Figma:** ~~Ryan updates it~~ ✅ → team walkthrough → Eashvar's intuitive check on the real app.
 4. **Proposal:** Ryan and Surya edit it → send it to the prof.
 
-## Workload check
+## Workload check (what's left)
 
-| Person | Tasks | Roughly |
-|---|---|---|
-| Ryan | 6 | 1 L, 3 M, 2 S |
-| Surya | 4 | 2 M, 2 S |
-| Matrix | 5 | 1 L, 2 M, 2 S |
-| Hugo | 5 | 1 L, 3 M, 1 S |
-| Nicole | 3 | 1 M, 2 S |
-| Eashvar | 5 | 2 M, 3 S |
+| Person | Open tasks |
+|---|---|
+| Ryan | Proposal, walkthrough, Past tab (+ swap spinner when Hugo's ready) |
+| Surya | Proposal |
+| Matrix | Finish validation, Invitation card, `matchScore.js` |
+| Hugo | Spinner and banners, past places on 09, map size on 09, responsive lead and nav bar |
+| Nicole | `pickFairestArea()`, validation on 07 |
+| Eashvar | Intuitive check, two-group test, vote validation, smoke test |
 
-Hugo and Matrix carry the most, and Nicole the least. If Hugo falls behind, Nicole could take the **responsive lead** (checking every page and reporting), leaving Hugo to fix `tokens.css` and the nav bar.
+**Hugo has the most left, and his spinner and banners block everyone.** Surya has the least. Surya could take the **responsive lead** (checking every page and reporting) so Hugo can focus on the shared components and page 09.
