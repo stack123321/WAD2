@@ -5,69 +5,100 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { isInSingapore } from '@/services/onemap'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
   members: { type: Array, required: true },
   // this member's pin is drawn bigger (the logged-in user)
   highlightId: { type: String, default: null },
-  // this member's pin can be dragged; the map emits "move" with the new { lat, lng }
+  // this member's pin can be dragged; the map emits "move" with the new { lat, lng },
+  // or "outside" (and puts the pin back) if it was dropped outside Singapore
   draggableId: { type: String, default: null },
 })
 
-const emit = defineEmits(['move'])
+const emit = defineEmits(['move', 'outside'])
 
 const SINGAPORE = [1.3521, 103.8198]
-const mapEl = ref(null)
+const mapEl = ref(null) // the <div> the map is drawn in
 let map = null
 let pins = null // Leaflet layer that holds the markers, so we can clear and redraw them
-let justDragged = false // after a drag, redraw the pins but don't jump the map around
+let justDragged = false // after a drag, redraw the pins but don't move the map around
 
+// Part (a) Create the map once the <div> is on the page
 onMounted(() => {
   map = L.map(mapEl.value, {
     center: SINGAPORE,
     zoom: 11,
     minZoom: 11,
     zoomControl: false,
+    // stop the map from scrolling away from Singapore
     maxBounds: [
       [1.144, 103.535],
       [1.494, 104.1],
     ],
   })
   L.control.zoom({ position: 'topright' }).addTo(map)
+
   // OneMap's free base map (no key needed)
   L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution:
       '<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener">OneMap</a> &copy; contributors | <a href="https://www.sla.gov.sg/" target="_blank" rel="noopener">Singapore Land Authority</a>',
   }).addTo(map)
+
   pins = L.layerGroup().addTo(map)
   drawPins()
 })
 
-onBeforeUnmount(() => map?.remove())
+// Remove the map when we leave the page
+onBeforeUnmount(() => {
+  if (map) {
+    map.remove()
+  }
+})
 
+// Redraw whenever anyone's starting point changes (deep: also notices changes inside each member)
 watch(() => [props.members, props.highlightId, props.draggableId], drawPins, { deep: true })
 
+// Part (b) Draw one pin per member who has a starting point
 function drawPins() {
-  if (!map) return
+  if (!map) {
+    return
+  }
   pins.clearLayers()
 
-  const placed = props.members.filter((m) => m.start_lat != null && m.start_lng != null)
+  const placed = []
+  for (const m of props.members) {
+    if (m.start_lat != null && m.start_lng != null) {
+      placed.push(m)
+    }
+  }
+
   for (const m of placed) {
     const marker = L.marker([m.start_lat, m.start_lng], {
       icon: pinIcon(m),
       draggable: m.user_id === props.draggableId,
       title: `${m.display_name} · ${m.start_label}`,
     })
+    // When a drag ends, tell the parent where the pin is now
     marker.on('dragend', () => {
+      const position = marker.getLatLng()
+
+      // Validation: a starting point must be in Singapore. If not, put the pin back where it was.
+      if (!isInSingapore(position.lat, position.lng)) {
+        marker.setLatLng([m.start_lat, m.start_lng])
+        emit('outside')
+        return
+      }
+
       justDragged = true
-      const { lat, lng } = marker.getLatLng()
-      emit('move', { lat, lng })
+      emit('move', { lat: position.lat, lng: position.lng })
     })
     marker.addTo(pins)
   }
 
+  // Zoom to fit everyone, except right after a drag (the map would jump while you're adjusting)
   if (justDragged) {
     justDragged = false
     return
@@ -75,42 +106,69 @@ function drawPins() {
   if (placed.length === 1) {
     map.setView([placed[0].start_lat, placed[0].start_lng], 14)
   } else if (placed.length > 1) {
-    const bounds = placed.map((m) => [m.start_lat, m.start_lng])
-    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 })
+    const points = []
+    for (const m of placed) {
+      points.push([m.start_lat, m.start_lng])
+    }
+    map.fitBounds(points, { padding: [60, 60], maxZoom: 14 })
   }
 }
 
-/** A round pin in the member's colour with their initial, plus a label chip, e.g. "Jurong East". */
+// Part (c) What each pin looks like
+// A round pin in the member's colour with their initial, plus a label chip, e.g. "Jurong East".
 function pinIcon(m) {
-  const isMe = m.user_id === props.highlightId
-  const size = isMe ? 40 : 34
-  // avatar_color comes from the database, so only accept a real hex colour
-  const color = /^#[0-9a-f]{3,8}$/i.test(m.avatar_color) ? m.avatar_color : 'var(--fp-primary)'
+  const isHighlighted = m.user_id === props.highlightId
+  let size = 34
+  let wrapClass = 'pin-wrap'
+  if (isHighlighted) {
+    size = 40
+    wrapClass = 'pin-wrap pin-me'
+  }
+
+  // avatar_color comes from the database, so only use it if it looks like a colour (#0E7C6B)
+  let color = 'var(--fp-primary)'
+  if (m.avatar_color && m.avatar_color.startsWith('#')) {
+    color = escapeHtml(m.avatar_color)
+  }
+
+  const initial = escapeHtml(m.display_name.charAt(0))
+  const place = escapeHtml(shortPlace(m.start_label))
+
   return L.divIcon({
     className: '',
-    html: `<div class="pin-wrap${isMe ? ' pin-me' : ''}">
-        <span class="pin" style="background:${color};width:${size}px;height:${size}px">${escapeHtml(m.display_name.charAt(0))}</span>
-        <span class="pin-label">${escapeHtml(shortPlace(m.start_label))}</span>
+    html: `<div class="${wrapClass}">
+        <span class="pin" style="background:${color};width:${size}px;height:${size}px">${initial}</span>
+        <span class="pin-label">${place}</span>
       </div>`,
     iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    iconAnchor: [size / 2, size / 2], // the pin's centre sits on the exact spot
   })
 }
 
-/** "Jurong East MRT (EW24 / NS1)" → "Jurong East", "4 Tampines Central 5, S529510" → "4 Tampines Central 5" */
+// "Jurong East MRT (EW24 / NS1)" → "Jurong East", "4 Tampines Central 5, S529510" → "4 Tampines Central 5"
 function shortPlace(label) {
-  return String(label ?? '')
-    .split(',')[0]
-    .replace(/\s*\(.*\)\s*$/, '')
-    .replace(/\s+MRT(\s+Station)?$/i, '')
+  let text = String(label ?? '').split(',')[0]
+
+  const bracket = text.indexOf(' (')
+  if (bracket !== -1) {
+    text = text.slice(0, bracket)
+  }
+  if (text.endsWith(' MRT Station')) {
+    text = text.slice(0, -' MRT Station'.length)
+  } else if (text.endsWith(' MRT')) {
+    text = text.slice(0, -' MRT'.length)
+  }
+  return text
 }
 
-/** Names and labels go inside HTML, so turn < > & " into safe text first. */
+// Names and labels go inside HTML, so turn < > & " ' into safe text first
 function escapeHtml(text) {
-  return String(text ?? '').replace(
-    /[&<>"']/g,
-    (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch],
-  )
+  return String(text ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 }
 </script>
 

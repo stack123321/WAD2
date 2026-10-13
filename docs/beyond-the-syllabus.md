@@ -141,7 +141,7 @@ Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the 
 ## Vue Router
 
 ### `router.beforeEach((to) => ...)` and route `meta`
-A **navigation guard**: a function the router runs before *every* page change, including the first page load. What it returns decides what happens: `true` lets the page open; a route like `{ name: 'auth' }` sends the user there instead. `to` is the page they're trying to open, and `to.meta` is whatever you put in that route's `meta: { ... }`.
+A **navigation guard**: a function the router runs before *every* page change, including the first page load. What it returns decides what happens: returning nothing (or `true`) lets the page open; a route like `{ name: 'auth' }` sends the user there instead. `to` is the page they're trying to open, and `to.meta` is whatever you put in that route's `meta: { ... }`.
 ```js
 // in the routes list
 { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } }
@@ -157,19 +157,31 @@ router.beforeEach(async (to) => {
 
 Used in: [router/index.js](../src/router/index.js) for the login guard.
 
-## Supabase
+### Waiting for something: `new Promise` + `watch`
+After a page refresh, the auth store takes a moment to hear back from Supabase (`auth.ready` turns `true`). The guard has to wait for that, or a logged-in user would be sent to the login page by mistake.
 
-### `supabase.auth.getSession()`
-Asks Supabase whether someone is logged in in this browser. It reads the login Supabase saved in the browser, so it's quick. Replies with `{ data: { session } }`, where `session` is `null` when nobody is logged in.
+- **`watch(() => value, (newValue) => { ... })`** (Vue) runs the second function every time the first one's result changes. It returns a function, here called `stop`, that switches the watching off.
+- **`new Promise((resolve) => { ... })`** makes something you can `await`. The `await` finishes when the code inside calls `resolve()`.
+
+Put together: "wait here until `auth.ready` becomes `true`".
 ```js
-const { data } = await supabase.auth.getSession()
-if (data.session) {
-  // logged in: data.session.user is who
+if (!auth.ready) {
+  await new Promise((resolve) => {
+    const stop = watch(
+      () => auth.ready,
+      (ready) => {
+        if (ready) {
+          stop() // stop watching
+          resolve() // let the await carry on
+        }
+      },
+    )
+  })
 }
+// from here on, auth.isLoggedIn is reliable
 ```
-`const { data } = ...` takes just the `data` field out of the reply (object destructuring).
 
-Used in: [router/index.js](../src/router/index.js), because on a fresh page load the auth store hasn't heard back from Supabase yet.
+Used in: [router/index.js](../src/router/index.js) for the login guard (written by a teammate, kept instead of Ryan's version).
 
 ## Testing with Playwright
 
