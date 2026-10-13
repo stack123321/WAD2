@@ -6,9 +6,10 @@ import { computed } from 'vue'
 const props = defineProps({
   hangout: { type: Object, required: true }, // same shape as src/mocks/hangout.json
   canDelete: { type: Boolean, default: false }, // true for the host: shows a Delete button
+  canLeave: { type: Boolean, default: false }, // true for other members: shows a Leave button
 })
 
-const emit = defineEmits(['delete'])
+const emit = defineEmits(['delete', 'leave'])
 
 const SG = 'Asia/Singapore'
 const startsAt = computed(() => new Date(props.hangout.starts_at))
@@ -105,6 +106,15 @@ const status = computed(() => {
           @click="emit('delete', hangout)"
         >
           Delete
+        </button>
+        <button
+          v-else-if="canLeave"
+          type="button"
+          class="btn btn-link btn-sm text-danger delete-btn"
+          :aria-label="`Leave ${hangout.name}`"
+          @click="emit('leave', hangout)"
+        >
+          Leave
         </button>
       </div>
     </div>

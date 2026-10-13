@@ -127,6 +127,41 @@ export async function deleteHangout(id) {
 }
 
 /**
+ * Leave a hangout you joined (members only; the host deletes it instead). Removes your vote and
+ * your member row, which holds your starting point and transport. The security rules
+ * ("votes: remove own", "members: leave or host removes") only allow removing your own.
+ * Used by 04 Dashboard.
+ */
+export async function leaveHangout(hangoutId, userId) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    throw new Error("You can't leave the sample hangout.")
+  }
+
+  // Your vote first, so it no longer counts once you've left
+  const { error: voteError } = await supabase
+    .from('votes')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+  if (voteError) {
+    throw voteError
+  }
+
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  if (data.length === 0) {
+    throw new Error("You're not a member of this hangout.")
+  }
+}
+
+/**
  * Join a hangout from an invite link (/login?invite=CODE). Uses the join_hangout
  * database function in supabase/schema.sql.
  * @returns {Promise<string>} the hangout id
