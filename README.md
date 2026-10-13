@@ -103,7 +103,7 @@ Sample responses are marked with "sample" in names and labels so they never get 
 **Keys**
 
 1. `.env.local` is never committed (it's in `.gitignore`).
-2. `VITE_` variables end up in the browser, so only the Supabase URL and anon key go there.
+2. `VITE_` variables end up in the browser, so only the Supabase URL and publishable key go there.
 3. Secret keys (OneMap, LTA, Google) have no `VITE_` prefix and are only used in `api/`.
 
 **Git**
