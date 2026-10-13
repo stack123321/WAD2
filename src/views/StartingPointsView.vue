@@ -220,9 +220,7 @@ function onPinOutside() {
           <PlaceSearch
             :key="target.user_id"
             class="mb-4"
-            :placeholder="
-              hasStart(target) ? `Change ${targetName} starting point` : 'e.g. Holland Village'
-            "
+            :placeholder="hasStart(target) ? 'Search a new place' : 'e.g. Holland Village'"
             :show-location="targetIsMe"
             @choose="onChoose"
             @typing="typing = $event"
@@ -245,9 +243,15 @@ function onPinOutside() {
         >
           Next: choose transport →
         </RouterLink>
-        <button v-else class="btn btn-primary btn-lg w-100" type="button" disabled>
-          Next: choose transport →
-        </button>
+        <template v-else>
+          <button class="btn btn-primary btn-lg w-100" type="button" disabled>
+            Next: choose transport →
+          </button>
+          <!-- say why the button is greyed out -->
+          <p class="small text-secondary text-center mt-2 mb-0">
+            Add your starting point first to continue.
+          </p>
+        </template>
       </div>
 
       <!-- Right: shared map -->
@@ -284,6 +288,8 @@ function onPinOutside() {
 }
 
 .done-link {
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0 0.6rem !important;
   color: var(--fp-primary);
   font-weight: 600;
   text-decoration: none;

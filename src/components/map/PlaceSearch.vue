@@ -392,16 +392,18 @@ function onLocationError(error) {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 0 0;
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0;
   color: var(--fp-primary);
   font-weight: 600;
   text-decoration: none;
 }
 
 .retry-btn {
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0 0.6rem !important;
   color: var(--fp-primary);
   font-weight: 600;
   text-decoration: none;
-  vertical-align: baseline;
 }
 </style>

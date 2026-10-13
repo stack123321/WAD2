@@ -79,6 +79,19 @@ const startsAt = computed(() => {
       </template>
     </ol>
 
+    <!-- Phones and tablets: the 6 steps don't fit, so just say which step this is -->
+    <RouterLink
+      v-if="currentIndex !== -1"
+      class="step-compact d-xl-none"
+      :to="{ name: STEPS[currentIndex].route, params: { id: hangout.id } }"
+      aria-current="step"
+    >
+      <span class="step-num">{{ currentIndex + 1 }}</span>
+      <span
+        >Step {{ currentIndex + 1 }} of {{ STEPS.length }} · {{ STEPS[currentIndex].label }}</span
+      >
+    </RouterLink>
+
     <div class="avatar-stack d-none d-md-flex" :aria-label="`${members.length} members`">
       <MemberAvatar
         v-for="m in members"
@@ -94,10 +107,13 @@ const startsAt = computed(() => {
 <style scoped>
 .hangout-bar {
   display: flex;
+  flex-wrap: wrap; /* on narrow phones the step goes onto its own line */
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   min-height: 64px;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
   background: var(--fp-surface);
   border-bottom: 1px solid var(--fp-border);
 }
@@ -188,6 +204,23 @@ const startsAt = computed(() => {
 }
 
 .step.current .step-num {
+  background: var(--fp-ink);
+  border-color: var(--fp-ink);
+  color: var(--fp-surface);
+}
+
+/* "Step 1 of 6 · Starting points" on phones and tablets */
+.step-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fp-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.step-compact .step-num {
   background: var(--fp-ink);
   border-color: var(--fp-ink);
   color: var(--fp-surface);

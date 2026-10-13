@@ -139,6 +139,8 @@ async function remind(member) {
 
 .row-action {
   flex-shrink: 0;
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0 0.6rem;
   color: var(--fp-primary);
   font-weight: 600;
   text-decoration: none;
