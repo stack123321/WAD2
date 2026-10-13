@@ -1,6 +1,6 @@
 # Team to-do
 
-**Last updated 13 Oct 2026**, checked against `main` after PR #10.
+**Last updated 13 Oct 2026**, checked against `main` after PR #10, in the browser at phone and laptop width. Tests: 26 pass, 6 fail (smoke-test headings).
 
 Everything left to do, from three sources:
 
@@ -74,7 +74,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 |---|---|---|---|
 | **Save hangout history**: the final spot is saved when the vote closes (`closeVote`), `markHangoutDone` sets a hangout to done, `getMyHangouts()` is real | M3, C | M | ✅ |
 | **Different groups**: create, invite from 06, join, leave / delete, and see all your hangouts on 04 | M6 | L | 🟡 built; Eashvar's two-group test still to confirm nothing mixes |
-| **Form validation** on login, sign up, preferences and create hangout | M5 | M | 🟡 password length hint on sign up and "date in the future" on create are in; check the rest (required fields, email format) |
+| **Form validation** on login, sign up, preferences and create hangout | M5 | M | 🟡 **Create**: name required, date in the future ✅. **Log in / sign up**: button disabled until filled, "8 characters" hint, but the form has `novalidate` and there is **no email-format check**. **Preferences**: no validation yet |
 | Decide the Invitation card on the dashboard (there's no invitations table) | C | S | 🔜 |
 | `matchScore.js`: score activities, dietary, budget, indoor-if-rain, avoid-crowds (still a TODO in the code) | C | M | 🔜 |
 
@@ -83,7 +83,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 |---|---|---|---|
 | **Shared spinner and banner components** in `src/components/ui/` (everyone is waiting on these) | F | M | 🔜 |
 | **Suggest past places on 09**: "You've been here before" badge, or rank them higher. Unblocked: past hangouts and their final spots are now available | M3 | M | 🔜 |
-| **Map on 09 big enough to use** (page 06's map: right side on laptop, at least 640 px tall; 60% of screen height on phone) | M4 | M | 🔜 check |
+| **Page 09 on a phone (do this first)**: three spot cards, the map and the shortlist are squeezed into one row, so names are cut off, "Add to vote" wraps letter by letter and the map is 95 px wide. Stack them on phones. Map on a laptop is only 300 × 327 px; target is page 06's (right side, at least 640 px tall; 60% of screen height on phone) | M4 | M | 🔜 |
 | **Responsive lead**: check every page at 576 / 768 / 992 / 1200, fix shared styles in `tokens.css` and the nav bar ("+ New hangout" and the avatar from the Figma) | M4 | L | 🔜 |
 | Step bar on 09 and 10, and an `<h1>` on 10 | F, C | S | ✅ |
 
@@ -91,7 +91,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 | Task | From | Size | Status |
 |---|---|---|---|
 | **Midpoint for any group**: `pickFairestArea()` for 2 to N people, skipping anyone without a starting point (still a TODO in `utils/midpoint.js`) | M6 | M | 🔜 |
-| **Validation on 07**: everyone needs a mode before "Find midpoint" works | M5 | S | 🔜 |
+| **Validation on 07**: everyone needs a mode before "Find midpoint" works. Right now "Find our midpoint" is a plain link that works even when someone hasn't picked | M5 | S | 🔜 |
 | Step bar on 07 | F | S | ✅ |
 
 ### Eashvar
@@ -99,7 +99,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 |---|---|---|---|
 | **Intuitive check**: walk through 01 → 12 as a new user, list anything confusing, share it so each owner fixes their own | M7 | M | 🔜 |
 | **Test with different groups**: two separate hangouts with different members, checking they don't mix | M6 | M | 🔜 |
-| **Validation on 11 and 12**: can't vote twice, can't close a vote with no votes | M5 | S | 🟡 vote button is disabled when you can't vote; check closing with no votes |
+| **Validation on 11 and 12**: can't vote twice, can't close a vote with no votes | M5 | S | 🟡 vote button is disabled when you can't vote ✅. The host **can** close with zero votes (the winner defaults to the best match): decide as a team whether to block it |
 | **Fix the smoke test** for the new headings on 01, 02, 03, 05, 09 and the main flow ("Sign up" link is gone from 01). 6 tests fail on `main` | C | S | 🔜 |
 | Step bar on 11 and 12 | F | S | ✅ |
 
@@ -124,7 +124,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 | Ryan | Proposal, walkthrough, Past tab (+ swap spinner when Hugo's ready) |
 | Surya | Proposal |
 | Matrix | Finish validation, Invitation card, `matchScore.js` |
-| Hugo | Spinner and banners, past places on 09, map size on 09, responsive lead and nav bar |
+| Hugo | **Page 09 on phones**, spinner and banners, past places on 09, responsive lead and nav bar |
 | Nicole | `pickFairestArea()`, validation on 07 |
 | Eashvar | Intuitive check, two-group test, vote validation, smoke test |
 
