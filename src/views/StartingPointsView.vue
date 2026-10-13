@@ -6,14 +6,14 @@
 // Host mode: if the host switched off "Friends add their own starting point" on 05 Create hangout,
 // the host enters everyone's starting points here instead (Set / Change on each row).
 // Reads: hangout_members · Writes: start_label, start_lat, start_lng (mine, or anyone's in host mode)
-// The pieces live in components: HangoutBar (top bar), PlaceSearch, GroupList, MembersMap.
+// The pieces live in components: PlaceSearch, GroupList, MembersMap. The step bar on top
+// (HangoutBar) is added for every hangout page in App.vue.
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
 import { updateMemberStart } from '@/services/hangouts'
-import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
@@ -225,8 +225,6 @@ function onPinOutside() {
   </div>
 
   <div v-else-if="store.hangout">
-    <HangoutBar :hangout="store.hangout" :members="store.members" current="starting-points" />
-
     <div class="row g-0">
       <!-- Left panel: search + group -->
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
