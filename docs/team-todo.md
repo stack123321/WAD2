@@ -53,8 +53,8 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 ### Ryan
 | Task | From | Size | Status |
 |---|---|---|---|
-| Edit the proposal (accept the use-case regrouping, fold past places into recommendations, replace "Responsive and validated" with a Design principles section) and **send it to the prof**, with Surya | F, M2 | M | 🔜 |
-| **Update the Figma** (use-case sections, Midway → Fairpoint, step bar on 06–12), then run the team walkthrough with `docs/figma-walkthrough.md` | F | L | ✅ Figma · 🔜 walkthrough |
+| Edit the proposal (accept the use-case regrouping, fold past places into recommendations, replace "Responsive and validated" with a Design principles section) and **send it to the prof**, with Surya | F, M2 | M | ✅ submitted |
+| **Update the Figma** (use-case sections, Midway → Fairpoint, step bar on 06–12), then run the team walkthrough with `docs/figma-walkthrough.md` | F | L | ✅ |
 | **"Past" tab on 04 Dashboard**: show where the group went. Unblocked: closing a vote now saves the final spot and `getMyHangouts()` returns it | M3 | M | 🔜 |
 | Responsive check on 04 and 08, "Show more" on Crowds right now, phone fix on hangout cards | M4, M7, F | M | ✅ |
 | Swap Hugo's spinner and banners into 04 and 08 | F | S | ⏸ Hugo |
@@ -65,7 +65,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 | Task | From | Size | Status |
 |---|---|---|---|
 | **"Use my location" on 06** | M1 | M | ✅ |
-| Proposal edits and sending it, with Ryan | M2 | M | 🔜 |
+| Proposal edits and sending it, with Ryan | M2 | M | ✅ submitted |
 | **Validation on 06** | M5 | S | ✅ |
 | *(Optional)* Use-case groups in `HangoutBar` ("Get there · Choose · Decide") | F | S | ✅ |
 
@@ -114,15 +114,15 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 
 1. **History:** ~~Matrix saves it~~ ✅ → Ryan shows it on the dashboard → Hugo suggests from it. **Both are unblocked now.**
 2. **Shared UI:** Hugo's spinner and banners → everyone swaps them in.
-3. **Figma:** ~~Ryan updates it~~ ✅ → team walkthrough → Eashvar's intuitive check on the real app.
-4. **Proposal:** Ryan and Surya edit it → send it to the prof.
+3. **Figma:** ~~Ryan updates it~~ ✅ → ~~team walkthrough~~ ✅ → Eashvar's intuitive check on the real app.
+4. **Proposal:** ~~Ryan and Surya edit it → send it to the prof~~ ✅ submitted.
 
 ## Workload check (what's left)
 
 | Person | Open tasks |
 |---|---|
-| Ryan | Proposal, walkthrough, Past tab (+ swap spinner when Hugo's ready) |
-| Surya | Proposal |
+| Ryan | Past tab (+ swap spinner when Hugo's ready) |
+| Surya | Nothing left. Free to take work from others (see below) |
 | Matrix | Finish validation, Invitation card, `matchScore.js` |
 | Hugo | **Page 09 on phones**, spinner and banners, past places on 09, responsive lead and nav bar |
 | Nicole | `pickFairestArea()`, validation on 07 |
