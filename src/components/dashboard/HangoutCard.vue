@@ -65,14 +65,14 @@ const status = computed(() => {
 
 <template>
   <div class="card">
-    <div class="card-body d-flex align-items-center gap-3">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
       <div class="date-block text-center">
         <div class="weekday">{{ weekday }}</div>
         <div class="day">{{ day }}</div>
         <div class="month">{{ month }}</div>
       </div>
 
-      <div class="flex-grow-1">
+      <div class="info">
         <h3 class="h6 mb-1">{{ hangout.name }}</h3>
         <p class="text-muted small mb-2">{{ details }}</p>
         <div class="d-flex align-items-center gap-2">
@@ -91,10 +91,10 @@ const status = computed(() => {
         </div>
       </div>
 
-      <div class="d-flex flex-column align-items-end gap-1">
+      <div class="d-flex flex-column align-items-end gap-1 ms-auto">
         <router-link
           :to="{ name: status.page, params: { id: hangout.id } }"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline-secondary btn-sm text-nowrap"
         >
           {{ status.action }}
         </router-link>
@@ -122,6 +122,9 @@ const status = computed(() => {
 </template>
 
 <style scoped>
+.info {
+  flex: 1 1 12rem; /* grow to fill, but wrap the button below when narrower than 12rem */
+}
 .delete-btn {
   min-height: 44px; /* big enough to tap with a finger */
   text-decoration: none;
