@@ -107,6 +107,26 @@ export async function updateMemberStart(hangoutId, userId, place) {
 }
 
 /**
+ * Delete a hangout. Its members, shortlist and votes go with it (on delete cascade in schema.sql).
+ * Only the host can: the security rules ("hangouts: host deletes") enforce that, not this function.
+ * Used by 04 Dashboard.
+ */
+export async function deleteHangout(id) {
+  if (id === 'demo' || !hasSupabase) {
+    throw new Error("The sample hangout can't be deleted.")
+  }
+
+  const { data, error } = await supabase.from('hangouts').delete().eq('id', id).select()
+  if (error) {
+    throw error
+  }
+  // If the security rules say no, Supabase deletes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('Only the host can delete this hangout.')
+  }
+}
+
+/**
  * Join a hangout from an invite link (/login?invite=CODE). Uses the join_hangout
  * database function in supabase/schema.sql.
  * @returns {Promise<string>} the hangout id

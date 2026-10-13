@@ -2,7 +2,8 @@
 // 04 My hangouts
 // Owner: Ryan · Vet by: Eashvar
 import { ref, computed, onMounted } from 'vue'
-import { getMyHangouts } from '@/services/hangouts'
+import { deleteHangout, getMyHangouts } from '@/services/hangouts'
+import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
@@ -28,6 +29,31 @@ const heatMapLink = computed(() => {
   if (upcoming.value.length === 0) return null
   return { name: 'midpoint', params: { id: upcoming.value[0].id } }
 })
+
+// Deleting a hangout (only the host sees the button)
+const auth = useAuthStore()
+const deleteError = ref('')
+
+function isHost(hangout) {
+  return auth.user !== null && hangout.host_id === auth.user.id
+}
+
+async function onDelete(hangout) {
+  deleteError.value = ''
+  const sure = window.confirm(
+    `Delete "${hangout.name}"? Everyone's starting points and votes for it will be deleted too. This can't be undone.`,
+  )
+  if (!sure) {
+    return
+  }
+  try {
+    await deleteHangout(hangout.id)
+    hangouts.value = hangouts.value.filter((h) => h.id !== hangout.id)
+  } catch (err) {
+    console.error(err)
+    deleteError.value = `Couldn't delete "${hangout.name}": ${err.message}`
+  }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -95,8 +121,10 @@ onMounted(async () => {
           }}
         </p>
 
+        <p v-if="deleteError" class="text-danger" role="alert">{{ deleteError }}</p>
+
         <div v-for="h in shown" :key="h.id" class="mb-3">
-          <HangoutCard :hangout="h" />
+          <HangoutCard :hangout="h" :can-delete="isHost(h)" @delete="onDelete" />
         </div>
       </div>
 
