@@ -25,11 +25,28 @@ export async function getHangout(id) {
   return data
 }
 
-/** Hangouts the logged-in user is a member of, newest first. Used by 04 Dashboard. */
+/**
+ * Hangouts the logged-in user is in (as host or member), soonest first. Used by 04 Dashboard.
+ * Each one has the same shape as getHangout() (members, shortlist, votes).
+ */
 export async function getMyHangouts() {
   if (!hasSupabase) return [structuredClone(mockHangout)]
-  // TODO(Matrix): select hangouts joined through hangout_members for the current user
-  return []
+
+  // No filter needed: the security rules in schema.sql ("hangouts: members read") only let
+  // you read hangouts you host or are a member of, so Supabase returns just yours.
+  const { data, error } = await supabase
+    .from('hangouts')
+    .select(
+      '*, members:hangout_members(*, profile:profiles(display_name, avatar_color)), shortlist!hangout_id(*), votes(*)',
+    )
+    .order('starts_at', { ascending: true })
+  if (error) throw error
+
+  // Flatten profile fields so each hangout matches the mock's shape, like getHangout()
+  for (const hangout of data) {
+    hangout.members = hangout.members.map(({ profile, ...m }) => ({ ...m, ...profile }))
+  }
+  return data
 }
 
 /** A short, easy-to-type invite code like "F7K2QX" (no 0/O or 1/I). */
