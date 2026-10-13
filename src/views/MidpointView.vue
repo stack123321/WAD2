@@ -4,7 +4,6 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
-import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
 
@@ -43,7 +42,7 @@ const midpoint = computed(() => {
   </div>
 
   <div v-else-if="store.hangout">
-    <HangoutBar :hangout="store.hangout" :members="store.members" current="midpoint" />
+    <!-- The step bar comes from App.vue, which adds it to every hangout page -->
     <main class="container py-4">
       <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
 

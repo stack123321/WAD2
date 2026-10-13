@@ -6,13 +6,14 @@
 // Host mode: if the host switched off "Friends add their own starting point" on 05 Create hangout,
 // the host enters everyone's starting points here instead (Set / Change on each row).
 // Reads: hangout_members · Writes: start_label, start_lat, start_lng (mine, or anyone's in host mode)
-// The pieces live in components: HangoutBar (top bar), PlaceSearch, GroupList, MembersMap.
+// The pieces live in components: PlaceSearch, GroupList, MembersMap. The step bar on top
+// (HangoutBar) is added for every hangout page in App.vue.
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
-import HangoutBar from '@/components/hangout/HangoutBar.vue'
+import { updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
@@ -104,19 +105,50 @@ const editingId = computed(() => {
   return null
 })
 
-// Part (d) Setting a starting point
-// TODO(Surya): this only changes the store, so starting points reset when the page refreshes and
-// friends don't see them. Once Matrix is ready, add updateMemberStart(hangoutId, userId, { start_label,
-// start_lat, start_lng }) to src/services/hangouts.js and call it here (ask Matrix first, it's their file).
+// Part (d) Setting and saving a starting point
+// setStart changes it on screen straight away (in the store). saveStart then saves it to the
+// database, so it's still there after a refresh and friends see it when they open the page.
 function setStart(member, place) {
   member.start_label = place.label
   member.start_lat = place.lat
   member.start_lng = place.lng
 }
 
-// Picked a place in the search box
+const saveStatus = ref('') // '', 'saving', 'saved' or 'error'
+const failedMember = ref(null) // whose save failed, for "Try again"
+
+async function saveStart(member) {
+  // The demo hangout isn't saved anywhere, so don't show "Saved"
+  if (route.params.id === 'demo') {
+    return
+  }
+
+  saveStatus.value = 'saving'
+  try {
+    await updateMemberStart(route.params.id, member.user_id, {
+      label: member.start_label,
+      lat: member.start_lat,
+      lng: member.start_lng,
+    })
+    saveStatus.value = 'saved'
+    failedMember.value = null
+    setTimeout(() => {
+      if (saveStatus.value === 'saved') {
+        saveStatus.value = ''
+      }
+    }, 2000)
+  } catch (error) {
+    console.error(error)
+    saveStatus.value = 'error'
+    failedMember.value = member
+  }
+}
+
+// Picked a place in the search box (or "Use my current location")
 function onChoose(place) {
-  setStart(target.value, place)
+  const member = target.value
+  setStart(member, place)
+  saveStart(member)
 
   // In host mode, move on to the next friend who still has no starting point (or back to you)
   if (hostMode.value) {
@@ -163,6 +195,8 @@ async function onPinMoved(position) {
     console.error(error)
     member.start_label = 'Dropped pin'
   }
+  // Save once we know the name (not while it still says "Finding address…")
+  saveStart(member)
 }
 
 // Validation: the map puts the pin back and tells us when it's dropped outside Singapore.
@@ -191,8 +225,6 @@ function onPinOutside() {
   </div>
 
   <div v-else-if="store.hangout">
-    <HangoutBar :hangout="store.hangout" :members="store.members" current="starting-points" />
-
     <div class="row g-0">
       <!-- Left panel: search + group -->
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
@@ -226,6 +258,21 @@ function onPinOutside() {
             @typing="typing = $event"
           />
         </template>
+
+        <!-- Saving to the database -->
+        <p v-if="saveStatus === 'saving'" class="save-status small text-secondary">Saving…</p>
+        <p v-else-if="saveStatus === 'saved'" class="save-status small save-ok">✓ Saved</p>
+        <p v-else-if="saveStatus === 'error'" class="save-status small text-danger" role="alert">
+          Couldn't save {{ failedMember.display_name }}'s starting point, so friends won't see it
+          yet.
+          <button
+            type="button"
+            class="btn btn-link btn-sm p-0 ms-1 retry-link"
+            @click="saveStart(failedMember)"
+          >
+            Try again
+          </button>
+        </p>
 
         <GroupList
           class="mb-4"
@@ -285,6 +332,22 @@ function onPinOutside() {
   border-radius: var(--fp-radius-sm);
   padding: 0.65rem 0.85rem;
   margin-bottom: 1rem;
+}
+
+.save-status {
+  margin: -0.75rem 0 1rem;
+}
+
+.save-ok {
+  color: var(--fp-primary);
+  font-weight: 600;
+}
+
+.retry-link {
+  min-height: 44px; /* big enough to tap with a finger */
+  color: var(--fp-primary);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .done-link {

@@ -2,7 +2,7 @@
 // 04 My hangouts
 // Owner: Ryan · Vet by: Eashvar
 import { ref, computed, onMounted } from 'vue'
-import { getMyHangouts } from '@/services/hangouts'
+import { deleteHangout, getMyHangouts, leaveHangout } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
@@ -41,6 +41,52 @@ const heatMapLink = computed(() => {
   if (upcoming.value.length === 0) return null
   return { name: 'midpoint', params: { id: upcoming.value[0].id } }
 })
+
+// Deleting (host) or leaving (other members) a hangout
+const deleteError = ref('')
+
+function isHost(hangout) {
+  return auth.user !== null && hangout.host_id === auth.user.id
+}
+
+// Logged in, in the hangout, but not the host
+function isMember(hangout) {
+  return auth.user !== null && !isHost(hangout)
+}
+
+async function onLeave(hangout) {
+  deleteError.value = ''
+  const sure = window.confirm(
+    `Leave "${hangout.name}"? Your starting point and vote will be removed. You can rejoin with the invite link.`,
+  )
+  if (!sure) {
+    return
+  }
+  try {
+    await leaveHangout(hangout.id, auth.user.id)
+    hangouts.value = hangouts.value.filter((h) => h.id !== hangout.id)
+  } catch (err) {
+    console.error(err)
+    deleteError.value = `Couldn't leave "${hangout.name}": ${err.message}`
+  }
+}
+
+async function onDelete(hangout) {
+  deleteError.value = ''
+  const sure = window.confirm(
+    `Delete "${hangout.name}"? Everyone's starting points and votes for it will be deleted too. This can't be undone.`,
+  )
+  if (!sure) {
+    return
+  }
+  try {
+    await deleteHangout(hangout.id)
+    hangouts.value = hangouts.value.filter((h) => h.id !== hangout.id)
+  } catch (err) {
+    console.error(err)
+    deleteError.value = `Couldn't delete "${hangout.name}": ${err.message}`
+  }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -108,8 +154,16 @@ onMounted(async () => {
           }}
         </p>
 
+        <p v-if="deleteError" class="text-danger" role="alert">{{ deleteError }}</p>
+
         <div v-for="h in shown" :key="h.id" class="mb-3">
-          <HangoutCard :hangout="h" />
+          <HangoutCard
+            :hangout="h"
+            :can-delete="isHost(h)"
+            :can-leave="isMember(h)"
+            @delete="onDelete"
+            @leave="onLeave"
+          />
         </div>
       </div>
 
