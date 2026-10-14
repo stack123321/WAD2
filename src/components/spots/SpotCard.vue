@@ -7,6 +7,7 @@ const props = defineProps({
   imageUrl: { type: String, default: null },
   rating: { type: Number, default: null },
   stationDistanceM: { type: Number, default: null },
+  nearestStationName: { type: String, default: null },
   // 0 (free) to 3 (pricey), matching price_level from the places API
   priceLevel: { type: Number, default: null },
   tags: { type: Array, default: () => [] },
@@ -46,7 +47,9 @@ const distance = computed(() => {
       </div>
 
       <p class="spot-card__meta mb-0">
-        <span v-if="distance">{{ distance }} from nearest station</span>
+        <span v-if="distance">
+          {{ distance }} from {{ nearestStationName || 'nearest station' }}
+        </span>
         <span v-if="price" class="spot-card__price">{{ price }}</span>
       </p>
 
@@ -86,7 +89,7 @@ const distance = computed(() => {
 }
 
 .spot-card__link {
-  color: inherit;
+  color:black;
   text-decoration: none;
 }
 
