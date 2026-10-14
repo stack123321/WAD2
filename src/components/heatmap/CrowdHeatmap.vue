@@ -17,7 +17,6 @@ const stations = ref([])
 const loading = ref(false)
 const error = ref('')
 
-let map = null // the Leaflet map, created in onMounted
 let circles = null // a group holding all station circles, so we can clear them in one go
 
 // 37 → "6:30 pm"
@@ -70,7 +69,7 @@ function drawCircles() {
 }
 
 onMounted(() => {
-  map = L.map('crowd-map').setView([1.3521, 103.8198], 11) // centre of Singapore
+  const map = L.map('crowd-map').setView([1.3521, 103.8198], 11) // centre of Singapore
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map)

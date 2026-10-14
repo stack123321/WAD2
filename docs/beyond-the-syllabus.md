@@ -28,13 +28,6 @@ new Date().toISOString() // "2026-10-08T03:00:00.000Z"
 ```
 Used in: [src/services/crowd.js](../src/services/crowd.js) to put the heatmap's time into `?at=`.
 
-### `Number.isNaN(value)`
-`true` if the value is `NaN` ("Not a Number"). `new Date('banana').getTime()` gives `NaN`, so this is how you check whether someone typed an invalid date. You can't use `value === NaN`, because `NaN` never equals anything, not even itself.
-```js
-Number.isNaN(new Date('banana').getTime()) // true → reply 400
-```
-Used in: [api/crowd.js](../api/crowd.js) to validate the `at` parameter.
-
 ### `date.getHours()` and `date.getMinutes()`
 Read the hour (0–23) and minute (0–59) of a `Date`, in the browser's own time zone.
 ```js
