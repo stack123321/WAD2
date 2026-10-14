@@ -1,0 +1,86 @@
+{
+  "id": "demo-2",
+  "name": "Saturday study session",
+  "starts_at": "2026-10-24T14:00:00+08:00",
+  "vibe": ["study"],
+  "host_id": "u-eashvar",
+  "invite_code": "demo5678",
+  "status": "voting",
+  "optimise_for": "fairest",
+  "midpoint_name": "Toa Payoh",
+  "midpoint_lat": 1.3327,
+  "midpoint_lng": 103.8474,
+  "avg_mins": 34,
+  "gap_mins": 8,
+  "vote_deadline": "2026-10-24T12:00:00+08:00",
+  "final_shortlist_id": null,
+  "members": [
+    {
+      "user_id": "u-eashvar",
+      "display_name": "Eashvar",
+      "avatar_color": "#3F9A5B",
+      "start_label": "Bedok MRT",
+      "start_lat": 1.324,
+      "start_lng": 103.93,
+      "mode": "bus",
+      "travel_mins": 38,
+      "travel_cost": 1.69,
+      "joined_at": "2026-10-11T10:00:00+08:00"
+    },
+    {
+      "user_id": "u-matrix",
+      "display_name": "Matrix",
+      "avatar_color": "#D6528F",
+      "start_label": "Choa Chu Kang MRT",
+      "start_lat": 1.3853,
+      "start_lng": 103.7443,
+      "mode": "mrt",
+      "travel_mins": 30,
+      "travel_cost": 1.74,
+      "joined_at": "2026-10-11T10:15:00+08:00"
+    },
+    {
+      "user_id": "u-hugo",
+      "display_name": "Hugo",
+      "avatar_color": "#E0A100",
+      "start_label": "Punggol MRT",
+      "start_lat": 1.4052,
+      "start_lng": 103.9024,
+      "mode": "car",
+      "travel_mins": 33,
+      "travel_cost": 8.2,
+      "joined_at": "2026-10-11T11:00:00+08:00"
+    }
+  ],
+  "shortlist": [
+    {
+      "id": "demo2-spot-1",
+      "added_by": "u-matrix",
+      "source": "osm",
+      "source_place_id": "mock-4",
+      "name": "Mock Study Cafe (sample data)",
+      "category": "cafe",
+      "lat": 1.3331,
+      "lng": 103.8481,
+      "rating": 4.3,
+      "price_level": 1,
+      "image_url": null,
+      "match_pct": 82
+    },
+    {
+      "id": "demo2-spot-2",
+      "added_by": "u-eashvar",
+      "source": "osm",
+      "source_place_id": "mock-5",
+      "name": "Mock Public Library (sample data)",
+      "category": "activity",
+      "lat": 1.3322,
+      "lng": 103.8469,
+      "rating": 4.7,
+      "price_level": 1,
+      "image_url": null,
+      "match_pct": 90
+    }
+  ],
+  "votes": []
+}

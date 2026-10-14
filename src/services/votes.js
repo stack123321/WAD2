@@ -1,11 +1,11 @@
 // Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime),
 // and the host closing the vote (11) and marking the hangout done (12).
-// Every function does nothing for mock hangouts (no keys, or id "demo"). Host updates use
+// Every function does nothing for mock hangouts (no keys, or an id starting "demo"). Host updates use
 // .select() because Row Level Security skips a non-host's update without an error.
 import { supabase, hasSupabase } from './supabase'
 
 export function isMockHangout(hangoutId) {
-  return hangoutId === 'demo' || !hasSupabase
+  return hangoutId.startsWith('demo') || !hasSupabase
 }
 
 /** Cast or change my vote (one row per person per hangout). */

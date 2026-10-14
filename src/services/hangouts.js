@@ -2,13 +2,22 @@
 // Views call these functions; they never call supabase or fetch directly.
 import { supabase, hasSupabase } from './supabase'
 import mockHangout from '@/mocks/hangout.json'
+import mockHangout2 from '@/mocks/hangout-2.json'
+
+// Two sample groups with different people, so switching between hangouts can be tried without keys
+const mockHangouts = [mockHangout, mockHangout2]
+
+/** The sample hangout with this id, or the first one if no sample has that id. */
+function findMock(id) {
+  return structuredClone(mockHangouts.find((h) => h.id === id) ?? mockHangout)
+}
 
 /**
  * One hangout joined with its members, shortlist and votes (same shape as src/mocks/hangout.json).
- * @param {string} id hangout uuid, or "demo" for the mock
+ * @param {string} id hangout uuid, or "demo" / "demo-2" for the samples
  */
 export async function getHangout(id) {
-  if (id === 'demo' || !hasSupabase) return structuredClone(mockHangout)
+  if (id.startsWith('demo') || !hasSupabase) return findMock(id)
 
   const { data, error } = await supabase
     .from('hangouts')
@@ -30,7 +39,7 @@ export async function getHangout(id) {
  * Each one has the same shape as getHangout() (members, shortlist, votes).
  */
 export async function getMyHangouts() {
-  if (!hasSupabase) return [structuredClone(mockHangout)]
+  if (!hasSupabase) return mockHangouts.map((h) => structuredClone(h))
 
   // No filter needed: the security rules in schema.sql ("hangouts: members read") only let
   // you read hangouts you host or are a member of, so Supabase returns just yours.
