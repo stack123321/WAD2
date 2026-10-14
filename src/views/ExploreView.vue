@@ -1,33 +1,12 @@
-<template>
+﻿<template>
+  
   <div class="nearby-page">
-    <section class="info">
-      
-      <time class="info-date" :datetime="startsAt">{{ hangout.hangout?.name }} | {{ formattedDate }}</time>
-
-      <ol class="steps">
-        <li
-          v-for="(step, i) in steps"
-          :key="step"
-          class="step"
-          :class="{ done: i < currentStep, current: i === currentStep }"
-        >
-          <span class="step-dot">{{ i + 1 }}</span>
-          <span class="step-label">{{ step }}</span>
-        </li>
-      </ol>
-
-      <ul class="people">
-        <li
-          v-for="person in people"
-          :key="person.name"
-          class="avatar"
-          :style="{ background: person.color }"
-          :title="person.name"
-        >
-          {{ person.name[0] }}
-        </li>
-      </ul>
-    </section>
+    <HangoutBar
+      v-if="hangout.hangout"
+      :hangout="hangout.hangout"
+      :members="hangout.members"
+      current="explore"
+    />
 
     <div class="content">
     <section class="head">
@@ -53,15 +32,17 @@
       </div>
     </section>
 
-    <section class="cards">
+    <section class="cards d-flex">
       <SpotCard
-        v-for="(spot, i) in sortedSpots"
+        v-for="spot in sortedSpots"
         :key="spot.id"
-        :style="{ gridColumn: (i % 3) + 1, gridRow: Math.floor(i / 3) + 2 }"
+        :id="`spot-card-${spot.id}`"
+        :class="{ 'is-selected': selectedId === spot.id }"
         :name="spot.name"
         :image-url="spot.imageUrl"
         :rating="spot.rating"
         :station-distance-m="spot.stationDistanceM"
+        :nearest-station-name="spot.nearestStationName"
         :price-level="spot.priceLevel"
         :tags="spot.tags"
         :added="addedIds.has(spot.id)"
@@ -71,7 +52,26 @@
     </section>
 
     <aside class="side">
-      <BaseMap class="map" :center="mapCenter" :markers="mapMarkers" />
+      <div class="map-section">
+        <button
+          type="button"
+          class="map-toggle"
+          aria-controls="explore-map-collapse"
+          :aria-expanded="isMapOpen"
+          @click="isMapOpen = !isMapOpen"
+        >
+          {{ isMapOpen ? 'Hide map' : 'Show map' }}
+          <span class="map-toggle-chevron" :class="{ open: isMapOpen }" aria-hidden="true">&#9662;</span>
+        </button>
+        <div id="explore-map-collapse" class="map-collapse" :class="{ open: isMapOpen }">
+          <BaseMap
+            class="map"
+            :center="mapCenter"
+            :markers="mapMarkers"
+            @marker-click="selectSpot"
+          />
+        </div>
+      </div>
 
       <section class="shortlist">
         <h2 class="h6">Vote Shortlist</h2>
@@ -90,10 +90,11 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
+import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import spotsMock from '@/mocks/spots.json'
 import { useHangoutStore } from '@/stores/hangout'
 
@@ -102,27 +103,18 @@ const hangout = useHangoutStore()
 hangout.load(route.params.id)
 
 // Placeholder values until wired to the hangout store
-const startsAt = '2026-10-16T19:00:00+08:00'
-const formattedDate = computed(() =>
-  new Date(startsAt).toLocaleString('en-SG', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  }),
-)
+function onScroll(){
+  const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Do nothing if scroll position hasn't changed much
+      if (Math.abs(currentScrollPosition - this.lastScrollPosition) < 60) {
+        return;
+      }
 
-const steps = ['Starting points', 'Transport', 'Midpoint', 'Spots', 'Vote', 'Final plan']
-const currentStep = 3
-
-const people = [
-  { name: 'Ryan', color: '#0E7C6B' },
-  { name: 'Nicole', color: '#F2684A' },
-  { name: 'Surya', color: '#6C63FF' },
-  { name: 'Hugo', color: '#E0A100' },
-]
-
+      // Hide if scrolling down, show if scrolling up
+      this.showNavbar = currentScrollPosition < this.lastScrollPosition;
+      this.lastScrollPosition = currentScrollPosition;
+}
 // Placeholder spots until wired to the places service
 const spots = ref(spotsMock)
 
@@ -170,6 +162,19 @@ const mapCenter = computed(() => [
 const mapMarkers = computed(() =>
   sortedSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
 )
+
+// Clicking a map marker scrolls the cards bar sideways to that spot's card
+const selectedId = ref(null)
+async function selectSpot(id) {
+  selectedId.value = id
+  await nextTick()
+  document
+    .getElementById(`spot-card-${id}`)
+    ?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+}
+
+// Map starts collapsed on mobile, where it's shown behind a toggle; desktop always shows it expanded
+const isMapOpen = ref(false)
 </script>
 
 <style scoped>
@@ -180,33 +185,12 @@ const mapMarkers = computed(() =>
   color: #222;
 }
 
-.content {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  align-content: start;
-  gap: 16px;
-  margin: 16px;
-}
-
-.info {
-  padding: 12px 16px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.info {
-  box-sizing: border-box;
-  height: 64px;
-}
-
 .cards-title {
-  grid-column: 1 / -1;
   margin: 0;
   font-size: 1.5rem;
 }
 
 .filters {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -223,128 +207,63 @@ const mapMarkers = computed(() =>
 .sort-select {
   width: auto;
 }
-.info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: nowrap;
-}
-
-.info-name {
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.info-date {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.steps {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.8125rem;
-  color: #888;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Connector line between steps */
-.step + .step::before {
-  content: '';
-  width: 24px;
-  height: 2px;
-  background: #ddd;
-}
-
-.step.done + .step::before,
-.step.current::before {
-  background: #0e7c6b;
-}
-
-.step-dot {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.step.done .step-dot,
-.step.current .step-dot {
-  background: #0e7c6b;
-  color: #fff;
-}
-
-.step.current .step-label {
-  color: #222;
-  font-weight: 600;
-}
-
-.people {
-  display: flex;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-left: -6px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.avatar:first-child {
-  margin-left: 0;
-}
-
-@media (max-width: 768px) {
-  .step:not(.current) .step-label {
-    display: none;
-  }
-}
 
 .head {
-  grid-column: 1 / 4;
-  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
 /* Cards and the side panel are placed on the page grid so the map shares the first card row's height */
-.cards,
-.side {
-  display: contents;
+.cards {
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+.cards > * {
+  flex: 0 0 280px;
+}
+
+.cards > .is-selected {
+  outline: 2px solid #0e7c6b;
+  outline-offset: 2px;
+}
+.side{
+  display:contents;
+}
+
+.map-section {
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hidden on desktop, where the map is always expanded */
+.map-toggle {
+  display: none;
+}
+
+.map-toggle-chevron {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.map-toggle-chevron.open {
+  transform: rotate(180deg);
+}
+
+.map-collapse {
+  flex: 1;
+  min-height: 0;
 }
 
 .map {
-  grid-column: 4;
-  grid-row: 2;
+  height: 100%;
 }
 
 .shortlist {
-  grid-column: 4;
-  grid-row: 3;
   align-self: start;
   padding: 12px 16px;
   background: #fff;
@@ -375,4 +294,75 @@ const mapMarkers = computed(() =>
   object-fit: cover;
   background: #e0e0e0;
 }
+
+/** d in favour of a single scrollable column; .cards and .side
+/**     stay "contents" so their children can be reordered as flex items of .content */
+/**  .content {
+/**    display: flex;
+/**    flex-direction: column;
+/**    gap: 16px;
+/**    margin: 12px;
+/**  }
+/**
+/**  .head {
+/**    order: 1;
+/**  }
+/**
+/**  .filters {
+/**    flex-direction: column;
+/**    align-items: stretch;
+/**  }
+/**
+/**  .sort-select {
+/**    width: 100%;
+/**  }
+**/
+  .map-section {
+    display: block;
+  }
+
+  .map-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  .map-collapse {
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 0;
+    border-radius: 8px;
+    transition:
+      max-height 0.3s ease,
+      margin-top 0.3s ease;
+  }
+
+  .map-collapse.open {
+    max-height: 280px;
+    margin-top: 12px;
+  }
+/**
+/**  .map {
+/**    height: 260px;
+/**  }
+/**
+/**  /* Cards stack as a single scrolling column, overriding each card's desktop grid position */
+/**  .cards > * {
+/**    order: 3;
+/**    width: 100%;
+/**  }
+/**
+/**  .shortlist {
+/**    order: 4;
+/**  }
+/**} **/
 </style>
