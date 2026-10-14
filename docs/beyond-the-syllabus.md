@@ -222,6 +222,14 @@ Calls an API directly, without opening a page. Works like `axios.get`, but `res.
 
 Used in: [api.spec.js](../tests/e2e/api.spec.js).
 
+### `page.once('dialog', (dialog) => dialog.accept())`
+When the page pops up `window.confirm(...)` ("Delete this hangout?"), Playwright clicks **Cancel** by default. This tells it to click **OK** on the next popup only. Set it up *before* the click that opens the popup.
+```js
+page.once('dialog', (dialog) => dialog.accept())
+await deleteButton.click() // the confirm popup opens and is accepted straight away
+```
+Used in: [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) to delete the test hangout at the end.
+
 ## Regular expressions
 
 ### `/pattern/`
@@ -230,7 +238,7 @@ A pattern for matching text, written between slashes. `^` means "starts here", `
 /^Good (morning|afternoon|evening)!$/.test('Good morning!') // true
 /^Good (morning|afternoon|evening)!$/.test('Good night!') // false
 ```
-Used in: [smoke.spec.js](../tests/e2e/smoke.spec.js) to match the dashboard greeting at any time of day, and `getByLabel(/Time today/)` in [midpoint.spec.js](../tests/e2e/midpoint.spec.js).
+Used in: [smoke.spec.js](../tests/e2e/smoke.spec.js) to match the dashboard greeting at any time of day, and `getByLabel(/Time today/)` in [midpoint.spec.js](../tests/e2e/midpoint.spec.js). `$` on its own: `/\/start$/` in [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) means "the URL ends with `/start`", whatever the hangout id before it is (`\/` is a `/` inside a regex).
 
 ## Comments
 
@@ -260,3 +268,11 @@ Reads a secret or setting from `.env.local` (locally) or from Vercel's dashboard
 headers: { AccountKey: process.env.LTA_ACCOUNT_KEY }
 ```
 Used in: [api/crowd.js](../api/crowd.js).
+
+### `process.loadEnvFile('.env.local')`
+Built into Node (version 20.12 and later). Reads a `.env` file and copies each `NAME=value` line into `process.env`. Vite does this by itself for the app, but Playwright runs in plain Node, so its config has to ask for it.
+```js
+process.loadEnvFile('.env.local')
+process.env.E2E_EMAIL // now the value from .env.local
+```
+Used in: [playwright.live.config.js](../playwright.live.config.js), so the live tests can log in with the test account.
