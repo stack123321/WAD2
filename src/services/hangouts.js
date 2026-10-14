@@ -171,6 +171,68 @@ export async function leaveHangout(hangoutId, userId) {
 }
 
 /**
+ * Everyone you've been in a hangout with: one entry per person, most hangouts together first.
+ * Used by 06 Starting points ("Friends from past hangouts").
+ * @param {string} myId the logged-in user, left out of the list
+ * @returns {Promise<Array<{ user_id: string, display_name: string, avatar_color: string | null, together: number }>>}
+ */
+export async function getPastFriends(myId) {
+  if (!hasSupabase) {
+    return []
+  }
+
+  // No filter needed: the security rules only let you read the members of hangouts you're in
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .select('user_id, hangout_id, profile:profiles(display_name, avatar_color)')
+  if (error) {
+    throw error
+  }
+
+  // The same person appears once per shared hangout: keep one entry each and count the hangouts
+  const friends = []
+  for (const row of data) {
+    if (row.user_id === myId) {
+      continue
+    }
+    const existing = friends.find((f) => f.user_id === row.user_id)
+    if (existing) {
+      existing.together++
+    } else {
+      friends.push({
+        user_id: row.user_id,
+        display_name: row.profile.display_name,
+        avatar_color: row.profile.avatar_color,
+        together: 1,
+      })
+    }
+  }
+  friends.sort((a, b) => b.together - a.together)
+  return friends
+}
+
+/**
+ * Add someone to a hangout. Only the host can, and only people they've shared a hangout with
+ * (security rule "members: host adds past friends" in schema.sql). Used by 06 Starting points.
+ */
+export async function addMember(hangoutId, userId) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    throw new Error("You can't add people to the sample hangout.")
+  }
+
+  const { error } = await supabase
+    .from('hangout_members')
+    .insert({ hangout_id: hangoutId, user_id: userId })
+  if (error) {
+    // 42501 = the security rules said no
+    if (error.code === '42501') {
+      throw new Error('Only the host can add people, and only friends from past hangouts.')
+    }
+    throw error
+  }
+}
+
+/**
  * Join a hangout from an invite link (/login?invite=CODE). Uses the join_hangout
  * database function in supabase/schema.sql.
  * @returns {Promise<string>} the hangout id

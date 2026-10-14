@@ -1,16 +1,13 @@
 <script setup>
 // 05 Create hangout & invite
 // Owner: Matrix · Vet by: Hugo
-// Figma frame "05". Left: hangout details. Right: invite link, share buttons and who's coming.
-// The invite code is made here (not by the database) so the link can be shared before saving.
-import { computed, reactive, ref, watch } from 'vue'
+// Figma frame "05". Left: hangout details. Right: a note that the invite link comes on the next
+// page (06 Starting points has the Invite friends box, using the saved hangout's code).
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import QRCode from 'qrcode'
-import { useAuthStore } from '@/stores/auth'
 import { createHangout, makeInviteCode } from '@/services/hangouts'
 
 const router = useRouter()
-const auth = useAuthStore()
 
 const vibes = [
   { value: 'chill', label: 'Chill' },
@@ -51,72 +48,9 @@ function toggleVibe(value) {
   else form.vibe.splice(i, 1)
 }
 
-// Invite link
+// The invite code is made here and saved with the hangout. Friends get the link on 06 Starting
+// points once the hangout exists (showing it here, before saving, gave links that didn't work yet).
 const inviteCode = makeInviteCode()
-const inviteUrl = `${window.location.origin}${router.resolve({ name: 'auth', query: { invite: inviteCode } }).href}`
-const inviteLabel = inviteUrl.replace(/^https?:\/\//, '')
-const shareText = computed(
-  () =>
-    `Join my hangout${form.name.trim() ? ` "${form.name.trim()}"` : ''} on Fairpoint: ${inviteUrl}`,
-)
-
-const copied = ref(false)
-let copiedTimer
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(inviteUrl)
-    copied.value = true
-    clearTimeout(copiedTimer)
-    copiedTimer = setTimeout(() => (copied.value = false), 2000)
-  } catch {
-    window.prompt('Copy this link:', inviteUrl)
-  }
-}
-
-const whatsappUrl = computed(() => `https://wa.me/?text=${encodeURIComponent(shareText.value)}`)
-const telegramUrl = computed(
-  () =>
-    `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent(
-      shareText.value.replace(`: ${inviteUrl}`, ''),
-    )}`,
-)
-
-const showQr = ref(false)
-const qrDataUrl = ref('')
-watch(showQr, async (open) => {
-  if (open && !qrDataUrl.value) {
-    qrDataUrl.value = await QRCode.toDataURL(inviteUrl, { width: 220, margin: 1 })
-  }
-})
-
-// People list: the host, plus anyone added by name or email (shown as "Invited").
-const palette = ['#7056e0', '#f2684a', '#d6528f', '#4a7fe8', '#f2b33d', '#3f9a5b']
-const hostName = computed(
-  () => auth.user?.user_metadata?.display_name || auth.user?.email?.split('@')[0] || 'You',
-)
-const invitees = ref([])
-const newInvitee = ref('')
-
-function addInvitee() {
-  const name = newInvitee.value.trim()
-  if (!name) return
-  const exists = invitees.value.some((p) => p.name.toLowerCase() === name.toLowerCase())
-  if (!exists) invitees.value.push({ name })
-  newInvitee.value = ''
-}
-
-function removeInvitee(i) {
-  invitees.value.splice(i, 1)
-}
-
-const people = computed(() => [
-  { name: hostName.value, status: 'host' },
-  ...invitees.value.map((p) => ({ ...p, status: 'invited' })),
-])
-
-function initialOf(name) {
-  return name.trim().charAt(0).toUpperCase() || '?'
-}
 
 // Submit
 const busy = ref(false)
@@ -256,78 +190,14 @@ async function submit() {
         </div>
       </section>
 
-      <!-- Invite friends -->
+      <!-- Inviting friends happens on the next page, once the hangout exists -->
       <section class="panel">
-        <h2 class="panel__title mb-1">Invite friends</h2>
-        <p class="panel__sub">Everyone with the link can join and add where they are coming from</p>
-
-        <div class="invite-link">
-          <span class="invite-link__url" :title="inviteUrl">{{ inviteLabel }}</span>
-          <button type="button" class="btn btn-primary btn-sm" @click="copyLink">
-            {{ copied ? 'Copied!' : 'Copy link' }}
-          </button>
-        </div>
-        <p class="invite-note">The link works once you create the hangout.</p>
-
-        <div class="share">
-          <a class="share__btn" :href="whatsappUrl" target="_blank" rel="noopener">WhatsApp</a>
-          <a class="share__btn" :href="telegramUrl" target="_blank" rel="noopener">Telegram</a>
-          <button
-            type="button"
-            class="share__btn"
-            :aria-expanded="showQr"
-            @click="showQr = !showQr"
-          >
-            QR code
-          </button>
-        </div>
-
-        <div v-if="showQr" class="qr">
-          <img
-            v-if="qrDataUrl"
-            :src="qrDataUrl"
-            width="180"
-            height="180"
-            alt="QR code for the invite link"
-          />
-          <p class="qr__hint">Friends can scan this to join.</p>
-        </div>
-
-        <div class="add-person">
-          <span class="add-person__plus" aria-hidden="true">+</span>
-          <input
-            v-model="newInvitee"
-            class="add-person__input"
-            type="text"
-            placeholder="Add by name or email"
-            aria-label="Add a friend by name or email"
-            @keydown.enter.prevent="addInvitee"
-          />
-          <button v-if="newInvitee.trim()" type="button" class="link-btn" @click="addInvitee">
-            Add
-          </button>
-        </div>
-
-        <ul class="people">
-          <li v-for="(p, i) in people" :key="p.name" class="person">
-            <span class="avatar" :style="{ background: palette[i % palette.length] }">
-              {{ initialOf(p.name) }}
-            </span>
-            <span class="person__name">{{ p.name }}</span>
-            <button
-              v-if="p.status === 'invited'"
-              type="button"
-              class="person__remove"
-              :aria-label="`Remove ${p.name}`"
-              @click="removeInvitee(i - 1)"
-            >
-              &times;
-            </button>
-            <span class="badge-status" :class="`badge-status--${p.status}`">
-              {{ p.status === 'host' ? 'Host' : 'Invited' }}
-            </span>
-          </li>
-        </ul>
+        <h2 class="panel__title mb-1">Inviting friends</h2>
+        <p class="panel__sub mb-0">
+          After you click Create, you'll get your hangout's invite link on the next page (Starting
+          points), ready to copy or share on WhatsApp and Telegram. Friends who open it log in and
+          join straight away.
+        </p>
       </section>
     </form>
 
