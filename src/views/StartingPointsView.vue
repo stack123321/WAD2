@@ -13,9 +13,10 @@ import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
-import { updateMemberStart } from '@/services/hangouts'
+import { getHangout, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
+import PastFriends from '@/components/start/PastFriends.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 
 const route = useRoute()
@@ -69,6 +70,24 @@ const hostMode = computed(() => {
   const turnedOn = route.query.entry === 'host' || store.hangout.host_enters_starts === true
   return isHost && turnedOn
 })
+
+// The logged-in host of a real (saved) hangout: can add friends from past hangouts
+const isRealHost = computed(() => {
+  if (!store.hangout || !auth.user || route.params.id === 'demo') {
+    return false
+  }
+  return store.hangout.host_id === auth.user.id
+})
+
+// After adding someone, get the hangout again so they appear in Your group and on the map.
+// (store.load skips hangouts it already has, so fetch it here and put the fresh copy in the store.)
+async function reloadHangout() {
+  try {
+    store.hangout = await getHangout(route.params.id)
+  } catch (error) {
+    console.error(error)
+  }
+}
 
 // Whose starting point the search box and the draggable pin are setting:
 // you (targetId is null), or in host mode the friend you picked with Set / Change.
@@ -281,6 +300,15 @@ function onPinOutside() {
           :editing-id="editingId"
           :host-mode="hostMode"
           @select="startEditing"
+        />
+
+        <!-- Host only: add people from past hangouts without sending the link again -->
+        <PastFriends
+          v-if="isRealHost"
+          class="mb-4"
+          :hangout="store.hangout"
+          :my-id="myId"
+          @added="reloadHangout"
         />
 
         <RouterLink
