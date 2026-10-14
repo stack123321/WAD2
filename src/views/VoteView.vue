@@ -14,7 +14,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { castVote, closeVote, getVotes, isMockHangout, subscribeToVotes } from '@/services/votes'
-import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
@@ -203,12 +202,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <HangoutBar
-    v-if="hangout && !store.loading"
-    :hangout="hangout"
-    :members="store.members"
-    current="vote"
-  />
   <main class="container py-4">
     <div class="row g-4">
       <div class="col-12 col-lg-8">

@@ -3,35 +3,23 @@
 //   NEA on data.gov.sg: 2-hour forecast, today's forecast, 4-day outlook, haze (PSI)
 //     Docs: https://guide.data.gov.sg/ (search "weather forecast" and "PSI")
 //   Open-Meteo: hourly forecast (temperature, rain chance, humidity, UV) up to 16 days ahead,
-//     which NEA doesn't offer. Docs: https://open-meteo.com/en/docs
+//     which NEA doesn't have. Docs: https://open-meteo.com/en/docs
+import axios from 'axios'
 
-const NEA = 'https://api-open.data.gov.sg/v2/real-time/api'
-const CACHE_MS = 5 * 60 * 1000 // NEA updates every 30 min, so several cards on a page can share one call
-const SG_OFFSET_MS = 8 * 60 * 60 * 1000 // Singapore is always UTC+8 (no daylight saving)
-
-const cache = {} // url → { at, promise }
-
-/** GET a URL as JSON. Calls to the same URL within 5 minutes reuse the answer. */
-function getJson(url) {
-  const hit = cache[url]
-  if (hit && Date.now() - hit.at < CACHE_MS) return hit.promise
-
-  const promise = fetch(url).then((res) => {
-    if (!res.ok) throw new Error(`${url} failed: ${res.status}`)
-    return res.json()
-  })
-  cache[url] = { at: Date.now(), promise }
-  promise.catch(() => delete cache[url]) // don't keep a failed call; try again next time
-  return promise
-}
+const NEA_URL = 'https://api-open.data.gov.sg/v2/real-time/api'
+const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 
 /** GET a data.gov.sg endpoint and return its "data" part. */
 async function getNea(path) {
-  const body = await getJson(`${NEA}/${path}`)
-  if (body.code !== 0) throw new Error(`NEA ${path} failed: ${body.errorMsg}`)
-  return body.data
+  const response = await axios.get(`${NEA_URL}/${path}`)
+  // NEA's own success flag is code 0
+  if (response.data.code !== 0) {
+    throw new Error(`NEA ${path} failed: ${response.data.errorMsg}`)
+  }
+  return response.data.data
 }
 
+// Part (a) 2-hour forecast
 /**
  * 2-hour forecast for the NEA area nearest a point.
  * @returns {Promise<{ area: string, forecast: string, rain: boolean, validUntil: string }>}
@@ -40,13 +28,17 @@ export async function getTwoHourForecast(lat, lng) {
   const data = await getNea('two-hr-forecast')
   const latest = data.items[0]
 
-  // area_metadata has each area's position; forecasts has each area's weather. Join them by name.
-  const areas = data.area_metadata.map((a) => ({
-    name: a.name,
-    lat: a.label_location.latitude,
-    lng: a.label_location.longitude,
-    forecast: latest.forecasts.find((f) => f.area === a.name)?.forecast ?? 'Unknown',
-  }))
+  // NEA gives the areas' positions and their forecasts in two separate lists, so join them by name
+  const areas = []
+  for (const a of data.area_metadata) {
+    const match = latest.forecasts.find((f) => f.area === a.name)
+    areas.push({
+      name: a.name,
+      lat: a.label_location.latitude,
+      lng: a.label_location.longitude,
+      forecast: match ? match.forecast : 'Unknown',
+    })
+  }
 
   const area = nearestArea(areas, lat, lng)
   return {
@@ -57,21 +49,28 @@ export async function getTwoHourForecast(lat, lng) {
   }
 }
 
+// Part (b) 4-day outlook
 /**
  * Outlook for the next 4 days (starting tomorrow), for the week strip on 04 Dashboard.
  * @returns {Promise<Array<{ date: string, forecast: string, rain: boolean, low: number, high: number }>>}
  */
 export async function getDayForecast() {
   const data = await getNea('four-day-outlook')
-  return data.records[0].forecasts.map((day) => ({
-    date: day.timestamp.slice(0, 10), // "2026-10-10T00:00:00+08:00" → "2026-10-10"
-    forecast: day.forecast.summary, // e.g. "Afternoon thundery showers"
-    rain: isRain(day.forecast.summary),
-    low: day.temperature.low,
-    high: day.temperature.high,
-  }))
+
+  const days = []
+  for (const day of data.records[0].forecasts) {
+    days.push({
+      date: day.timestamp.slice(0, 10), // "2026-10-10T00:00:00+08:00" → "2026-10-10"
+      forecast: day.forecast.summary, // e.g. "Afternoon thundery showers"
+      rain: isRain(day.forecast.summary),
+      low: day.temperature.low,
+      high: day.temperature.high,
+    })
+  }
+  return days
 }
 
+// Part (c) Today's forecast
 /**
  * Today's forecast for the whole island, same shape as one day of getDayForecast().
  * @returns {Promise<{ date: string, forecast: string, rain: boolean, low: number, high: number }>}
@@ -79,47 +78,54 @@ export async function getDayForecast() {
 export async function getTodayForecast() {
   const data = await getNea('twenty-four-hr-forecast')
   const record = data.records[0]
-  const general = record.general
+  const forecastText = record.general.forecast.text // e.g. "Partly Cloudy (Day)"
+
   return {
     date: record.date,
-    forecast: general.forecast.text, // e.g. "Partly Cloudy (Day)"
-    rain: isRain(general.forecast.text),
-    low: general.temperature.low,
-    high: general.temperature.high,
+    forecast: forecastText,
+    rain: isRain(forecastText),
+    low: record.general.temperature.low,
+    high: record.general.temperature.high,
   }
 }
 
+// Part (d) Hourly forecast (Open-Meteo)
 /**
- * Hourly forecast at a point from Open-Meteo, from today up to 16 days ahead.
+ * Hourly forecast at a point, from today up to 16 days ahead.
  * @returns {Promise<Array<{ time: string, temp: number, rainChance: number, humidity: number,
  *   uv: number, condition: string, kind: string }>>} time is Singapore time, e.g. "2026-10-16T19:00"
  */
 export async function getHourlyForecast(lat, lng) {
-  const params = new URLSearchParams({
-    // rounded so nearby points share one cached call (0.01° ≈ 1 km)
-    latitude: lat.toFixed(2),
-    longitude: lng.toFixed(2),
-    hourly:
-      'temperature_2m,precipitation_probability,relative_humidity_2m,uv_index,weather_code,is_day',
-    timezone: 'Asia/Singapore',
-    forecast_days: '16',
+  const response = await axios.get(OPEN_METEO_URL, {
+    params: {
+      latitude: lat,
+      longitude: lng,
+      hourly:
+        'temperature_2m,precipitation_probability,relative_humidity_2m,uv_index,weather_code,is_day',
+      timezone: 'Asia/Singapore',
+      forecast_days: 16,
+    },
   })
-  const data = await getJson(`https://api.open-meteo.com/v1/forecast?${params}`)
-  const h = data.hourly
-  return h.time.map((time, i) => {
-    const condition = wmoText(h.weather_code[i])
-    return {
-      time,
-      temp: Math.round(h.temperature_2m[i]),
-      rainChance: h.precipitation_probability[i] ?? 0,
-      humidity: h.relative_humidity_2m[i],
-      uv: Math.round(h.uv_index[i] ?? 0),
-      condition,
-      kind: weatherKind(condition, h.is_day[i] === 1),
-    }
-  })
+  const hourly = response.data.hourly
+
+  // Open-Meteo sends one list per measurement; hour i is position i in every list
+  const hours = []
+  for (let i = 0; i < hourly.time.length; i++) {
+    const condition = wmoText(hourly.weather_code[i])
+    hours.push({
+      time: hourly.time[i],
+      temp: Math.round(hourly.temperature_2m[i]),
+      rainChance: hourly.precipitation_probability[i] ?? 0,
+      humidity: hourly.relative_humidity_2m[i],
+      uv: Math.round(hourly.uv_index[i] ?? 0),
+      condition: condition,
+      kind: weatherKind(condition, hourly.is_day[i] === 1),
+    })
+  }
+  return hours
 }
 
+// Part (e) Haze
 /**
  * Haze right now: the 24-hour PSI for the region (north/south/east/west/central) nearest a point.
  * Without a point, the worst region (NEA has no island-wide number).
@@ -128,22 +134,30 @@ export async function getHourlyForecast(lat, lng) {
  */
 export async function getHaze(lat, lng) {
   const data = await getNea('psi')
-  const readings = data.items[0].readings.psi_twenty_four_hourly
+  const readings = data.items[0].readings.psi_twenty_four_hourly // { north: 127, south: 162, ... }
 
-  let region
+  let region = ''
   if (lat == null || lng == null) {
-    region = Object.keys(readings).reduce((worst, r) => (readings[r] > readings[worst] ? r : worst))
+    // no point given: use the region with the highest PSI
+    for (const name of Object.keys(readings)) {
+      if (region === '' || readings[name] > readings[region]) {
+        region = name
+      }
+    }
   } else {
-    const regions = data.regionMetadata.map((r) => ({
-      name: r.name,
-      lat: r.labelLocation.latitude,
-      lng: r.labelLocation.longitude,
-    }))
+    const regions = []
+    for (const r of data.regionMetadata) {
+      regions.push({ name: r.name, lat: r.labelLocation.latitude, lng: r.labelLocation.longitude })
+    }
     region = nearestArea(regions, lat, lng).name
   }
+
   const psi = readings[region]
-  return { region, psi, ...psiLevel(psi) }
+  const band = psiLevel(psi)
+  return { region: region, psi: psi, level: band.level, tone: band.tone }
 }
+
+// ── Helpers ──
 
 /** NEA's PSI bands. https://www.haze.gov.sg/ */
 export function psiLevel(psi) {
@@ -165,14 +179,18 @@ export function uvLevel(uv) {
 
 /** A Date or ISO string → Singapore hour in Open-Meteo's format, e.g. "2026-10-16T19:00". */
 export function sgHourKey(when) {
-  const local = new Date(new Date(when).getTime() + SG_OFFSET_MS)
-  return local.toISOString().slice(0, 13) + ':00'
+  // Singapore is always 8 hours ahead of UTC, so add 8 hours and read the UTC time
+  const sgTime = new Date(new Date(when).getTime() + 8 * 60 * 60 * 1000)
+  return sgTime.toISOString().slice(0, 13) + ':00'
 }
 
 /** "2026-10-16T19:00" → "7 PM" */
 export function hourLabel(hourKey) {
   const hour = Number(hourKey.slice(11, 13))
-  return `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`
+  let hour12 = hour % 12
+  if (hour12 === 0) hour12 = 12
+  if (hour < 12) return `${hour12} AM`
+  return `${hour12} PM`
 }
 
 /** A Date or ISO string → "Fri 7 PM" in Singapore time. */
@@ -190,10 +208,10 @@ export function nearestArea(areas, lat, lng) {
   let best = areas[0]
   let bestDist = Infinity
   for (const area of areas) {
-    const d = (area.lat - lat) ** 2 + (area.lng - lng) ** 2
-    if (d < bestDist) {
+    const dist = (area.lat - lat) ** 2 + (area.lng - lng) ** 2
+    if (dist < bestDist) {
       best = area
-      bestDist = d
+      bestDist = dist
     }
   }
   return best
@@ -201,7 +219,13 @@ export function nearestArea(areas, lat, lng) {
 
 /** True if a forecast text means rain, e.g. "Thundery Showers". Used for "indoor when raining". */
 export function isRain(forecast) {
-  return /rain|shower|thunder|drizzle/i.test(forecast)
+  const text = forecast.toLowerCase()
+  return (
+    text.includes('rain') ||
+    text.includes('shower') ||
+    text.includes('thunder') ||
+    text.includes('drizzle')
+  )
 }
 
 /**
@@ -212,9 +236,9 @@ export function weatherKind(forecast, isDay = true) {
   const text = forecast.toLowerCase()
   if (text.includes('thunder')) return 'thunder'
   if (isRain(text)) return 'rain'
-  if (/haz|mist|fog/.test(text)) return 'haze'
+  if (text.includes('haz') || text.includes('mist') || text.includes('fog')) return 'haze'
   if (text.includes('partly') || text.includes('mainly clear')) return 'partly'
-  if (/cloud|overcast/.test(text)) return 'cloud'
+  if (text.includes('cloud') || text.includes('overcast')) return 'cloud'
   if (text.includes('night') || !isDay) return 'night'
   return 'sun' // fair, sunny, clear, warm
 }

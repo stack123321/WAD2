@@ -12,7 +12,6 @@ import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone } from '@/services/votes'
-import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import TripTable from '@/components/voting/TripTable.vue'
 import {
   calendarUrl,
@@ -134,12 +133,6 @@ onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
-  <HangoutBar
-    v-if="hangout && !store.loading"
-    :hangout="hangout"
-    :members="store.members"
-    current="final-plan"
-  />
   <main class="container py-4">
     <header class="mb-4">
       <h1 class="h2 mb-0">Final plan & itinerary</h1>
