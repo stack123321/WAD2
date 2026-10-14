@@ -240,6 +240,15 @@ A pattern for matching text, written between slashes. `^` means "starts here", `
 ```
 Used in: [smoke.spec.js](../tests/e2e/smoke.spec.js) to match the dashboard greeting at any time of day, and `getByLabel(/Time today/)` in [midpoint.spec.js](../tests/e2e/midpoint.spec.js). `$` on its own: `/\/start$/` in [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) means "the URL ends with `/start`", whatever the hangout id before it is (`\/` is a `/` inside a regex).
 
+### `\d` and `+`
+`\d` means "any digit, 0–9". `+` after something means "one or more of it". Together, `\d+` matches a whole number of any length.
+```js
+/\d+ busy/.test('12 busy') // true
+/\d+ busy/.test('0 busy') // true
+/\d+ busy/.test('busy') // false: no number
+```
+Used in: [dashboard.spec.js](../tests/e2e/dashboard.spec.js) to check the "Crowds right now" counts without caring what the numbers are, since live LTA data changes all day.
+
 ## Comments
 
 ### JSDoc: `/** @param ... @returns ... */`

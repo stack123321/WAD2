@@ -25,9 +25,11 @@ test('Open vote goes to the voting page', async ({ page }) => {
   await expect(page).toHaveURL('/hangouts/demo/vote')
 })
 
-test('Crowds right now shows at most 4 stations', async ({ page }) => {
+test('Crowds right now counts stations and opens the heat map', async ({ page }) => {
   await page.goto('/dashboard')
-  const bars = page.locator('.progress')
-  await expect(bars.first()).toBeVisible()
-  expect(await bars.count()).toBeLessThanOrEqual(4)
+  await expect(page.getByText(/\d+ busy/)).toBeVisible()
+  await page.getByRole('link', { name: 'Open heat map →' }).click()
+  await expect(page).toHaveURL('/crowds')
+  await expect(page.locator('#crowd-map path.crowd').first()).toBeVisible()
+  await expect(page.locator('#crowd-map path.crowd-midpoint')).toHaveCount(0)
 })
