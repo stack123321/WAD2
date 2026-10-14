@@ -1,6 +1,6 @@
 # Team to-do
 
-**Last updated 13 Oct 2026**, checked against `main` after PR #10, in the browser at phone and laptop width. Tests: 26 pass, 6 fail (smoke-test headings).
+**Last updated 14 Oct 2026**, checked against `main`. Tests: 26 pass, 6 fail on `main` (smoke-test headings); all 33 pass with the smoke-test PR.
 
 Everything left to do, from three sources:
 
@@ -55,7 +55,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 |---|---|---|---|
 | Edit the proposal (accept the use-case regrouping, fold past places into recommendations, replace "Responsive and validated" with a Design principles section) and **send it to the prof**, with Surya | F, M2 | M | ✅ submitted |
 | **Update the Figma** (use-case sections, Midway → Fairpoint, step bar on 06–12), then run the team walkthrough with `docs/figma-walkthrough.md` | F | L | ✅ |
-| **"Past" tab on 04 Dashboard**: show where the group went. Unblocked: closing a vote now saves the final spot and `getMyHangouts()` returns it | M3 | M | 🔜 |
+| **"Past" tab on 04 Dashboard**: show where the group went. Unblocked: closing a vote now saves the final spot and `getMyHangouts()` returns it | M3 | M | ✅ PR open (`feat/past-tab`) |
 | Responsive check on 04 and 08, "Show more" on Crowds right now, phone fix on hangout cards | M4, M7, F | M | ✅ |
 | Swap Hugo's spinner and banners into 04 and 08 | F | S | ⏸ Hugo |
 | Step bar on 08 | F | S | ✅ (App.vue adds it to every hangout page) |
@@ -74,7 +74,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 |---|---|---|---|
 | **Save hangout history**: the final spot is saved when the vote closes (`closeVote`), `markHangoutDone` sets a hangout to done, `getMyHangouts()` is real | M3, C | M | ✅ |
 | **Different groups**: create, invite from 06, join, leave / delete, and see all your hangouts on 04 | M6 | L | 🟡 built; Eashvar's two-group test still to confirm nothing mixes |
-| **Form validation** on login, sign up, preferences and create hangout | M5 | M | 🟡 **Create**: name required, date in the future ✅. **Log in / sign up**: button disabled until filled, "8 characters" hint, but the form has `novalidate` and there is **no email-format check**. **Preferences**: no validation yet |
+| **Form validation** on login, sign up, preferences and create hangout | M5 | M | ✅ email format and password length on log in / sign up, at least one activity on preferences, name and future date on create |
 | Decide the Invitation card on the dashboard (there's no invitations table) | C | S | 🔜 |
 | `matchScore.js`: score activities, dietary, budget, indoor-if-rain, avoid-crowds (still a TODO in the code) | C | M | 🔜 |
 
@@ -90,8 +90,8 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 ### Nicole
 | Task | From | Size | Status |
 |---|---|---|---|
-| **Midpoint for any group**: `pickFairestArea()` for 2 to N people, skipping anyone without a starting point (still a TODO in `utils/midpoint.js`) | M6 | M | 🔜 |
-| **Validation on 07**: everyone needs a mode before "Find midpoint" works. Right now "Find our midpoint" is a plain link that works even when someone hasn't picked | M5 | S | 🔜 |
+| **Midpoint for any group**: `pickFairestArea()` for 2 to N people, skipping anyone without a starting point | M6 | M | ✅ |
+| **Validation on 07**: everyone needs a mode before "Find midpoint" works | M5 | S | ✅ "Find our midpoint" is blocked until everyone has a mode |
 | Step bar on 07 | F | S | ✅ |
 
 ### Eashvar
@@ -100,7 +100,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 | **Intuitive check**: walk through 01 → 12 as a new user, list anything confusing, share it so each owner fixes their own | M7 | M | 🔜 |
 | **Test with different groups**: two separate hangouts with different members, checking they don't mix | M6 | M | 🔜 |
 | **Validation on 11 and 12**: can't vote twice, can't close a vote with no votes | M5 | S | 🟡 vote button is disabled when you can't vote ✅. The host **can** close with zero votes (the winner defaults to the best match): decide as a team whether to block it |
-| **Fix the smoke test** for the new headings on 01, 02, 03, 05, 09 and the main flow ("Sign up" link is gone from 01). 6 tests fail on `main` | C | S | 🔜 |
+| **Fix the smoke test** for the new headings on 01, 02, 03, 05, 09 and the main flow ("Sign up" link is gone from 01). 6 tests fail on `main` | C | S | ✅ taken over by Ryan, PR open (`fix/smoke-test`): all 33 tests pass |
 | Step bar on 11 and 12 | F | S | ✅ |
 
 ### Everyone
@@ -112,7 +112,7 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 
 ## Order that matters
 
-1. **History:** ~~Matrix saves it~~ ✅ → Ryan shows it on the dashboard → Hugo suggests from it. **Both are unblocked now.**
+1. **History:** ~~Matrix saves it~~ ✅ → ~~Ryan shows it on the dashboard~~ ✅ (PR open) → Hugo suggests from it on 09.
 2. **Shared UI:** Hugo's spinner and banners → everyone swaps them in.
 3. **Figma:** ~~Ryan updates it~~ ✅ → ~~team walkthrough~~ ✅ → Eashvar's intuitive check on the real app.
 4. **Proposal:** ~~Ryan and Surya edit it → send it to the prof~~ ✅ submitted.
@@ -121,11 +121,11 @@ Status: ✅ done in `main` · 🟡 partly done · 🔜 to do · ⏸ waiting on s
 
 | Person | Open tasks |
 |---|---|
-| Ryan | Past tab (+ swap spinner when Hugo's ready) |
+| Ryan | Nothing left (swap spinner and banners into 04 and 08 when Hugo's are ready) |
 | Surya | Nothing left. Free to take work from others (see below) |
-| Matrix | Finish validation, Invitation card, `matchScore.js` |
+| Matrix | Invitation card, `matchScore.js` |
 | Hugo | **Page 09 on phones**, spinner and banners, past places on 09, responsive lead and nav bar |
-| Nicole | `pickFairestArea()`, validation on 07 |
-| Eashvar | Intuitive check, two-group test, vote validation, smoke test |
+| Nicole | Nothing left |
+| Eashvar | Intuitive check, two-group test, vote validation |
 
 **Hugo has the most left, and his spinner and banners block everyone.** Surya has the least. Surya could take the **responsive lead** (checking every page and reporting) so Hugo can focus on the shared components and page 09.
