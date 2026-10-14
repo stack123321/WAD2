@@ -3,7 +3,7 @@
 // Owner: Matrix · Vet by: Hugo
 // Figma frame "03". Reads and writes the logged-in user's profiles row.
 // ?setup=1 (sent by sign up) shows the onboarding progress bar and "Skip for now".
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
@@ -66,6 +66,37 @@ const saving = ref(false)
 const error = ref('')
 const saved = ref(false)
 
+// Validation. The chips, budget and slider only offer fixed choices, so the checks are:
+// at least one activity (ranking needs something to go on), and cleaning values loaded from
+// the database (an older version may have saved an option we no longer offer).
+const showErrors = ref(false)
+const activitiesPanel = ref(null)
+
+const activitiesError = computed(() =>
+  prefs.activities.length === 0 ? 'Pick at least one so we can suggest spots you’ll enjoy.' : '',
+)
+const shownActivitiesError = computed(() => (showErrors.value ? activitiesError.value : ''))
+
+function clean(profile) {
+  const known = (options) => new Set(options.map((o) => o.value))
+  const activities = known(activityOptions)
+  const dietary = known(dietaryOptions)
+  const budgets = known(budgetOptions)
+  const mins = Number(profile.max_travel_mins)
+
+  return {
+    activities: (profile.activities ?? []).filter((a) => activities.has(a)),
+    dietary: (profile.dietary ?? []).filter((d) => dietary.has(d)),
+    budget: budgets.has(profile.budget) ? profile.budget : defaultPreferences.budget,
+    max_travel_mins: Number.isFinite(mins)
+      ? Math.min(travel.max, Math.max(travel.min, Math.round(mins / travel.step) * travel.step))
+      : defaultPreferences.max_travel_mins,
+    indoor_if_rain: Boolean(profile.indoor_if_rain),
+    avoid_crowds: Boolean(profile.avoid_crowds),
+    step_free: Boolean(profile.step_free),
+  }
+}
+
 const userId = computed(() => auth.user?.id ?? (hasSupabase ? null : 'mock-user'))
 
 // Load once we know who is logged in
@@ -81,7 +112,7 @@ watch(
     error.value = ''
     try {
       const profile = await getProfile(id)
-      for (const key of Object.keys(defaultPreferences)) prefs[key] = profile[key]
+      Object.assign(prefs, clean(profile))
       displayName.value =
         profile.display_name ||
         auth.user?.user_metadata?.display_name ||
@@ -113,9 +144,17 @@ watch(prefs, () => (saved.value = false))
 
 async function save() {
   error.value = ''
+  showErrors.value = true
+  if (activitiesError.value) {
+    await nextTick()
+    activitiesPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    activitiesPanel.value?.querySelector('.chip')?.focus({ preventScroll: true })
+    return
+  }
+
   saving.value = true
   try {
-    await saveProfile(userId.value, displayName.value, { ...prefs })
+    await saveProfile(userId.value, displayName.value, clean(prefs))
     if (isSetup.value) {
       router.push({ name: 'dashboard' })
     } else {
@@ -160,10 +199,19 @@ async function save() {
     <form v-else id="prefs-form" novalidate @submit.prevent="save">
       <div class="prefs__grid">
         <div class="prefs__col">
-          <section class="panel">
-            <h2 class="panel__title">What do you enjoy?</h2>
-            <p class="panel__sub">Pick as many as you like</p>
-            <div class="chips">
+          <section
+            ref="activitiesPanel"
+            class="panel"
+            :class="{ 'panel--invalid': shownActivitiesError }"
+          >
+            <h2 id="prefs-activities-title" class="panel__title">What do you enjoy?</h2>
+            <p class="panel__sub">Pick at least one, as many as you like</p>
+            <div
+              class="chips"
+              role="group"
+              aria-labelledby="prefs-activities-title"
+              aria-describedby="prefs-activities-error"
+            >
               <button
                 v-for="o in activityOptions"
                 :key="o.value"
@@ -176,6 +224,14 @@ async function save() {
                 {{ o.label }}
               </button>
             </div>
+            <p
+              v-if="shownActivitiesError"
+              id="prefs-activities-error"
+              class="field-error"
+              role="alert"
+            >
+              {{ shownActivitiesError }}
+            </p>
           </section>
 
           <section class="panel">
@@ -365,6 +421,16 @@ async function save() {
 .panel__sub {
   margin-bottom: 1rem;
   color: var(--fp-muted);
+  font-size: 0.8rem;
+}
+
+.panel--invalid {
+  border-color: var(--bs-form-invalid-border-color);
+}
+
+.field-error {
+  margin: 0.75rem 0 0;
+  color: var(--bs-form-invalid-color);
   font-size: 0.8rem;
 }
 

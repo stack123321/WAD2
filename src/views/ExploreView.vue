@@ -103,18 +103,27 @@ const hangout = useHangoutStore()
 hangout.load(route.params.id)
 
 // Placeholder values until wired to the hangout store
-function onScroll(){
-  const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-      
-      // Do nothing if scroll position hasn't changed much
-      if (Math.abs(currentScrollPosition - this.lastScrollPosition) < 60) {
-        return;
-      }
+const startsAt = '2026-10-16T19:00:00+08:00'
+const formattedDate = computed(() =>
+  new Date(startsAt).toLocaleString('en-SG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }),
+)
 
-      // Hide if scrolling down, show if scrolling up
-      this.showNavbar = currentScrollPosition < this.lastScrollPosition;
-      this.lastScrollPosition = currentScrollPosition;
-}
+const steps = ['Starting points', 'Transport', 'Midpoint', 'Spots', 'Vote', 'Final plan']
+const currentStep = 3
+
+const people = [
+  { name: 'Ryan', color: '#0E7C6B' },
+  { name: 'Nicole', color: '#F2684A' },
+  { name: 'Surya', color: '#6C63FF' },
+  { name: 'Hugo', color: '#E0A100' },
+]
+
 // Placeholder spots until wired to the places service
 const spots = ref(spotsMock)
 

@@ -27,5 +27,37 @@ export function fairness(travelMins) {
   return { longest, gap: longest - shortest, average: Math.round(average) }
 }
 
-// TODO(Nicole): pickFairestArea(candidates, members, optimiseFor) → minimise the longest trip
-// and the gap between trips ('fairest'), or the average ('fastest'), or total cost ('cheapest').
+/** Areas we test as possible midpoints. Coordinates are the MRT stations (approximate). */
+export const CANDIDATE_AREAS = [
+  { name: 'Bishan', lat: 1.3508, lng: 103.8485 },
+  { name: 'Toa Payoh', lat: 1.3327, lng: 103.8474 },
+  { name: 'Novena', lat: 1.3204, lng: 103.8438 },
+  { name: 'Serangoon', lat: 1.3498, lng: 103.8737 },
+  { name: 'Dhoby Ghaut', lat: 1.299, lng: 103.8455 },
+  { name: 'Buona Vista', lat: 1.3072, lng: 103.79 },
+]
+
+/**
+ * Score every candidate area and sort best first.
+ * @param {Array<{ name: string, lat: number, lng: number, travelMins: number[], travelCosts: number[] }>} candidates
+ *   travelMins / travelCosts: one entry per person, in the same order as the members
+ * @param {'fairest' | 'fastest' | 'cheapest'} optimiseFor
+ */
+export function rankAreas(candidates, optimiseFor = 'fairest') {
+  const scored = candidates.map((c) => {
+    const f = fairness(c.travelMins)
+    const totalCost = c.travelCosts.reduce((a, b) => a + b, 0)
+    let score
+    if (optimiseFor === 'fastest') score = f.average
+    else if (optimiseFor === 'cheapest') score = totalCost
+    else score = f.longest + f.gap // fairest: short longest trip AND trips close together
+    return { ...c, ...f, totalCost, score }
+  })
+  // Lower score wins; on a tie, the lower average time wins
+  return scored.sort((a, b) => a.score - b.score || a.average - b.average)
+}
+
+/** The single best area, or null if there are no candidates. */
+export function pickFairestArea(candidates, optimiseFor = 'fairest') {
+  return rankAreas(candidates, optimiseFor)[0] ?? null
+}

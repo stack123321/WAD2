@@ -1,31 +1,60 @@
    <script setup>
   // 07 Mode of transport
   // Owner: Nicole · Vet by: Surya
-  import { computed, onMounted } from 'vue'
-  import { fairness } from '@/utils/midpoint'
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { fairness, rankAreas, CANDIDATE_AREAS } from '@/utils/midpoint'
   import { useRoute } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
   import { getRoute } from '@/services/routing'
 
   const route = useRoute()
+  const optimiseFor = ref('fairest')
+  const ranked = ref([])
   const store = useHangoutStore()
   const modes = ['mrt', 'bus', 'car', 'walk']
   const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
+  const missingMode = computed(() => store.members.filter((m) => !m.mode))
+  const allPicked = computed(() => store.members.length > 0 && missingMode.value.length === 0)
+
+
+
+  async function scoreAreas() {
+    const members = store.members.filter((m) => m.mode)
+    if (members.length === 0) return
+
+    // Travel time for every person to every candidate area
+    const candidates = await Promise.all(
+      CANDIDATE_AREAS.map(async (area) => {
+        const routes = await Promise.all(
+          members.map((m) => getRoute({ lat: m.start_lat, lng: m.start_lng }, area, m.mode)),
+        )
+        return { ...area, travelMins: routes.map((r) => r.mins), travelCosts: routes.map((r) => r.cost) }
+      }),
+    )
+    ranked.value = rankAreas(candidates, optimiseFor.value)
+
+    const best = ranked.value[0]
+    members.forEach((m, i) => {
+      m.travel_mins = best.travelMins[i]
+      m.travel_cost = best.travelCosts[i]
+    })
+  }
 
   async function pickMode(m, mode) {
-    m.mode = mode // highlight the button straight away
-
-    const from = { lat: m.start_lat, lng: m.start_lng }
-    const to = { lat: store.hangout.midpoint_lat, lng: store.hangout.midpoint_lng }
-
+    m.mode = mode
     try {
-      const result = await getRoute(from, to, mode)
-      m.travel_mins = result.mins
-      m.travel_cost = result.cost
+      await scoreAreas()
     } catch (e) {
-      console.error('Could not get travel time', e)
+      console.error('Could not get travel times', e)
     }
   }
+
+
+  onMounted(async () => {
+    await store.load(route.params.id)
+    await scoreAreas()
+  })
+  watch(optimiseFor, scoreAreas)
 
   // Longest, shortest and gap across everyone's current travel times
   const stats = computed(() => {
@@ -40,13 +69,7 @@
     return (mins / scale) * 100 + '%'
   }
 
-  // TODO(Nicole): replace the two sample rows once pickFairestArea is written
-  const otherAreas = [
-    { name: 'Toa Payoh (sample)', average: 30, gap: 15 },
-    { name: 'Novena (sample)', average: 32, gap: 19 },
-  ]
 
-  onMounted(() => store.load(route.params.id))
 </script>
 
    <template>
@@ -74,57 +97,63 @@
             </div>
 
             <div class="time">
-              <div class="mins">{{ m.travel_mins }} min</div>
-              <div class="cost">${{ m.travel_cost.toFixed(2) }} one way</div>
+              <template v-if="m.mode">
+                <div class="mins">{{ m.travel_mins }} min</div>
+                <div class="cost">${{ m.travel_cost.toFixed(2) }} one way</div>
+              </template>
+              <div v-else class="cost">Pick a mode</div>
             </div>
           </div>
         </div>
 
         <!-- Right column: travel-time bars and candidate areas go here later -->
         <div v-if="stats" class="col-lg-4">
-  <!-- Travel time bars -->
-  <div class="panel">
-    <h2 class="panel-title">Travel time to {{ store.hangout.midpoint_name }}</h2>
-    <p class="panel-sub">Best candidate area so far</p>
+          <!-- Travel time bars -->
+          <div class="panel">
+            <h2 class="panel-title">Travel time to {{ ranked[0]?.name }}</h2>
+            <p class="panel-sub">Best candidate area so far</p>
 
-    <div v-for="m in store.members" :key="m.user_id" class="bar-row">
-      <span class="bar-name">{{ m.display_name }}</span>
-      <div class="bar-track">
-        <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: m.avatar_color }"></div>
-      </div>
-      <span class="bar-mins">{{ m.travel_mins }} min</span>
-    </div>
+            <div v-for="m in store.members" :key="m.user_id" class="bar-row">
+              <span class="bar-name">{{ m.display_name }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: m.avatar_color }"></div>
+              </div>
+              <span class="bar-mins">{{ m.travel_mins }} min</span>
+            </div>
 
-    <div class="chips">
-      <span class="chip">Longest {{ stats.longest }} min</span>
-      <span class="chip">Shortest {{ stats.shortest }} min</span>
-      <span class="chip chip-good">Gap {{ stats.gap }} min<template v-if="stats.gap <= 15"> · fair</template></span>
-    </div>
-  </div>
+            <div class="chips">
+              <span class="chip">Longest {{ stats.longest }} min</span>
+              <span class="chip">Shortest {{ stats.shortest }} min</span>
+              <span class="chip chip-good">Gap {{ stats.gap }} min<template v-if="stats.gap <= 15"> ·
+                  fair</template></span>
+            </div>
+          </div>
 
-  <!-- Candidate areas -->
-  <div class="panel">
-    <h2 class="panel-title">Candidate areas</h2>
-    <div class="area-row area-head">
-      <span>Area</span><span>Avg time</span><span>Gap</span>
-    </div>
-    <div class="area-row area-best">
-      <span><strong>{{ store.hangout.midpoint_name }}</strong> <span class="badge-best">Best</span></span>
-      <span>{{ stats.average }} min</span>
-      <span>{{ stats.gap }} min</span>
-    </div>
-    <div v-for="a in otherAreas" :key="a.name" class="area-row">
-      <span><strong>{{ a.name }}</strong></span>
-      <span>{{ a.average }} min</span>
-      <span>{{ a.gap }} min</span>
-    </div>
-  </div>
+          <!-- Candidate areas -->
+          <div class="panel">
+            <h2 class="panel-title">Candidate areas</h2>
+            <div class="area-row area-head">
+              <span>Area</span><span>Avg time</span><span>Gap</span>
+            </div>
+            <div v-for="(a, i) in ranked.slice(0, 3)" :key="a.name" class="area-row" :class="{ 'area-best': i === 0 }">
+              <span><strong>{{ a.name }}</strong> <span v-if="i === 0" class="badge-best">Best</span></span>
+              <span>{{ a.average }} min</span>
+              <span>{{ a.gap }} min</span>
+            </div>
+          </div>
 
-  <RouterLink class="btn btn-primary btn-lg w-100" :to="{ name: 'midpoint', params: { id: route.params.id } }">
-    Find our midpoint →
-  </RouterLink>
-  <p class="footnote">Travel times via OneMap routing + LTA DataMall</p>
-</div>
+          <RouterLink v-if="allPicked" class="btn btn-primary btn-lg w-100"
+            :to="{ name: 'midpoint', params: { id: route.params.id } }">
+            Find our midpoint →
+          </RouterLink>
+          <template v-else>
+            <button class="btn btn-primary btn-lg w-100" disabled>Find our midpoint →</button>
+            <p class="footnote">
+              Waiting for {{missingMode.map((m) => m.display_name).join(', ')}} to pick a mode
+            </p>
+          </template>
+          <p class="footnote">Travel times via OneMap routing + LTA DataMall</p>
+        </div>
       </div>
     </section>
   </template>
@@ -255,7 +284,8 @@
 .bar-fill {
   height: 100%;
   border-radius: 99px;
-  transition: width 0.3s; /* bar slides when the mode changes */
+  transition: width 0.3s;
+  /* bar slides when the mode changes */
 }
 
 .bar-mins {
@@ -323,5 +353,4 @@
   font-size: 0.75rem;
   margin-top: 0.6rem;
 }
-
 </style>

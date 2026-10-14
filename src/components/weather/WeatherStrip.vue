@@ -21,7 +21,8 @@ const error = ref(false)
 
 const RAINY = 40 // % chance of rain worth mentioning
 
-async function load() {
+// Part (a) Load the hourly forecast and haze
+async function loadData() {
   loading.value = true
   error.value = false
   try {
@@ -29,38 +30,69 @@ async function load() {
   } catch (err) {
     console.error(err)
     error.value = true
-  } finally {
-    loading.value = false
   }
-  getHaze(props.lat, props.lng)
-    .then((h) => (haze.value = h))
-    .catch((err) => console.error(err))
+  loading.value = false
+
+  // Haze is extra: if it fails, the strip still shows the forecast
+  try {
+    haze.value = await getHaze(props.lat, props.lng)
+  } catch (err) {
+    console.error(err)
+  }
 }
 
-onMounted(load)
-watch(() => [props.lat, props.lng], load)
+onMounted(loadData)
+watch(() => [props.lat, props.lng], loadData)
 
-const when = computed(() => props.at ?? new Date().toISOString())
-const index = computed(() => hours.value.findIndex((h) => h.time === sgHourKey(when.value)))
-const current = computed(() => hours.value[index.value] ?? null)
+// Part (b) The hour of the hangout (or now)
+const index = computed(() => {
+  let when = new Date().toISOString()
+  if (props.at) {
+    when = props.at
+  }
+  const key = sgHourKey(when)
+  return hours.value.findIndex((h) => h.time === key)
+})
 
-// Second line: what the rain does over the next 3 hours, and whether the spot copes with it
+const current = computed(() => {
+  if (index.value === -1) {
+    return null
+  }
+  return hours.value[index.value]
+})
+
+// Part (c) Second line: what the rain does over the next 3 hours, and whether the spot copes
 const rainNote = computed(() => {
   const now = current.value
-  if (!now) return ''
-  const later = hours.value.slice(index.value + 1, index.value + 4)
-  const wettest = later.reduce((max, h) => (h.rainChance > max.rainChance ? h : max), now)
+  if (!now) {
+    return ''
+  }
+
+  // the wettest of the next 3 hours (best-so-far loop)
+  let wettest = now
+  const nextHours = hours.value.slice(index.value + 1, index.value + 4)
+  for (const h of nextHours) {
+    if (h.rainChance > wettest.rainChance) {
+      wettest = h
+    }
+  }
 
   let note
-  if (wettest !== now && wettest.rainChance >= RAINY && wettest.rainChance > now.rainChance + 10) {
+  const rainGetsWorse = wettest !== now && wettest.rainChance > now.rainChance + 10
+  if (rainGetsWorse && wettest.rainChance >= RAINY) {
     note = `Rain chance rises to ${wettest.rainChance}% at ${hourLabel(wettest.time)}`
   } else if (now.rainChance >= RAINY) {
     note = `${now.rainChance}% chance of rain`
   } else {
     return 'Low chance of rain'
   }
-  if (props.indoor === true) return `${note}, good thing it's indoors`
-  if (props.indoor === false) return `${note}, bring an umbrella`
+
+  if (props.indoor === true) {
+    return `${note}, good thing it's indoors`
+  }
+  if (props.indoor === false) {
+    return `${note}, bring an umbrella`
+  }
   return note
 })
 </script>

@@ -1,14 +1,17 @@
 <script setup>
 // Owner: Surya. Search box for a place in Singapore (MRT, address or postal code) via OneMap,
 // with a results list you can click or move through with ↑ ↓ and Enter. Used on 06 Starting points.
-// Usage: <PlaceSearch placeholder="e.g. Holland Village" @choose="setStart" @typing="isTyping = $event" />
+// It can also fill in where you are now with "Use my current location".
+// Usage: <PlaceSearch placeholder="e.g. Holland Village" :show-location="true"
+//          @choose="setStart" @typing="isTyping = $event" />
 //   choose → the picked place { label, address, lat, lng, postal }
 //   typing → true while there's text in the box, false when it's empty again
 import { computed, ref, watch } from 'vue'
-import { searchAddress } from '@/services/onemap'
+import { isInSingapore, reverseGeocode, searchAddress } from '@/services/onemap'
 
 defineProps({
   placeholder: { type: String, default: 'Search a place' },
+  showLocation: { type: Boolean, default: false }, // show the "Use my current location" button
 })
 
 const emit = defineEmits(['choose', 'typing'])
@@ -17,67 +20,186 @@ const query = ref('')
 const results = ref([])
 const searching = ref(false)
 const searchError = ref('')
-const activeIndex = ref(0) // result highlighted with the arrow keys
-let timer = null
-let latestSearch = 0 // ignore answers to older searches that arrive late
+const postalHint = ref('') // validation message for postal codes
+const activeIndex = ref(0) // the result highlighted with the arrow keys
 
 const showResults = computed(() => query.value.trim().length >= 2)
 
-// Wait until the user stops typing for 300 ms, then search
+// Part (a) Search as you type
+// We wait until the user stops typing for 0.3 s before searching, so we don't call OneMap on
+// every single key press. Each new key press cancels the timer from the one before.
+let timer = null
+
 watch(query, (text) => {
-  emit('typing', text.trim() !== '')
+  const trimmed = text.trim()
+  emit('typing', trimmed !== '')
   clearTimeout(timer)
   searchError.value = ''
+  postalHint.value = ''
   activeIndex.value = 0
-  if (text.trim().length < 2) {
+
+  if (trimmed.length < 2) {
     results.value = []
     searching.value = false
     return
   }
+
+  // Validation: only numbers means a postal code, and Singapore postal codes have exactly 6 digits
+  if (isAllDigits(trimmed) && trimmed.length !== 6) {
+    results.value = []
+    searching.value = false
+    if (trimmed.length < 6) {
+      postalHint.value = `Postal codes have 6 digits (you've typed ${trimmed.length}).`
+    } else {
+      postalHint.value = 'Postal codes only have 6 digits. Check the number and try again.'
+    }
+    return
+  }
+
   searching.value = true
-  timer = setTimeout(() => runSearch(text), 300)
+  timer = setTimeout(runSearch, 300)
 })
 
-async function runSearch(text) {
-  const searchId = ++latestSearch
-  try {
-    const found = await searchAddress(text)
-    if (searchId !== latestSearch) return
-    results.value = found
-  } catch (err) {
-    if (searchId !== latestSearch) return
-    results.value = []
-    searchError.value = "Search isn't working right now. Try again in a moment."
-    console.error(err)
-  } finally {
-    if (searchId === latestSearch) searching.value = false
+function isAllDigits(text) {
+  for (const ch of text) {
+    if (!'0123456789'.includes(ch)) {
+      return false
+    }
   }
+  return true
 }
 
-/** "4 Tampines Central 5, S529510" under each result */
+// "Try again" after a failed search
+function retrySearch() {
+  searchError.value = ''
+  searching.value = true
+  runSearch()
+}
+
+async function runSearch() {
+  const searchedFor = query.value
+
+  try {
+    const found = await searchAddress(searchedFor)
+
+    // If the user kept typing while we waited, this answer is for old text: ignore it
+    if (searchedFor !== query.value) {
+      return
+    }
+    results.value = found
+  } catch (error) {
+    console.error(error)
+    if (searchedFor !== query.value) {
+      return
+    }
+    results.value = []
+    searchError.value = "Search isn't working right now. Check your internet connection."
+  }
+  searching.value = false
+}
+
+// "4 Tampines Central 5, S529510", the grey line under each result
 function placeDetail(place) {
-  return [place.address, place.postal ? 'S' + place.postal : null].filter(Boolean).join(', ')
+  const parts = []
+  if (place.address) {
+    parts.push(place.address)
+  }
+  if (place.postal) {
+    parts.push('S' + place.postal)
+  }
+  return parts.join(', ')
 }
 
+// Part (b) Keyboard: ↓ and ↑ move the highlight (wrapping around), Enter picks it
 function moveDown() {
-  if (results.value.length) activeIndex.value = (activeIndex.value + 1) % results.value.length
+  if (results.value.length === 0) {
+    return
+  }
+  activeIndex.value = (activeIndex.value + 1) % results.value.length
 }
 
 function moveUp() {
-  if (results.value.length) {
-    activeIndex.value = (activeIndex.value - 1 + results.value.length) % results.value.length
+  if (results.value.length === 0) {
+    return
   }
+  activeIndex.value = (activeIndex.value - 1 + results.value.length) % results.value.length
 }
 
 function pickActive() {
   const place = results.value[activeIndex.value]
-  if (place) choose(place)
+  if (place) {
+    choose(place)
+  }
 }
 
+// Part (c) Picking a result: tell the parent, then empty the box
 function choose(place) {
   emit('choose', place)
   query.value = ''
   results.value = []
+}
+
+// Part (d) Use my current location
+// The browser asks the user for permission, then gives us their latitude and longitude.
+// OneMap turns that into the nearest address (reverse geocoding), the same as dragging a pin.
+const locating = ref(false)
+const locationError = ref('')
+
+function useMyLocation() {
+  locationError.value = ''
+  if (!navigator.geolocation) {
+    locationError.value = "Your browser can't share your location. Search for your place instead."
+    return
+  }
+  locating.value = true
+  navigator.geolocation.getCurrentPosition(onLocationFound, onLocationError, {
+    enableHighAccuracy: true,
+    timeout: 10000, // give up after 10 seconds
+  })
+}
+
+async function onLocationFound(position) {
+  const lat = position.coords.latitude
+  const lng = position.coords.longitude
+
+  // Validation: the starting point must be in Singapore
+  if (!isInSingapore(lat, lng)) {
+    locating.value = false
+    locationError.value =
+      "You seem to be outside Singapore, so we can't use your location. Search for your starting point instead."
+    return
+  }
+
+  let place = null
+  try {
+    place = await reverseGeocode(lat, lng)
+  } catch (error) {
+    // the name lookup failed, but we still know where they are
+    console.error(error)
+  }
+
+  let label = 'My current location'
+  let address = null
+  let postal = null
+  if (place) {
+    label = place.label
+    address = place.address
+    postal = place.postal
+  }
+  emit('choose', { label: label, address: address, lat: lat, lng: lng, postal: postal })
+  locating.value = false
+}
+
+function onLocationError(error) {
+  locating.value = false
+  if (error.code === error.PERMISSION_DENIED) {
+    locationError.value =
+      'Location access is blocked. Allow it in your browser settings, or search instead.'
+  } else if (error.code === error.TIMEOUT) {
+    locationError.value = 'Finding your location took too long. Try again, or search instead.'
+  } else {
+    locationError.value = "We couldn't find your location. Try again, or search instead."
+  }
 }
 </script>
 
@@ -108,9 +230,35 @@ function choose(place) {
       <span class="onemap-tag">OneMap</span>
     </div>
 
+    <button
+      v-if="showLocation"
+      type="button"
+      class="btn btn-link btn-sm location-btn"
+      :disabled="locating"
+      @click="useMyLocation"
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <circle cx="8" cy="8" r="3" fill="currentColor" />
+        <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+      <span v-if="locating">Finding your location…</span>
+      <span v-else>Use my current location</span>
+    </button>
+    <p v-if="locationError" class="small text-danger mb-0" role="alert">{{ locationError }}</p>
+
     <ul v-if="showResults" id="place-results" class="results" role="listbox">
-      <li v-if="searching" class="result-msg">Searching…</li>
-      <li v-else-if="searchError" class="result-msg text-danger">{{ searchError }}</li>
+      <li v-if="postalHint" class="result-msg">{{ postalHint }}</li>
+      <li v-else-if="searching" class="result-msg">Searching…</li>
+      <li v-else-if="searchError" class="result-msg">
+        <span class="text-danger">{{ searchError }}</span>
+        <button
+          type="button"
+          class="btn btn-link btn-sm p-0 ms-1 retry-btn"
+          @mousedown.prevent="retrySearch"
+        >
+          Try again
+        </button>
+      </li>
       <li v-else-if="results.length === 0" class="result-msg">
         No places match "{{ query.trim() }}". Try an MRT name or a 6-digit postal code.
       </li>
@@ -238,5 +386,24 @@ function choose(place) {
 
 .result-sub {
   color: var(--fp-muted);
+}
+
+.location-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0;
+  color: var(--fp-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.retry-btn {
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0 0.6rem !important;
+  color: var(--fp-primary);
+  font-weight: 600;
+  text-decoration: none;
 }
 </style>

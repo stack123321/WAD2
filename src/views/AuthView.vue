@@ -4,7 +4,7 @@
 // Figma frame "02". Split screen: brand panel with a map preview on the left, auth card on the right.
 // ?mode=signup opens the Sign up tab; ?redirect=/path is where to go after logging in;
 // ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in.
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { joinByInviteCode } from '@/services/hangouts'
@@ -22,6 +22,54 @@ const busy = ref(false)
 const error = ref('')
 const notice = ref('')
 
+// Validation. A field shows its message once it has been left (blur) or after a submit attempt,
+// so people aren't told off while they're still typing.
+const MIN_PASSWORD = 8
+const MAX_NAME = 50
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+const touched = reactive({ name: false, email: false, password: false })
+
+function emailError() {
+  const email = form.email.trim()
+  if (!email) return 'Enter your email.'
+  if (!EMAIL_PATTERN.test(email)) return 'Enter a valid email, like name@example.com.'
+  return ''
+}
+
+const fieldErrors = computed(() => {
+  const name = form.name.trim()
+  return {
+    name: !isSignup.value
+      ? ''
+      : !name
+        ? 'Enter your name.'
+        : name.length > MAX_NAME
+          ? `Keep your name under ${MAX_NAME} characters.`
+          : '',
+    email: emailError(),
+    // Only sign up checks length: older accounts may have shorter passwords and still need to log in.
+    password: !form.password
+      ? 'Enter your password.'
+      : isSignup.value && form.password.length < MIN_PASSWORD
+        ? `Use at least ${MIN_PASSWORD} characters (${form.password.length} so far).`
+        : '',
+  }
+})
+
+// The message to show under each field right now
+const shown = computed(() => ({
+  name: touched.name ? fieldErrors.value.name : '',
+  email: touched.email ? fieldErrors.value.email : '',
+  password: touched.password ? fieldErrors.value.password : '',
+}))
+
+const fieldIds = { name: 'auth-name', email: 'auth-email', password: 'auth-password' }
+
+function resetValidation() {
+  touched.name = touched.email = touched.password = false
+}
+
 // Keep the tab in sync with the URL, so "Create an account" links and the back button work.
 watch(
   () => route.query.mode,
@@ -30,6 +78,7 @@ watch(
 watch(mode, () => {
   error.value = ''
   notice.value = ''
+  resetValidation()
 })
 
 function setMode(m) {
@@ -73,16 +122,26 @@ watch(
 async function submit() {
   error.value = ''
   notice.value = ''
+
+  touched.name = touched.email = touched.password = true
+  const firstInvalid = Object.keys(fieldIds).find((key) => fieldErrors.value[key])
+  if (firstInvalid) {
+    await nextTick()
+    document.getElementById(fieldIds[firstInvalid])?.focus()
+    return
+  }
+
+  const email = form.email.trim()
   busy.value = true
   try {
     if (isSignup.value) {
-      const needsConfirm = await auth.signUp(form.email, form.password, form.name.trim())
+      const needsConfirm = await auth.signUp(email, form.password, form.name.trim())
       if (needsConfirm) {
         notice.value = 'Check your inbox to confirm your email, then log in.'
         return
       }
     } else {
-      await auth.signIn(form.email, form.password)
+      await auth.signIn(email, form.password)
     }
     await finish()
   } catch (e) {
@@ -107,13 +166,15 @@ async function google() {
 async function forgotPassword() {
   error.value = ''
   notice.value = ''
-  if (!form.email) {
-    error.value = 'Enter your email above first.'
+  touched.email = true
+  if (fieldErrors.value.email) {
+    document.getElementById(fieldIds.email)?.focus()
     return
   }
+  const email = form.email.trim()
   try {
-    await auth.resetPassword(form.email)
-    notice.value = `If ${form.email} has an account, a reset link is on its way.`
+    await auth.resetPassword(email)
+    notice.value = `If ${email} has an account, a reset link is on its way.`
   } catch (e) {
     error.value = e.message
   }
@@ -264,11 +325,16 @@ const avatars = [
               id="auth-name"
               v-model="form.name"
               class="form-control"
+              :class="{ 'is-invalid': shown.name }"
               type="text"
               autocomplete="name"
               placeholder="What friends call you"
               required
+              :aria-invalid="Boolean(shown.name)"
+              aria-describedby="auth-name-error"
+              @blur="touched.name = true"
             />
+            <p v-if="shown.name" id="auth-name-error" class="field-error">{{ shown.name }}</p>
           </div>
 
           <div class="field">
@@ -277,11 +343,16 @@ const avatars = [
               id="auth-email"
               v-model="form.email"
               class="form-control"
+              :class="{ 'is-invalid': shown.email }"
               type="email"
               autocomplete="email"
               placeholder="you@example.com"
               required
+              :aria-invalid="Boolean(shown.email)"
+              aria-describedby="auth-email-error"
+              @blur="touched.email = true"
             />
+            <p v-if="shown.email" id="auth-email-error" class="field-error">{{ shown.email }}</p>
           </div>
 
           <div class="field">
@@ -291,10 +362,15 @@ const avatars = [
                 id="auth-password"
                 v-model="form.password"
                 class="form-control"
+                :class="{ 'is-invalid': shown.password }"
                 :type="showPassword ? 'text' : 'password'"
                 :autocomplete="isSignup ? 'new-password' : 'current-password'"
-                :placeholder="isSignup ? 'At least 6 characters' : ''"
+                :placeholder="isSignup ? `At least ${MIN_PASSWORD} characters` : ''"
                 required
+                :minlength="isSignup ? MIN_PASSWORD : undefined"
+                :aria-invalid="Boolean(shown.password)"
+                aria-describedby="auth-password-help"
+                @blur="touched.password = true"
               />
               <button
                 type="button"
@@ -305,6 +381,21 @@ const avatars = [
                 {{ showPassword ? 'Hide' : 'Show' }}
               </button>
             </div>
+            <p v-if="shown.password" id="auth-password-help" class="field-error">
+              {{ shown.password }}
+            </p>
+            <p
+              v-else-if="isSignup"
+              id="auth-password-help"
+              class="field-hint"
+              :class="{ 'field-hint--ok': form.password.length >= MIN_PASSWORD }"
+            >
+              {{
+                form.password.length >= MIN_PASSWORD
+                  ? '✓ Long enough'
+                  : `At least ${MIN_PASSWORD} characters`
+              }}
+            </p>
           </div>
 
           <div v-if="!isSignup" class="options">
@@ -323,11 +414,7 @@ const avatars = [
           <p v-if="error" class="alert alert-danger py-2 small" role="alert">{{ error }}</p>
           <p v-if="notice" class="alert alert-success py-2 small" role="status">{{ notice }}</p>
 
-          <button
-            type="submit"
-            class="btn btn-primary w-100 submit"
-            :disabled="busy || !form.email || !form.password || (isSignup && !form.name.trim())"
-          >
+          <button type="submit" class="btn btn-primary w-100 submit" :disabled="busy">
             <span
               v-if="busy"
               class="spinner-border spinner-border-sm me-2"
@@ -614,6 +701,33 @@ const avatars = [
 .form-control:focus {
   border-color: var(--fp-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fp-primary) 15%, transparent);
+}
+
+.form-control.is-invalid {
+  border-color: var(--bs-form-invalid-border-color);
+  background-image: none; /* Bootstrap's icon would sit under the Show button */
+}
+
+.form-control.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(var(--bs-danger-rgb), 0.15);
+}
+
+.field-error,
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+}
+
+.field-error {
+  color: var(--bs-form-invalid-color);
+}
+
+.field-hint {
+  color: var(--fp-muted);
+}
+
+.field-hint--ok {
+  color: var(--fp-primary);
 }
 
 .password {
