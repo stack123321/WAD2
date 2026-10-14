@@ -36,12 +36,6 @@ const upcoming = computed(() => hangouts.value.filter((h) => h.status !== 'done'
 const past = computed(() => hangouts.value.filter((h) => h.status === 'done'))
 const shown = computed(() => (tab.value === 'upcoming' ? upcoming.value : past.value))
 
-// "Heat map →" opens page 08 of the next hangout, if there is one
-const heatMapLink = computed(() => {
-  if (upcoming.value.length === 0) return null
-  return { name: 'midpoint', params: { id: upcoming.value[0].id } }
-})
-
 // Deleting (host) or leaving (other members) a hangout
 const deleteError = ref('')
 
@@ -169,7 +163,7 @@ onMounted(async () => {
 
       <div class="col-lg-4 d-flex flex-column gap-4">
         <WeekForecast />
-        <CrowdsNow :heat-map-link="heatMapLink" />
+        <CrowdsNow />
       </div>
     </div>
   </main>

@@ -23,6 +23,12 @@ const routes = [
     meta: { requiresAuth: true },
   }, // 04 Ryan
   {
+    path: '/crowds',
+    name: 'crowds',
+    component: () => import('@/views/CrowdsView.vue'),
+    meta: { requiresAuth: true },
+  }, // Ryan: full crowd heat map, from 04's "Crowds right now"
+  {
     path: '/hangouts/new',
     name: 'create-hangout',
     component: () => import('@/views/CreateHangoutView.vue'),
