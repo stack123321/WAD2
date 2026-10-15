@@ -137,6 +137,23 @@ begin
 end;
 $$;
 
+-- Save the group's midpoint (07 "Find our midpoint", 08 dragging the pin). Any member may, not just
+-- the host, but only the midpoint columns change: renaming or deleting the hangout stays host-only.
+create function public.set_midpoint(
+  p_hangout uuid, p_name text, p_lat float8, p_lng float8, p_avg integer, p_gap integer
+) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_member(p_hangout) or public.is_host(p_hangout)) then
+    raise exception 'Only members of this hangout can set its midpoint';
+  end if;
+  update hangouts
+  set midpoint_name = p_name, midpoint_lat = p_lat, midpoint_lng = p_lng,
+      avg_mins = p_avg, gap_mins = p_gap
+  where id = p_hangout;
+end;
+$$;
+
 -- ───────────────────────── Row Level Security ─────────────────────────
 -- Members can read their hangout. You can only edit your own member row and your own vote.
 -- Only the host edits the hangout.

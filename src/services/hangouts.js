@@ -233,6 +233,31 @@ export async function addMember(hangoutId, userId) {
 }
 
 /**
+ * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
+ * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
+ * @param {string} hangoutId
+ * @param {{ name: string, lat: number, lng: number, avgMins: number | null, gapMins: number | null }} midpoint
+ */
+export async function saveMidpoint(hangoutId, midpoint) {
+  // The demo hangout and mock mode have no database to save to
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+
+  const { error } = await supabase.rpc('set_midpoint', {
+    p_hangout: hangoutId,
+    p_name: midpoint.name,
+    p_lat: midpoint.lat,
+    p_lng: midpoint.lng,
+    p_avg: midpoint.avgMins,
+    p_gap: midpoint.gapMins,
+  })
+  if (error) {
+    throw error
+  }
+}
+
+/**
  * Join a hangout from an invite link (/login?invite=CODE). Uses the join_hangout
  * database function in supabase/schema.sql.
  * @returns {Promise<string>} the hangout id

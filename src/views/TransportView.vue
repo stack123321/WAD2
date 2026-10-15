@@ -2,12 +2,14 @@
   // 07 Mode of transport
   // Owner: Nicole · Vet by: Surya
   import { computed, onMounted, ref, watch } from 'vue'
-  import { fairness, rankAreas, CANDIDATE_AREAS } from '@/utils/midpoint'
-  import { useRoute } from 'vue-router'
+  import { fairness } from '@/utils/midpoint'
+  import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
-  import { getRoute } from '@/services/routing'
+  import { rankStations } from '@/services/routing'
+  import { saveMidpoint } from '@/services/hangouts'
 
   const route = useRoute()
+  const router = useRouter()
   const optimiseFor = ref('fairest')
   const ranked = ref([])
   const store = useHangoutStore()
@@ -18,26 +20,52 @@
 
 
 
+  // The fairest MRT station: the 8 stations nearest the middle of everyone's starting points,
+  // ranked by everyone's travel time with their own mode (rankStations in services/routing.js)
   async function scoreAreas() {
-    const members = store.members.filter((m) => m.mode)
+    const members = store.members.filter((m) => m.mode && m.start_lat != null)
     if (members.length === 0) return
 
-    // Travel time for every person to every candidate area
-    const candidates = await Promise.all(
-      CANDIDATE_AREAS.map(async (area) => {
-        const routes = await Promise.all(
-          members.map((m) => getRoute({ lat: m.start_lat, lng: m.start_lng }, area, m.mode)),
-        )
-        return { ...area, travelMins: routes.map((r) => r.mins), travelCosts: routes.map((r) => r.cost) }
-      }),
-    )
-    ranked.value = rankAreas(candidates, optimiseFor.value)
+    ranked.value = await rankStations(members, optimiseFor.value)
+    if (ranked.value.length === 0) return
 
     const best = ranked.value[0]
     members.forEach((m, i) => {
       m.travel_mins = best.travelMins[i]
       m.travel_cost = best.travelCosts[i]
     })
+  }
+
+  // "Find our midpoint": save the fairest station for the whole group, then show it on page 08
+  const saving = ref(false)
+  const saveError = ref('')
+
+  async function findMidpoint() {
+    const best = ranked.value[0]
+    if (!best) return
+    saving.value = true
+    saveError.value = ''
+    const midpoint = {
+      name: best.name,
+      lat: best.lat,
+      lng: best.lng,
+      avgMins: best.average,
+      gapMins: best.gap,
+    }
+    try {
+      await saveMidpoint(route.params.id, midpoint)
+      // Page 08 reads it from the store straight away
+      store.hangout.midpoint_name = midpoint.name
+      store.hangout.midpoint_lat = midpoint.lat
+      store.hangout.midpoint_lng = midpoint.lng
+      store.hangout.avg_mins = midpoint.avgMins
+      store.hangout.gap_mins = midpoint.gapMins
+      router.push({ name: 'midpoint', params: { id: route.params.id } })
+    } catch (e) {
+      console.error(e)
+      saveError.value = "Couldn't save the midpoint. Try again."
+    }
+    saving.value = false
   }
 
   async function pickMode(m, mode) {
@@ -110,8 +138,10 @@
         <div v-if="stats" class="col-lg-4">
           <!-- Travel time bars -->
           <div class="panel">
-            <h2 class="panel-title">Travel time to {{ ranked[0]?.name }}</h2>
-            <p class="panel-sub">Best candidate area so far</p>
+            <h2 class="panel-title">Travel time to {{ ranked[0]?.name }} MRT</h2>
+            <p class="panel-sub">
+              The fairest MRT station near the middle of everyone's starting points
+            </p>
 
             <div v-for="m in store.members" :key="m.user_id" class="bar-row">
               <span class="bar-name">{{ m.display_name }}</span>
@@ -129,23 +159,17 @@
             </div>
           </div>
 
-          <!-- Candidate areas -->
-          <div class="panel">
-            <h2 class="panel-title">Candidate areas</h2>
-            <div class="area-row area-head">
-              <span>Area</span><span>Avg time</span><span>Gap</span>
-            </div>
-            <div v-for="(a, i) in ranked.slice(0, 3)" :key="a.name" class="area-row" :class="{ 'area-best': i === 0 }">
-              <span><strong>{{ a.name }}</strong> <span v-if="i === 0" class="badge-best">Best</span></span>
-              <span>{{ a.average }} min</span>
-              <span>{{ a.gap }} min</span>
-            </div>
-          </div>
-
-          <RouterLink v-if="allPicked" class="btn btn-primary btn-lg w-100"
-            :to="{ name: 'midpoint', params: { id: route.params.id } }">
-            Find our midpoint →
-          </RouterLink>
+          <button
+            v-if="allPicked"
+            type="button"
+            class="btn btn-primary btn-lg w-100"
+            :disabled="saving || ranked.length === 0"
+            @click="findMidpoint"
+          >
+            <span v-if="saving">Saving…</span>
+            <span v-else>Find our midpoint →</span>
+          </button>
+          <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
           <template v-else>
             <button class="btn btn-primary btn-lg w-100" disabled>Find our midpoint →</button>
             <p class="footnote">
