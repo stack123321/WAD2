@@ -1,12 +1,14 @@
    <script setup>
   // 07 Mode of transport
   // Owner: Nicole · Vet by: Surya
-  import { computed, onMounted, ref, watch } from 'vue'
+  import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { fairness } from '@/utils/midpoint'
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
+  import { useAuthStore } from '@/stores/auth'
   import { rankStations } from '@/services/routing'
-  import { saveMidpoint } from '@/services/hangouts'
+  import { saveMidpoint, subscribeToMembers, updateMemberMode } from '@/services/hangouts'
+  import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -68,8 +70,33 @@
     saving.value = false
   }
 
+  // Each person picks their own mode. In the demo hangout (sample people) you're Surya, like on 06.
+  const auth = useAuthStore()
+  const myId = computed(() => {
+    if (route.params.id === 'demo' || !auth.user) return 'u-surya'
+    return auth.user.id
+  })
+
+  function isMe(m) {
+    return m.user_id === myId.value
+  }
+
+  // Pick your mode: show it straight away, save it so friends see it, then re-rank the stations
+  const modeError = ref('')
+
   async function pickMode(m, mode) {
+    if (!isMe(m)) return
+    const previous = m.mode
     m.mode = mode
+    modeError.value = ''
+    try {
+      await updateMemberMode(route.params.id, m.user_id, mode)
+    } catch (e) {
+      console.error(e)
+      m.mode = previous
+      modeError.value = "Couldn't save your mode. Try again."
+      return
+    }
     try {
       await scoreAreas()
     } catch (e) {
@@ -77,17 +104,35 @@
     }
   }
 
+  // Live updates: when a friend picks their mode (or changes their starting point), copy it into
+  // our store and re-rank, so everyone sees the same thing without refreshing
+  let stopListening = () => {}
+
+  function onMemberChanged(row) {
+    const member = store.members.find((m) => m.user_id === row.user_id)
+    if (!member) return
+    member.mode = row.mode
+    member.start_label = row.start_label
+    member.start_lat = row.start_lat
+    member.start_lng = row.start_lng
+    scoreAreas().catch((e) => console.error('Could not get travel times', e))
+  }
 
   onMounted(async () => {
     await store.load(route.params.id)
     await scoreAreas()
+    stopListening = subscribeToMembers(route.params.id, onMemberChanged)
   })
+
+  onUnmounted(() => stopListening())
   watch(optimiseFor, scoreAreas)
 
   // Longest, shortest and gap across everyone's current travel times
   const stats = computed(() => {
-    if (store.members.length === 0) return null
-    const f = fairness(store.members.map((m) => m.travel_mins))
+    // Only people who've picked a mode have a travel time yet
+    const times = store.members.filter((m) => m.travel_mins != null).map((m) => m.travel_mins)
+    if (times.length === 0) return null
+    const f = fairness(times)
     return { ...f, shortest: f.longest - f.gap }
   })
 
@@ -103,33 +148,47 @@
    <template>
     <section class="container py-4">
       <h1 class="title">How is everyone getting there?</h1>
-      <p class="subtitle">Pick a mode for each person. We compare real travel times, not straight-line distance.</p>
+      <p class="subtitle">
+        Pick how you're getting there. Everyone picks their own, and you'll see your friends' choices
+        as they make them.
+      </p>
+      <p v-if="modeError" class="text-danger small" role="alert">{{ modeError }}</p>
 
       <div class="row g-4">
         <!-- Left column: one row per person -->
         <div class="col-lg-8">
           <div v-for="m in store.members" :key="m.user_id" class="person">
-            <span class="avatar" :style="{ background: m.avatar_color }">
-              {{ m.display_name[0] }}
-            </span>
+            <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="36" />
 
             <div class="who">
-              <div class="name">{{ m.display_name }}</div>
+              <div class="name">
+                {{ m.display_name }}<span v-if="isMe(m)"> (you)</span>
+              </div>
               <div class="from">From {{ m.start_label }}</div>
             </div>
 
-            <div class="segmented">
-              <button v-for="mode in modes" :key="mode" :class="{ active: m.mode === mode }" @click="pickMode(m, mode)">
+            <!-- Your row: pick your mode. Friends' rows: shows what they picked (they choose it) -->
+            <div class="segmented" :class="{ 'segmented--readonly': !isMe(m) }">
+              <button
+                v-for="mode in modes"
+                :key="mode"
+                type="button"
+                :class="{ active: m.mode === mode }"
+                :disabled="!isMe(m)"
+                :aria-pressed="m.mode === mode"
+                @click="pickMode(m, mode)"
+              >
                 {{ labels[mode] }}
               </button>
             </div>
 
             <div class="time">
-              <template v-if="m.mode">
+              <template v-if="m.mode && m.travel_mins != null">
                 <div class="mins">{{ m.travel_mins }} min</div>
-                <div class="cost">${{ m.travel_cost.toFixed(2) }} one way</div>
+                <div class="cost">${{ Number(m.travel_cost).toFixed(2) }} one way</div>
               </template>
-              <div v-else class="cost">Pick a mode</div>
+              <div v-else-if="isMe(m)" class="cost">Pick your mode</div>
+              <div v-else class="cost">Waiting for {{ m.display_name }}</div>
             </div>
           </div>
         </div>
@@ -169,13 +228,13 @@
             <span v-if="saving">Saving…</span>
             <span v-else>Find our midpoint →</span>
           </button>
-          <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
           <template v-else>
             <button class="btn btn-primary btn-lg w-100" disabled>Find our midpoint →</button>
             <p class="footnote">
               Waiting for {{missingMode.map((m) => m.display_name).join(', ')}} to pick a mode
             </p>
           </template>
+          <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
           <p class="footnote">Travel times via OneMap routing + LTA DataMall</p>
         </div>
       </div>
@@ -256,6 +315,15 @@
   color: var(--fp-ink);
   font-weight: 700;
   box-shadow: var(--fp-shadow);
+}
+
+/* Friends' rows: you can see what they picked, but can't click it */
+.segmented--readonly button {
+  cursor: default;
+}
+
+.segmented--readonly button:not(.active) {
+  opacity: 0.45;
 }
 
 /* Time and cost pushed to the right edge */

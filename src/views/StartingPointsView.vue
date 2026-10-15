@@ -23,13 +23,14 @@ const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
 
-// Until login works, the demo treats you as Surya, starting from Holland Village.
+// The demo hangout has sample people, so there you're Surya (starting from Holland Village),
+// even when logged in. In a real hangout you're the logged-in user.
 const DEMO_START = { label: 'Holland Village MRT', lat: 1.3117, lng: 103.7961 }
 const myId = computed(() => {
-  if (auth.user) {
-    return auth.user.id
+  if (route.params.id === 'demo' || !auth.user) {
+    return 'u-surya'
   }
-  return 'u-surya'
+  return auth.user.id
 })
 
 const me = computed(() => findMember(myId.value))

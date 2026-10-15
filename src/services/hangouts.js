@@ -233,6 +233,56 @@ export async function addMember(hangoutId, userId) {
 }
 
 /**
+ * Save how someone is travelling (07 Mode of transport). You can save your own; the security
+ * rule "members: edit own row" in schema.sql enforces that.
+ * @param {'mrt' | 'bus' | 'car' | 'walk'} mode
+ */
+export async function updateMemberMode(hangoutId, userId, mode) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ mode: mode })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  // Blocked by the security rules: Supabase changes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('You can only change your own mode of transport.')
+  }
+}
+
+/**
+ * Live updates: calls onChange(row) whenever someone in this hangout changes their member row
+ * (e.g. picks a mode on 07 or a starting point on 06), so everyone's screen stays the same.
+ * Uses Supabase Realtime, switched on for hangout_members in schema.sql.
+ * @returns {() => void} call it to stop listening (when leaving the page)
+ */
+export function subscribeToMembers(hangoutId, onChange) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel(`members:${hangoutId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'hangout_members',
+        filter: `hangout_id=eq.${hangoutId}`,
+      },
+      (payload) => onChange(payload.new),
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
  * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
  * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
  * @param {string} hangoutId
