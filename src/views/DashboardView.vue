@@ -21,7 +21,7 @@ const greeting = computed(() => {
   return 'Good evening'
 })
 
-// The name they typed at sign up, or '' when nobody is logged in (or they used Google)
+// The name they typed at sign up, or '' when nobody is logged in
 const name = computed(() => {
   if (!auth.user) return ''
   return auth.user.user_metadata.display_name || ''

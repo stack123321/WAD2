@@ -133,6 +133,22 @@ function toggle(list, value) {
   else list.splice(i, 1)
 }
 
+// Ask first, then put every choice back to the defaults. Nothing is saved until they press Save preferences.
+function resetPreferences() {
+  const sure = window.confirm('Reset all your preferences to the defaults?')
+  if (!sure) {
+    return
+  }
+  prefs.activities = defaultPreferences.activities.slice()
+  prefs.dietary = defaultPreferences.dietary.slice()
+  prefs.budget = defaultPreferences.budget
+  prefs.max_travel_mins = defaultPreferences.max_travel_mins
+  prefs.indoor_if_rain = defaultPreferences.indoor_if_rain
+  prefs.avoid_crowds = defaultPreferences.avoid_crowds
+  prefs.step_free = defaultPreferences.step_free
+  showErrors.value = false
+}
+
 const noRestrictions = computed(() => prefs.dietary.length === 0)
 
 // Slider fill: CSS needs the % of the track that's filled
@@ -324,12 +340,14 @@ async function save() {
       <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
 
       <footer class="actions">
-        <p class="actions__note">You can change these anytime from Preferences.</p>
         <div class="actions__buttons">
           <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
           <RouterLink v-if="isSetup" class="btn btn-light btn-skip" :to="{ name: 'dashboard' }">
             Skip for now
           </RouterLink>
+          <button type="button" class="btn btn-outline-primary btn-reset" @click="resetPreferences">
+            Reset preferences
+          </button>
           <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
             <span
               v-if="saving"
@@ -575,16 +593,10 @@ async function save() {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-end; /* was space-between: keep the buttons on the right */
   align-items: center;
   gap: 1rem;
   margin-top: 1.25rem;
-}
-
-.actions__note {
-  margin: 0;
-  color: var(--fp-muted);
-  font-size: 0.9rem;
 }
 
 .actions__buttons {
@@ -601,6 +613,7 @@ async function save() {
 }
 
 .btn-skip,
+.btn-reset,
 .btn-save {
   padding: 0.7rem 1.25rem;
   font-weight: 600;
