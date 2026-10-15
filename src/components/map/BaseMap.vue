@@ -11,6 +11,7 @@ const props = defineProps({
   // [{ id, lat, lng, label }]
   markers: { type: Array, default: () => [] },
 })
+const emit = defineEmits(['marker-click'])
 
 const el = ref(null)
 let map = null
@@ -27,6 +28,7 @@ function drawMarkers() {
       fillOpacity: 1,
     })
       .bindTooltip(m.label ?? '')
+      .on('click', () => emit('marker-click', m.id))
       .addTo(markerLayer)
   }
   if (props.markers.length > 1) {

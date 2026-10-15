@@ -18,7 +18,7 @@ cp .env.example .env.local     # then paste in your keys
 npm run dev                    # http://localhost:5173
 ```
 
-The app runs without any keys: everything falls back to sample data (see [Sample data](#sample-data)). Open `/hangouts/demo/start` (or any `/hangouts/demo/...` page) to see the sample hangout.
+The demo hangout and most services have sample data (see [Sample data](#sample-data)). Nearby spots require `GOOGLE_PLACES_API_KEY` in `.env.local`; the Explore page lists real Google Places around the hangout's saved midpoint and reports an error if the API key is unavailable. Google Places calls are off by default; enable them on Explore to load nearby spots. The preference is saved in the browser and also controls spot details and photos.
 
 | Command | What it does |
 |---|---|
@@ -80,9 +80,9 @@ Everyone can build their page before the database and APIs are ready. There are 
 | Weather + haze | data.gov.sg (NEA) + Open-Meteo | None needed: both are free with no key, so it's always real data | `src/services/weather.js` |
 | Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) | `api/route.js` |
 | Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) | `api/crowd.js` |
-| Nearby places | Google Places or OpenStreetMap | `api/_mocks/places.js` ("Sample …" places) | `api/places.js` |
+| Nearby places | Google Places (`GOOGLE_PLACES_API_KEY`) | None; the API reports an error if the key is missing | `api/places.js` |
 
-Pages call the service functions and never know which one they got. When you build the real call, keep the same response shape (it's written in the comment above each function) and nobody else's page changes. The keyed APIs keep answering with samples when their key is missing from `.env.local`, so teammates without that key can still work.
+Pages call the service functions and never know which one they got. The nearby-spots API returns real results around the midpoint stored on the hangout. Other keyed APIs keep answering with samples when their key is missing from `.env.local`, so teammates without those keys can still work.
 
 Sample responses are marked with "sample" in names and labels so they never get mistaken for real data in the demo.
 

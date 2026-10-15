@@ -1,0 +1,148 @@
+// Google Places API (New) helpers for api/places.js. Not an endpoint (files starting with _ are skipped).
+import { STATIONS } from './_data/stations.js'
+import { distanceKm } from './_mocks/geo.js'
+
+const BASE = 'https://places.googleapis.com/v1'
+
+const CATEGORY_TYPES = {
+  cafe: ['cafe', 'coffee_shop', 'bakery', 'dessert_shop'],
+  food: ['restaurant', 'meal_takeaway', 'food_court'],
+  activity: ['amusement_center', 'bowling_alley', 'movie_theater', 'museum', 'karaoke', 'gym'],
+  outdoor: ['park'],
+}
+const ALL_CATEGORIES = Object.keys(CATEGORY_TYPES)
+
+const PRICE_LEVELS = {
+  PRICE_LEVEL_FREE: 0,
+  PRICE_LEVEL_INEXPENSIVE: 1,
+  PRICE_LEVEL_MODERATE: 2,
+  PRICE_LEVEL_EXPENSIVE: 3,
+  PRICE_LEVEL_VERY_EXPENSIVE: 4,
+}
+
+const FIELDS = [
+  'id',
+  'displayName',
+  'location',
+  'rating',
+  'userRatingCount',
+  'priceLevel',
+  'photos',
+  'types',
+  'formattedAddress',
+  'googleMapsUri',
+  'currentOpeningHours.openNow',
+  'editorialSummary',
+  'outdoorSeating',
+  'goodForGroups',
+  'servesVegetarianFood',
+  'reservable',
+]
+
+async function google(path, key, { body, fields }) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': fields,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) throw new Error(`Google Places ${res.status}: ${await res.text()}`)
+  return res.json()
+}
+
+function nearestStation(point) {
+  let best = null
+  for (const s of Object.values(STATIONS)) {
+    const d = distanceKm(point, s)
+    if (!best || d < best.d) best = { name: s.name, d }
+  }
+  return best && { name: best.name, distance_m: Math.round(best.d * 1000) }
+}
+
+function categoryOf(types = [], fallback) {
+  for (const cat of ALL_CATEGORIES) {
+    if (types.some((t) => CATEGORY_TYPES[cat].includes(t))) return cat
+  }
+  return fallback ?? 'activity'
+}
+
+function tagsOf(p) {
+  const tags = []
+  if (p.outdoorSeating) tags.push('Outdoor seating')
+  if (p.goodForGroups) tags.push('Good for groups')
+  if (p.servesVegetarianFood) tags.push('Vegetarian options')
+  if (p.reservable) tags.push('Reservations')
+  return tags
+}
+
+function toPlace(p, centre, fallbackCategory) {
+  const lat = p.location.latitude
+  const lng = p.location.longitude
+  const station = nearestStation({ lat, lng })
+  return {
+    source: 'google',
+    source_place_id: p.id,
+    name: p.displayName?.text ?? 'Unnamed place',
+    category: categoryOf(p.types, fallbackCategory),
+    lat,
+    lng,
+    rating: p.rating ?? null,
+    review_count: p.userRatingCount ?? 0,
+    price_level: PRICE_LEVELS[p.priceLevel] ?? null,
+    image_url: p.photos?.[0] ? `/api/place-photo?name=${encodeURIComponent(p.photos[0].name)}` : null,
+    distance_m: centre ? Math.round(distanceKm(centre, { lat, lng }) * 1000) : null,
+    address: p.formattedAddress ?? null,
+    google_maps_uri: p.googleMapsUri ?? null,
+    open_now: p.currentOpeningHours?.openNow ?? null,
+    description: p.editorialSummary?.text ?? null,
+    tags: tagsOf(p),
+    nearest_station_name: station?.name ?? null,
+    station_distance_m: station?.distance_m ?? null,
+  }
+}
+
+/** Nearby places for each requested category (all categories when none), nearest first. */
+export async function nearbyPlaces(key, centre, radiusM, categories) {
+  const wanted = categories.filter((c) => CATEGORY_TYPES[c])
+  const cats = wanted.length ? wanted : ALL_CATEGORIES
+  const results = await Promise.all(
+    cats.map(async (cat) => {
+      const data = await google('/places:searchNearby', key, {
+        fields: FIELDS.map((f) => `places.${f}`).join(','),
+        body: {
+          includedTypes: CATEGORY_TYPES[cat],
+          maxResultCount: 10,
+          rankPreference: 'POPULARITY',
+          locationRestriction: {
+            circle: {
+              center: { latitude: centre.lat, longitude: centre.lng },
+              radius: Math.min(radiusM, 50000),
+            },
+          },
+        },
+      })
+      return (data.places ?? []).map((p) => toPlace(p, centre, cat))
+    }),
+  )
+  const seen = new Set()
+  return results
+    .flat()
+    .filter((p) => !seen.has(p.source_place_id) && seen.add(p.source_place_id))
+    .sort((a, b) => a.distance_m - b.distance_m)
+}
+
+export async function placeById(key, id) {
+  const data = await google(`/places/${encodeURIComponent(id)}`, key, { fields: FIELDS.join(',') })
+  return toPlace(data, null)
+}
+
+/** Resolves a photo resource name to a short-lived image URL that doesn't contain the API key. */
+export async function photoUrl(key, name, maxWidthPx = 640) {
+  const data = await google(`/${name}/media?maxWidthPx=${maxWidthPx}&skipHttpRedirect=true`, key, {
+    fields: 'name,photoUri',
+  })
+  return data.photoUri
+}

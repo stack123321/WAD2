@@ -53,7 +53,7 @@ const distance = computed(() => {
         <span v-if="price" class="spot-card__price">{{ price }}</span>
       </p>
 
-      <ul v-if="tags.length" class="spot-card__tags">
+      <ul class="spot-card__tags">
         <li v-for="tag in tags" :key="tag" class="spot-card__tag">{{ tag }}</li>
       </ul>
 
@@ -143,6 +143,7 @@ const distance = computed(() => {
 .spot-card__tags {
   display: flex;
   flex-wrap: nowrap;
+  min-height: 1.5rem;
   gap: 0.375rem;
   margin: 0;
   padding: 0 0 0.25rem;

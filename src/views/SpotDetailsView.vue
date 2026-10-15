@@ -2,21 +2,45 @@
 // 10 Spot details
 // Owner: Hugo · Vet by: Matrix
 // Figma frame "10". Layout is done; sections hold placeholder content until wired to live data.
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BaseMap from '@/components/map/BaseMap.vue'
-import spotsMock from '@/mocks/spots.json'
+import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
+import { googlePlacesEnabled, loadSpot } from '@/services/places'
 
 const route = useRoute()
 
 const categoryLabels = {
   cafe: 'Cafe',
   activity: 'Activity',
-  restaurant: 'Restaurant',
+  food: 'Restaurant',
+  outdoor: 'Outdoors',
 }
 
-// Placeholder lookup until wired to the places service
-const spot = computed(() => spotsMock.find((s) => String(s.id) === route.params.spotId))
+const spot = ref(null)
+const spotError = ref('')
+watch(
+  () => [route.params.spotId, googlePlacesEnabled.value],
+  async ([id, enabled], _, onCleanup) => {
+    spot.value = null
+    spotError.value = ''
+    if (!enabled) {
+      spotError.value = 'Google Places is off. Turn it on to load spot details.'
+      return
+    }
+
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    try {
+      spot.value = await loadSpot(String(id), { signal: controller.signal })
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        spotError.value = `Could not load this spot: ${error.message}`
+      }
+    }
+  },
+  { immediate: true },
+)
 
 const price = computed(() => {
   const level = spot.value?.priceLevel
@@ -55,10 +79,13 @@ const distance = computed(() => {
         </svg>
         Back to exploring
       </RouterLink>
+      <GooglePlacesToggle />
     </header>
 
+    <p v-if="spotError" class="spot__error text-secondary" role="status">{{ spotError }}</p>
+
     <section class="spot__preview card-box">
-      <div v-if="spot?.imageUrl" class="preview-image">
+      <div v-if="googlePlacesEnabled && spot?.imageUrl" class="preview-image">
         <img :src="spot.imageUrl" :alt="spot.name" />
       </div>
       <BaseMap
@@ -75,13 +102,21 @@ const distance = computed(() => {
         <h1 class="h3 mb-1">{{ spot?.name ?? 'Spot not found' }}</h1>
         <div v-if="spot" class="d-flex flex-wrap align-items-center column-gap-3">
           <p class="text-secondary mb-0">{{ categoryLabels[spot.category] ?? spot.category }}</p>
-          <p class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
+          <p v-if="spot.rating !== null" class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
           <p v-if="price" class="text-secondary mb-0">{{ price }}</p>
           <p v-if="distance" class="text-secondary mb-0">{{ distance }} from nearest MRT station</p>
         </div>
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-outline-primary btn-sm">Open Google Maps</button>
+        <a
+          v-if="spot?.googleMapsUri"
+          class="btn btn-outline-primary btn-sm"
+          :href="spot.googleMapsUri"
+          target="_blank"
+          rel="noopener"
+        >
+          Open Google Maps
+        </a>
         <button type="button" class="btn btn-primary btn-sm">Add to Vote</button>
       </div>
     </section>
@@ -103,7 +138,12 @@ const distance = computed(() => {
 
     <section class="spot__about card-box">
       <h2 class="h6">About</h2>
-      <p class="text-secondary mb-0">Description and details.</p>
+      <p v-if="spot?.description || spot?.address" class="text-secondary mb-0">
+        {{ spot.description }}
+        <span v-if="spot.address" class="d-block">{{ spot.address }}</span>
+        <span v-if="spot.openNow !== null" class="d-block">{{ spot.openNow ? 'Open now' : 'Closed now' }}</span>
+      </p>
+      <p v-else class="text-secondary mb-0">Description and details.</p>
     </section>
 
     <section class="spot__weather card-box">

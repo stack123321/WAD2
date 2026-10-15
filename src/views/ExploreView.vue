@@ -4,6 +4,7 @@
     <div class="content">
     <section class="head">
       <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
+      <GooglePlacesToggle />
       <div class="filters">
         <div class="filter-buttons">
           <button
@@ -25,6 +26,21 @@
       </div>
     </section>
 
+    <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
+    <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
+      This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
+    </p>
+    <p v-else-if="!googlePlacesEnabled" class="text-secondary" role="status">
+      Google Places is off. Turn it on to find nearby spots. This preference is saved on this device.
+    </p>
+    <p v-else-if="loadingSpots" class="text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
+    <p v-if="loadError" class="text-danger">{{ loadError }}</p>
+    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
+      No nearby spots were found. Try again later or choose another midpoint.
+    </p>
+    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
+      No spots match this filter.
+    </p>
     <section class="cards d-flex">
       <SpotCard
         v-for="spot in sortedSpots"
@@ -40,7 +56,7 @@
         :tags="spot.tags"
         :added="addedIds.has(spot.id)"
         :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
-        @add="addedIds.add(spot.id)"
+        @add="addSpot(spot)"
       />
     </section>
 
@@ -58,11 +74,13 @@
         </button>
         <div id="explore-map-collapse" class="map-collapse" :class="{ open: isMapOpen }">
           <BaseMap
+            v-if="mapCenter"
             class="map"
             :center="mapCenter"
             :markers="mapMarkers"
             @marker-click="selectSpot"
           />
+          <p v-else class="text-secondary p-3 mb-0">A midpoint is needed to show nearby spots on the map.</p>
         </div>
       </div>
 
@@ -83,47 +101,71 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import spotsMock from '@/mocks/spots.json'
+import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
+import {
+  addToShortlist,
+  googlePlacesEnabled,
+  loadSpots,
+} from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 
 const route = useRoute()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
 
-// Placeholder values until wired to the hangout store
-const startsAt = '2026-10-16T19:00:00+08:00'
-const formattedDate = computed(() =>
-  new Date(startsAt).toLocaleString('en-SG', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  }),
+const spots = ref([])
+const loadError = ref('')
+const loadingSpots = ref(false)
+const hasMidpoint = computed(
+  () =>
+    hangout.hangout?.midpoint_lat != null &&
+    hangout.hangout?.midpoint_lng != null,
 )
+let spotRequestId = 0
 
-const steps = ['Starting points', 'Transport', 'Midpoint', 'Spots', 'Vote', 'Final plan']
-const currentStep = 3
+// Fetch Google Places around the midpoint saved on this hangout.
+watch(
+  () => [
+    hangout.hangout?.midpoint_lat,
+    hangout.hangout?.midpoint_lng,
+    googlePlacesEnabled.value,
+  ],
+  async ([lat, lng, enabled], _, onCleanup) => {
+    const requestId = ++spotRequestId
+    spots.value = []
+    loadError.value = ''
+    if (!enabled || lat == null || lng == null) {
+      loadingSpots.value = false
+      return
+    }
 
-const people = [
-  { name: 'Ryan', color: '#0E7C6B' },
-  { name: 'Nicole', color: '#F2684A' },
-  { name: 'Surya', color: '#6C63FF' },
-  { name: 'Hugo', color: '#E0A100' },
-]
-
-// Placeholder spots until wired to the places service
-const spots = ref(spotsMock)
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    loadingSpots.value = true
+    try {
+      const results = await loadSpots({ lat, lng }, { radiusM: 1000, signal: controller.signal })
+      if (requestId === spotRequestId) spots.value = results
+    } catch (err) {
+      if (requestId === spotRequestId) {
+        loadError.value = `Could not load nearby spots: ${err.message}`
+      }
+    } finally {
+      if (requestId === spotRequestId) loadingSpots.value = false
+    }
+  },
+  { immediate: true },
+)
 
 const filters = [
   { label: 'All', value: 'all' },
   { label: 'Cafes', value: 'cafe' },
   { label: 'Activities', value: 'activity' },
-  { label: 'Restaurants', value: 'restaurant' },
+  { label: 'Restaurants', value: 'food' },
+  { label: 'Outdoors', value: 'outdoor' },
 ]
 const activeFilter = ref('all')
 const filteredSpots = computed(() =>
@@ -145,10 +187,10 @@ const sortBy = ref('match')
 // Crowd level sorts quietest first
 const comparators = {
   match: (a, b) => b.matchPct - a.matchPct,
-  rating: (a, b) => b.rating - a.rating,
-  'price-asc': (a, b) => a.priceLevel - b.priceLevel,
-  'price-desc': (a, b) => b.priceLevel - a.priceLevel,
-  distance: (a, b) => a.stationDistanceM - b.stationDistanceM,
+  rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
+  'price-asc': (a, b) => (a.priceLevel ?? 0) - (b.priceLevel ?? 0),
+  'price-desc': (a, b) => (b.priceLevel ?? 0) - (a.priceLevel ?? 0),
+  distance: (a, b) => (a.stationDistanceM ?? Infinity) - (b.stationDistanceM ?? Infinity),
   crowd: (a, b) => a.crowdLevel - b.crowdLevel,
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
@@ -156,10 +198,43 @@ const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sor
 const addedIds = reactive(new Set())
 const shortlisted = computed(() => spots.value.filter((s) => addedIds.has(s.id)))
 
-const mapCenter = computed(() => [
-  hangout.hangout?.midpoint_lat ?? 1.3508,
-  hangout.hangout?.midpoint_lng ?? 103.8485,
-])
+// Spots already saved to this hangout's shortlist show as added
+watch(
+  () => hangout.shortlist,
+  (list) => list.forEach((s) => addedIds.add(s.source_place_id)),
+  { immediate: true },
+)
+
+async function addSpot(spot) {
+  if (addedIds.has(spot.id)) return
+  addedIds.add(spot.id)
+  try {
+    const row = await addToShortlist(route.params.id, {
+      source: 'google',
+      source_place_id: spot.id,
+      name: spot.name,
+      category: spot.category,
+      lat: spot.lat,
+      lng: spot.lng,
+      rating: spot.rating,
+      price_level: spot.priceLevel,
+      image_url: spot.imageUrl,
+      match_pct: spot.matchPct,
+    })
+    if (row && hangout.hangout && !hangout.hangout.shortlist.some((s) => s.id === row.id)) {
+      hangout.hangout.shortlist.push(row)
+    }
+  } catch {
+    addedIds.delete(spot.id)
+    loadError.value = 'Could not add that spot to the shortlist. Please try again.'
+  }
+}
+
+const mapCenter = computed(() =>
+  hasMidpoint.value
+    ? [hangout.hangout.midpoint_lat, hangout.hangout.midpoint_lng]
+    : null,
+)
 const mapMarkers = computed(() =>
   sortedSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
 )

@@ -1,12 +1,26 @@
-// Owner: Hugo. Vercel serverless function: GET /api/places?lat=&lng=&radius=800&categories=cafe,food
-// Google Places needs GOOGLE_PLACES_API_KEY; OpenStreetMap Overpass needs no key.
+// Vercel serverless function:
+//   GET /api/places?lat=&lng=&radius=800&categories=cafe,food,activity,outdoor
+//   GET /api/places?id=<google place id>
+// Uses Google Places API (New) with GOOGLE_PLACES_API_KEY.
 //
 // Replies with shortlist-shaped places, nearest first:
-// [{ source, source_place_id, name, category, lat, lng, rating, price_level, image_url, distance_m }]
-// Keep this shape when you add the real call.
-import { samplePlaces } from './_mocks/places.js'
+// [{ source, source_place_id, name, category, lat, lng, rating, review_count, price_level, image_url,
+//    distance_m, address, google_maps_uri, open_now, description, tags,
+//    nearest_station_name, station_distance_m }]
+import { nearbyPlaces, placeById } from './_google.js'
 
 export default async function handler(req, res) {
+  const key = process.env.GOOGLE_PLACES_API_KEY
+
+  if (req.query.id) {
+    if (!key) return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY is not set' })
+    try {
+      return res.json(await placeById(key, String(req.query.id)))
+    } catch (err) {
+      return res.status(502).json({ error: err.message })
+    }
+  }
+
   const centre = { lat: Number(req.query.lat), lng: Number(req.query.lng) }
   const radiusM = Number(req.query.radius ?? 800)
   const categories = req.query.categories ? req.query.categories.split(',').filter(Boolean) : []
@@ -15,7 +29,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Need lat and lng (and optionally radius in metres)' })
   }
 
-  // TODO(Hugo): once the team picks Google Places or OpenStreetMap, call it here and map each
-  // result to the shape above. Until then, answer with the sample.
-  return res.json(samplePlaces(centre, { radiusM, categories }))
+  if (!key) return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY is not set' })
+
+  try {
+    return res.json(await nearbyPlaces(key, centre, radiusM, categories))
+  } catch (err) {
+    return res.status(502).json({ error: err.message })
+  }
 }

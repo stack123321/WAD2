@@ -5,6 +5,36 @@ import { test, expect } from '@playwright/test'
 
 const GREETING = /^Good (morning|afternoon|evening)(, .+)?!$/
 
+test.beforeEach(async ({ page }) => {
+  await stubNearbySpots(page)
+})
+
+async function stubNearbySpots(page) {
+  await page.route('**/api/places**', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          source: 'google',
+          source_place_id: 'test-cafe',
+          name: 'Test Cafe',
+          category: 'cafe',
+          lat: 1.3508,
+          lng: 103.8485,
+          rating: 4.5,
+          review_count: 20,
+          price_level: 2,
+          image_url: null,
+          distance_m: 250,
+          nearest_station_name: 'Bishan',
+          station_distance_m: 300,
+          tags: [],
+        },
+      ]),
+    }),
+  )
+}
+
 const pages = [
   ['/', /^Meet halfway\.\s*Hang out better\.$/],
   ['/login', 'Stop arguing about where to meet.'],
@@ -15,7 +45,6 @@ const pages = [
   ['/hangouts/demo/transport', 'How is everyone getting there?'],
   ['/hangouts/demo/midpoint', 'Midpoint + crowd heat map'],
   ['/hangouts/demo/explore', 'Spots near Bishan'],
-  ['/hangouts/demo/spots/1', 'Mock Cafe'],
   ['/hangouts/demo/vote', 'Group voting'],
   ['/hangouts/demo/plan', 'Final plan & itinerary'],
 ]
@@ -26,6 +55,27 @@ for (const [path, title] of pages) {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(title)
   })
 }
+
+test('Google Places calls stay off until enabled', async ({ page }) => {
+  let placesRequests = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/places') placesRequests += 1
+  })
+
+  await page.goto('/hangouts/demo/explore')
+  const toggle = page.getByRole('switch', { name: 'Google Places calls' })
+  await expect(toggle).not.toBeChecked()
+  await expect(page.getByText('Google Places is off. Turn it on to find nearby spots.')).toBeVisible()
+  expect(placesRequests).toBe(0)
+
+  await toggle.check()
+  await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
+  expect(placesRequests).toBe(1)
+
+  await toggle.uncheck()
+  await expect(page.getByText('Google Places is off. Turn it on to find nearby spots.')).toBeVisible()
+  expect(placesRequests).toBe(1)
+})
 
 test('new hangout: landing to final plan', async ({ page }) => {
   const h1 = page.getByRole('heading', { level: 1 })
@@ -49,8 +99,9 @@ test('new hangout: landing to final plan', async ({ page }) => {
     await expect(h1).toHaveText(title)
   }
 
-  await page.getByRole('link', { name: 'Mock Cafe', exact: true }).first().click()
-  await expect(h1).toHaveText('Mock Cafe')
+  await page.getByRole('switch', { name: 'Google Places calls' }).check()
+  await page.getByRole('link', { name: 'Test Cafe', exact: true }).first().click()
+  await expect(h1).toHaveText('Test Cafe')
 
   await page.goto('/hangouts/demo/vote')
   await expect(h1).toHaveText('Group voting')
