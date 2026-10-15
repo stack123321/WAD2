@@ -49,5 +49,5 @@ test('Open Friends List goes to the friends page', async ({ page }) => {
   await page.goto('/dashboard')
   await page.getByRole('link', { name: 'Open Friends List →' }).click()
   await expect(page).toHaveURL('/friends')
-  await expect(page.getByRole('heading', { name: 'Friends' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'My Friends' })).toBeVisible()
 })

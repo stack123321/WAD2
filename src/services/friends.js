@@ -112,3 +112,157 @@ export async function addFriendToHangout(hangoutId, userId) {
   }
   await addMember(hangoutId, userId)
 }
+
+// ── Friend requests (the friendships table in supabase/schema.sql) ──
+
+// Demo only: requests kept in memory, so the Friends page can be tried without Supabase.
+// They reset when the page reloads.
+let demoFriendships = [
+  { requester_id: DEMO_ME, addressee_id: 'u-ryan', status: 'accepted' },
+  { requester_id: 'u-nicole', addressee_id: DEMO_ME, status: 'accepted' },
+  { requester_id: DEMO_ME, addressee_id: 'u-hugo', status: 'accepted' },
+  { requester_id: 'u-matrix', addressee_id: DEMO_ME, status: 'pending' },
+]
+
+// Demo only: everyone in the sample hangouts, once each
+async function demoPeople() {
+  const rows = await getMemberRows()
+  let people = []
+  for (let r of rows) {
+    if (!people.find((p) => p.user_id === r.user_id)) {
+      people.push({
+        user_id: r.user_id,
+        display_name: r.display_name,
+        avatar_color: r.avatar_color,
+      })
+    }
+  }
+  return people
+}
+
+// People you could add: their name contains the text, or it's their exact email. Never returns emails.
+export async function searchPeople(text) {
+  if (!hasSupabase) {
+    const people = await demoPeople()
+    return people.filter(
+      (p) => p.user_id !== DEMO_ME && p.display_name.toLowerCase().includes(text.toLowerCase()),
+    )
+  }
+
+  const { data, error } = await supabase.rpc('search_people', { q: text })
+  if (error) {
+    throw error
+  }
+  return data.map((p) => ({
+    user_id: p.id,
+    display_name: p.display_name,
+    avatar_color: p.avatar_color,
+  }))
+}
+
+// Your friendships, split three ways. Each list is [{ user_id, display_name, avatar_color }]:
+//   friends  = accepted (either of you asked)
+//   pending  = you asked, they haven't accepted yet
+//   requests = they asked you
+export async function getFriendships(myId) {
+  const me = hasSupabase ? myId : DEMO_ME
+  let rows = []
+
+  if (!hasSupabase) {
+    const people = await demoPeople()
+    for (let f of demoFriendships) {
+      rows.push({
+        requester_id: f.requester_id,
+        addressee_id: f.addressee_id,
+        status: f.status,
+        requester: people.find((p) => p.user_id === f.requester_id),
+        addressee: people.find((p) => p.user_id === f.addressee_id),
+      })
+    }
+  } else {
+    // The security rules only return friendships you're part of
+    const { data, error } = await supabase
+      .from('friendships')
+      .select(
+        'requester_id, addressee_id, status, ' +
+          'requester:profiles!friendships_requester_id_fkey(display_name, avatar_color), ' +
+          'addressee:profiles!friendships_addressee_id_fkey(display_name, avatar_color)',
+      )
+    if (error) {
+      throw error
+    }
+    rows = data
+  }
+
+  let lists = { friends: [], pending: [], requests: [] }
+  for (let r of rows) {
+    const iAsked = r.requester_id === me
+    // The other person in this friendship
+    const otherId = iAsked ? r.addressee_id : r.requester_id
+    const otherProfile = iAsked ? r.addressee : r.requester
+    const other = {
+      user_id: otherId,
+      display_name: otherProfile.display_name,
+      avatar_color: otherProfile.avatar_color,
+    }
+    if (r.status === 'accepted') {
+      lists.friends.push(other)
+    } else if (iAsked) {
+      lists.pending.push(other)
+    } else {
+      lists.requests.push(other)
+    }
+  }
+  return lists
+}
+
+// Ask someone to be your friend
+export async function sendFriendRequest(myId, userId) {
+  if (!hasSupabase) {
+    demoFriendships.push({ requester_id: DEMO_ME, addressee_id: userId, status: 'pending' })
+    return
+  }
+  const { error } = await supabase
+    .from('friendships')
+    .insert({ requester_id: myId, addressee_id: userId })
+  if (error) {
+    throw error
+  }
+}
+
+// Accept a request someone sent you
+export async function acceptFriendRequest(myId, userId) {
+  if (!hasSupabase) {
+    const f = demoFriendships.find((f) => f.requester_id === userId && f.addressee_id === DEMO_ME)
+    if (f) {
+      f.status = 'accepted'
+    }
+    return
+  }
+  const { error } = await supabase
+    .from('friendships')
+    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+    .eq('requester_id', userId)
+    .eq('addressee_id', myId)
+  if (error) {
+    throw error
+  }
+}
+
+// Decline a request someone sent you
+export async function declineFriendRequest(myId, userId) {
+  if (!hasSupabase) {
+    demoFriendships = demoFriendships.filter(
+      (f) => !(f.requester_id === userId && f.addressee_id === DEMO_ME),
+    )
+    return
+  }
+  const { error } = await supabase
+    .from('friendships')
+    .delete()
+    .eq('requester_id', userId)
+    .eq('addressee_id', myId)
+  if (error) {
+    throw error
+  }
+}
