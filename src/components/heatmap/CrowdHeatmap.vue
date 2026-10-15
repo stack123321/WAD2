@@ -1,14 +1,21 @@
 <script setup>
 // Crowd heat map for page 08: one coloured circle per MRT station, plus a time slider for today.
 // Owner: Ryan. Data: services/crowd.js → api/crowd.js → LTA DataMall.
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getCrowdLevels } from '@/services/crowd'
 
 const props = defineProps({
   midpoint: { type: Object, default: null }, // { name, lat, lng } of the group's midpoint
+  // 08 Midpoint: the midpoint pin can be dragged; the map emits "move" with the dropped { lat, lng }
+  draggable: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['move'])
+
+let map = null
+let midpointMarker = null
 
 const LEVEL_NAMES = { l: 'Low', m: 'Moderate', h: 'High' }
 
@@ -68,24 +75,62 @@ function drawCircles() {
   }
 }
 
+// The midpoint pin: a teardrop marker (draggable on 08), with its station name in a tooltip
+function drawMidpoint() {
+  if (midpointMarker) {
+    midpointMarker.remove()
+    midpointMarker = null
+  }
+  if (!props.midpoint) {
+    return
+  }
+  midpointMarker = L.marker([props.midpoint.lat, props.midpoint.lng], {
+    draggable: props.draggable,
+    zIndexOffset: 1000, // above the station circles
+    icon: L.divIcon({
+      className: '',
+      html: '<span class="midpoint-pin"></span>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 28], // the tip of the pin sits on the spot
+    }),
+  })
+    .bindTooltip(`Midpoint: ${props.midpoint.name}`, { permanent: true, direction: 'top', offset: [0, -28] })
+    .addTo(map)
+
+  midpointMarker.on('dragend', () => {
+    const position = midpointMarker.getLatLng()
+    emit('move', { lat: position.lat, lng: position.lng })
+  })
+}
+
 onMounted(() => {
-  const map = L.map('crowd-map').setView([1.3521, 103.8198], 11) // centre of Singapore
+  // Zoomed in on the midpoint if there is one, so its nearby stations' crowds are easy to see
+  if (props.midpoint) {
+    map = L.map('crowd-map').setView([props.midpoint.lat, props.midpoint.lng], 14)
+  } else {
+    map = L.map('crowd-map').setView([1.3521, 103.8198], 11) // centre of Singapore
+  }
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map)
   circles = L.layerGroup().addTo(map)
 
-  if (props.midpoint) {
-    L.circleMarker([props.midpoint.lat, props.midpoint.lng], {
-      radius: 12,
-      className: 'crowd-midpoint',
-    })
-      .bindTooltip(`Midpoint: ${props.midpoint.name}`)
-      .addTo(map)
-  }
-
+  drawMidpoint()
   loadCrowd()
 })
+
+// When the midpoint changes (e.g. after a drag snaps it to a station), move the pin there
+watch(
+  () => props.midpoint,
+  () => {
+    if (!map) return
+    drawMidpoint()
+    if (props.midpoint) {
+      map.panTo([props.midpoint.lat, props.midpoint.lng])
+    }
+  },
+  { deep: true },
+)
 </script>
 
 <template>
@@ -130,6 +175,26 @@ onMounted(() => {
 #crowd-map {
   height: 360px;
   border-radius: var(--fp-radius-sm);
+}
+
+/* Bigger on laptops, where the map is the main thing on the page */
+@media (min-width: 992px) {
+  #crowd-map {
+    height: 520px;
+  }
+}
+
+/* The midpoint pin (Leaflet draws it, so :deep() is needed) */
+:deep(.midpoint-pin) {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--fp-primary);
+  border: 3px solid var(--fp-surface);
+  box-shadow: var(--fp-shadow);
+  cursor: grab;
 }
 
 /* Leaflet creates the circles itself, so :deep() is needed for scoped styles to reach them */

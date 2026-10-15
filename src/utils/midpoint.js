@@ -1,5 +1,34 @@
 // Owner: Nicole. Pure functions for the fair-midpoint algorithm: no API calls, no Vue,
 // so they are easy to test. The API calls live in services/routing.js.
+import { STATIONS } from '../../api/_data/stations.js'
+
+// Every MRT station once (interchanges like Bishan NS17 / CC15 appear once), from Ryan's station
+// list. LRT stations are left out, so the midpoint is always an MRT station.
+const MRT_LINES = ['NS', 'EW', 'NE', 'CC', 'CE', 'DT', 'TE', 'CG']
+
+export const MRT_STATIONS = []
+for (const code of Object.keys(STATIONS)) {
+  const line = code.replace(/\d.*$/, '') // "NS17" → "NS"
+  const station = STATIONS[code]
+  const alreadyAdded = MRT_STATIONS.find((s) => s.name === station.name)
+  if (MRT_LINES.includes(line) && !alreadyAdded) {
+    MRT_STATIONS.push({ name: station.name, lat: station.lat, lng: station.lng })
+  }
+}
+
+/**
+ * The MRT stations closest to a point, nearest first.
+ * @param {{ lat: number, lng: number }} point
+ * @param {number} count how many to return
+ */
+export function nearestStations(point, count) {
+  const withDistance = MRT_STATIONS.map((s) => ({
+    ...s,
+    distance: (s.lat - point.lat) ** 2 + (s.lng - point.lng) ** 2,
+  }))
+  withDistance.sort((a, b) => a.distance - b.distance)
+  return withDistance.slice(0, count)
+}
 
 /**
  * Plain geographic centre of the starting points. A first guess only: the real algorithm
