@@ -23,3 +23,12 @@ test('See nearby spots goes to page 09', async ({ page }) => {
   await page.getByRole('link', { name: 'See nearby spots' }).click()
   await expect(page).toHaveURL('/hangouts/demo/explore')
 })
+
+test("shows everyone's starting point on the OneMap base map", async ({ page }) => {
+  await page.goto('/hangouts/demo/midpoint')
+  await expect(page.locator('#crowd-map .member-pin')).toHaveCount(4)
+  await expect(page.locator('#crowd-map img.leaflet-tile').first()).toHaveAttribute(
+    'src',
+    /onemap\.gov\.sg/,
+  )
+})
