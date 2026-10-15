@@ -3,10 +3,12 @@
 // Owner: Matrix · Vet by: Hugo
 // Figma frame "05". Left: hangout details. Right: a note that the invite link comes on the next
 // page (06 Starting points has the Invite friends box, using the saved hangout's code).
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { createHangout, makeInviteCode } from '@/services/hangouts'
+import { addFriendToHangout, getFriend } from '@/services/friends'
 
+const route = useRoute()
 const router = useRouter()
 
 const vibes = [
@@ -40,6 +42,20 @@ const form = reactive({
   vibe: [],
   deadlineHours: 2,
   friendsAddStart: true,
+})
+
+// "Add to new hangout" on 04 Dashboard opens this page with ?with=<friend's id>
+const friend = ref(null)
+
+onMounted(async () => {
+  if (!route.query.with) {
+    return
+  }
+  try {
+    friend.value = await getFriend(route.query.with)
+  } catch (e) {
+    console.error(e)
+  }
 })
 
 function toggleVibe(value) {
@@ -81,6 +97,15 @@ async function submit() {
       vote_deadline: deadline.toISOString(),
       invite_code: inviteCode,
     })
+    // Add the friend picked on the dashboard. If that fails, the hangout still exists and they
+    // can be added on 06 ("Friends from past hangouts").
+    if (friend.value) {
+      try {
+        await addFriendToHangout(hangout.id, friend.value.user_id)
+      } catch (e) {
+        console.error(e)
+      }
+    }
     router.push({
       name: 'starting-points',
       params: { id: hangout.id },
@@ -193,6 +218,9 @@ async function submit() {
       <!-- Inviting friends happens on the next page, once the hangout exists -->
       <section class="panel">
         <h2 class="panel__title mb-1">Inviting friends</h2>
+        <p v-if="friend" class="with-friend mb-2">
+          Hanging out with <strong>{{ friend.display_name }}</strong> (added when you create it)
+        </p>
         <p class="panel__sub mb-0">
           After you click Create, you'll get your hangout's invite link on the next page (Starting
           points), ready to copy or share on WhatsApp and Telegram. Friends who open it log in and
@@ -269,6 +297,10 @@ async function submit() {
   margin-bottom: 1.25rem;
   font-size: 1.1rem;
   font-weight: 700;
+}
+
+.with-friend {
+  color: var(--fp-primary);
 }
 
 .panel__sub {

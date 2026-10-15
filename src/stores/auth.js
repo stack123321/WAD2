@@ -60,16 +60,6 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
-  // Redirects away to Google, then back to `redirectTo`.
-  async function signInWithGoogle(redirectTo) {
-    if (!hasSupabase) return mockLogin('demo@fairpoint.sg', 'Demo')
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo },
-    })
-    if (error) throw error
-  }
-
   async function resetPassword(email) {
     if (!hasSupabase) return
     const { error } = await supabase.auth.resetPasswordForEmail(email)
@@ -83,7 +73,6 @@ export const useAuthStore = defineStore('auth', () => {
     init,
     signIn,
     signUp,
-    signInWithGoogle,
     resetPassword,
     signOut,
   }

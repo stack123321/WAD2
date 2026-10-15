@@ -6,6 +6,7 @@ import { deleteHangout, getMyHangouts, leaveHangout } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
+import HangoutWith from '@/components/dashboard/HangoutWith.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
 
 const hangouts = ref([])
@@ -21,7 +22,7 @@ const greeting = computed(() => {
   return 'Good evening'
 })
 
-// The name they typed at sign up, or '' when nobody is logged in (or they used Google)
+// The name they typed at sign up, or '' when nobody is logged in
 const name = computed(() => {
   if (!auth.user) return ''
   return auth.user.user_metadata.display_name || ''
@@ -162,6 +163,7 @@ onMounted(async () => {
       </div>
 
       <div class="col-lg-4 d-flex flex-column gap-4">
+        <HangoutWith />
         <WeekForecast />
         <CrowdsNow />
       </div>

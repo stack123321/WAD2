@@ -93,6 +93,31 @@ create table public.votes (
   foreign key (shortlist_id, hangout_id) references public.shortlist (id, hangout_id) on delete cascade
 );
 
+-- Friend requests (Ryan, Friends page). Pending until the other person accepts; accepted = friends.
+create table public.friendships (
+  requester_id uuid not null references public.profiles (id) on delete cascade,
+  addressee_id uuid not null references public.profiles (id) on delete cascade,
+  status       text not null default 'pending' check (status in ('pending', 'accepted')),
+  created_at   timestamptz not null default now(),
+  accepted_at  timestamptz,
+  primary key (requester_id, addressee_id),
+  check (requester_id <> addressee_id)
+);
+
+-- One friendship per pair: stops A→B and B→A both existing
+create unique index friendships_one_per_pair on public.friendships
+  (least(requester_id, addressee_id), greatest(requester_id, addressee_id));
+
+-- Group chat inside a hangout (06 Starting points). Surya.
+create table public.messages (
+  id         uuid primary key default gen_random_uuid(),
+  hangout_id uuid not null references public.hangouts (id) on delete cascade,
+  user_id    uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  body       text not null check (char_length(trim(body)) between 1 and 500),
+  created_at timestamptz not null default now()
+);
+create index messages_by_hangout on public.messages (hangout_id, created_at);
+
 -- ───────────────────────── Helper functions ─────────────────────────
 -- "security definer" lets these look up membership without tripping the policies below
 -- (a policy on hangout_members that reads hangout_members would loop forever).
@@ -117,6 +142,32 @@ language sql stable security definer set search_path = public as $$
     join hangout_members theirs on theirs.hangout_id = mine.hangout_id
     where mine.user_id = auth.uid() and theirs.user_id = other
   );
+$$;
+
+-- True if you and `other` are accepted friends (Friends page). Lets a host add them to a hangout.
+create function public.is_friend(other uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from friendships
+    where status = 'accepted'
+      and ((requester_id = auth.uid() and addressee_id = other)
+        or (requester_id = other and addressee_id = auth.uid()))
+  );
+$$;
+
+-- Find people to add on the Friends page: name contains the text, or the exact email.
+-- Emails live in auth.users, which the app can't read. This returns names only, never emails.
+create function public.search_people(q text)
+returns table (id uuid, display_name text, avatar_color text)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.display_name, p.avatar_color
+  from profiles p
+  join auth.users u on u.id = p.id
+  where p.id <> auth.uid()
+    and length(trim(q)) >= 2
+    and (p.display_name ilike '%' || trim(q) || '%' or lower(u.email) = lower(trim(q)))
+  order by p.display_name
+  limit 10;
 $$;
 
 -- Invite links: /login?invite=CODE → after login, the app calls join_hangout(CODE).
@@ -163,6 +214,7 @@ alter table public.hangouts        enable row level security;
 alter table public.hangout_members enable row level security;
 alter table public.shortlist       enable row level security;
 alter table public.votes           enable row level security;
+alter table public.friendships     enable row level security;
 
 -- profiles: any logged-in user can read names and preferences (needed for group matching)
 create policy "profiles: read" on public.profiles
@@ -188,9 +240,13 @@ create policy "members: members read" on public.hangout_members
 create policy "members: host adds self" on public.hangout_members
   for insert to authenticated with check (user_id = auth.uid() and public.is_host(hangout_id));
 -- The host may also add people they've shared a past hangout with (06 "Friends from past hangouts")
+-- or accepted friends (Friends page "Add to hangout")
 create policy "members: host adds past friends" on public.hangout_members
   for insert to authenticated
-  with check (public.is_host(hangout_id) and public.shares_hangout_with(user_id));
+  with check (
+    public.is_host(hangout_id)
+    and (public.shares_hangout_with(user_id) or public.is_friend(user_id))
+  );
 -- Host may also update others' rows, so the transport page can save everyone's travel times.
 create policy "members: edit own row" on public.hangout_members
   for update to authenticated using (user_id = auth.uid() or public.is_host(hangout_id));
@@ -215,6 +271,28 @@ create policy "votes: change own" on public.votes
 create policy "votes: remove own" on public.votes
   for delete to authenticated using (user_id = auth.uid());
 
+-- friendships (Friends page)
+create policy "friendships: read own" on public.friendships
+  for select to authenticated using (auth.uid() in (requester_id, addressee_id));
+create policy "friendships: send" on public.friendships
+  for insert to authenticated with check (requester_id = auth.uid() and status = 'pending');
+create policy "friendships: accept" on public.friendships
+  for update to authenticated using (addressee_id = auth.uid()) with check (status = 'accepted');
+create policy "friendships: decline, cancel or unfriend" on public.friendships
+  for delete to authenticated using (auth.uid() in (requester_id, addressee_id));
+
+-- messages (hangout chat): members read and post in their hangout; you delete only your own
+alter table public.messages enable row level security;
+create policy "messages: members read" on public.messages
+  for select to authenticated using (public.is_member(hangout_id) or public.is_host(hangout_id));
+create policy "messages: members post" on public.messages
+  for insert to authenticated
+  with check (user_id = auth.uid() and (public.is_member(hangout_id) or public.is_host(hangout_id)));
+create policy "messages: delete own" on public.messages
+  for delete to authenticated using (user_id = auth.uid());
+
 -- ───────────────────────── Realtime ─────────────────────────
 -- Live vote tallies on 11, and members appearing on 06 as friends join.
 alter publication supabase_realtime add table public.votes, public.hangout_members;
+-- New chat messages appear live on 06
+alter publication supabase_realtime add table public.messages;

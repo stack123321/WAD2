@@ -209,13 +209,6 @@
               </div>
               <span class="bar-mins">{{ m.travel_mins }} min</span>
             </div>
-
-            <div class="chips">
-              <span class="chip">Longest {{ stats.longest }} min</span>
-              <span class="chip">Shortest {{ stats.shortest }} min</span>
-              <span class="chip chip-good">Gap {{ stats.gap }} min<template v-if="stats.gap <= 15"> ·
-                  fair</template></span>
-            </div>
           </div>
 
           <button
@@ -385,31 +378,12 @@
   text-align: right;
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  border-top: 1px solid var(--fp-border);
-  padding-top: 0.75rem;
-  margin-top: 0.75rem;
-}
 
-.chip {
-  background: var(--fp-bg);
-  border-radius: 99px;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
 
-.chip-good,
 .area-best {
   background: color-mix(in srgb, var(--fp-primary) 12%, var(--fp-surface));
 }
 
-.chip-good {
-  color: var(--fp-primary);
-}
 
 /* area | avg time | gap */
 .area-row {

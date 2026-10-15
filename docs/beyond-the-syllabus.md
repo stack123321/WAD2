@@ -57,6 +57,24 @@ d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: SG
 ```
 Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the date block and start time.
 
+## Lists
+
+### `list.sort((a, b) => b.x - a.x)`
+Puts a list in order, **changing the list itself**. The function compares two items: a negative answer puts `a` first, a positive one puts `b` first. So `a.x - b.x` sorts smallest first, and `b.x - a.x` sorts biggest (or newest) first. (Seen in the course code, but not explained.)
+```js
+const friends = [{ name: 'Hugo', met: 100 }, { name: 'Matrix', met: 300 }, { name: 'Eashvar', met: 200 }]
+friends.sort((a, b) => b.met - a.met) // Matrix (300), Eashvar (200), Hugo (100)
+```
+Used in: [services/friends.js](../src/services/friends.js) to put the newest friends first.
+
+### `list.slice(start, end)`
+A **copy** of part of a list, from `start` up to (not including) `end`. The original list isn't changed. (Seen in the course code, but not explained.)
+```js
+['Matrix', 'Eashvar', 'Hugo', 'Nicole'].slice(0, 3) // ['Matrix', 'Eashvar', 'Hugo']
+[1, 2].slice() // [1, 2]: with no numbers, a copy of the whole list
+```
+Used in: [services/friends.js](../src/services/friends.js) to keep the 3 newest friends, and [PreferencesView.vue](../src/views/PreferencesView.vue) to copy the default lists on Reset.
+
 ## Text
 
 ### `text.includes(part)`
@@ -93,7 +111,7 @@ const map = L.map('crowd-map').setView([1.3521, 103.8198], 11)
 ```
 
 ### `L.tileLayer(url, { attribution }).addTo(map)`
-Loads the map pictures ("tiles") from OpenStreetMap. `{z}/{x}/{y}` in the URL are filled in by Leaflet for each square of the map. OpenStreetMap's rules say you must show the `attribution` credit.
+Loads the map pictures ("tiles"). We use OneMap's free Singapore map (`https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png`), the same as every other map in the app. `{z}/{x}/{y}` in the URL are filled in by Leaflet for each square of the map. OneMap's terms say you must show the `attribution` credit.
 
 ### `L.circleMarker([lat, lng], { radius, className })`
 Draws a circle at a position. `radius` is in screen pixels, so it stays the same size when you zoom. `className` adds CSS classes so the stylesheet can colour it.
@@ -110,6 +128,23 @@ A container for many shapes. Add circles to the group instead of straight onto t
 const circles = L.layerGroup().addTo(map)
 circles.clearLayers() // remove every circle in the group
 ```
+
+### `map.fitBounds(points, { padding, maxZoom })`
+Moves and zooms the map so every point in the list fits on screen. `padding` keeps them away from the edges (in pixels); `maxZoom` stops it zooming in too far when the points are close together.
+```js
+map.fitBounds([[1.35, 103.94], [1.33, 103.74], [1.35, 103.85]], { padding: [40, 40], maxZoom: 14 })
+```
+Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) to show the midpoint and everyone's starting points together on 08.
+
+## Browser features
+
+### `new ResizeObserver(callback)` and `.observe(element)`
+Calls `callback` whenever the element changes size, e.g. when the window is resized. Leaflet measures its box only once, so without this part of the map stays grey after the layout changes. `.disconnect()` stops watching (do it when leaving the page).
+```js
+const watcher = new ResizeObserver(() => map.invalidateSize()) // "measure your box again"
+watcher.observe(document.getElementById('crowd-map'))
+```
+Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue), copied from Surya's [MembersMap.vue](../src/components/map/MembersMap.vue) on 06.
 
 ## CSS
 

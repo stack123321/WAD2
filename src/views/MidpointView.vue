@@ -109,7 +109,12 @@ async function onMidpointMoved(position) {
         <div class="row g-4">
           <!-- Big map: the midpoint pin (draggable) and live crowds at the stations around it -->
           <div class="col-lg-8">
-            <CrowdHeatmap :midpoint="midpoint" :draggable="true" @move="onMidpointMoved" />
+            <CrowdHeatmap
+              :midpoint="midpoint"
+              :draggable="true"
+              :members="store.members"
+              @move="onMidpointMoved"
+            />
           </div>
 
           <!-- Beside it: the midpoint, then the weather there -->
