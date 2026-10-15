@@ -8,15 +8,14 @@
   import { useAuthStore } from '@/stores/auth'
   import { rankStations } from '@/services/routing'
   import { saveMidpoint, subscribeToMembers, updateMemberMode } from '@/services/hangouts'
-  import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+  import PersonModeRow from '@/components/transport/PersonModeRow.vue'
+  import TravelTimePanel from '@/components/transport/TravelTimePanel.vue'
 
   const route = useRoute()
   const router = useRouter()
   const optimiseFor = ref('fairest')
   const ranked = ref([])
   const store = useHangoutStore()
-  const modes = ['mrt', 'bus', 'car', 'walk']
-  const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
   const missingMode = computed(() => store.members.filter((m) => !m.mode))
   const allPicked = computed(() => store.members.length > 0 && missingMode.value.length === 0)
 
@@ -136,11 +135,6 @@
     return { ...f, shortest: f.longest - f.gap }
   })
 
-  // Bar length as a percentage; the full bar represents at least 40 minutes
-  function barWidth(mins) {
-    const scale = Math.max(40, stats.value.longest)
-    return (mins / scale) * 100 + '%'
-  }
 
 
 </script>
@@ -157,59 +151,22 @@
       <div class="row g-4">
         <!-- Left column: one row per person -->
         <div class="col-lg-8">
-          <div v-for="m in store.members" :key="m.user_id" class="person">
-            <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="36" />
-
-            <div class="who">
-              <div class="name">
-                {{ m.display_name }}<span v-if="isMe(m)"> (you)</span>
-              </div>
-              <div class="from">From {{ m.start_label }}</div>
-            </div>
-
-            <!-- Your row: pick your mode. Friends' rows: shows what they picked (they choose it) -->
-            <div class="segmented" :class="{ 'segmented--readonly': !isMe(m) }">
-              <button
-                v-for="mode in modes"
-                :key="mode"
-                type="button"
-                :class="{ active: m.mode === mode }"
-                :disabled="!isMe(m)"
-                :aria-pressed="m.mode === mode"
-                @click="pickMode(m, mode)"
-              >
-                {{ labels[mode] }}
-              </button>
-            </div>
-
-            <div class="time">
-              <template v-if="m.mode && m.travel_mins != null">
-                <div class="mins">{{ m.travel_mins }} min</div>
-                <div class="cost">${{ Number(m.travel_cost).toFixed(2) }} one way</div>
-              </template>
-              <div v-else-if="isMe(m)" class="cost">Pick your mode</div>
-              <div v-else class="cost">Waiting for {{ m.display_name }}</div>
-            </div>
-          </div>
+          <PersonModeRow
+            v-for="m in store.members"
+            :key="m.user_id"
+            :member="m"
+            :is-me="isMe(m)"
+            @pick="pickMode(m, $event)"
+          />
         </div>
 
         <!-- Right column: travel-time bars and candidate areas go here later -->
         <div v-if="stats" class="col-lg-4">
-          <!-- Travel time bars -->
-          <div class="panel">
-            <h2 class="panel-title">Travel time to {{ ranked[0]?.name }} MRT</h2>
-            <p class="panel-sub">
-              The fairest MRT station near the middle of everyone's starting points
-            </p>
-
-            <div v-for="m in store.members" :key="m.user_id" class="bar-row">
-              <span class="bar-name">{{ m.display_name }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: m.avatar_color }"></div>
-              </div>
-              <span class="bar-mins">{{ m.travel_mins }} min</span>
-            </div>
-          </div>
+          <TravelTimePanel
+            :members="store.members"
+            :station-name="ranked[0]?.name"
+            :longest="stats.longest"
+          />
 
           <button
             v-if="allPicked"
@@ -247,18 +204,6 @@
   margin-bottom: 1.25rem;
 }
 
-/* One white rounded card per person */
-.person {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  padding: 0.85rem 1.25rem;
-  margin-bottom: 0.75rem;
-}
-
 /* Coloured circle with the person's initial */
 .avatar {
   width: 36px;
@@ -270,115 +215,6 @@
   font-weight: 700;
   flex-shrink: 0;
 }
-
-.who {
-  width: 150px;
-}
-
-.name {
-  font-weight: 700;
-}
-
-.from,
-.cost {
-  color: var(--fp-muted);
-  font-size: 0.8rem;
-}
-
-/* The grey pill holding MRT / Bus / Car / Walk */
-.segmented {
-  display: flex;
-  background: var(--fp-bg);
-  border-radius: var(--fp-radius-sm);
-  padding: 4px;
-}
-
-.segmented button {
-  border: 0;
-  background: transparent;
-  color: var(--fp-muted);
-  font-size: 0.85rem;
-  padding: 0.3rem 0.8rem;
-  border-radius: 8px;
-}
-
-/* The selected mode is a white raised pill */
-.segmented button.active {
-  background: var(--fp-surface);
-  color: var(--fp-ink);
-  font-weight: 700;
-  box-shadow: var(--fp-shadow);
-}
-
-/* Friends' rows: you can see what they picked, but can't click it */
-.segmented--readonly button {
-  cursor: default;
-}
-
-.segmented--readonly button:not(.active) {
-  opacity: 0.45;
-}
-
-/* Time and cost pushed to the right edge */
-.time {
-  margin-left: auto;
-  text-align: right;
-}
-
-.mins {
-  font-weight: 800;
-}
-
-.panel {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-}
-
-.panel-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin-bottom: 0.15rem;
-}
-
-.panel-sub {
-  color: var(--fp-muted);
-  font-size: 0.8rem;
-  margin-bottom: 0.75rem;
-}
-
-/* name | bar | minutes */
-.bar-row {
-  display: grid;
-  grid-template-columns: 60px 1fr 55px;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.6rem;
-  font-size: 0.85rem;
-}
-
-.bar-track {
-  height: 8px;
-  background: var(--fp-bg);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.3s;
-  /* bar slides when the mode changes */
-}
-
-.bar-mins {
-  font-weight: 700;
-  text-align: right;
-}
-
-
 
 .area-best {
   background: color-mix(in srgb, var(--fp-primary) 12%, var(--fp-surface));
