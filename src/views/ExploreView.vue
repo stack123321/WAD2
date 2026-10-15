@@ -1,13 +1,6 @@
 ﻿<template>
   
   <div class="nearby-page">
-    <HangoutBar
-      v-if="hangout.hangout"
-      :hangout="hangout.hangout"
-      :members="hangout.members"
-      current="explore"
-    />
-
     <div class="content">
     <section class="head">
       <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
@@ -94,7 +87,6 @@ import { computed, nextTick, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import spotsMock from '@/mocks/spots.json'
 import { useHangoutStore } from '@/stores/hangout'
 
