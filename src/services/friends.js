@@ -43,45 +43,11 @@ async function getMemberRows() {
   }))
 }
 
-// Your newest friends first: the people you met most recently. You "met" someone when the second
-// of you joined a hangout you share; if you share several hangouts, the first one counts.
+// Your 3 (or `count`) newest friends: the friendships accepted most recently
 export async function getNewestFriends(myId, count) {
-  const me = hasSupabase ? myId : DEMO_ME
-  const rows = await getMemberRows()
-
-  // When you joined each of your hangouts, e.g. { 'abc-123': 1791457200000 }
-  let myJoins = {}
-  for (let r of rows) {
-    if (r.user_id === me) {
-      myJoins[r.hangout_id] = new Date(r.joined_at).getTime()
-    }
-  }
-
-  let friends = []
-  for (let r of rows) {
-    if (r.user_id === me) {
-      continue
-    }
-    // When you met in this hangout: whichever of you joined later
-    let met = new Date(r.joined_at).getTime()
-    if (myJoins[r.hangout_id] > met) {
-      met = myJoins[r.hangout_id]
-    }
-    const existing = friends.find((f) => f.user_id === r.user_id)
-    if (!existing) {
-      friends.push({
-        user_id: r.user_id,
-        display_name: r.display_name,
-        avatar_color: r.avatar_color,
-        met: met,
-      })
-    } else if (met < existing.met) {
-      existing.met = met // you share an earlier hangout, so you met then
-    }
-  }
-
-  friends.sort((a, b) => b.met - a.met) // newest first
-  return friends.slice(0, count)
+  const lists = await getFriendships(myId)
+  lists.friends.sort((a, b) => b.since - a.since) // newest first
+  return lists.friends.slice(0, count)
 }
 
 // One person's name and colour, for "Hanging out with …" on 05
@@ -118,10 +84,25 @@ export async function addFriendToHangout(hangoutId, userId) {
 // Demo only: requests kept in memory, so the Friends page can be tried without Supabase.
 // They reset when the page reloads.
 let demoFriendships = [
-  { requester_id: DEMO_ME, addressee_id: 'u-ryan', status: 'accepted' },
-  { requester_id: 'u-nicole', addressee_id: DEMO_ME, status: 'accepted' },
-  { requester_id: DEMO_ME, addressee_id: 'u-hugo', status: 'accepted' },
-  { requester_id: 'u-matrix', addressee_id: DEMO_ME, status: 'pending' },
+  {
+    requester_id: DEMO_ME,
+    addressee_id: 'u-ryan',
+    status: 'accepted',
+    accepted_at: '2026-10-10T12:20:00+08:00',
+  },
+  {
+    requester_id: 'u-nicole',
+    addressee_id: DEMO_ME,
+    status: 'accepted',
+    accepted_at: '2026-10-10T12:30:00+08:00',
+  },
+  {
+    requester_id: DEMO_ME,
+    addressee_id: 'u-hugo',
+    status: 'accepted',
+    accepted_at: '2026-10-12T09:00:00+08:00',
+  },
+  { requester_id: 'u-matrix', addressee_id: DEMO_ME, status: 'pending', accepted_at: null },
 ]
 
 // Demo only: everyone in the sample hangouts, once each
@@ -175,6 +156,7 @@ export async function getFriendships(myId) {
         requester_id: f.requester_id,
         addressee_id: f.addressee_id,
         status: f.status,
+        accepted_at: f.accepted_at,
         requester: people.find((p) => p.user_id === f.requester_id),
         addressee: people.find((p) => p.user_id === f.addressee_id),
       })
@@ -184,7 +166,7 @@ export async function getFriendships(myId) {
     const { data, error } = await supabase
       .from('friendships')
       .select(
-        'requester_id, addressee_id, status, ' +
+        'requester_id, addressee_id, status, accepted_at, ' +
           'requester:profiles!friendships_requester_id_fkey(display_name, avatar_color), ' +
           'addressee:profiles!friendships_addressee_id_fkey(display_name, avatar_color)',
       )
@@ -204,6 +186,7 @@ export async function getFriendships(myId) {
       user_id: otherId,
       display_name: otherProfile.display_name,
       avatar_color: otherProfile.avatar_color,
+      since: r.accepted_at ? new Date(r.accepted_at).getTime() : 0, // when you became friends
     }
     if (r.status === 'accepted') {
       lists.friends.push(other)
@@ -236,6 +219,7 @@ export async function acceptFriendRequest(myId, userId) {
     const f = demoFriendships.find((f) => f.requester_id === userId && f.addressee_id === DEMO_ME)
     if (f) {
       f.status = 'accepted'
+      f.accepted_at = new Date().toISOString()
     }
     return
   }

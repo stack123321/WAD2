@@ -37,12 +37,12 @@ test('Crowds right now counts stations and opens the heat map', async ({ page })
 test('Hangout with shows the 3 newest friends and starts a hangout with one', async ({ page }) => {
   await page.goto('/dashboard')
   const card = page.locator('.hangout-with')
-  await expect(card.getByText('Matrix')).toBeVisible()
+  await expect(card.getByText('Hugo')).toBeVisible()
   await expect(card.getByRole('link', { name: /^Add .+ to new hangout$/ })).toHaveCount(3)
 
-  await card.getByRole('link', { name: 'Add Matrix to new hangout' }).click()
-  await expect(page).toHaveURL('/hangouts/new?with=u-matrix')
-  await expect(page.getByText('Hanging out with Matrix')).toBeVisible()
+  await card.getByRole('link', { name: 'Add Hugo to new hangout' }).click()
+  await expect(page).toHaveURL('/hangouts/new?with=u-hugo')
+  await expect(page.getByText('Hanging out with Hugo')).toBeVisible()
 })
 
 test('Open Friends List goes to the friends page', async ({ page }) => {

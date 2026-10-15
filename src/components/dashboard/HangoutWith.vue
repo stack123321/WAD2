@@ -1,7 +1,7 @@
 <script setup>
 // "Hangout with" card on 04 Dashboard: your 3 newest friends, each with Add to new hangout,
 // and a button to the full friends list.
-// Owner: Ryan. Data: services/friends.js (friends = people you've been in a hangout with).
+// Owner: Ryan. Data: services/friends.js (your accepted friends, newest first).
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getNewestFriends } from '@/services/friends'
