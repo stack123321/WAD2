@@ -1,8 +1,20 @@
 <script setup>
 // Owner: Hugo (UI kit). Basic version so the app runs; restyle to match Figma.
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
+
+// Ask first, then log out and leave the app for the landing page
+async function logOut() {
+  const sure = window.confirm('Log out of Fairpoint?')
+  if (!sure) {
+    return
+  }
+  await auth.signOut()
+  router.push({ name: 'landing' })
+}
 </script>
 
 <template>
@@ -21,18 +33,14 @@ const auth = useAuthStore()
       </button>
       <div id="mainNav" class="collapse navbar-collapse">
         <ul class="navbar-nav ms-auto align-items-sm-center gap-sm-2">
-          <li class="nav-item">
+          <li v-if="auth.isLoggedIn" class="nav-item">
             <RouterLink class="nav-link" :to="{ name: 'dashboard' }">My hangouts</RouterLink>
           </li>
-          <li class="nav-item">
+          <li v-if="auth.isLoggedIn" class="nav-item">
             <RouterLink class="nav-link" :to="{ name: 'preferences' }">Preferences</RouterLink>
           </li>
           <li class="nav-item">
-            <button
-              v-if="auth.isLoggedIn"
-              class="btn btn-outline-primary btn-sm"
-              @click="auth.signOut()"
-            >
+            <button v-if="auth.isLoggedIn" class="btn btn-outline-primary btn-sm" @click="logOut">
               Log out
             </button>
             <RouterLink v-else class="btn btn-primary btn-sm" :to="{ name: 'auth' }"

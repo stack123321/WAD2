@@ -2,7 +2,7 @@
 // 02 Log in / Sign up
 // Owner: Matrix · Vet by: Hugo
 // Figma frame "02". Split screen: brand panel with a map preview on the left, auth card on the right.
-// ?mode=signup opens the Sign up tab; ?redirect=/path is where to go after logging in;
+// ?mode=signup opens Sign up; ?redirect=/path is where to go after logging in;
 // ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in.
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -110,7 +110,7 @@ async function finish() {
   }
 }
 
-// Someone opening an invite link while already logged in (or coming back from Google) joins straight away.
+// Someone opening an invite link while already logged in joins straight away.
 watch(
   () => auth.ready && auth.isLoggedIn,
   (loggedIn) => {
@@ -148,18 +148,6 @@ async function submit() {
     error.value = e.message || 'Something went wrong. Please try again.'
   } finally {
     busy.value = false
-  }
-}
-
-async function google() {
-  error.value = ''
-  try {
-    // With an invite, come back to this page so the watcher above can join the hangout.
-    const target = inviteCode ? route.fullPath : router.resolve(nextRoute()).href
-    await auth.signInWithGoogle(window.location.origin + target)
-    if (auth.isLoggedIn) await finish() // mock mode logs in without leaving the page
-  } catch (e) {
-    error.value = e.message
   }
 }
 
@@ -286,29 +274,6 @@ const avatars = [
 
     <section class="form-side">
       <div class="auth-card">
-        <div class="tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            class="tabs__tab"
-            :class="{ 'is-active': !isSignup }"
-            :aria-selected="!isSignup"
-            @click="setMode('login')"
-          >
-            Log in
-          </button>
-          <button
-            type="button"
-            role="tab"
-            class="tabs__tab"
-            :class="{ 'is-active': isSignup }"
-            :aria-selected="isSignup"
-            @click="setMode('signup')"
-          >
-            Sign up
-          </button>
-        </div>
-
         <p v-if="inviteCode" class="alert alert-success py-2 small" role="status">
           You’ve been invited to a hangout. {{ isSignup ? 'Sign up' : 'Log in' }} to join it.
         </p>
@@ -423,30 +388,6 @@ const avatars = [
             {{ isSignup ? 'Create account' : 'Log in' }}
           </button>
         </form>
-
-        <div class="divider"><span>or</span></div>
-
-        <button type="button" class="btn google" @click="google">
-          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-            <path
-              fill="#FFC107"
-              d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"
-            />
-            <path
-              fill="#FF3D00"
-              d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"
-            />
-            <path
-              fill="#4CAF50"
-              d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"
-            />
-            <path
-              fill="#1976D2"
-              d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"
-            />
-          </svg>
-          Continue with Google
-        </button>
 
         <p class="switch">
           <template v-if="isSignup">
@@ -644,31 +585,6 @@ const avatars = [
   box-shadow: 0 10px 40px rgb(0 0 0 / 0.08);
 }
 
-.tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 4px;
-  margin-bottom: 1.75rem;
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-bg);
-}
-
-.tabs__tab {
-  padding: 0.5rem;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--fp-muted);
-  font-size: 0.85rem;
-}
-
-.tabs__tab.is-active {
-  background: var(--fp-surface);
-  color: var(--fp-ink);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-}
-
 .auth-card__title {
   margin-bottom: 0.25rem;
   font-size: 1.6rem;
@@ -786,39 +702,6 @@ const avatars = [
 .submit {
   padding: 0.75rem;
   font-weight: 600;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-block: 1.25rem;
-  color: var(--fp-muted);
-  font-size: 0.75rem;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--fp-border);
-}
-
-.google {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--fp-border);
-  background: var(--fp-surface);
-  font-weight: 600;
-}
-
-.google:hover {
-  background: var(--fp-bg);
 }
 
 .switch {

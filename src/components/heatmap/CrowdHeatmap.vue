@@ -212,10 +212,4 @@ watch(
 :deep(.crowd-h) {
   fill: var(--bs-danger);
 }
-:deep(.crowd-midpoint) {
-  fill: var(--fp-primary);
-  stroke: var(--fp-surface);
-  stroke-width: 3;
-  fill-opacity: 1;
-}
 </style>
