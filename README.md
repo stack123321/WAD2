@@ -18,7 +18,7 @@ cp .env.example .env.local     # then paste in your keys
 npm run dev                    # http://localhost:5173
 ```
 
-The demo hangout and most services have sample data (see [Sample data](#sample-data)). Nearby spots require `GOOGLE_PLACES_API_KEY` in `.env.local`; the Explore page lists real Google Places around the hangout's saved midpoint and reports an error if the API key is unavailable. Google Places calls are off by default; enable them on Explore to load nearby spots. The preference is saved in the browser and also controls spot details and photos.
+The demo hangout and most services have sample data (see [Sample data](#sample-data)). Nearby spots require `GOOGLE_PLACES_API_KEY` in `.env.local`; the Explore page lists real Google Places around the hangout's saved midpoint and reports an error if the API key is unavailable. Google Places calls are off by default; enable them on Explore to load nearby spots. The preference is saved in the browser and also controls spot details and photos. Adding a spot to vote inserts it into that hangout's Supabase `shortlist`; Supabase records the signed-in user in `added_by`.
 
 | Command | What it does |
 |---|---|

@@ -224,9 +224,9 @@ async function addSpot(spot) {
     if (row && hangout.hangout && !hangout.hangout.shortlist.some((s) => s.id === row.id)) {
       hangout.hangout.shortlist.push(row)
     }
-  } catch {
+  } catch (err) {
     addedIds.delete(spot.id)
-    loadError.value = 'Could not add that spot to the shortlist. Please try again.'
+    loadError.value = `Could not add that spot to the shortlist: ${err.message}`
   }
 }
 

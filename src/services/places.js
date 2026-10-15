@@ -85,26 +85,37 @@ export async function loadSpot(id, { signal } = {}) {
 /** Add a place to the hangout's vote shortlist (drop distance_m first; it isn't a table column). */
 export async function addToShortlist(hangoutId, place) {
   if (isMockHangout(hangoutId)) return null
+  const row = {
+    hangout_id: hangoutId,
+    source: place.source ?? 'google',
+    source_place_id: place.source_place_id,
+    name: place.name,
+    category: place.category ?? null,
+    lat: place.lat,
+    lng: place.lng,
+    rating: place.rating ?? null,
+    price_level: place.price_level ?? null,
+    image_url: place.image_url ?? null,
+    match_pct: place.match_pct ?? null,
+  }
+
+  // The database default sets added_by to auth.uid(); insert only so this doesn't require an
+  // UPDATE policy. The unique key makes concurrent additions safe to resolve as already added.
   const { data, error } = await supabase
     .from('shortlist')
-    .upsert(
-      {
-        hangout_id: hangoutId,
-        source: place.source ?? 'google',
-        source_place_id: place.source_place_id,
-        name: place.name,
-        category: place.category ?? null,
-        lat: place.lat,
-        lng: place.lng,
-        rating: place.rating ?? null,
-        price_level: place.price_level ?? null,
-        image_url: place.image_url ?? null,
-        match_pct: place.match_pct ?? null,
-      },
-      { onConflict: 'hangout_id,source,source_place_id' },
-    )
+    .insert(row)
     .select()
     .single()
-  if (error) throw error
-  return data
+  if (!error) return data
+  if (error.code !== '23505') throw error
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('shortlist')
+    .select()
+    .eq('hangout_id', hangoutId)
+    .eq('source', row.source)
+    .eq('source_place_id', row.source_place_id)
+    .single()
+  if (lookupError) throw lookupError
+  return existing
 }
