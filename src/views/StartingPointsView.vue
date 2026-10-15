@@ -17,6 +17,7 @@ import { getHangout, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
+import HangoutChat from '@/components/start/HangoutChat.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 
 const route = useRoute()
@@ -311,6 +312,9 @@ function onPinOutside() {
           :my-id="myId"
           @added="reloadHangout"
         />
+
+        <!-- Group chat: everyone in this hangout, live -->
+        <HangoutChat v-if="me" class="mb-4" :hangout="store.hangout" :my-id="myId" />
 
         <RouterLink
           v-if="me && hasStart(me)"
