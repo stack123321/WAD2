@@ -1,20 +1,21 @@
-// Owner: Eashvar (testing lead). Smoke test: every page opens with the right <h1>, and the main
-// flow clicks through from 01 to 12 on the demo hangout, finding each step's link or button by
-// its accessible name. TODO(Hugo): page 10 has no fixed <h1> or link to the vote page yet, so its
-// title is only checked for any text and the flow jumps straight to /hangouts/demo/vote.
+// Owner: Eashvar (testing lead). Smoke test: every page opens with the right <h1>, and the two main
+// journeys click through on the demo hangout, finding each link or button by its accessible name.
+// Run without Supabase keys, or the login guard sends every page to /login.
 import { test, expect } from '@playwright/test'
 
+const GREETING = /^Good (morning|afternoon|evening)(, .+)?!$/
+
 const pages = [
-  ['/', 'Landing'],
-  ['/login', 'Log in / Sign up'],
-  ['/preferences', 'User preferences'],
-  ['/dashboard', /^Good (morning|afternoon|evening)(, .+)?!$/],
-  ['/hangouts/new', 'Create hangout & invite'],
+  ['/', /^Meet halfway\.\s*Hang out better\.$/],
+  ['/login', 'Stop arguing about where to meet.'],
+  ['/preferences', 'Tell us what you like'],
+  ['/dashboard', GREETING],
+  ['/hangouts/new', 'New hangout'],
   ['/hangouts/demo/start', 'Where is everyone coming from?'],
   ['/hangouts/demo/transport', 'How is everyone getting there?'],
   ['/hangouts/demo/midpoint', 'Midpoint + crowd heat map'],
-  ['/hangouts/demo/explore', 'Nearby cafes & activities'],
-  ['/hangouts/demo/spots/demo-spot-1', /\S/],
+  ['/hangouts/demo/explore', 'Spots near Bishan'],
+  ['/hangouts/demo/spots/1', 'Mock Cafe'],
   ['/hangouts/demo/vote', 'Group voting'],
   ['/hangouts/demo/plan', 'Final plan & itinerary'],
 ]
@@ -26,30 +27,47 @@ for (const [path, title] of pages) {
   })
 }
 
-const flowTo10 = [
-  ['link', 'Sign up', 'Log in / Sign up'],
-  ['link', 'Continue', 'User preferences'],
-  ['link', 'Save and continue', /^Good (morning|afternoon|evening)(, .+)?!$/],
-  ['link', 'Start planning', 'Create hangout & invite'],
-  ['link', 'Create', 'Where is everyone coming from?'],
-  ['link', 'Next', 'How is everyone getting there?'],
-  ['link', 'Find our midpoint', 'Midpoint + crowd heat map'],
-  ['link', 'See nearby spots', 'Nearby cafes & activities'],
-  ['link', 'Open a spot', /\S/],
-]
-
-test('main flow clicks through from landing to final plan', async ({ page }) => {
+test('new hangout: landing to final plan', async ({ page }) => {
   const h1 = page.getByRole('heading', { level: 1 })
   await page.goto('/')
 
-  for (const [role, name, title] of flowTo10) {
-    await page.getByRole(role, { name }).click()
+  await page.getByRole('link', { name: 'Start a hangout' }).first().click()
+  await expect(h1).toHaveText('New hangout')
+  await page.getByLabel('Hangout name').fill('Smoke test hangout')
+  await page.getByLabel('Date').fill('2030-01-15')
+  await page.getByLabel('Time').fill('19:00')
+  await page.getByRole('button', { name: 'Create & add starting points' }).click()
+  await expect(h1).toHaveText('Where is everyone coming from?')
+
+  const steps = [
+    ['Next: choose transport', 'How is everyone getting there?'],
+    ['Find our midpoint', 'Midpoint + crowd heat map'],
+    ['See nearby spots', 'Spots near Bishan'],
+  ]
+  for (const [link, title] of steps) {
+    await page.getByRole('link', { name: link }).click()
     await expect(h1).toHaveText(title)
   }
 
+  await page.getByRole('link', { name: 'Mock Cafe', exact: true }).first().click()
+  await expect(h1).toHaveText('Mock Cafe')
+
   await page.goto('/hangouts/demo/vote')
   await expect(h1).toHaveText('Group voting')
-
   await page.getByRole('button', { name: 'Close vote' }).click()
   await expect(h1).toHaveText('Final plan & itinerary')
+})
+
+test('sign up: log in page to dashboard', async ({ page }) => {
+  const h1 = page.getByRole('heading', { level: 1 })
+  await page.goto('/login?mode=signup')
+  await page.getByLabel('Name').fill('Test User')
+  await page.getByLabel('Email').fill('test@example.test')
+  await page.getByLabel('Password', { exact: true }).fill('testpass123')
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await expect(h1).toHaveText('Tell us what you like')
+
+  await page.getByRole('link', { name: 'Skip for now' }).click()
+  await expect(h1).toHaveText(GREETING)
+  await expect(h1).toContainText('Test User')
 })

@@ -2,13 +2,22 @@
 // Views call these functions; they never call supabase or fetch directly.
 import { supabase, hasSupabase } from './supabase'
 import mockHangout from '@/mocks/hangout.json'
+import mockHangout2 from '@/mocks/hangout-2.json'
+
+// Two sample groups with different people, so switching between hangouts can be tried without keys
+const mockHangouts = [mockHangout, mockHangout2]
+
+/** The sample hangout with this id, or the first one if no sample has that id. */
+function findMock(id) {
+  return structuredClone(mockHangouts.find((h) => h.id === id) ?? mockHangout)
+}
 
 /**
  * One hangout joined with its members, shortlist and votes (same shape as src/mocks/hangout.json).
- * @param {string} id hangout uuid, or "demo" for the mock
+ * @param {string} id hangout uuid, or "demo" / "demo-2" for the samples
  */
 export async function getHangout(id) {
-  if (id === 'demo' || !hasSupabase) return structuredClone(mockHangout)
+  if (id.startsWith('demo') || !hasSupabase) return findMock(id)
 
   const { data, error } = await supabase
     .from('hangouts')
@@ -30,7 +39,7 @@ export async function getHangout(id) {
  * Each one has the same shape as getHangout() (members, shortlist, votes).
  */
 export async function getMyHangouts() {
-  if (!hasSupabase) return [structuredClone(mockHangout)]
+  if (!hasSupabase) return mockHangouts.map((h) => structuredClone(h))
 
   // No filter needed: the security rules in schema.sql ("hangouts: members read") only let
   // you read hangouts you host or are a member of, so Supabase returns just yours.
@@ -158,6 +167,143 @@ export async function leaveHangout(hangoutId, userId) {
   }
   if (data.length === 0) {
     throw new Error("You're not a member of this hangout.")
+  }
+}
+
+/**
+ * Everyone you've been in a hangout with: one entry per person, most hangouts together first.
+ * Used by 06 Starting points ("Friends from past hangouts").
+ * @param {string} myId the logged-in user, left out of the list
+ * @returns {Promise<Array<{ user_id: string, display_name: string, avatar_color: string | null, together: number }>>}
+ */
+export async function getPastFriends(myId) {
+  if (!hasSupabase) {
+    return []
+  }
+
+  // No filter needed: the security rules only let you read the members of hangouts you're in
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .select('user_id, hangout_id, profile:profiles(display_name, avatar_color)')
+  if (error) {
+    throw error
+  }
+
+  // The same person appears once per shared hangout: keep one entry each and count the hangouts
+  const friends = []
+  for (const row of data) {
+    if (row.user_id === myId) {
+      continue
+    }
+    const existing = friends.find((f) => f.user_id === row.user_id)
+    if (existing) {
+      existing.together++
+    } else {
+      friends.push({
+        user_id: row.user_id,
+        display_name: row.profile.display_name,
+        avatar_color: row.profile.avatar_color,
+        together: 1,
+      })
+    }
+  }
+  friends.sort((a, b) => b.together - a.together)
+  return friends
+}
+
+/**
+ * Add someone to a hangout. Only the host can, and only people they've shared a hangout with
+ * (security rule "members: host adds past friends" in schema.sql). Used by 06 Starting points.
+ */
+export async function addMember(hangoutId, userId) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    throw new Error("You can't add people to the sample hangout.")
+  }
+
+  const { error } = await supabase
+    .from('hangout_members')
+    .insert({ hangout_id: hangoutId, user_id: userId })
+  if (error) {
+    // 42501 = the security rules said no
+    if (error.code === '42501') {
+      throw new Error('Only the host can add people, and only friends from past hangouts.')
+    }
+    throw error
+  }
+}
+
+/**
+ * Save how someone is travelling (07 Mode of transport). You can save your own; the security
+ * rule "members: edit own row" in schema.sql enforces that.
+ * @param {'mrt' | 'bus' | 'car' | 'walk'} mode
+ */
+export async function updateMemberMode(hangoutId, userId, mode) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ mode: mode })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  // Blocked by the security rules: Supabase changes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('You can only change your own mode of transport.')
+  }
+}
+
+/**
+ * Live updates: calls onChange(row) whenever someone in this hangout changes their member row
+ * (e.g. picks a mode on 07 or a starting point on 06), so everyone's screen stays the same.
+ * Uses Supabase Realtime, switched on for hangout_members in schema.sql.
+ * @returns {() => void} call it to stop listening (when leaving the page)
+ */
+export function subscribeToMembers(hangoutId, onChange) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel(`members:${hangoutId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'hangout_members',
+        filter: `hangout_id=eq.${hangoutId}`,
+      },
+      (payload) => onChange(payload.new),
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
+ * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
+ * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
+ * @param {string} hangoutId
+ * @param {{ name: string, lat: number, lng: number, avgMins: number | null, gapMins: number | null }} midpoint
+ */
+export async function saveMidpoint(hangoutId, midpoint) {
+  // The demo hangout and mock mode have no database to save to
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+
+  const { error } = await supabase.rpc('set_midpoint', {
+    p_hangout: hangoutId,
+    p_name: midpoint.name,
+    p_lat: midpoint.lat,
+    p_lng: midpoint.lng,
+    p_avg: midpoint.avgMins,
+    p_gap: midpoint.gapMins,
+  })
+  if (error) {
+    throw error
   }
 }
 

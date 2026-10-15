@@ -1,7 +1,8 @@
 <script setup>
 // Owner: Eashvar. One shortlisted spot on 11 Group voting: photo, name, category, rating,
 // price and match %, its live tally (bar, votes and % of votes cast, avatars of who voted for it),
-// and a vote button that shows "✓ Your vote" when it's my choice. Emits vote(spotId).
+// and a vote button that shows "✓ Your vote" when it's my choice and "Saving…" while this vote is
+// being saved. Emits vote(spotId).
 import { computed } from 'vue'
 import MemberAvatar from './MemberAvatar.vue'
 
@@ -13,6 +14,7 @@ const props = defineProps({
   leading: { type: Boolean, default: false },
   tied: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
+  saving: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
 })
 
@@ -93,10 +95,12 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
       :class="selected ? 'btn-primary' : 'vote-btn--idle'"
       :aria-label="`Vote for ${spot.name}`"
       :aria-pressed="selected"
+      :aria-busy="saving"
       :disabled="disabled"
       @click="emit('vote', spot.id)"
     >
-      {{ selected ? '✓ Your vote' : 'Vote' }}
+      <span v-if="saving" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+      {{ saving ? 'Saving…' : selected ? '✓ Your vote' : 'Vote' }}
     </button>
   </article>
 </template>

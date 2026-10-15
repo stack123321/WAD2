@@ -1,35 +1,21 @@
 <script setup>
-// "Crowds right now" card on 04 Dashboard: the 4 busiest MRT stations at the moment.
+// "Crowds right now" card on 04 Dashboard: how many MRT stations are busy at the moment,
+// plus a button to the full heat map (/crowds).
 // Owner: Ryan. Data: services/crowd.js → api/crowd.js → LTA DataMall.
 import { ref, computed, onMounted } from 'vue'
 import { getCrowdLevels } from '@/services/crowd'
-
-const props = defineProps({
-  heatMapLink: { type: Object, default: null }, // where "Heat map →" goes, e.g. a hangout's page 08
-})
-
-// How each LTA level looks: label, bar colour, bar length, text colour
-const LEVELS = {
-  h: { name: 'Busy', bar: 'bg-danger', width: 90, text: 'text-danger' },
-  m: { name: 'Moderate', bar: 'bg-warning', width: 55, text: 'text-warning' },
-  l: { name: 'Quiet', bar: 'bg-success', width: 20, text: 'text-success' },
-}
 
 const stations = ref([])
 const loading = ref(false)
 const error = ref('')
 
-const shownCount = ref(4) // how many stations the card lists; "Show more" adds 6
-
-// Busiest first: all the high ones, then moderate, then low, stopping at shownCount
-const busiest = computed(() => {
-  let list = []
-  for (let level of ['h', 'm', 'l']) {
-    for (let s of stations.value) {
-      if (s.level === level && list.length < shownCount.value) list.push(s)
-    }
+// How many stations are at each level, e.g. { h: 12, m: 30, l: 148 }
+const counts = computed(() => {
+  let result = { h: 0, m: 0, l: 0 }
+  for (let s of stations.value) {
+    result[s.level]++
   }
-  return list
+  return result
 })
 
 // True when LTA was unavailable and api/crowd.js sent sample data instead
@@ -52,57 +38,25 @@ onMounted(async () => {
 <template>
   <div class="card">
     <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 mb-0">Crowds right now</h2>
-        <router-link v-if="props.heatMapLink" :to="props.heatMapLink" class="small fw-semibold">
-          Heat map →
-        </router-link>
-      </div>
+      <h2 class="h6 mb-3">Crowds right now</h2>
 
-      <p v-if="loading" class="text-muted small mb-0">Loading crowd levels…</p>
-      <p v-else-if="error" class="text-danger small mb-0">{{ error }}</p>
-      <p v-else-if="isSample" class="text-muted small mb-3">
-        LTA is unavailable, so these are sample crowd levels.
-      </p>
-
-      <div v-for="s in busiest" :key="s.station" class="mb-3">
-        <div class="d-flex justify-content-between small mb-1">
-          <span>{{ s.station }}</span>
-          <span class="fw-semibold" :class="LEVELS[s.level].text">{{ LEVELS[s.level].name }}</span>
+      <p v-if="loading" class="text-muted small mb-3">Loading crowd levels…</p>
+      <p v-else-if="error" class="text-danger small mb-3">{{ error }}</p>
+      <template v-else>
+        <p v-if="isSample" class="text-muted small mb-2">
+          LTA is unavailable, so these are sample crowd levels.
+        </p>
+        <p class="small text-muted mb-2">MRT stations across Singapore:</p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <span class="badge text-bg-danger">{{ counts.h }} busy</span>
+          <span class="badge text-bg-warning">{{ counts.m }} moderate</span>
+          <span class="badge text-bg-success">{{ counts.l }} quiet</span>
         </div>
-        <div class="progress" :aria-label="`${s.station}: ${LEVELS[s.level].name}`">
-          <div
-            class="progress-bar"
-            :class="LEVELS[s.level].bar"
-            :style="{ width: LEVELS[s.level].width + '%' }"
-          ></div>
-        </div>
-      </div>
+      </template>
 
-      <div v-if="stations.length > 4" class="d-flex gap-3">
-        <button
-          v-if="shownCount < stations.length"
-          type="button"
-          class="btn btn-link btn-sm p-0"
-          @click="shownCount += 6"
-        >
-          Show more
-        </button>
-        <button
-          v-if="shownCount > 4"
-          type="button"
-          class="btn btn-link btn-sm p-0"
-          @click="shownCount = 4"
-        >
-          Show less
-        </button>
-      </div>
+      <router-link :to="{ name: 'crowds' }" class="btn btn-outline-primary btn-sm w-100">
+        Open heat map →
+      </router-link>
     </div>
   </div>
 </template>
-
-<style scoped>
-.progress {
-  height: 6px;
-}
-</style>

@@ -31,7 +31,7 @@ async function remember(cache, key, maxAge, load) {
 
 export default async function handler(req, res) {
   const at = req.query.at ? new Date(req.query.at) : new Date()
-  if (Number.isNaN(at.getTime())) {
+  if (isNaN(at.getTime())) {
     return res.status(400).json({ error: 'at must be a date/time, e.g. 2026-10-16T19:00:00+08:00' })
   }
 

@@ -107,6 +107,18 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from hangouts where id = hid and host_id = auth.uid());
 $$;
 
+-- True if you and `other` are both in at least one hangout together ("friends from past
+-- hangouts" on 06). Lets a host add those people to a new hangout without an invite link.
+create function public.shares_hangout_with(other uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1
+    from hangout_members mine
+    join hangout_members theirs on theirs.hangout_id = mine.hangout_id
+    where mine.user_id = auth.uid() and theirs.user_id = other
+  );
+$$;
+
 -- Invite links: /login?invite=CODE → after login, the app calls join_hangout(CODE).
 -- Needed because a non-member can't read the hangout to find it by code.
 create function public.join_hangout(code text) returns uuid
@@ -122,6 +134,23 @@ begin
   values (hid, auth.uid())
   on conflict do nothing;
   return hid;
+end;
+$$;
+
+-- Save the group's midpoint (07 "Find our midpoint", 08 dragging the pin). Any member may, not just
+-- the host, but only the midpoint columns change: renaming or deleting the hangout stays host-only.
+create function public.set_midpoint(
+  p_hangout uuid, p_name text, p_lat float8, p_lng float8, p_avg integer, p_gap integer
+) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_member(p_hangout) or public.is_host(p_hangout)) then
+    raise exception 'Only members of this hangout can set its midpoint';
+  end if;
+  update hangouts
+  set midpoint_name = p_name, midpoint_lat = p_lat, midpoint_lng = p_lng,
+      avg_mins = p_avg, gap_mins = p_gap
+  where id = p_hangout;
 end;
 $$;
 
@@ -158,6 +187,10 @@ create policy "members: members read" on public.hangout_members
   for select to authenticated using (public.is_member(hangout_id));
 create policy "members: host adds self" on public.hangout_members
   for insert to authenticated with check (user_id = auth.uid() and public.is_host(hangout_id));
+-- The host may also add people they've shared a past hangout with (06 "Friends from past hangouts")
+create policy "members: host adds past friends" on public.hangout_members
+  for insert to authenticated
+  with check (public.is_host(hangout_id) and public.shares_hangout_with(user_id));
 -- Host may also update others' rows, so the transport page can save everyone's travel times.
 create policy "members: edit own row" on public.hangout_members
   for update to authenticated using (user_id = auth.uid() or public.is_host(hangout_id));

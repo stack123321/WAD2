@@ -28,13 +28,6 @@ new Date().toISOString() // "2026-10-08T03:00:00.000Z"
 ```
 Used in: [src/services/crowd.js](../src/services/crowd.js) to put the heatmap's time into `?at=`.
 
-### `Number.isNaN(value)`
-`true` if the value is `NaN` ("Not a Number"). `new Date('banana').getTime()` gives `NaN`, so this is how you check whether someone typed an invalid date. You can't use `value === NaN`, because `NaN` never equals anything, not even itself.
-```js
-Number.isNaN(new Date('banana').getTime()) // true → reply 400
-```
-Used in: [api/crowd.js](../api/crowd.js) to validate the `at` parameter.
-
 ### `date.getHours()` and `date.getMinutes()`
 Read the hour (0–23) and minute (0–59) of a `Date`, in the browser's own time zone.
 ```js
@@ -222,6 +215,14 @@ Calls an API directly, without opening a page. Works like `axios.get`, but `res.
 
 Used in: [api.spec.js](../tests/e2e/api.spec.js).
 
+### `page.once('dialog', (dialog) => dialog.accept())`
+When the page pops up `window.confirm(...)` ("Delete this hangout?"), Playwright clicks **Cancel** by default. This tells it to click **OK** on the next popup only. Set it up *before* the click that opens the popup.
+```js
+page.once('dialog', (dialog) => dialog.accept())
+await deleteButton.click() // the confirm popup opens and is accepted straight away
+```
+Used in: [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) to delete the test hangout at the end.
+
 ## Regular expressions
 
 ### `/pattern/`
@@ -230,7 +231,16 @@ A pattern for matching text, written between slashes. `^` means "starts here", `
 /^Good (morning|afternoon|evening)!$/.test('Good morning!') // true
 /^Good (morning|afternoon|evening)!$/.test('Good night!') // false
 ```
-Used in: [smoke.spec.js](../tests/e2e/smoke.spec.js) to match the dashboard greeting at any time of day, and `getByLabel(/Time today/)` in [midpoint.spec.js](../tests/e2e/midpoint.spec.js).
+Used in: [smoke.spec.js](../tests/e2e/smoke.spec.js) to match the dashboard greeting at any time of day, and `getByLabel(/Time today/)` in [midpoint.spec.js](../tests/e2e/midpoint.spec.js). `$` on its own: `/\/start$/` in [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) means "the URL ends with `/start`", whatever the hangout id before it is (`\/` is a `/` inside a regex).
+
+### `\d` and `+`
+`\d` means "any digit, 0–9". `+` after something means "one or more of it". Together, `\d+` matches a whole number of any length.
+```js
+/\d+ busy/.test('12 busy') // true
+/\d+ busy/.test('0 busy') // true
+/\d+ busy/.test('busy') // false: no number
+```
+Used in: [dashboard.spec.js](../tests/e2e/dashboard.spec.js) to check the "Crowds right now" counts without caring what the numbers are, since live LTA data changes all day.
 
 ## Comments
 
@@ -260,3 +270,11 @@ Reads a secret or setting from `.env.local` (locally) or from Vercel's dashboard
 headers: { AccountKey: process.env.LTA_ACCOUNT_KEY }
 ```
 Used in: [api/crowd.js](../api/crowd.js).
+
+### `process.loadEnvFile('.env.local')`
+Built into Node (version 20.12 and later). Reads a `.env` file and copies each `NAME=value` line into `process.env`. Vite does this by itself for the app, but Playwright runs in plain Node, so its config has to ask for it.
+```js
+process.loadEnvFile('.env.local')
+process.env.E2E_EMAIL // now the value from .env.local
+```
+Used in: [playwright.live.config.js](../playwright.live.config.js), so the live tests can log in with the test account.
