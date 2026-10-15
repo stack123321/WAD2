@@ -6,6 +6,7 @@ import { deleteHangout, getMyHangouts, leaveHangout } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
+import HangoutWith from '@/components/dashboard/HangoutWith.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
 
 const hangouts = ref([])
@@ -162,6 +163,7 @@ onMounted(async () => {
       </div>
 
       <div class="col-lg-4 d-flex flex-column gap-4">
+        <HangoutWith />
         <WeekForecast />
         <CrowdsNow />
       </div>
