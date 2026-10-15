@@ -57,6 +57,24 @@ d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: SG
 ```
 Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the date block and start time.
 
+## Lists
+
+### `list.sort((a, b) => b.x - a.x)`
+Puts a list in order, **changing the list itself**. The function compares two items: a negative answer puts `a` first, a positive one puts `b` first. So `a.x - b.x` sorts smallest first, and `b.x - a.x` sorts biggest (or newest) first. (Seen in the course code, but not explained.)
+```js
+const friends = [{ name: 'Hugo', met: 100 }, { name: 'Matrix', met: 300 }, { name: 'Eashvar', met: 200 }]
+friends.sort((a, b) => b.met - a.met) // Matrix (300), Eashvar (200), Hugo (100)
+```
+Used in: [services/friends.js](../src/services/friends.js) to put the newest friends first.
+
+### `list.slice(start, end)`
+A **copy** of part of a list, from `start` up to (not including) `end`. The original list isn't changed. (Seen in the course code, but not explained.)
+```js
+['Matrix', 'Eashvar', 'Hugo', 'Nicole'].slice(0, 3) // ['Matrix', 'Eashvar', 'Hugo']
+[1, 2].slice() // [1, 2]: with no numbers, a copy of the whole list
+```
+Used in: [services/friends.js](../src/services/friends.js) to keep the 3 newest friends, and [PreferencesView.vue](../src/views/PreferencesView.vue) to copy the default lists on Reset.
+
 ## Text
 
 ### `text.includes(part)`
