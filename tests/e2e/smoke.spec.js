@@ -39,15 +39,14 @@ test('new hangout: landing to final plan', async ({ page }) => {
   await page.getByRole('button', { name: 'Create & add starting points' }).click()
   await expect(h1).toHaveText('Where is everyone coming from?')
 
-  const steps = [
-    ['Next: choose transport', 'How is everyone getting there?'],
-    ['Find our midpoint', 'Midpoint + crowd heat map'],
-    ['See nearby spots', 'Spots near Bishan'],
-  ]
-  for (const [link, title] of steps) {
-    await page.getByRole('link', { name: link }).click()
-    await expect(h1).toHaveText(title)
-  }
+  await page.getByRole('link', { name: 'Next: choose transport' }).click()
+  await expect(h1).toHaveText('How is everyone getting there?')
+  // A button now: it saves the fairest station for the group, then opens 08
+  await page.getByRole('button', { name: 'Find our midpoint' }).click()
+  await expect(h1).toHaveText('Midpoint + crowd heat map')
+  await page.getByRole('link', { name: 'See nearby spots' }).click()
+  // The fairest station depends on live travel times, so any area name will do
+  await expect(h1).toHaveText(/^Spots near .+/)
 
   await page.getByRole('link', { name: 'Mock Cafe', exact: true }).first().click()
   await expect(h1).toHaveText('Mock Cafe')

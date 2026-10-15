@@ -30,7 +30,7 @@ test('switching hangouts shows only that group’s spots, people and votes', asy
     page.getByRole('progressbar', { name: 'Mock Hawker Centre (sample data)' }),
   ).toHaveAttribute('aria-valuenow', '1')
 
-  await page.getByRole('link', { name: 'My hangouts' }).click()
+  await page.goto('/dashboard') // the nav's My hangouts link only shows when logged in
   await openVote(page, saturday).click()
 
   await expect(page).toHaveURL('/hangouts/demo-2/vote')
