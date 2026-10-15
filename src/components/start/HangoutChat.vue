@@ -85,6 +85,15 @@ function isMine(message) {
   return message.user_id === props.myId
 }
 
+// A message aimed at you, e.g. a reminder "@Surya, please add where you're coming from…"
+function isForMe(message) {
+  const me = props.hangout.members.find((m) => m.user_id === props.myId)
+  if (!me || isMine(message)) {
+    return false
+  }
+  return message.body.startsWith(`@${me.display_name}`)
+}
+
 // "7:05 PM"
 function timeLabel(message) {
   return new Date(message.created_at).toLocaleTimeString('en-SG', {
@@ -115,7 +124,7 @@ function timeLabel(message) {
           v-for="m in messages"
           :key="m.id"
           class="message"
-          :class="{ 'message--mine': isMine(m) }"
+          :class="{ 'message--mine': isMine(m), 'message--for-me': isForMe(m) }"
         >
           <MemberAvatar
             v-if="!isMine(m)"
@@ -198,6 +207,11 @@ function timeLabel(message) {
   border-color: var(--fp-primary);
   color: var(--fp-surface);
   border-radius: 14px 14px 4px 14px;
+}
+
+.message--for-me .bubble {
+  background: color-mix(in srgb, var(--fp-accent) 16%, var(--fp-surface));
+  border-color: var(--fp-accent);
 }
 
 .bubble-name {

@@ -1,12 +1,13 @@
 <script setup>
 // Owner: Surya. "Your group" list on 06 Starting points: each member with where they're coming
 // from and a status on the right: ✓ added, "Editing" (whoever's location is being chosen), or a
-// Remind button. In host mode (the host enters everyone's locations) each row instead has a
+// Remind button (posts a reminder in the group chat). In host mode (the host enters everyone's locations) each row instead has a
 // Set / Change button, which emits "select" with that member.
 // Usage: <GroupList :hangout="store.hangout" :my-id="myId" :editing-id="editingId"
 //          :host-mode="hostMode" @select="startEditing" />
 import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import { sendMessage } from '@/services/chat'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs name, invite_code, members
@@ -65,24 +66,32 @@ async function copyInvite() {
 }
 
 // Remind
-// There's no notifications backend, so "Remind" copies a message with the invite link for you to
-// paste into the group chat. The button says "Copied!" for 2 seconds.
-const copiedFor = ref(null) // user_id of the member whose reminder was just copied
+// Posts a reminder to that person in the hangout's group chat (it shows up live for everyone, and
+// for them as soon as they open the hangout). The button says "Sent!" for 2 seconds.
+// The demo hangout has no chat, so there it copies the message for you to paste instead.
+const remindedId = ref(null) // user_id of the member who was just reminded
+const remindLabel = ref('') // "Sent!" or "Copied!"
+const remindError = ref('')
 
 async function remind(member) {
-  const link = inviteLink.value
-  const text = `Hey ${member.display_name}, add where you're coming from for "${props.hangout.name}": ${link}`
+  remindError.value = ''
+  const text = `@${member.display_name}, please add where you're coming from for "${props.hangout.name}" 📍`
 
   try {
-    await navigator.clipboard.writeText(text)
-    copiedFor.value = member.user_id
+    if (props.hangout.id === 'demo') {
+      await navigator.clipboard.writeText(`${text} ${inviteLink.value}`)
+      remindLabel.value = 'Copied!'
+    } else {
+      await sendMessage(props.hangout.id, text)
+      remindLabel.value = 'Sent!'
+    }
+    remindedId.value = member.user_id
     setTimeout(() => {
-      copiedFor.value = null
+      remindedId.value = null
     }, 2000)
   } catch (error) {
-    // some browsers block copying: show the message so it can be copied by hand
     console.error(error)
-    window.prompt('Copy this reminder:', text)
+    remindError.value = `Couldn't remind ${member.display_name}. Try again.`
   }
 }
 </script>
@@ -127,11 +136,18 @@ async function remind(member) {
           {{ hasStart(m) ? 'Change' : 'Set' }}
         </button>
         <span v-else-if="hasStart(m)" class="check" aria-label="Added">✓</span>
-        <button v-else type="button" class="btn btn-link btn-sm row-action" @click="remind(m)">
-          {{ copiedFor === m.user_id ? 'Copied!' : 'Remind' }}
+        <button
+          v-else
+          type="button"
+          class="btn btn-link btn-sm row-action"
+          :aria-label="`Remind ${m.display_name} in the group chat`"
+          @click="remind(m)"
+        >
+          {{ remindedId === m.user_id ? remindLabel : 'Remind' }}
         </button>
       </li>
     </ul>
+    <p v-if="remindError" class="small text-danger mt-2 mb-0" role="alert">{{ remindError }}</p>
 
     <!-- Invite friends -->
     <div class="invite mt-3">
