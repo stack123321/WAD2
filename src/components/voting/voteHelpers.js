@@ -2,9 +2,17 @@
 // 12 Final plan: keeping one vote per current member (their latest; votes from people who left
 // the hangout don't count), counting votes and picking the leader (ties go to the higher
 // match_pct), turning vote changes into activity events, Singapore-time formatting, the deadline
-// countdown, the longest/shortest trip and gap, leave-by times, and the Google Calendar link.
+// countdown, the deadline to use when the host starts the vote (the saved one if it's still ahead,
+// otherwise the hangout's start time, otherwise none), the longest/shortest trip and gap, leave-by
+// times, and the Google Calendar link.
 
 const SGT = 'Asia/Singapore'
+
+export function deadlineForStart(voteDeadlineIso, startsAtIso, nowMs) {
+  if (voteDeadlineIso && new Date(voteDeadlineIso).getTime() > nowMs) return voteDeadlineIso
+  if (startsAtIso && new Date(startsAtIso).getTime() > nowMs) return startsAtIso
+  return null
+}
 
 export function countableVotes(votes, members) {
   const latest = {}

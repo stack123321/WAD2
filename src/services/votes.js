@@ -1,5 +1,5 @@
 // Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime),
-// and the host closing the vote (11) and marking the hangout done (12).
+// and the host starting the vote (11), closing it (11) and marking the hangout done (12).
 // Every function does nothing for mock hangouts (no keys, or an id starting "demo"). Host updates use
 // .select() because Row Level Security skips a non-host's update without an error.
 import { supabase, hasSupabase } from './supabase'
@@ -43,6 +43,10 @@ export function subscribeToVotes(hangoutId, onChange) {
     )
     .subscribe()
   return () => supabase.removeChannel(channel)
+}
+
+export async function startVote(hangoutId, voteDeadline) {
+  await updateHangout(hangoutId, { status: 'voting', vote_deadline: voteDeadline })
 }
 
 export async function closeVote(hangoutId, shortlistId) {

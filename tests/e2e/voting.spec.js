@@ -2,9 +2,12 @@
 // bar and candidates show, voting and changing a vote move the tally, a double-click counts once,
 // the host closes the vote and lands on the final plan, page 12 opened directly shows the leader as
 // not confirmed, "Copy plan" fills the clipboard, and "Mark as done" only works once the hangout
-// has started. In the mock, Ryan (the host, and "me" in demo mode) and Hugo voted for Mock Cafe,
-// Nicole for the Board Game Cafe, and Surya hasn't voted. The browser clock is fixed before the
-// demo deadline (15 Oct 2026, 9 pm SGT) so voting is open, except where a test moves it later.
+// has started. Starting the vote: on the second sample hangout (still collecting) the host starts
+// it and voting opens, the button is blocked once the hangout's start time has passed, and someone
+// who isn't in a hangout is told they can't vote. In the first mock, Ryan (the host, and "me" in
+// demo mode) and Hugo voted for Mock Cafe, Nicole for the Board Game Cafe, and Surya hasn't voted.
+// The browser clock is fixed before the demo deadline (15 Oct 2026, 9 pm SGT) so voting is open,
+// except where a test moves it later.
 import { test, expect } from '@playwright/test'
 
 const cafe = 'Mock Cafe (sample data)'
@@ -119,5 +122,52 @@ test.describe('12 Final plan', () => {
 
     await expect(page.getByText('✓ Done')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mark as done' })).toBeHidden()
+  })
+})
+
+test.describe('Starting the vote', () => {
+  const studyCafe = 'Mock Study Cafe (sample data)'
+
+  test('the host starts the vote, then everyone can vote', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+
+    await expect(page.getByText('Not started')).toBeVisible()
+    await expect(page.getByText("Voting hasn't started yet.", { exact: false })).toBeVisible()
+    await expect(voteButton(page, studyCafe)).toBeDisabled()
+
+    await page.getByRole('button', { name: 'Start the vote' }).click()
+
+    await expect(page.getByText('Closes in')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start the vote' })).toBeHidden()
+    await voteButton(page, studyCafe).click()
+    await expect(tally(page, studyCafe)).toHaveAttribute('aria-valuenow', '1')
+    await expect(page.getByRole('button', { name: 'Close vote' })).toBeEnabled()
+  })
+
+  test('the vote can’t start once the hangout’s start time has passed', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-25T10:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+
+    await expect(page.getByRole('button', { name: 'Start the vote' })).toBeDisabled()
+    await expect(page.getByText("there's no time left to vote", { exact: false })).toBeVisible()
+  })
+
+  test('someone who isn’t in the hangout is told they can’t vote', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/login?mode=signup')
+    await page.getByLabel('Name').fill('Test User')
+    await page.getByLabel('Email').fill('test.user@example.test')
+    await page.getByLabel('Password', { exact: true }).fill('testpass123')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await page.getByRole('link', { name: 'Skip for now' }).click()
+
+    await page
+      .locator('.card', { hasText: 'Friday dinner after class' })
+      .getByRole('link', { name: 'Open vote' })
+      .click()
+
+    await expect(page.getByText("You're not in this hangout, so you can't vote.")).toBeVisible()
+    await expect(voteButton(page, cafe)).toBeDisabled()
   })
 })
