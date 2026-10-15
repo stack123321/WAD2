@@ -108,6 +108,16 @@ create table public.friendships (
 create unique index friendships_one_per_pair on public.friendships
   (least(requester_id, addressee_id), greatest(requester_id, addressee_id));
 
+-- Group chat inside a hangout (06 Starting points). Surya.
+create table public.messages (
+  id         uuid primary key default gen_random_uuid(),
+  hangout_id uuid not null references public.hangouts (id) on delete cascade,
+  user_id    uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  body       text not null check (char_length(trim(body)) between 1 and 500),
+  created_at timestamptz not null default now()
+);
+create index messages_by_hangout on public.messages (hangout_id, created_at);
+
 -- ───────────────────────── Helper functions ─────────────────────────
 -- "security definer" lets these look up membership without tripping the policies below
 -- (a policy on hangout_members that reads hangout_members would loop forever).
@@ -271,6 +281,18 @@ create policy "friendships: accept" on public.friendships
 create policy "friendships: decline, cancel or unfriend" on public.friendships
   for delete to authenticated using (auth.uid() in (requester_id, addressee_id));
 
+-- messages (hangout chat): members read and post in their hangout; you delete only your own
+alter table public.messages enable row level security;
+create policy "messages: members read" on public.messages
+  for select to authenticated using (public.is_member(hangout_id) or public.is_host(hangout_id));
+create policy "messages: members post" on public.messages
+  for insert to authenticated
+  with check (user_id = auth.uid() and (public.is_member(hangout_id) or public.is_host(hangout_id)));
+create policy "messages: delete own" on public.messages
+  for delete to authenticated using (user_id = auth.uid());
+
 -- ───────────────────────── Realtime ─────────────────────────
 -- Live vote tallies on 11, and members appearing on 06 as friends join.
 alter publication supabase_realtime add table public.votes, public.hangout_members;
+-- New chat messages appear live on 06
+alter publication supabase_realtime add table public.messages;
