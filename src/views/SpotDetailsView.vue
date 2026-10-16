@@ -189,11 +189,11 @@ const distance = computed(() => {
 <style scoped>
 .spot {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   grid-template-areas:
-    'nav nav nav'
-    'preview preview preview'
-    'info info info'
+    'nav nav'
+    'preview preview'
+    'info info'
     'criteria traveltime'
     'about weather';
   gap: 1rem;
