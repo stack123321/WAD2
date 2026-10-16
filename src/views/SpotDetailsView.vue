@@ -154,10 +154,6 @@ const distance = computed(() => {
       <p class="text-secondary mb-0">Why it fits the group.</p>
     </section>
 
-    <section class="spot__crowd card-box">
-      <h2 class="h6">Crowd</h2>
-      <p class="text-secondary mb-0">Crowd forecast chart.</p>
-    </section>
 
     <section class="spot__traveltime card-box">
       <h2 class="h6">Travel time</h2>
@@ -198,8 +194,8 @@ const distance = computed(() => {
     'nav nav nav'
     'preview preview preview'
     'info info info'
-    'criteria crowd traveltime'
-    'about weather space';
+    'criteria traveltime'
+    'about weather';
   gap: 1rem;
   padding-block: 1.5rem;
 }
@@ -219,9 +215,7 @@ const distance = computed(() => {
 .spot__criteria {
   grid-area: criteria;
 }
-.spot__crowd {
-  grid-area: crowd;
-}
+
 .spot__traveltime {
   grid-area: traveltime;
 }
