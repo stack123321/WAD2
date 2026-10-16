@@ -1,16 +1,26 @@
 // Vercel serverless function:
 //   GET /api/places?lat=&lng=&radius=800&categories=cafe,food,activity,outdoor
 //   GET /api/places?id=<google place id>
+//   GET /api/places?id=<google place id>&summary=1  -> { text, disclosure } or null (AI summary)
 // Uses Google Places API (New) with GOOGLE_PLACES_API_KEY.
 //
 // Replies with shortlist-shaped places, nearest first:
 // [{ source, source_place_id, name, category, lat, lng, rating, review_count, price_level, image_url,
 //    distance_m, address, google_maps_uri, open_now, description, tags,
 //    nearest_station_name, station_distance_m }]
-import { nearbyPlaces, placeById } from './_google.js'
+import { nearbyPlaces, placeById, placeSummary } from './_google.js'
 
 export default async function handler(req, res) {
   const key = process.env.GOOGLE_PLACES_API_KEY
+
+  if (req.query.id && req.query.summary) {
+    if (!key) return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY is not set' })
+    try {
+      return res.json(await placeSummary(key, String(req.query.id)))
+    } catch (err) {
+      return res.status(502).json({ error: err.message })
+    }
+  }
 
   if (req.query.id) {
     if (!key) return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY is not set' })

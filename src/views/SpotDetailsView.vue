@@ -7,7 +7,7 @@ import { useRoute } from 'vue-router'
 import BaseMap from '@/components/map/BaseMap.vue'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
-import { googlePlacesEnabled, loadSpot } from '@/services/places'
+import { googlePlacesEnabled, loadSpot, loadSpotSummary } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
 
@@ -27,10 +27,14 @@ const categoryLabels = {
 
 const spot = ref(null)
 const spotError = ref('')
+const summary = ref(null)
+const summaryLoading = ref(false)
 watch(
   () => [route.params.spotId, googlePlacesEnabled.value],
   async ([id, enabled], _, onCleanup) => {
     spot.value = null
+    summary.value = null
+    summaryLoading.value = false
     spotError.value = ''
     if (!enabled) {
       spotError.value = 'Google Places is off. Turn it on to load spot details.'
@@ -45,6 +49,16 @@ watch(
       if (!controller.signal.aborted) {
         spotError.value = `Could not load this spot: ${error.message}`
       }
+      return
+    }
+
+    summaryLoading.value = true
+    try {
+      summary.value = await loadSpotSummary(String(id), { signal: controller.signal })
+    } catch {
+      // the About section falls back to Google's editorial description
+    } finally {
+      if (!controller.signal.aborted) summaryLoading.value = false
     }
   },
   { immediate: true },
@@ -162,12 +176,18 @@ const distance = computed(() => {
 
     <section class="spot__about card-box">
       <h2 class="h6">About</h2>
-      <p v-if="spot?.description || spot?.address" class="text-secondary mb-0">
-        {{ spot.description }}
+      
+      <p v-if="spot?.description && !summary" class="text-secondary mb-2">{{ spot.description }}</p>
+      <p v-if="spot?.address || spot?.openNow != null" class="text-secondary mb-0">
         <span v-if="spot.address" class="d-block">{{ spot.address }}</span>
         <span v-if="spot.openNow !== null" class="d-block">{{ spot.openNow ? 'Open now' : 'Closed now' }}</span>
       </p>
-      <p v-else class="text-secondary mb-0">Description and details.</p>
+      <p v-if="summaryLoading" class="text-secondary mb-2" role="status">Summarising this spot…</p>
+      <template v-else-if="summary">
+        <p class="mb-1">{{ summary.text }}</p>
+        <p class="text-secondary small mb-2">{{ summary.disclosure }}</p>
+      </template>
+      <p v-if="!spot" class="text-secondary mb-0">Description and details.</p>
     </section>
 
     <section class="spot__weather card-box">

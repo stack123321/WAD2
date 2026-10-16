@@ -139,6 +139,19 @@ export async function placeById(key, id) {
   return toPlace(data, null)
 }
 
+/** Google's AI-generated summary of a place, or null when Google has none for it. */
+export async function placeSummary(key, id) {
+  const data = await google(`/places/${encodeURIComponent(id)}`, key, {
+    fields: 'generativeSummary',
+  })
+  const text = data.generativeSummary?.overview?.text
+  if (!text) return null
+  return {
+    text,
+    disclosure: data.generativeSummary.disclosureText?.text ?? 'Summarized with Gemini',
+  }
+}
+
 /** Resolves a photo resource name to a short-lived image URL that doesn't contain the API key. */
 export async function photoUrl(key, name, maxWidthPx = 640) {
   const data = await google(`/${name}/media?maxWidthPx=${maxWidthPx}&skipHttpRedirect=true`, key, {

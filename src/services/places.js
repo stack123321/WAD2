@@ -105,6 +105,28 @@ export async function loadSpots(centre, options = { radiusM: 1000 }) {
   return spots
 }
 
+const summaryCache = new Map()
+
+/** Google's AI summary for a place ({ text, disclosure }), or null if there isn't one. */
+export async function loadSpotSummary(id, { signal } = {}) {
+  if (!googlePlacesEnabled.value) return null
+  if (summaryCache.has(id)) return summaryCache.get(id)
+  const key = `${SEARCH_CACHE_PREFIX}summary.${id}`
+  const cached = readSearchCache(key)
+  let summary
+  if (cached) {
+    summary = cached[0]
+  } else {
+    const res = await fetch(`/api/places?id=${encodeURIComponent(id)}&summary=1`, { signal })
+    if (!res.ok) throw new Error(`summary failed: ${res.status}`)
+    summary = await res.json()
+    // wrapped in an array so "no summary" (null) is cached too
+    writeSearchCache(key, [summary])
+  }
+  summaryCache.set(id, summary)
+  return summary
+}
+
 /** One spot by Google place id, from the cache when Explore already loaded it. */
 export async function loadSpot(id, { signal } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
