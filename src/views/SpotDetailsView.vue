@@ -6,9 +6,17 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BaseMap from '@/components/map/BaseMap.vue'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
+import WeatherCard from '@/components/weather/WeatherCard.vue'
 import { googlePlacesEnabled, loadSpot } from '@/services/places'
+import { useHangoutStore } from '@/stores/hangout'
+import { useShortlist } from '@/composables/useShortlist'
 
 const route = useRoute()
+const hangout = useHangoutStore()
+hangout.load(route.params.id)
+const { error: shortlistError, isAdded, isMine, addSpot, removeSpot } = useShortlist(
+  () => route.params.id,
+)
 
 const categoryLabels = {
   cafe: 'Cafe',
@@ -117,9 +125,29 @@ const distance = computed(() => {
         >
           Open Google Maps
         </a>
-        <button type="button" class="btn btn-primary btn-sm">Add to Vote</button>
+        <template v-if="spot">
+          <button
+            v-if="isAdded(spot.id) && isMine(spot.id)"
+            type="button"
+            class="btn btn-outline-danger btn-sm"
+            @click="removeSpot(spot)"
+          >
+            Remove from Vote
+          </button>
+          <button
+            v-else
+            type="button"
+            class="btn btn-sm"
+            :class="isAdded(spot.id) ? 'btn-outline-primary' : 'btn-primary'"
+            :disabled="isAdded(spot.id)"
+            @click="addSpot(spot)"
+          >
+            {{ isAdded(spot.id) ? 'Added to vote' : 'Add to Vote' }}
+          </button>
+        </template>
       </div>
     </section>
+    <p v-if="shortlistError" class="spot__error text-danger">{{ shortlistError }}</p>
 
     <section class="spot__criteria card-box">
       <h2 class="h6">Criteria</h2>
@@ -148,7 +176,14 @@ const distance = computed(() => {
 
     <section class="spot__weather card-box">
       <h2 class="h6">Weather</h2>
-      <p class="text-secondary mb-0">Forecast for the hangout time.</p>
+      <WeatherCard
+        v-if="spot"
+        :lat="spot.lat"
+        :lng="spot.lng"
+        :place="spot.name"
+        :at="hangout.hangout?.starts_at ?? null"
+      />
+      <p v-else class="text-secondary mb-0">Forecast for the hangout time.</p>
     </section>
 
     <div class="spot__space"></div>

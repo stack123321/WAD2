@@ -43,7 +43,7 @@
       Google Places is off. Turn it on to find nearby spots. This preference is saved on this device.
     </p>
     <p v-else-if="loadingSpots" class="text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
-    <p v-if="loadError" class="text-danger">{{ loadError }}</p>
+    <p v-if="loadError || shortlistError" class="text-danger">{{ loadError || shortlistError }}</p>
     <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
       No nearby spots were found. Try again later or choose another midpoint.
     </p>
@@ -101,13 +101,13 @@
             <span v-else class="shortlist-thumb"></span>
             <span class="shortlist-name">{{ spot.name }}</span>
             <MemberAvatar
-              :name="ownerOfSpot(spot)?.display_name ?? 'Someone'"
-              :color="ownerOfSpot(spot)?.avatar_color ?? null"
+              :name="ownerProfile(spot.id)?.display_name ?? 'Someone'"
+              :color="ownerProfile(spot.id)?.avatar_color ?? null"
               :size="24"
             />
-            <span class="visually-hidden">Added by {{ ownerOfSpot(spot)?.display_name ?? 'someone' }}</span>
+            <span class="visually-hidden">Added by {{ ownerProfile(spot.id)?.display_name ?? 'someone' }}</span>
             <button
-              v-if="isMine(spot)"
+              v-if="isMine(spot.id)"
               type="button"
               class="shortlist-remove"
               :aria-label="`Remove ${spot.name} from shortlist`"
@@ -125,20 +125,18 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import {
-  addToShortlist,
-  removeFromShortlist,
   googlePlacesEnabled,
   loadSpots,
 } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
-import { useAuthStore } from '@/stores/auth'
+import { useShortlist } from '@/composables/useShortlist'
 
 const route = useRoute()
 const hangout = useHangoutStore()
@@ -235,80 +233,15 @@ const comparators = {
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
 
-const MAX_SPOTS_PER_PERSON = 3
-const auth = useAuthStore()
-const myId = computed(() => auth.user?.id ?? 'mock-user')
-
-const addedIds = reactive(new Set())
-// place id -> user who added it
-const ownerOf = reactive(new Map())
+const {
+  addedIds,
+  error: shortlistError,
+  isMine,
+  ownerProfile,
+  addSpot,
+  removeSpot,
+} = useShortlist(() => route.params.id)
 const shortlisted = computed(() => spots.value.filter((s) => addedIds.has(s.id)))
-const myCount = computed(() => [...ownerOf.values()].filter((id) => id === myId.value).length)
-const isMine = (spot) => ownerOf.get(spot.id) === myId.value
-const ownerOfSpot = (spot) => hangout.members.find((m) => m.user_id === ownerOf.get(spot.id)) ?? null
-
-// Spots already saved to this hangout's shortlist show as added
-watch(
-  () => hangout.shortlist,
-  (list) => {
-    list.forEach((s) => {
-      addedIds.add(s.source_place_id)
-      ownerOf.set(s.source_place_id, s.added_by)
-    })
-  },
-  { immediate: true },
-)
-
-async function addSpot(spot) {
-  if (addedIds.has(spot.id)) return
-  loadError.value = ''
-  if (myCount.value >= MAX_SPOTS_PER_PERSON) {
-    loadError.value = `You can only add ${MAX_SPOTS_PER_PERSON} spots to the shortlist. Remove one to add another.`
-    return
-  }
-  addedIds.add(spot.id)
-  ownerOf.set(spot.id, myId.value)
-  try {
-    const row = await addToShortlist(route.params.id, {
-      source: 'google',
-      source_place_id: spot.id,
-      name: spot.name,
-      category: spot.category,
-      lat: spot.lat,
-      lng: spot.lng,
-      rating: spot.rating,
-      price_level: spot.priceLevel,
-      image_url: spot.imageUrl,
-      match_pct: spot.matchPct,
-    })
-    if (row && hangout.hangout && !hangout.hangout.shortlist.some((s) => s.id === row.id)) {
-      hangout.hangout.shortlist.push(row)
-    }
-  } catch (err) {
-    addedIds.delete(spot.id)
-    ownerOf.delete(spot.id)
-    loadError.value = `Could not add that spot to the shortlist: ${err.message}`
-  }
-}
-
-async function removeSpot(spot) {
-  if (!addedIds.has(spot.id) || !isMine(spot)) return
-  loadError.value = ''
-  try {
-    await removeFromShortlist(route.params.id, {
-      source: 'google',
-      source_place_id: spot.id,
-      added_by: myId.value,
-    })
-    addedIds.delete(spot.id)
-    ownerOf.delete(spot.id)
-    const list = hangout.hangout?.shortlist
-    const i = list ? list.findIndex((s) => s.source_place_id === spot.id) : -1
-    if (i !== -1) list.splice(i, 1)
-  } catch (err) {
-    loadError.value = `Could not remove that spot from the shortlist: ${err.message}`
-  }
-}
 
 
 const mapCenter = computed(() =>
