@@ -63,10 +63,44 @@ function toSpot(p) {
   }
 }
 
-/** Live spots around the centre, ready for SpotCards. Also caches them for the details page. */
+const SEARCH_CACHE_PREFIX = 'fairpoint.spots.'
+const SEARCH_CACHE_TTL_MS = 20 * 60 * 1000
+
+function searchCacheKey(centre, radiusM) {
+  return `${SEARCH_CACHE_PREFIX}${centre.lat.toFixed(5)},${centre.lng.toFixed(5)},${radiusM}`
+}
+
+function readSearchCache(key) {
+  try {
+    const cached = JSON.parse(window.sessionStorage.getItem(key))
+    if (cached && Date.now() - cached.savedAt < SEARCH_CACHE_TTL_MS) return cached.spots
+  } catch {
+    // unreadable entry: treat as a miss
+  }
+  return null
+}
+
+function writeSearchCache(key, spots) {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), spots }))
+  } catch {
+    // storage full or unavailable: skip caching
+  }
+}
+
+/**
+ * Live spots around the centre, ready for SpotCards. Results for the same centre and radius are
+ * reused for 20 minutes (per tab) to save Google calls; pass force to fetch fresh ones.
+ * Also caches each spot for the details page.
+ */
 export async function loadSpots(centre, options = { radiusM: 1000 }) {
   if (!googlePlacesEnabled.value) return []
-  const spots = (await searchNearby(centre, options)).map(toSpot)
+  const key = searchCacheKey(centre, options.radiusM ?? 800)
+  let spots = options.force ? null : readSearchCache(key)
+  if (!spots) {
+    spots = (await searchNearby(centre, options)).map(toSpot)
+    writeSearchCache(key, spots)
+  }
   for (const s of spots) spotCache.set(s.id, s)
   return spots
 }
@@ -118,4 +152,20 @@ export async function addToShortlist(hangoutId, place) {
     .single()
   if (lookupError) throw lookupError
   return existing
+}
+
+/** Remove a place you added. Pass added_by so a host's broader delete rights never remove others' spots. */
+export async function removeFromShortlist(hangoutId, place) {
+  if (isMockHangout(hangoutId)) return []
+  let query = supabase
+    .from('shortlist')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('source', place.source ?? 'google')
+    .eq('source_place_id', place.source_place_id)
+  if (place.added_by) query = query.eq('added_by', place.added_by)
+  const { data, error } = await query.select()
+  if (error) throw error
+  if (!data.length) throw new Error('Only the person who added this spot can remove it')
+  return data
 }
