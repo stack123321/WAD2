@@ -1,7 +1,9 @@
-// Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime),
-// and the host closing the vote (11) and marking the hangout done (12).
-// Every function does nothing for mock hangouts (no keys, or an id starting "demo"). Host updates use
-// .select() because Row Level Security skips a non-host's update without an error.
+// Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime), the
+// host starting the vote (11), closing it (11) and marking the hangout done (12), and the
+// tie-break wheel (11), which any member can spin: the database function spin_tiebreak() picks
+// the winner at random, so nobody can choose it (sample hangouts pick one on the page instead).
+// Every function does nothing for mock hangouts (no keys, or an id starting "demo"). Host updates
+// use .select() because Row Level Security skips a non-host's update without an error.
 import { supabase, hasSupabase } from './supabase'
 
 export function isMockHangout(hangoutId) {
@@ -45,8 +47,19 @@ export function subscribeToVotes(hangoutId, onChange) {
   return () => supabase.removeChannel(channel)
 }
 
+export async function startVote(hangoutId, voteDeadline) {
+  await updateHangout(hangoutId, { status: 'voting', vote_deadline: voteDeadline })
+}
+
 export async function closeVote(hangoutId, shortlistId) {
   await updateHangout(hangoutId, { status: 'confirmed', final_shortlist_id: shortlistId })
+}
+
+export async function spinTiebreak(hangoutId, tiedIds) {
+  if (isMockHangout(hangoutId)) return tiedIds[Math.floor(Math.random() * tiedIds.length)]
+  const { data, error } = await supabase.rpc('spin_tiebreak', { p_hangout: hangoutId })
+  if (error) throw error
+  return data
 }
 
 export async function markHangoutDone(hangoutId) {

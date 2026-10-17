@@ -1,10 +1,15 @@
 // Owner: Eashvar. Journey test for 11 Group voting and 12 Final plan on the demo hangout: the step
-// bar and candidates show, voting and changing a vote move the tally, a double-click counts once,
-// the host closes the vote and lands on the final plan, page 12 opened directly shows the leader as
-// not confirmed, "Copy plan" fills the clipboard, and "Mark as done" only works once the hangout
-// has started. In the mock, Ryan (the host, and "me" in demo mode) and Hugo voted for Mock Cafe,
-// Nicole for the Board Game Cafe, and Surya hasn't voted. The browser clock is fixed before the
-// demo deadline (15 Oct 2026, 9 pm SGT) so voting is open, except where a test moves it later.
+// bar, candidates and group chat show, voting and changing a vote move the tally, a double-click
+// counts once, the host closes the vote and lands on the final plan, page 12 opened directly shows
+// the leader as not confirmed with the map and weather, "Copy plan" fills the clipboard, and
+// "Mark as done" only works once the hangout has started. Starting the vote: on the second sample
+// hangout (still collecting) the host starts it and voting opens, the button is blocked once the
+// hangout's start time has passed, and someone who isn't in a hangout is told they can't vote.
+// Tie-break: a tie after the deadline is settled by spinning the wheel. On a phone (375px) the
+// pages fit and every button is at least 44px tall. In the first mock, Ryan (the host, and "me" in
+// demo mode) and Hugo voted for Mock Cafe, Nicole for the Board Game Cafe, and Surya hasn't voted.
+// The browser clock is fixed before the demo deadline (15 Oct 2026, 9 pm SGT) so voting is open,
+// except where a test moves it later.
 import { test, expect } from '@playwright/test'
 
 const cafe = 'Mock Cafe (sample data)'
@@ -27,6 +32,11 @@ test.describe('11 Group voting', () => {
     }
     await expect(page.getByText('3 of 4 voted')).toBeVisible()
     await expect(page.getByText('Waiting on Surya')).toBeVisible()
+  })
+
+  test('shows the group chat next to the vote', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Group chat' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Group activity' })).toBeVisible()
   })
 
   test('shows the step bar with Vote as the current step', async ({ page }) => {
@@ -89,6 +99,15 @@ test.describe('12 Final plan', () => {
     await expect(page.getByText("Everyone's trip is within 9 min of each other.")).toBeVisible()
   })
 
+  test('shows everyone on a map and the weather for the hangout', async ({ page }) => {
+    await page.goto('/hangouts/demo/plan')
+    await expect(
+      page.getByRole('region', { name: "Map of everyone's starting points" }),
+    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Weather at Bishan' })).toBeVisible()
+    await expect(page.getByText('coming soon')).toBeVisible()
+  })
+
   test('copy plan puts a summary on the clipboard', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto('/hangouts/demo/plan')
@@ -120,4 +139,105 @@ test.describe('12 Final plan', () => {
     await expect(page.getByText('✓ Done')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mark as done' })).toBeHidden()
   })
+})
+
+test.describe('Starting the vote', () => {
+  const studyCafe = 'Mock Study Cafe (sample data)'
+
+  test('the host starts the vote, then everyone can vote', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+
+    await expect(page.getByText('Not started')).toBeVisible()
+    await expect(page.getByText("Voting hasn't started yet.", { exact: false })).toBeVisible()
+    await expect(voteButton(page, studyCafe)).toBeDisabled()
+
+    await page.getByRole('button', { name: 'Start the vote' }).click()
+
+    await expect(page.getByText('Closes in')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start the vote' })).toBeHidden()
+    await voteButton(page, studyCafe).click()
+    await expect(tally(page, studyCafe)).toHaveAttribute('aria-valuenow', '1')
+    await expect(page.getByRole('button', { name: 'Close vote' })).toBeEnabled()
+  })
+
+  test('the vote can’t start once the hangout’s start time has passed', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-25T10:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+
+    await expect(page.getByRole('button', { name: 'Start the vote' })).toBeDisabled()
+    await expect(page.getByText("there's no time left to vote", { exact: false })).toBeVisible()
+  })
+
+  test('someone who isn’t in the hangout is told they can’t vote', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/login?mode=signup')
+    await page.getByLabel('Name').fill('Test User')
+    await page.getByLabel('Email').fill('test.user@example.test')
+    await page.getByLabel('Password', { exact: true }).fill('testpass123')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await page.getByRole('link', { name: 'Skip for now' }).click()
+
+    await page
+      .locator('.card', { hasText: 'Friday dinner after class' })
+      .getByRole('link', { name: 'Open vote' })
+      .click()
+
+    await expect(page.getByText("You're not in this hangout, so you can't vote.")).toBeVisible()
+    await expect(voteButton(page, cafe)).toBeDisabled()
+  })
+})
+
+test.describe('Tie-break wheel', () => {
+  test('a tie after voting ends is settled by spinning the wheel', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.clock.install({ time: new Date('2026-10-14T22:00:00+08:00') })
+    await page.goto('/hangouts/demo/vote')
+
+    await voteButton(page, hawker).click()
+    for (const spot of [cafe, boardGames, hawker]) {
+      await expect(tally(page, spot)).toHaveAttribute('aria-valuenow', '1')
+    }
+    await expect(page.getByRole('button', { name: 'Spin the wheel' })).toBeHidden()
+
+    await page.clock.fastForward('24:00:00')
+
+    const wheel = page.getByRole('region', { name: "It's a tie!" })
+    await expect(wheel).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Close vote' })).toBeHidden()
+    await wheel.getByRole('button', { name: 'Spin the wheel' }).click()
+
+    await expect(wheel.getByText('The wheel picked')).toBeVisible()
+    const picked = await wheel.getByText('The wheel picked').locator('strong').textContent()
+    expect([cafe, boardGames, hawker]).toContain(picked)
+
+    await wheel.getByRole('link', { name: 'See the final plan' }).click()
+    await expect(page.getByText('Confirmed spot')).toBeVisible()
+    await expect(page.getByRole('heading', { name: picked, exact: true })).toBeVisible()
+  })
+})
+
+test.describe('On a phone', () => {
+  for (const path of ['/hangouts/demo/vote', '/hangouts/demo-2/vote', '/hangouts/demo/plan']) {
+    test(`${path} fits the screen and its buttons are easy to tap`, async ({ page }) => {
+      await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+      await page.setViewportSize({ width: 375, height: 812 })
+      await page.goto(path)
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+      const layout = await page.evaluate(() => ({
+        pageWidth: document.documentElement.scrollWidth,
+        tooSmall: [...document.querySelectorAll('main button, main .btn, main select')]
+          .filter((el) => el.offsetParent !== null)
+          .map((el) => ({
+            control: el.getAttribute('aria-label') || el.textContent.trim(),
+            height: Math.round(el.getBoundingClientRect().height),
+          }))
+          .filter((c) => c.height < 44),
+      }))
+
+      expect(layout.pageWidth).toBeLessThanOrEqual(375)
+      expect(layout.tooSmall).toEqual([])
+    })
+  }
 })
