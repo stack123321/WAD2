@@ -1,5 +1,5 @@
 // Owner: Eashvar. Journey test for 11 Group voting and 12 Final plan on the demo hangout: the step
-// bar and candidates show, voting and changing a vote move the tally, a double-click counts once,
+// bar, candidates and group chat show, voting and changing a vote move the tally, a double-click counts once,
 // the host closes the vote and lands on the final plan, page 12 opened directly shows the leader as
 // not confirmed, "Copy plan" fills the clipboard, and "Mark as done" only works once the hangout
 // has started. Starting the vote: on the second sample hangout (still collecting) the host starts
@@ -30,6 +30,11 @@ test.describe('11 Group voting', () => {
     }
     await expect(page.getByText('3 of 4 voted')).toBeVisible()
     await expect(page.getByText('Waiting on Surya')).toBeVisible()
+  })
+
+  test('shows the group chat next to the vote', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Group chat' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Group activity' })).toBeVisible()
   })
 
   test('shows the step bar with Vote as the current step', async ({ page }) => {

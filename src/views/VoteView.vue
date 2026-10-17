@@ -5,8 +5,9 @@
 // who they're waiting for). Then everyone votes for one shortlisted spot and can change it until
 // the deadline (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally
 // updates straight away (also in demo mode), re-fetches all votes on every Realtime change, and
-// lists activity seen while open. "Me" is the logged-in user, or in demo mode the host, so the host
-// controls can be tried without keys. Validation: only members can vote (others are told why),
+// lists activity seen while open, next to Surya's group chat (members only). "Me" is the logged-in
+// user, or in demo mode the host, so the host controls can be tried without keys.
+// Validation: only members can vote (others are told why),
 // only one vote is sent at a time, only each current member's latest vote counts, and the host
 // can't close a vote nobody has voted in. The host picks the winner and closes the vote; the store
 // is updated directly after starting and closing (a forced reload would reset the demo hangout).
@@ -28,6 +29,7 @@ import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import StartPanel from '@/components/voting/StartPanel.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
+import HangoutChat from '@/components/start/HangoutChat.vue'
 import {
   countableVotes,
   countVotes,
@@ -347,6 +349,7 @@ onUnmounted(() => {
             @start="onStart"
           />
           <ActivityFeed :items="feedItems" />
+          <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
           <ClosePanel
             v-if="isHost && status === 'voting'"
             :shortlist="store.shortlist"
