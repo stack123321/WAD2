@@ -5,6 +5,15 @@
     <section class="head">
       <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <GooglePlacesToggle />
+      <button
+        v-if="googlePlacesEnabled && hasMidpoint"
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        :disabled="loadingSpots"
+        @click="refreshSpots"
+      >
+        Refresh spots
+      </button>
       <div class="filters">
         <div class="filter-buttons">
           <button
@@ -90,7 +99,22 @@
           <li v-for="spot in shortlisted" :key="spot.id" class="shortlist-item">
             <img v-if="spot.imageUrl" :src="spot.imageUrl" :alt="spot.name" class="shortlist-thumb" />
             <span v-else class="shortlist-thumb"></span>
-            {{ spot.name }}
+            <span class="shortlist-name">{{ spot.name }}</span>
+            <MemberAvatar
+              :name="ownerOfSpot(spot)?.display_name ?? 'Someone'"
+              :color="ownerOfSpot(spot)?.avatar_color ?? null"
+              :size="24"
+            />
+            <span class="visually-hidden">Added by {{ ownerOfSpot(spot)?.display_name ?? 'someone' }}</span>
+            <button
+              v-if="isMine(spot)"
+              type="button"
+              class="shortlist-remove"
+              :aria-label="`Remove ${spot.name} from shortlist`"
+              @click="removeSpot(spot)"
+            >
+              &times;
+            </button>
           </li>
         </ul>
         <p v-else class="text-secondary mb-0">No spots added yet.</p>
@@ -106,12 +130,15 @@ import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
+import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import {
   addToShortlist,
+  removeFromShortlist,
   googlePlacesEnabled,
   loadSpots,
 } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const hangout = useHangoutStore()
@@ -126,13 +153,16 @@ const hasMidpoint = computed(
     hangout.hangout?.midpoint_lng != null,
 )
 let spotRequestId = 0
+const refreshCount = ref(0)
+let forceNextLoad = false
 
-// Fetch Google Places around the midpoint saved on this hangout.
+// Fetch Google Places around the midpoint saved on this hangout (reused from cache when recent).
 watch(
   () => [
     hangout.hangout?.midpoint_lat,
     hangout.hangout?.midpoint_lng,
     googlePlacesEnabled.value,
+    refreshCount.value,
   ],
   async ([lat, lng, enabled], _, onCleanup) => {
     const requestId = ++spotRequestId
@@ -147,7 +177,12 @@ watch(
     onCleanup(() => controller.abort())
     loadingSpots.value = true
     try {
-      const results = await loadSpots({ lat, lng }, { radiusM: 1000, signal: controller.signal })
+      const force = forceNextLoad
+      forceNextLoad = false
+      const results = await loadSpots(
+        { lat, lng },
+        { radiusM: 1000, signal: controller.signal, force },
+      )
       if (requestId === spotRequestId) spots.value = results
     } catch (err) {
       if (requestId === spotRequestId) {
@@ -159,6 +194,11 @@ watch(
   },
   { immediate: true },
 )
+
+function refreshSpots() {
+  forceNextLoad = true
+  refreshCount.value++
+}
 
 const filters = [
   { label: 'All', value: 'all' },
@@ -195,19 +235,39 @@ const comparators = {
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
 
+const MAX_SPOTS_PER_PERSON = 3
+const auth = useAuthStore()
+const myId = computed(() => auth.user?.id ?? 'mock-user')
+
 const addedIds = reactive(new Set())
+// place id -> user who added it
+const ownerOf = reactive(new Map())
 const shortlisted = computed(() => spots.value.filter((s) => addedIds.has(s.id)))
+const myCount = computed(() => [...ownerOf.values()].filter((id) => id === myId.value).length)
+const isMine = (spot) => ownerOf.get(spot.id) === myId.value
+const ownerOfSpot = (spot) => hangout.members.find((m) => m.user_id === ownerOf.get(spot.id)) ?? null
 
 // Spots already saved to this hangout's shortlist show as added
 watch(
   () => hangout.shortlist,
-  (list) => list.forEach((s) => addedIds.add(s.source_place_id)),
+  (list) => {
+    list.forEach((s) => {
+      addedIds.add(s.source_place_id)
+      ownerOf.set(s.source_place_id, s.added_by)
+    })
+  },
   { immediate: true },
 )
 
 async function addSpot(spot) {
   if (addedIds.has(spot.id)) return
+  loadError.value = ''
+  if (myCount.value >= MAX_SPOTS_PER_PERSON) {
+    loadError.value = `You can only add ${MAX_SPOTS_PER_PERSON} spots to the shortlist. Remove one to add another.`
+    return
+  }
   addedIds.add(spot.id)
+  ownerOf.set(spot.id, myId.value)
   try {
     const row = await addToShortlist(route.params.id, {
       source: 'google',
@@ -226,9 +286,30 @@ async function addSpot(spot) {
     }
   } catch (err) {
     addedIds.delete(spot.id)
+    ownerOf.delete(spot.id)
     loadError.value = `Could not add that spot to the shortlist: ${err.message}`
   }
 }
+
+async function removeSpot(spot) {
+  if (!addedIds.has(spot.id) || !isMine(spot)) return
+  loadError.value = ''
+  try {
+    await removeFromShortlist(route.params.id, {
+      source: 'google',
+      source_place_id: spot.id,
+      added_by: myId.value,
+    })
+    addedIds.delete(spot.id)
+    ownerOf.delete(spot.id)
+    const list = hangout.hangout?.shortlist
+    const i = list ? list.findIndex((s) => s.source_place_id === spot.id) : -1
+    if (i !== -1) list.splice(i, 1)
+  } catch (err) {
+    loadError.value = `Could not remove that spot from the shortlist: ${err.message}`
+  }
+}
+
 
 const mapCenter = computed(() =>
   hasMidpoint.value
@@ -354,6 +435,22 @@ const isMapOpen = ref(false)
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.shortlist-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.shortlist-remove {
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: #dc3545;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .shortlist-item {
