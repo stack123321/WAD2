@@ -1,7 +1,8 @@
 <script setup>
-// Owner: Surya. Leaflet map on the OneMap base map. Tiles need no token, so this runs in the browser.
+// Owner: Surya. A simple map with clickable dots (09 Nearby spots, 10 Spot details).
+// The map itself comes from createOneMap() (OneMap tiles, no key needed).
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { createOneMap } from './oneMap'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
@@ -16,6 +17,7 @@ const emit = defineEmits(['marker-click'])
 const el = ref(null)
 let map = null
 let markerLayer = null
+let stopMap = null // removes the map when leaving the page
 
 function drawMarkers() {
   markerLayer.clearLayers()
@@ -37,37 +39,33 @@ function drawMarkers() {
       { padding: [24, 24], maxZoom: 16 },
     )
   } else {
-    map.setView(props.markers.length ? [props.markers[0].lat, props.markers[0].lng] : props.center, props.zoom)
+    map.setView(
+      props.markers.length ? [props.markers[0].lat, props.markers[0].lng] : props.center,
+      props.zoom,
+    )
   }
 }
 
 onMounted(() => {
-  map = L.map(el.value, {
-    center: props.center,
-    zoom: props.zoom,
-    minZoom: 11,
-    maxBounds: [
-      [1.144, 103.535],
-      [1.494, 104.502],
-    ],
-  })
-
-  L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
-    detectRetina: true,
-    maxZoom: 19,
-    minZoom: 11,
-    // OneMap terms of use require this attribution
-    attribution:
-      '<img src="https://www.onemap.gov.sg/web-assets/images/logo/om_logo.png" style="height:20px;width:20px;"/>&nbsp;<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener noreferrer">OneMap</a>&nbsp;&copy;&nbsp;contributors&nbsp;&#124;&nbsp;<a href="https://www.sla.gov.sg/" target="_blank" rel="noopener noreferrer">Singapore Land Authority</a>',
-  }).addTo(map)
+  const created = createOneMap(el.value, { center: props.center, zoom: props.zoom })
+  map = created.map
+  stopMap = created.stop
 
   markerLayer = L.layerGroup().addTo(map)
   drawMarkers()
 })
 
-watch(() => [props.markers, props.center], () => map && drawMarkers(), { deep: true })
+watch(
+  () => [props.markers, props.center],
+  () => map && drawMarkers(),
+  { deep: true },
+)
 
-onBeforeUnmount(() => map?.remove())
+onBeforeUnmount(() => {
+  if (stopMap) {
+    stopMap()
+  }
+})
 </script>
 
 <template>
