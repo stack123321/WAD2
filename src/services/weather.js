@@ -125,6 +125,28 @@ export async function getHourlyForecast(lat, lng) {
   return hours
 }
 
+// Part (d2) Will it rain? For the "indoor only if it rains" filter on 09 Nearby spots (Hugo)
+/**
+ * Whether rain is likely at a place and time, from Open-Meteo's hourly forecast.
+ * @param {string | Date} [when] the hangout time; leave out for "now"
+ * @param {number} [threshold] % chance of rain that counts as "likely" (default 50)
+ * @returns {Promise<{ rain: boolean, chance: number, condition: string } | null>}
+ *   null when that time isn't in the forecast (in the past, or more than ~16 days ahead)
+ */
+export async function willRainAt(lat, lng, when, threshold = 50) {
+  const hours = await getHourlyForecast(lat, lng)
+  let time = new Date()
+  if (when) {
+    time = when
+  }
+  const hour = hours.find((h) => h.time === sgHourKey(time))
+  if (!hour) {
+    return null
+  }
+  const rain = hour.rainChance >= threshold || isRain(hour.condition)
+  return { rain: rain, chance: hour.rainChance, condition: hour.condition }
+}
+
 // Part (e) Haze
 /**
  * Haze right now: the 24-hour PSI for the region (north/south/east/west/central) nearest a point.

@@ -1,13 +1,14 @@
 <script setup>
 // Owner: Surya. The bar under the navbar on pages 06–12 (Figma): hangout name, date, the 6 steps
-// with the current one highlighted, and everyone's avatars. Each step links to its page.
+// with the current one highlighted, everyone's avatars, and an Invite button that copies the
+// hangout's invite link (for people who aren't your friends yet). Each step links to its page.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
-  hangout: { type: Object, required: true }, // needs id, name, starts_at
+  hangout: { type: Object, required: true }, // needs id, name, starts_at, invite_code
   members: { type: Array, required: true }, // needs user_id, display_name, avatar_color
   current: { type: String, required: true },
 })
@@ -61,6 +62,24 @@ const startsAt = computed(() => {
   }
   return `${day} · ${hour}${minutes} ${amPm}`
 })
+
+// Invite: copy the hangout's link. Friends who open it log in and join this hangout.
+const inviteCopied = ref(false)
+
+async function copyInvite() {
+  const link = `${window.location.origin}/login?invite=${props.hangout.invite_code}`
+  try {
+    await navigator.clipboard.writeText(link)
+    inviteCopied.value = true
+    setTimeout(() => {
+      inviteCopied.value = false
+    }, 2000)
+  } catch (error) {
+    // some browsers block copying: show the link so it can be copied by hand
+    console.error(error)
+    window.prompt('Copy this invite link:', link)
+  }
+}
 </script>
 
 <template>
@@ -99,19 +118,35 @@ const startsAt = computed(() => {
       >
     </RouterLink>
 
-    <div class="avatar-stack d-none d-md-flex" :aria-label="`${members.length} members`">
-      <MemberAvatar
-        v-for="m in members"
-        :key="m.user_id"
-        :name="m.display_name"
-        :color="m.avatar_color"
-        :size="30"
-      />
+    <div class="d-flex align-items-center gap-2">
+      <div class="avatar-stack d-none d-md-flex" :aria-label="`${members.length} members`">
+        <MemberAvatar
+          v-for="m in members"
+          :key="m.user_id"
+          :name="m.display_name"
+          :color="m.avatar_color"
+          :size="30"
+        />
+      </div>
+      <button
+        v-if="hangout.id !== 'demo'"
+        type="button"
+        class="btn btn-outline-primary btn-sm invite-btn"
+        title="Copy the invite link for people who aren't your friends yet"
+        @click="copyInvite"
+      >
+        {{ inviteCopied ? 'Link copied!' : 'Invite' }}
+      </button>
     </div>
   </header>
 </template>
 
 <style scoped>
+.invite-btn {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
 .hangout-bar {
   display: flex;
   flex-wrap: wrap; /* on narrow phones the step goes onto its own line */

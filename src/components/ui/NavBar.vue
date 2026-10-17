@@ -37,6 +37,9 @@ async function logOut() {
             <RouterLink class="nav-link" :to="{ name: 'dashboard' }">My hangouts</RouterLink>
           </li>
           <li v-if="auth.isLoggedIn" class="nav-item">
+            <RouterLink class="nav-link" :to="{ name: 'groups' }">Groups</RouterLink>
+          </li>
+          <li v-if="auth.isLoggedIn" class="nav-item">
             <RouterLink class="nav-link" :to="{ name: 'preferences' }">Preferences</RouterLink>
           </li>
           <li class="nav-item">
