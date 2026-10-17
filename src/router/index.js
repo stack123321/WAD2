@@ -35,6 +35,18 @@ const routes = [
     meta: { requiresAuth: true },
   }, // Ryan: friends list, from 04's "Hangout with"
   {
+    path: '/groups',
+    name: 'groups',
+    component: () => import('@/views/GroupsView.vue'),
+    meta: { requiresAuth: true },
+  }, // Surya: your friend groups
+  {
+    path: '/groups/:groupId',
+    name: 'group',
+    component: () => import('@/views/GroupView.vue'),
+    meta: { requiresAuth: true },
+  }, // Surya: one friend group, with its permanent chat
+  {
     path: '/hangouts/new',
     name: 'create-hangout',
     component: () => import('@/views/CreateHangoutView.vue'),

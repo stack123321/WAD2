@@ -2,6 +2,7 @@
 // Owner: Surya. Group chat for a hangout. Everyone in the hangout can read and post; new messages
 // appear live for everyone (Supabase Realtime). Drop it into any hangout page (06, 09, 11, 12):
 // Usage: <HangoutChat :hangout="store.hangout" />
+//   or a friend group's permanent chat: <HangoutChat :group="group" /> (/groups/:id)
 //   optional: :my-id (defaults to the logged-in user), title, :height (px of the message list)
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
@@ -9,7 +10,8 @@ import { useAuthStore } from '@/stores/auth'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
-  hangout: { type: Object, required: true }, // needs id, members
+  hangout: { type: Object, default: null }, // needs id, members
+  group: { type: Object, default: null }, // or a friend group: needs id, members
   myId: { type: String, default: null },
   title: { type: String, default: 'Group chat' },
   height: { type: Number, default: 260 },
@@ -27,27 +29,31 @@ const me = computed(() => {
   return null
 })
 
+// The chat is for a group if one is given, otherwise for the hangout
+const kind = props.group ? 'group' : 'hangout'
+const room = computed(() => props.group || props.hangout)
+
 const messages = ref([])
 const draft = ref('')
 const loading = ref(true)
 const sending = ref(false)
 const error = ref('')
 const listEl = ref(null) // the scrolling message list
-const isDemo = props.hangout.id === 'demo'
+const isDemo = room.value.id === 'demo'
 
 // Part (a) Load the messages, then listen for new ones
 let stopListening = () => {}
 
 onMounted(async () => {
   try {
-    messages.value = await getMessages(props.hangout.id)
+    messages.value = await getMessages(room.value.id, kind)
   } catch (err) {
     console.error(err)
     error.value = "Couldn't load the chat."
   }
   loading.value = false
   scrollToBottom()
-  stopListening = subscribeToMessages(props.hangout.id, addMessage)
+  stopListening = subscribeToMessages(room.value.id, addMessage, kind)
 })
 
 onUnmounted(() => stopListening())
@@ -78,7 +84,7 @@ async function send() {
   }
   sending.value = true
   try {
-    const saved = await sendMessage(props.hangout.id, draft.value)
+    const saved = await sendMessage(room.value.id, draft.value, kind)
     addMessage(saved)
     draft.value = ''
   } catch (err) {
@@ -90,7 +96,7 @@ async function send() {
 
 // Part (c) Helpers for showing a message
 function sender(message) {
-  const member = props.hangout.members.find((m) => m.user_id === message.user_id)
+  const member = room.value.members.find((m) => m.user_id === message.user_id)
   if (member) {
     return member
   }
@@ -103,7 +109,7 @@ function isMine(message) {
 
 // A message aimed at you, e.g. a reminder "@Surya, please add where you're coming from…"
 function isForMe(message) {
-  const myRow = props.hangout.members.find((m) => m.user_id === me.value)
+  const myRow = room.value.members.find((m) => m.user_id === me.value)
   if (!myRow || isMine(message)) {
     return false
   }
@@ -123,7 +129,7 @@ function timeLabel(message) {
   <section class="chat">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
       <h2 class="h6 fw-bold mb-0">{{ title }}</h2>
-      <span class="small text-secondary">Everyone in this hangout</span>
+      <span class="small text-secondary">Everyone in this {{ kind }}</span>
     </div>
 
     <p v-if="isDemo" class="small text-secondary mb-0">
