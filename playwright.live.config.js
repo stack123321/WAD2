@@ -1,9 +1,9 @@
-// Owner: Ryan. Playwright tests against the real Supabase project (tests/live).
-// Run with: npm run test:live. Needs the Supabase keys plus E2E_EMAIL and E2E_PASSWORD in .env.local.
+// Owner: Ryan
+// playwright against the real supabase project (npm run test:live), needs supabase keys and E2E_EMAIL, E2E_PASSWORD in .env.local
 import process from 'node:process'
 import { defineConfig, devices } from '@playwright/test'
 
-// Playwright runs in Node, and Node doesn't read .env.local by itself (Vite only does that for the app)
+// playwright runs in node, and node doesn't read .env.local by itself (vite only does that for the app)
 process.loadEnvFile('.env.local')
 
 export default defineConfig({
@@ -15,7 +15,7 @@ export default defineConfig({
     headless: true,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  // Its own port, so it never clashes with your dev server (5173) or the demo (5174)
+  // its own port, so it never clashes with your dev server (5173) or the demo (5174)
   webServer: {
     command: 'npx vite --port 5175 --strictPort',
     port: 5175,

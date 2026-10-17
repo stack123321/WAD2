@@ -1,15 +1,14 @@
-// Owner: Ryan. Your friends: everyone you've been in a hangout with.
-// Used by the "Hangout with" card on 04 Dashboard and by 05 Create hangout (?with=).
+// Owner: Ryan
+// your friends: everyone you've been in a hangout with (04 "hangout with" card, 05 ?with=)
 import { supabase, hasSupabase } from './supabase'
 import { addMember } from './hangouts'
 import mockHangout from '@/mocks/hangout.json'
 import mockHangout2 from '@/mocks/hangout-2.json'
 
-// In the demo (no Supabase) you're Surya, like on 06 and 07
+// in the demo (no supabase) you're surya, like on 06 and 07
 const DEMO_ME = 'u-surya'
 
-// Every hangout member you can see, one row per person per hangout:
-// [{ user_id, hangout_id, joined_at, display_name, avatar_color }]
+// every hangout member you can see, one row per person per hangout
 async function getMemberRows() {
   if (!hasSupabase) {
     let rows = []
@@ -27,7 +26,7 @@ async function getMemberRows() {
     return rows
   }
 
-  // No filter needed: the security rules only let you read the members of hangouts you're in
+  // no filter needed: the security rules only let you read the members of hangouts you're in
   const { data, error } = await supabase
     .from('hangout_members')
     .select('user_id, hangout_id, joined_at, profile:profiles(display_name, avatar_color)')
@@ -43,14 +42,14 @@ async function getMemberRows() {
   }))
 }
 
-// Your 3 (or `count`) newest friends: the friendships accepted most recently
+// 3 newest friends: the friendships accepted most recently
 export async function getNewestFriends(myId, count) {
   const lists = await getFriendships(myId)
   lists.friends.sort((a, b) => b.since - a.since) // newest first
   return lists.friends.slice(0, count)
 }
 
-// One person's name and colour, for "Hanging out with …" on 05
+// one person's name and colour, for "hanging out with …" on 05
 export async function getFriend(userId) {
   if (!hasSupabase) {
     const rows = await getMemberRows()
@@ -71,7 +70,7 @@ export async function getFriend(userId) {
   return { user_id: data.id, display_name: data.display_name, avatar_color: data.avatar_color }
 }
 
-// Add a friend to a hangout you just made (the demo has no database to save to)
+// add a friend to a hangout you just made 
 export async function addFriendToHangout(hangoutId, userId) {
   if (!hasSupabase) {
     return
@@ -79,10 +78,9 @@ export async function addFriendToHangout(hangoutId, userId) {
   await addMember(hangoutId, userId)
 }
 
-// ── Friend requests (the friendships table in supabase/schema.sql) ──
+// friend requests (friendships table in supabase/schema.sql) ──
 
-// Demo only: requests kept in memory, so the Friends page can be tried without Supabase.
-// They reset when the page reloads.
+// demo only: requests kept in memory, reset on reload
 let demoFriendships = [
   {
     requester_id: DEMO_ME,
@@ -105,7 +103,7 @@ let demoFriendships = [
   { requester_id: 'u-matrix', addressee_id: DEMO_ME, status: 'pending', accepted_at: null },
 ]
 
-// Demo only: everyone in the sample hangouts, once each
+// demo only: everyone in the sample hangouts, once each
 async function demoPeople() {
   const rows = await getMemberRows()
   let people = []
@@ -121,7 +119,7 @@ async function demoPeople() {
   return people
 }
 
-// People you could add: their name contains the text, or it's their exact email. Never returns emails.
+// people you could add: their name contains the text, or exact email. never returns emails.
 export async function searchPeople(text) {
   if (!hasSupabase) {
     const people = await demoPeople()
@@ -141,10 +139,7 @@ export async function searchPeople(text) {
   }))
 }
 
-// Your friendships, split three ways. Each list is [{ user_id, display_name, avatar_color }]:
-//   friends  = accepted (either of you asked)
-//   pending  = you asked, they haven't accepted yet
-//   requests = they asked you
+// your friendships split three ways: friends (accepted), pending (you asked), requests (they asked you)
 export async function getFriendships(myId) {
   const me = hasSupabase ? myId : DEMO_ME
   let rows = []
@@ -162,7 +157,7 @@ export async function getFriendships(myId) {
       })
     }
   } else {
-    // The security rules only return friendships you're part of
+    // the security rules only return friendships you're part of
     const { data, error } = await supabase
       .from('friendships')
       .select(
@@ -179,7 +174,7 @@ export async function getFriendships(myId) {
   let lists = { friends: [], pending: [], requests: [] }
   for (let r of rows) {
     const iAsked = r.requester_id === me
-    // The other person in this friendship
+    // the other person in this friendship
     const otherId = iAsked ? r.addressee_id : r.requester_id
     const otherProfile = iAsked ? r.addressee : r.requester
     const other = {
@@ -199,7 +194,7 @@ export async function getFriendships(myId) {
   return lists
 }
 
-// Ask someone to be your friend
+// send friend request
 export async function sendFriendRequest(myId, userId) {
   if (!hasSupabase) {
     demoFriendships.push({ requester_id: DEMO_ME, addressee_id: userId, status: 'pending' })
@@ -213,7 +208,7 @@ export async function sendFriendRequest(myId, userId) {
   }
 }
 
-// Accept a request someone sent you
+// accept request
 export async function acceptFriendRequest(myId, userId) {
   if (!hasSupabase) {
     const f = demoFriendships.find((f) => f.requester_id === userId && f.addressee_id === DEMO_ME)
@@ -233,7 +228,7 @@ export async function acceptFriendRequest(myId, userId) {
   }
 }
 
-// Decline a request someone sent you
+// decline request
 export async function declineFriendRequest(myId, userId) {
   if (!hasSupabase) {
     demoFriendships = demoFriendships.filter(
@@ -248,5 +243,35 @@ export async function declineFriendRequest(myId, userId) {
     .eq('addressee_id', myId)
   if (error) {
     throw error
+  }
+}
+
+export async function removeFriend(myId, userId) {
+  if (!hasSupabase) {
+    demoFriendships = demoFriendships.filter(
+      (f) =>
+        !(
+          (f.requester_id === DEMO_ME && f.addressee_id === userId) ||
+          (f.requester_id === userId && f.addressee_id === DEMO_ME)
+        ),
+    )
+    return
+  }
+  // either of us may have sent request, so delete both directions
+  const asRequester = await supabase
+    .from('friendships')
+    .delete()
+    .eq('requester_id', myId)
+    .eq('addressee_id', userId)
+  if (asRequester.error) {
+    throw asRequester.error
+  }
+  const asAddressee = await supabase
+    .from('friendships')
+    .delete()
+    .eq('requester_id', userId)
+    .eq('addressee_id', myId)
+  if (asAddressee.error) {
+    throw asAddressee.error
   }
 }

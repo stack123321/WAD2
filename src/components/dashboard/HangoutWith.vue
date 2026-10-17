@@ -1,7 +1,6 @@
 <script setup>
-// "Hangout with" card on 04 Dashboard: your 3 newest friends, each with Add to new hangout,
-// and a button to the full friends list.
-// Owner: Ryan. Data: services/friends.js (your accepted friends, newest first).
+// Owner: Ryan
+// "hangout with" card on 04 dashboard: 3 newest friends (services/friends.js) with add-to-hangout, plus a link to the full list
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getNewestFriends } from '@/services/friends'
@@ -55,7 +54,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* The same white card as Weather this week (WeatherFrame.vue) */
 .hangout-with {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
@@ -77,7 +75,7 @@ onMounted(async () => {
   justify-content: center;
 }
 
-/* Long names end in "…" instead of pushing the button off the card */
+/* text-overflow: ellipsis - long names end wif "…" instead of pushing the button off the card */
 .name {
   min-width: 0;
   overflow: hidden;

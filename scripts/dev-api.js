@@ -1,11 +1,5 @@
-// Owner: Ryan. Lets `npm run dev` run the serverless functions in api/, so nobody needs `vercel dev`.
-//
-// On Vercel, each file in api/ becomes a URL: api/route.js → /api/route. Vercel hands the function
-// a request with req.query and req.body, and a response with res.status(), res.json() and res.send().
-// This plugin does the same inside the Vite dev server, so the same file works locally and on Vercel.
-//
-// Server-only keys (no VITE_ prefix) are read from .env.local into process.env, like Vercel does
-// with the keys set in its dashboard.
+// Owner: Ryan
+// runs the api/ serverless functions inside `npm run dev`, copies vercel's req and res so no need `vercel dev`
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
@@ -23,7 +17,7 @@ export default function devApi() {
       server.middlewares.use('/api', async (req, res, next) => {
         const url = new URL(req.url, 'http://localhost')
         const name = url.pathname.replace(/^\/+|\/+$/g, '')
-        // Files starting with _ (like api/_mocks/) are helpers, not endpoints — same rule as Vercel
+        // files starting with _ (like api/_mocks/) are helpers, not endpoints (same rule as vercel)
         if (!/^[a-z0-9-]+$/i.test(name)) return next()
 
         const file = join(server.config.root, 'api', `${name}.js`)
@@ -39,7 +33,7 @@ export default function devApi() {
         res.send = (data) => (typeof data === 'object' ? res.json(data) : res.end(String(data)))
 
         try {
-          // ssrLoadModule picks up your edits without restarting the dev server
+          // ssrLoadModule picks up your edits so no need restart server
           const mod = await server.ssrLoadModule(`/api/${name}.js`)
           await mod.default(req, res)
         } catch (error) {

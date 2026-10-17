@@ -1,5 +1,5 @@
-// Owner: Ryan. All 12 pages are registered here, so page owners never need to touch this file.
-// Numbers match the Figma frames (01–12).
+// Owner: Ryan
+// all 12 pages are registered here, numbers match the figma frames (01–12)
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -7,7 +7,7 @@ import { hasSupabase } from '@/services/supabase'
 import LandingView from '@/views/LandingView.vue'
 
 const routes = [
-  // Before a hangout exists
+  // before a hangout exists
   { path: '/', name: 'landing', component: LandingView }, // 01 Matrix
   { path: '/login', name: 'auth', component: () => import('@/views/AuthView.vue') }, // 02 Matrix
   {
@@ -41,7 +41,7 @@ const routes = [
     meta: { requiresAuth: true },
   }, // 05 Matrix
 
-  // Inside one hangout (:id is the hangout's uuid; use "demo" to load src/mocks/hangout.json)
+  // inside one hangout (:id is the hangout's uuid, "demo" loads src/mocks/hangout.json)
   {
     path: '/hangouts/:id/start',
     name: 'starting-points',
@@ -85,7 +85,7 @@ const routes = [
     meta: { requiresAuth: true },
   }, // 12 Eashvar
 
-  // Unknown URLs go back to the landing page
+  // unknown urls go back to the landing page
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
@@ -95,11 +95,7 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-// Login guard: pages with meta.requiresAuth (everything except 01 Landing and 02 Log in) need a
-// logged-in user. Logged-out users go to /login, and come back to the page they wanted afterwards.
-//
-// Only when Supabase is connected: without keys (mock mode, and the e2e tests) there are no real
-// accounts, so every page stays open with the sample data.
+// login guard for pages with meta.requiresAuth: logged-out users go to /login and come back afterwards, only when supabase is connected (mock mode and e2e tests leave every page open)
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth || !hasSupabase) {
     return
@@ -107,8 +103,7 @@ router.beforeEach(async (to) => {
 
   const auth = useAuthStore()
 
-  // After a refresh, Supabase takes a moment to restore the session. Wait for it, otherwise
-  // a logged-in user would be sent to the login page by mistake.
+  // wait for supabase to restore the session after a refresh, otherwise a logged-in user gets sent to login by mistake
   if (!auth.ready) {
     await new Promise((resolve) => {
       const stop = watch(

@@ -1,10 +1,11 @@
-// Owner: Ryan. Page 08 crowd heat map, using the demo hangout.
+// Owner: Ryan
+// page 08 crowd heat map with the demo hangout
 import { test, expect } from '@playwright/test'
 
 test('draws station circles and the midpoint pin', async ({ page }) => {
   await page.goto('/hangouts/demo/midpoint')
   await expect(page.locator('#crowd-map .midpoint-pin')).toBeVisible()
-  // At least one station circle (the map opens zoomed in, so some are off-screen)
+  // at least one station circle (the map opens zoomed in, so some are off-screen)
   await expect(page.locator('#crowd-map path.crowd')).not.toHaveCount(0)
 })
 

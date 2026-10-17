@@ -1,20 +1,15 @@
 <script setup>
-// Crowd heat map for 08 Midpoint and /crowds: one coloured circle per MRT station, a time slider
-// for today, and on 08 the midpoint pin plus everyone's starting points.
-// Owner: Ryan. Data: services/crowd.js → api/crowd.js → LTA DataMall.
-// Looks like the other maps (06, 09, 10): OneMap tiles, kept inside Singapore, zoom buttons top right.
+// Owner: Ryan
+// crowd heat map for 08 and /crowds: station circles, time slider, and on 08 the midpoint pin and starting points
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getCrowdLevels } from '@/services/crowd'
 
 const props = defineProps({
-  midpoint: { type: Object, default: null }, // { name, lat, lng } of the group's midpoint
-  // 08 Midpoint: the midpoint pin can be dragged; the map emits "move" with the dropped { lat, lng }
-  draggable: { type: Boolean, default: false },
-  // 08 Midpoint: everyone's starting points, drawn like the pins on 06
-  // [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
-  members: { type: Array, default: () => [] },
+  midpoint: { type: Object, default: null }, // { name, lat, lng } of midpoint
+  draggable: { type: Boolean, default: false }, // 08: draggable midpoint pin, emits "move" with dropped { lat, lng }
+  members: { type: Array, default: () => [] }, // 08: everyone's starting points [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
 })
 
 const emit = defineEmits(['move'])
@@ -33,7 +28,7 @@ const error = ref('')
 
 let circles = null // a group holding all station circles, so we can clear them in one go
 
-// 37 → "6:30 pm"
+// 37 is "6:30 pm"
 const timeLabel = computed(() => {
   const hour = Math.floor(slot.value / 2)
   const minutes = slot.value % 2 === 0 ? '00' : '30'
@@ -42,18 +37,18 @@ const timeLabel = computed(() => {
   return `${hour12}:${minutes} ${suffix}`
 })
 
-// True when LTA was unavailable and api/crowd.js sent sample data instead
+// true when lta unavailable and api/crowd.js send sample data instead
 const isSample = computed(
   () => stations.value.length > 0 && stations.value[0].station.includes('(sample)'),
 )
 
-// The slot that contains the current time
+// slot that contains current time
 function currentSlot() {
   const now = new Date()
   return now.getHours() * 2 + (now.getMinutes() >= 30 ? 1 : 0)
 }
 
-// Slot number → a Date today at that time
+// slot number to a Date today at that time
 function slotToDate(s) {
   const date = new Date()
   date.setHours(Math.floor(s / 2), (s % 2) * 30, 0, 0)
@@ -82,7 +77,7 @@ function drawCircles() {
   }
 }
 
-// The midpoint pin: a teardrop marker (draggable on 08), with its station name in a tooltip
+// midpoint pin => a teardrop marker (draggable on 08), with station name in tooltip
 function drawMidpoint() {
   if (midpointMarker) {
     midpointMarker.remove()
@@ -93,12 +88,12 @@ function drawMidpoint() {
   }
   midpointMarker = L.marker([props.midpoint.lat, props.midpoint.lng], {
     draggable: props.draggable,
-    zIndexOffset: 1000, // above the station circles
+    zIndexOffset: 1000, // above station circles
     icon: L.divIcon({
       className: '',
       html: '<span class="midpoint-pin"></span>',
       iconSize: [28, 28],
-      iconAnchor: [14, 28], // the tip of the pin sits on the spot
+      iconAnchor: [14, 28], // tip of pin on the spot
     }),
   })
     .bindTooltip(`Midpoint: ${props.midpoint.name}`, { permanent: true, direction: 'top', offset: [0, -28] })
@@ -110,15 +105,14 @@ function drawMidpoint() {
   })
 }
 
-// Everyone's starting point: a round pin in their colour with their initial, like on 06.
-// Hover (or tap) a pin for their name and where they're coming from.
+// everyone's starting point: round pin in their colour with their initial (like 06), hover or tap for name and origin
 function drawMembers() {
   memberPins.clearLayers()
   for (let m of props.members) {
     if (m.start_lat == null || m.start_lng == null) {
       continue // no starting point yet
     }
-    // avatar_color comes from the database, so only use it if it looks like a colour (#0E7C6B)
+    // avatar_color comes from database, so only use if looks like a colour (#0E7C6B)
     let color = 'var(--fp-primary)'
     if (m.avatar_color && m.avatar_color.startsWith('#')) {
       color = escapeHtml(m.avatar_color)
@@ -128,7 +122,7 @@ function drawMembers() {
         className: '',
         html: `<span class="member-pin" style="background:${color}">${escapeHtml(m.display_name.charAt(0))}</span>`,
         iconSize: [30, 30],
-        iconAnchor: [15, 15], // the pin's centre sits on the exact spot
+        iconAnchor: [15, 15], // pin's centre sits on exact spot
       }),
     })
       .bindTooltip(`${escapeHtml(m.display_name)} · ${escapeHtml(m.start_label)}`)
@@ -136,7 +130,7 @@ function drawMembers() {
   }
 }
 
-// Names go inside HTML, so turn < > & " ' into safe text first (same as MembersMap.vue on 06)
+// names go inside html, so turn < > & " ' into safe text first (same as MembersMap.vue on 06)
 function escapeHtml(text) {
   return String(text ?? '')
     .replaceAll('&', '&amp;')
@@ -146,8 +140,7 @@ function escapeHtml(text) {
     .replaceAll("'", '&#39;')
 }
 
-// Show the midpoint and everyone's starting points together, so you can see if it's fair.
-// Without anyone placed, zoom in on the midpoint; on /crowds, stay on the whole island.
+// show the midpoint and starting points together. if nobody placed, zoom to the midpoint (whole island on /crowds)
 function fitToGroup() {
   let points = []
   for (let m of props.members) {
@@ -167,11 +160,11 @@ function fitToGroup() {
 
 onMounted(() => {
   map = L.map('crowd-map', {
-    center: [1.3521, 103.8198], // centre of Singapore
+    center: [1.3521, 103.8198], // centre of singapore
     zoom: 11,
     minZoom: 11,
     zoomControl: false,
-    // stop the map from scrolling away from Singapore (same as the 06 map)
+    // stops map from scrolling away from singapore
     maxBounds: [
       [1.144, 103.535],
       [1.494, 104.1],
@@ -194,15 +187,14 @@ onMounted(() => {
   fitToGroup()
   loadCrowd()
 
-  // If the map's box changes size after it's drawn (e.g. the window is resized),
-  // tell Leaflet to measure it again. Otherwise part of the map stays grey.
+  // re-measure the map if its box resizes, otherwise part of it stays grey
   resizeWatcher = new ResizeObserver(() => {
     map.invalidateSize()
   })
   resizeWatcher.observe(document.getElementById('crowd-map'))
 })
 
-// Remove the map when we leave the page
+// remove the map when we leave the page
 onBeforeUnmount(() => {
   if (resizeWatcher) {
     resizeWatcher.disconnect()
@@ -212,7 +204,7 @@ onBeforeUnmount(() => {
   }
 })
 
-// When the midpoint changes (e.g. after a drag snaps it to a station), move the pin there
+// when midpoint change , move the pin
 watch(
   () => props.midpoint,
   () => {
@@ -225,7 +217,7 @@ watch(
   { deep: true },
 )
 
-// When anyone's starting point or travel info changes, redraw their pins (the view stays put)
+// when starting point or travel info change, redraw pins (view stay the same)
 watch(() => props.members, drawMembers, { deep: true })
 </script>
 
@@ -271,17 +263,17 @@ watch(() => props.members, drawMembers, { deep: true })
 #crowd-map {
   height: 360px;
   border-radius: var(--fp-radius-sm);
-  z-index: 0; /* keep Leaflet's layers under the navbar and dropdowns */
+  z-index: 0; /* keep leaflet's layers under the navbar and dropdowns */
 }
 
-/* Bigger on laptops, where the map is the main thing on the page */
+/* bigger on laptops, map is the main thing */
 @media (min-width: 992px) {
   #crowd-map {
     height: 520px;
   }
 }
 
-/* The midpoint pin (Leaflet draws it, so :deep() is needed) */
+/* midpoint pin => leaflet draws => :deep() */
 :deep(.midpoint-pin) {
   display: block;
   width: 28px;
@@ -294,7 +286,7 @@ watch(() => props.members, drawMembers, { deep: true })
   cursor: grab;
 }
 
-/* Everyone's starting points (Leaflet draws them, so :deep() is needed) */
+/* everyone's starting points */
 :deep(.member-pin) {
   display: flex;
   align-items: center;
@@ -309,7 +301,6 @@ watch(() => props.members, drawMembers, { deep: true })
   font-size: 0.8rem;
 }
 
-/* Zoom buttons styled like the 06 map */
 :deep(.leaflet-control-zoom) {
   border: none;
   box-shadow: var(--fp-shadow);
@@ -317,7 +308,7 @@ watch(() => props.members, drawMembers, { deep: true })
   overflow: hidden;
 }
 
-/* Leaflet creates the circles itself, so :deep() is needed for scoped styles to reach them */
+/* creates the circles */
 :deep(.crowd) {
   stroke: var(--fp-surface);
   stroke-width: 2;
