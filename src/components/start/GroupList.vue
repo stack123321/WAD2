@@ -33,37 +33,10 @@ const readyCount = computed(() => {
   return count
 })
 
-// The hangout's invite link (same as on 05 Create hangout). Opening it asks friends to log in,
-// then adds them to this hangout.
+// The hangout's invite link, used by Remind in the demo (the Invite button is in the step bar)
 const inviteLink = computed(
   () => `${window.location.origin}/login?invite=${props.hangout.invite_code}`,
 )
-
-// Invite friends: copy the link, or share it straight to WhatsApp / Telegram
-const inviteText = computed(
-  () => `Join my hangout "${props.hangout.name}" on Fairpoint and add where you're coming from:`,
-)
-const whatsappUrl = computed(
-  () => `https://wa.me/?text=${encodeURIComponent(inviteText.value + ' ' + inviteLink.value)}`,
-)
-const telegramUrl = computed(
-  () =>
-    `https://t.me/share/url?url=${encodeURIComponent(inviteLink.value)}&text=${encodeURIComponent(inviteText.value)}`,
-)
-const linkCopied = ref(false)
-
-async function copyInvite() {
-  try {
-    await navigator.clipboard.writeText(inviteLink.value)
-    linkCopied.value = true
-    setTimeout(() => {
-      linkCopied.value = false
-    }, 2000)
-  } catch (error) {
-    console.error(error)
-    window.prompt('Copy this invite link:', inviteLink.value)
-  }
-}
 
 // Remind
 // Posts a reminder to that person in the hangout's group chat (it shows up live for everyone, and
@@ -148,39 +121,6 @@ async function remind(member) {
       </li>
     </ul>
     <p v-if="remindError" class="small text-danger mt-2 mb-0" role="alert">{{ remindError }}</p>
-
-    <!-- Invite friends -->
-    <div class="invite mt-3">
-      <div class="fw-semibold">Invite friends</div>
-      <p class="small text-secondary mb-2">
-        Send this link. Friends log in, join, and add where they're coming from.
-      </p>
-      <div class="invite-row">
-        <span class="invite-link small text-truncate" :title="inviteLink">{{ inviteLink }}</span>
-        <button type="button" class="btn btn-primary btn-sm copy-btn" @click="copyInvite">
-          <span v-if="linkCopied">Copied!</span>
-          <span v-else>Copy link</span>
-        </button>
-      </div>
-      <div class="d-flex gap-2 mt-2">
-        <a
-          :href="whatsappUrl"
-          target="_blank"
-          rel="noopener"
-          class="btn btn-outline-primary btn-sm share-btn"
-        >
-          WhatsApp
-        </a>
-        <a
-          :href="telegramUrl"
-          target="_blank"
-          rel="noopener"
-          class="btn btn-outline-primary btn-sm share-btn"
-        >
-          Telegram
-        </a>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -225,33 +165,5 @@ async function remind(member) {
   color: var(--fp-primary);
   font-weight: 600;
   text-decoration: none;
-}
-.invite {
-  padding: 1rem;
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-bg);
-}
-
-.invite-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.invite-link {
-  flex-grow: 1;
-  min-width: 0;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-surface);
-}
-
-.copy-btn,
-.share-btn {
-  flex-shrink: 0;
-  min-height: 44px; /* big enough to tap with a finger */
-  display: inline-flex;
-  align-items: center;
 }
 </style>

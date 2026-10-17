@@ -61,9 +61,8 @@ onMounted(async () => {
 
 // Part (b) Host mode
 // 05 Create hangout sends the host here with ?entry=host when friends don't add their own.
-// TODO(Matrix): once the hangout saves this setting (e.g. a host_enters_starts column), it's read
-// below too, so it still works after a refresh. Only the host may enter other people's locations
-// (the demo lets you try it, although Ryan is the demo hangout's host).
+// Only the host may enter other people's locations (the demo lets anyone try it).
+// host_enters_starts: read once the hangout saves this setting (not in the database yet).
 const hostMode = computed(() => {
   if (!store.hangout) {
     return false
@@ -104,7 +103,7 @@ const target = computed(() => {
 
 const targetIsMe = computed(() => target.value !== null && target.value.user_id === myId.value)
 
-// "your" or "Nicole's", for the placeholder and the map tip
+// "your" or "Nicole's", for the map tip
 const targetName = computed(() => {
   if (targetIsMe.value) {
     return 'your'
@@ -345,8 +344,7 @@ function onPinOutside() {
         />
         <div v-if="mapWarning" class="map-tip map-warning" role="alert">{{ mapWarning }}</div>
         <div v-else-if="target && hasStart(target)" class="map-tip">
-          <span class="fw-semibold tip-word">Tip</span> Drag
-          {{ targetIsMe ? 'your' : targetName }} pin to fine-tune
+          <span class="fw-semibold tip-word">Tip</span> Drag {{ targetName }} pin to fine-tune
           {{ targetIsMe ? 'your' : 'their' }} starting point
         </div>
       </div>
