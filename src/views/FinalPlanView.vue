@@ -5,14 +5,16 @@
 // a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
 // spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
 // only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
-// current members' latest votes count. Labelled boxes hold space for Nicole's routes and Surya's
-// map and weather.
+// current members' latest votes count. Surya's MembersMap shows everyone's starting point and his
+// WeatherCard the forecast at the spot for the hangout's time; a box holds space for Nicole's routes.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone } from '@/services/votes'
 import TripTable from '@/components/voting/TripTable.vue'
+import MembersMap from '@/components/map/MembersMap.vue'
+import WeatherCard from '@/components/weather/WeatherCard.vue'
 import {
   calendarUrl,
   countableVotes,
@@ -60,6 +62,13 @@ const spot = computed(() => confirmedSpot.value ?? pickLeader(rows.value)?.spot 
 const backup = computed(() =>
   spot.value ? (runnerUp(rows.value, spot.value.id)?.spot ?? null) : null,
 )
+
+const weatherPlace = computed(() => {
+  const lat = spot.value?.lat ?? hangout.value?.midpoint_lat
+  const lng = spot.value?.lng ?? hangout.value?.midpoint_lng
+  if (lat == null || lng == null) return null
+  return { lat, lng, name: hangout.value?.midpoint_name ?? spot.value.name }
+})
 
 const calendarLink = computed(() => {
   if (!startsAt.value || !spot.value) return null
@@ -186,25 +195,27 @@ onUnmounted(() => clearInterval(timer))
 
           <section class="owner-box" aria-labelledby="routes-heading">
             <h2 id="routes-heading" class="h6 mb-1">Getting there</h2>
-            <p class="small mb-0">
-              Each person's route. Coming from Nicole (<code>components/transport/</code>).
-            </p>
+            <p class="small mb-0">Step-by-step routes for everyone are coming soon.</p>
           </section>
         </div>
 
         <div class="col-12 col-lg-5 d-flex flex-column gap-4">
           <div class="row g-3">
             <div class="col-12 col-md-6 col-lg-12">
-              <section class="owner-box owner-box--tall h-100" aria-labelledby="map-heading">
-                <h2 id="map-heading" class="h6 mb-1">Map</h2>
-                <p class="small mb-0">Coming from Surya (<code>components/map/</code>).</p>
+              <section class="panel h-100" aria-labelledby="map-heading">
+                <h2 id="map-heading" class="h6 mb-2">Where everyone's coming from</h2>
+                <div class="map-frame">
+                  <MembersMap :members="store.members" :highlight-id="myId" />
+                </div>
               </section>
             </div>
-            <div class="col-12 col-md-6 col-lg-12">
-              <section class="owner-box h-100" aria-labelledby="weather-heading">
-                <h2 id="weather-heading" class="h6 mb-1">Weather</h2>
-                <p class="small mb-0">Coming from Surya (<code>components/weather/</code>).</p>
-              </section>
+            <div v-if="weatherPlace" class="col-12 col-md-6 col-lg-12">
+              <WeatherCard
+                :lat="weatherPlace.lat"
+                :lng="weatherPlace.lng"
+                :place="weatherPlace.name"
+                :at="startsAt"
+              />
             </div>
           </div>
 
@@ -327,7 +338,9 @@ onUnmounted(() => clearInterval(timer))
   color: var(--fp-muted);
 }
 
-.owner-box--tall {
-  min-height: 10rem;
+.map-frame {
+  height: 16rem;
+  border-radius: var(--fp-radius-sm);
+  overflow: hidden;
 }
 </style>

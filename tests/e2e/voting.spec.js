@@ -1,8 +1,8 @@
 // Owner: Eashvar. Journey test for 11 Group voting and 12 Final plan on the demo hangout: the step
-// bar, candidates and group chat show, voting and changing a vote move the tally, a double-click counts once,
-// the host closes the vote and lands on the final plan, page 12 opened directly shows the leader as
-// not confirmed, "Copy plan" fills the clipboard, and "Mark as done" only works once the hangout
-// has started. Starting the vote: on the second sample hangout (still collecting) the host starts
+// bar, candidates and group chat show, voting and changing a vote move the tally, a double-click
+// counts once, the host closes the vote and lands on the final plan, page 12 opened directly shows
+// the leader as not confirmed with the map and weather, "Copy plan" fills the clipboard, and
+// "Mark as done" only works once the hangout has started. Starting the vote: on the second sample hangout (still collecting) the host starts
 // it and voting opens, the button is blocked once the hangout's start time has passed, and someone
 // who isn't in a hangout is told they can't vote. In the first mock, Ryan (the host, and "me" in
 // demo mode) and Hugo voted for Mock Cafe, Nicole for the Board Game Cafe, and Surya hasn't voted.
@@ -95,6 +95,15 @@ test.describe('12 Final plan', () => {
     await expect(page.getByRole('heading', { name: cafe, exact: true })).toBeVisible()
     await expect(page.getByText('Not confirmed yet')).toBeVisible()
     await expect(page.getByText("Everyone's trip is within 9 min of each other.")).toBeVisible()
+  })
+
+  test('shows everyone on a map and the weather for the hangout', async ({ page }) => {
+    await page.goto('/hangouts/demo/plan')
+    await expect(
+      page.getByRole('region', { name: "Map of everyone's starting points" }),
+    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Weather at Bishan' })).toBeVisible()
+    await expect(page.getByText('coming soon')).toBeVisible()
   })
 
   test('copy plan puts a summary on the clipboard', async ({ page, context }) => {
