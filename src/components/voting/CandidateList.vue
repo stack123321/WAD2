@@ -1,6 +1,7 @@
 <script setup>
 // Owner: Eashvar. The shortlisted spots on 11 Group voting, one CandidateCard each, with each
-// spot's vote count and voters looked up by spot id. While a vote is saving (savingId), every
+// spot's vote count and voters looked up by spot id. The leader gets a "Leading" badge, or every
+// spot tied for the most votes (tiedIds) gets "Tied". While a vote is saving (savingId), every
 // vote button is disabled so nobody can send two votes at once. Passes each card's vote(spotId) up.
 import CandidateCard from './CandidateCard.vue'
 
@@ -10,7 +11,7 @@ defineProps({
   votersBySpot: { type: Object, required: true },
   totalVotes: { type: Number, required: true },
   leaderId: { type: String, default: null },
-  tied: { type: Boolean, default: false },
+  tiedIds: { type: Array, default: () => [] },
   myVoteId: { type: String, default: null },
   savingId: { type: String, default: null },
   disabled: { type: Boolean, default: false },
@@ -30,8 +31,8 @@ const emit = defineEmits(['vote'])
         :count="counts[spot.id] ?? 0"
         :total-votes="totalVotes"
         :voters="votersBySpot[spot.id] ?? []"
-        :leading="spot.id === leaderId"
-        :tied="tied"
+        :leading="tiedIds.length === 0 && spot.id === leaderId"
+        :tied="tiedIds.includes(spot.id)"
         :selected="spot.id === myVoteId"
         :saving="spot.id === savingId"
         :disabled="disabled || savingId !== null"

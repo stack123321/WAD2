@@ -5,8 +5,9 @@
 // a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
 // spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
 // only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
-// current members' latest votes count. Surya's MembersMap shows everyone's starting point and his
-// WeatherCard the forecast at the spot for the hangout's time; a box holds space for Nicole's routes.
+// current members' latest votes count. Surya's MembersMap shows everyone's starting point and
+// his WeatherCard the forecast at the spot for the hangout's time; a box holds space for
+// Nicole's routes.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
@@ -294,6 +295,7 @@ onUnmounted(() => clearInterval(timer))
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   min-height: 44px;
 }
 

@@ -57,6 +57,7 @@ const emit = defineEmits(['select', 'close'])
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   min-height: 44px;
 }
 

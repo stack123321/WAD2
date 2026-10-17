@@ -2,9 +2,11 @@
 // bar, candidates and group chat show, voting and changing a vote move the tally, a double-click
 // counts once, the host closes the vote and lands on the final plan, page 12 opened directly shows
 // the leader as not confirmed with the map and weather, "Copy plan" fills the clipboard, and
-// "Mark as done" only works once the hangout has started. Starting the vote: on the second sample hangout (still collecting) the host starts
-// it and voting opens, the button is blocked once the hangout's start time has passed, and someone
-// who isn't in a hangout is told they can't vote. In the first mock, Ryan (the host, and "me" in
+// "Mark as done" only works once the hangout has started. Starting the vote: on the second sample
+// hangout (still collecting) the host starts it and voting opens, the button is blocked once the
+// hangout's start time has passed, and someone who isn't in a hangout is told they can't vote.
+// Tie-break: a tie after the deadline is settled by spinning the wheel. On a phone (375px) the
+// pages fit and every button is at least 44px tall. In the first mock, Ryan (the host, and "me" in
 // demo mode) and Hugo voted for Mock Cafe, Nicole for the Board Game Cafe, and Surya hasn't voted.
 // The browser clock is fixed before the demo deadline (15 Oct 2026, 9 pm SGT) so voting is open,
 // except where a test moves it later.
@@ -183,6 +185,35 @@ test.describe('Starting the vote', () => {
 
     await expect(page.getByText("You're not in this hangout, so you can't vote.")).toBeVisible()
     await expect(voteButton(page, cafe)).toBeDisabled()
+  })
+})
+
+test.describe('Tie-break wheel', () => {
+  test('a tie after voting ends is settled by spinning the wheel', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.clock.install({ time: new Date('2026-10-14T22:00:00+08:00') })
+    await page.goto('/hangouts/demo/vote')
+
+    await voteButton(page, hawker).click()
+    for (const spot of [cafe, boardGames, hawker]) {
+      await expect(tally(page, spot)).toHaveAttribute('aria-valuenow', '1')
+    }
+    await expect(page.getByRole('button', { name: 'Spin the wheel' })).toBeHidden()
+
+    await page.clock.fastForward('24:00:00')
+
+    const wheel = page.getByRole('region', { name: "It's a tie!" })
+    await expect(wheel).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Close vote' })).toBeHidden()
+    await wheel.getByRole('button', { name: 'Spin the wheel' }).click()
+
+    await expect(wheel.getByText('The wheel picked')).toBeVisible()
+    const picked = await wheel.getByText('The wheel picked').locator('strong').textContent()
+    expect([cafe, boardGames, hawker]).toContain(picked)
+
+    await wheel.getByRole('link', { name: 'See the final plan' }).click()
+    await expect(page.getByText('Confirmed spot')).toBeVisible()
+    await expect(page.getByRole('heading', { name: picked, exact: true })).toBeVisible()
   })
 })
 

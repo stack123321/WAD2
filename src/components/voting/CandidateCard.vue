@@ -39,9 +39,7 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
     <div class="body">
       <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
         <h3 :id="`spot-${spot.id}`" class="name h6 mb-0">{{ spot.name }}</h3>
-        <span v-if="leading" class="badge leading">{{
-          tied ? 'Tied · best match' : 'Leading'
-        }}</span>
+        <span v-if="leading || tied" class="badge leading">{{ tied ? 'Tied' : 'Leading' }}</span>
       </div>
 
       <p class="meta small mb-2">
@@ -69,7 +67,7 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
         >
           <div
             class="progress-bar"
-            :class="{ 'progress-bar--leading': leading }"
+            :class="{ 'progress-bar--leading': leading || tied }"
             :style="{ width: percent + '%' }"
           ></div>
         </div>

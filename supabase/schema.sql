@@ -205,6 +205,74 @@ begin
 end;
 $$;
 
+-- Tie-break wheel (11 Group voting, Eashvar). Any member may spin once voting is over (the deadline
+-- has passed or every member has voted) and two or more spots share the most votes. The database
+-- picks the winner at random from the tied spots, so nobody can choose it, then closes the vote.
+-- Only votes from people who are still members count. "for update" stops two spins at once.
+create function public.spin_tiebreak(p_hangout uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  h hangouts%rowtype;
+  member_count integer;
+  voted_count integer;
+  top_count integer;
+  tied_count integer;
+  winner uuid;
+begin
+  if not (public.is_member(p_hangout) or public.is_host(p_hangout)) then
+    raise exception 'Only members of this hangout can spin the wheel';
+  end if;
+
+  select * into h from hangouts where id = p_hangout for update;
+  if h.status <> 'voting' then
+    raise exception 'The vote is already closed';
+  end if;
+
+  select count(*) into member_count from hangout_members where hangout_id = p_hangout;
+  select count(*) into voted_count
+  from votes v
+  join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+  where v.hangout_id = p_hangout;
+  if (h.vote_deadline is null or h.vote_deadline > now()) and voted_count < member_count then
+    raise exception 'Voting is still going';
+  end if;
+
+  select max(n) into top_count
+  from (
+    select count(*) as n
+    from votes v
+    join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+    where v.hangout_id = p_hangout
+    group by v.shortlist_id
+  ) as counts;
+
+  select count(*) into tied_count
+  from (
+    select v.shortlist_id
+    from votes v
+    join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+    where v.hangout_id = p_hangout
+    group by v.shortlist_id
+    having count(*) = top_count
+  ) as tied;
+  if top_count is null or tied_count < 2 then
+    raise exception 'There is no tie to break';
+  end if;
+
+  select v.shortlist_id into winner
+  from votes v
+  join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+  where v.hangout_id = p_hangout
+  group by v.shortlist_id
+  having count(*) = top_count
+  order by random()
+  limit 1;
+
+  update hangouts set status = 'confirmed', final_shortlist_id = winner where id = p_hangout;
+  return winner;
+end;
+$$;
+
 -- ───────────────────────── Row Level Security ─────────────────────────
 -- Members can read their hangout. You can only edit your own member row and your own vote.
 -- Only the host edits the hangout.
@@ -309,3 +377,5 @@ create policy "messages: delete own" on public.messages
 alter publication supabase_realtime add table public.votes, public.hangout_members;
 -- New chat messages appear live on 06
 alter publication supabase_realtime add table public.messages;
+-- The hangout itself: everyone sees the vote start, close or the wheel's winner (11, 12) live
+alter publication supabase_realtime add table public.hangouts;

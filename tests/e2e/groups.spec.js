@@ -1,7 +1,7 @@
-// Owner: Eashvar. Different groups: the two sample hangouts (src/mocks/hangout.json, voting, and
-// hangout-2.json, still collecting) have different people, with Hugo in both. Switching between them
-// inside the app must never mix their spots, members or votes, and once the host starts the second
-// group's vote, it can't be closed until someone has voted.
+// Owner: Eashvar. Different groups: the two sample hangouts (src/mocks/hangout.json, voting,
+// and hangout-2.json, still collecting) have different people, with Hugo in both. Switching
+// between them inside the app must never mix their spots, members or votes, and once the host
+// starts the second group's vote, it can't be closed until someone has voted.
 import { test, expect } from '@playwright/test'
 
 const friday = 'Friday dinner after class'
