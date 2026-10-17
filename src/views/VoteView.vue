@@ -364,6 +364,13 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
 .deadline {
   display: inline-flex;
   align-items: center;

@@ -91,7 +91,7 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
 
     <button
       type="button"
-      class="vote-btn btn btn-sm"
+      class="vote-btn btn"
       :class="selected ? 'btn-primary' : 'vote-btn--idle'"
       :aria-label="`Vote for ${spot.name}`"
       :aria-pressed="selected"
@@ -176,6 +176,7 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
 
 .vote-btn {
   width: 100%;
+  min-height: 44px;
   font-weight: 600;
 }
 

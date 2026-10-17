@@ -171,3 +171,28 @@ test.describe('Starting the vote', () => {
     await expect(voteButton(page, cafe)).toBeDisabled()
   })
 })
+
+test.describe('On a phone', () => {
+  for (const path of ['/hangouts/demo/vote', '/hangouts/demo-2/vote', '/hangouts/demo/plan']) {
+    test(`${path} fits the screen and its buttons are easy to tap`, async ({ page }) => {
+      await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+      await page.setViewportSize({ width: 375, height: 812 })
+      await page.goto(path)
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+      const layout = await page.evaluate(() => ({
+        pageWidth: document.documentElement.scrollWidth,
+        tooSmall: [...document.querySelectorAll('main button, main .btn, main select')]
+          .filter((el) => el.offsetParent !== null)
+          .map((el) => ({
+            control: el.getAttribute('aria-label') || el.textContent.trim(),
+            height: Math.round(el.getBoundingClientRect().height),
+          }))
+          .filter((c) => c.height < 44),
+      }))
+
+      expect(layout.pageWidth).toBeLessThanOrEqual(375)
+      expect(layout.tooSmall).toEqual([])
+    })
+  }
+})

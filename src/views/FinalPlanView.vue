@@ -279,6 +279,13 @@ onUnmounted(() => clearInterval(timer))
 </template>
 
 <style scoped>
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
 .panel {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);

@@ -25,7 +25,7 @@ const emit = defineEmits(['select', 'close'])
     <label for="winner" class="form-label small fw-semibold mb-1">Winner</label>
     <select
       id="winner"
-      class="form-select form-select-sm mb-3"
+      class="form-select mb-3"
       :value="selectedId"
       :disabled="disabled || closing"
       @change="emit('select', $event.target.value)"
@@ -53,6 +53,17 @@ const emit = defineEmits(['select', 'close'])
 </template>
 
 <style scoped>
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.form-select {
+  min-height: 44px;
+}
+
 .panel {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
