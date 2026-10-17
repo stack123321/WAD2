@@ -1,14 +1,30 @@
 <script setup>
-// Owner: Surya. Group chat for a hangout, on 06 Starting points. Everyone in the hangout can read
-// and post; new messages appear live for everyone (Supabase Realtime).
-// Usage: <HangoutChat :hangout="store.hangout" :my-id="myId" />
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
+// Owner: Surya. Group chat for a hangout. Everyone in the hangout can read and post; new messages
+// appear live for everyone (Supabase Realtime). Drop it into any hangout page (06, 09, 11, 12):
+// Usage: <HangoutChat :hangout="store.hangout" />
+//   optional: :my-id (defaults to the logged-in user), title, :height (px of the message list)
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
+import { useAuthStore } from '@/stores/auth'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs id, members
-  myId: { type: String, required: true },
+  myId: { type: String, default: null },
+  title: { type: String, default: 'Group chat' },
+  height: { type: Number, default: 260 },
+})
+
+// Who I am: given by the page, or the logged-in user
+const auth = useAuthStore()
+const me = computed(() => {
+  if (props.myId) {
+    return props.myId
+  }
+  if (auth.user) {
+    return auth.user.id
+  }
+  return null
 })
 
 const messages = ref([])
@@ -82,16 +98,16 @@ function sender(message) {
 }
 
 function isMine(message) {
-  return message.user_id === props.myId
+  return message.user_id === me.value
 }
 
 // A message aimed at you, e.g. a reminder "@Surya, please add where you're coming from…"
 function isForMe(message) {
-  const me = props.hangout.members.find((m) => m.user_id === props.myId)
-  if (!me || isMine(message)) {
+  const myRow = props.hangout.members.find((m) => m.user_id === me.value)
+  if (!myRow || isMine(message)) {
     return false
   }
-  return message.body.startsWith(`@${me.display_name}`)
+  return message.body.startsWith(`@${myRow.display_name}`)
 }
 
 // "7:05 PM"
@@ -106,7 +122,7 @@ function timeLabel(message) {
 <template>
   <section class="chat">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
-      <h2 class="h6 fw-bold mb-0">Group chat</h2>
+      <h2 class="h6 fw-bold mb-0">{{ title }}</h2>
       <span class="small text-secondary">Everyone in this hangout</span>
     </div>
 
@@ -115,7 +131,14 @@ function timeLabel(message) {
     </p>
 
     <template v-else>
-      <div ref="listEl" class="messages" role="log" aria-live="polite" aria-label="Chat messages">
+      <div
+        ref="listEl"
+        class="messages"
+        :style="{ height: height + 'px' }"
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
+      >
         <p v-if="loading" class="small text-secondary mb-0">Loading…</p>
         <p v-else-if="messages.length === 0" class="small text-secondary mb-0">
           No messages yet. Say hi and agree on the plan!
@@ -173,7 +196,6 @@ function timeLabel(message) {
 }
 
 .messages {
-  height: 260px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
