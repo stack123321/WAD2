@@ -4,7 +4,24 @@
     <div class="content">
     <section class="head">
       <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
-      <GooglePlacesToggle />
+      <div class="head-actions">
+        <GooglePlacesToggle />
+        <button
+          v-if="shortlisted.length < 2"
+          type="button"
+          class="btn btn-sm btn-primary mobile-vote-action"
+          disabled
+        >
+          Go Vote!
+        </button>
+        <router-link
+          v-else
+          :to="{ name: 'vote', params: { id: route.params.id } }"
+          class="btn btn-sm btn-primary mobile-vote-action"
+        >
+          Go Vote!
+        </router-link>
+      </div>
     </section>
 
     <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
@@ -53,10 +70,9 @@
       </div>
       <div class="shortlist-panel">
         <section class="shortlist">
-          <h2 class="h6 shortlist-heading">Vote Shortlist</h2>
           <button
             type="button"
-            class="mobile-collapse-toggle shortlist-toggle"
+            class="shortlist-toggle"
             aria-controls="explore-shortlist-content"
             :aria-expanded="!isShortlistCollapsed"
             @click="isShortlistCollapsed = !isShortlistCollapsed"
@@ -107,7 +123,7 @@
           <button
             v-if="shortlisted.length < 2"
             type="button"
-            class="btn btn-sm btn-primary"
+            class="btn btn-sm btn-primary shortlist-vote-action"
             disabled
           >
             Go Vote!
@@ -115,12 +131,19 @@
           <router-link
             v-else
             :to="{ name: 'vote', params: { id: route.params.id } }"
-            class="btn btn-sm btn-primary"
+            class="btn btn-sm btn-primary shortlist-vote-action"
           >
             Go Vote!
           </router-link>
         </div>
       </div>
+    </div>
+    <div class="sort-control">
+      <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
+        <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
     </div>
     <section class="cards d-flex">
       <SpotCard
@@ -153,11 +176,6 @@
           {{ filter.label }}
         </button>
       </div>
-      <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
-        <option v-for="option in sortOptions" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
     </div>
     </div>
   </div>
@@ -333,7 +351,6 @@ async function selectSpot(id) {
 
 .filters {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
@@ -349,11 +366,27 @@ async function selectSpot(id) {
   width: auto;
 }
 
+.sort-control {
+  display: flex;
+  justify-content: flex-start;
+  margin: 4px 0 8px;
+}
+
 .head {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding-right: 300px;
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-vote-action {
+  display: none;
 }
 
 .cards {
@@ -384,6 +417,26 @@ async function selectSpot(id) {
   display: none;
 }
 
+.shortlist-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shortlist-content.is-collapsed {
+  display: none;
+}
+
 .map {
   height: 120px;
 }
@@ -398,10 +451,6 @@ async function selectSpot(id) {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.shortlist-heading {
-  margin-bottom: 8px;
 }
 
 .shortlist-panel {
@@ -489,12 +538,43 @@ async function selectSpot(id) {
 }
 
 @media (max-width: 576px) {
+  .content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .head-actions {
+    justify-content: space-between;
+  }
+
+  .mobile-vote-action {
+    display: inline-flex;
+  }
+
+  .filters {
+    order: 2;
+  }
+
+  .sort-control {
+    order: 2;
+    margin: 0 0 8px;
+  }
+
+  .cards {
+    order: 3;
+  }
+
   .map-shortlist-row {
+    order: 4;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
     gap: 8px;
     margin-bottom: 16px;
+  }
+
+  .shortlist-vote-action {
+    display: none;
   }
 
   .map-section {
@@ -526,8 +606,7 @@ async function selectSpot(id) {
     padding: 0 6px 6px;
   }
 
-  .map-content.is-collapsed,
-  .shortlist-content.is-collapsed {
+  .map-content.is-collapsed {
     display: none;
   }
 
@@ -540,12 +619,12 @@ async function selectSpot(id) {
     padding: 0;
   }
 
-  .shortlist-heading {
-    display: none;
-  }
-
   .shortlist-toggle {
+    min-height: 40px;
+    padding: 8px 10px;
+    background: #fff;
     border-radius: 8px 8px 0 0;
+    font-size: 0.875rem;
   }
 
   .shortlist-content {
