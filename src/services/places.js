@@ -20,7 +20,7 @@ export function setGooglePlacesEnabled(enabled) {
  *   category: string, lat: number, lng: number, rating: number | null, price_level: number | null,
  *   image_url: string | null, distance_m: number }>>} nearest first
  */
-export async function searchNearby(centre, { radiusM = 800, categories = [], signal } = {}) {
+export async function searchNearby(centre, { radiusM = 3000, categories = [], signal } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
 
   const params = new URLSearchParams({
@@ -93,9 +93,9 @@ function writeSearchCache(key, spots) {
  * reused for 20 minutes (per tab) to save Google calls; pass force to fetch fresh ones.
  * Also caches each spot for the details page.
  */
-export async function loadSpots(centre, options = { radiusM: 1000 }) {
+export async function loadSpots(centre, options = { radiusM: 5000 }) {
   if (!googlePlacesEnabled.value) return []
-  const key = searchCacheKey(centre, options.radiusM ?? 800)
+  const key = searchCacheKey(centre, options.radiusM ?? 5000)
   let spots = options.force ? null : readSearchCache(key)
   if (!spots) {
     spots = (await searchNearby(centre, options)).map(toSpot)

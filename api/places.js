@@ -1,5 +1,5 @@
 // Vercel serverless function:
-//   GET /api/places?lat=&lng=&radius=800&categories=cafe,food,activity,outdoor
+//   GET /api/places?lat=&lng=&radius=3000&categories=cafe,food,activity,outdoor
 //   GET /api/places?id=<google place id>
 //   GET /api/places?id=<google place id>&summary=1  -> { text, disclosure } or null (AI summary)
 // Uses Google Places API (New) with GOOGLE_PLACES_API_KEY.
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   }
 
   const centre = { lat: Number(req.query.lat), lng: Number(req.query.lng) }
-  const radiusM = Number(req.query.radius ?? 800)
+  const radiusM = Number(req.query.radius ?? 5000)
   const categories = req.query.categories ? req.query.categories.split(',').filter(Boolean) : []
 
   if (Number.isNaN(centre.lat) || Number.isNaN(centre.lng) || Number.isNaN(radiusM)) {

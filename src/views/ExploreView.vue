@@ -66,6 +66,20 @@
           <p v-else-if="!mapCenter && !isMapCollapsed" class="text-secondary p-3 mb-0">
             A midpoint is needed to show nearby spots on the map.
           </p>
+          <div v-if="mapCenter && !isMapCollapsed" class="radius-slider">
+            <label for="explore-radius" class="radius-label">
+              Within {{ radiusKm }} km of the midpoint
+            </label>
+            <input
+              id="explore-radius"
+              v-model.number="radiusKm"
+              type="range"
+              class="form-range"
+              min="1"
+              max="3"
+              step="0.5"
+            />
+          </div>
         </div>
       </div>
       <div class="shortlist-panel">
@@ -236,7 +250,7 @@ watch(
       forceNextLoad = false
       const results = await loadSpots(
         { lat, lng },
-        { radiusM: 1000, signal: controller.signal, force },
+        { radiusM: 5000, signal: controller.signal, force },
       )
       if (requestId === spotRequestId) spots.value = results
     } catch (err) {
@@ -263,10 +277,27 @@ const filters = [
   { label: 'Outdoors', value: 'outdoor' },
 ]
 const activeFilter = ref('all')
+
+const radiusKm = ref(5)
+
+function distanceFromMidpointKm(spot) {
+  const toRad = (deg) => (deg * Math.PI) / 180
+  const dLat = toRad(spot.lat - hangout.hangout.midpoint_lat)
+  const dLng = toRad(spot.lng - hangout.hangout.midpoint_lng)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(hangout.hangout.midpoint_lat)) *
+      Math.cos(toRad(spot.lat)) *
+      Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.asin(Math.sqrt(a))
+}
+
 const filteredSpots = computed(() =>
-  activeFilter.value === 'all'
-    ? spots.value
-    : spots.value.filter((s) => s.category === activeFilter.value),
+  spots.value.filter(
+    (s) =>
+      (activeFilter.value === 'all' || s.category === activeFilter.value) &&
+      (!hasMidpoint.value || distanceFromMidpointKm(s) <= radiusKm.value),
+  ),
 )
 
 const sortOptions = [
@@ -439,6 +470,15 @@ async function selectSpot(id) {
 
 .map {
   height: 120px;
+}
+
+.radius-slider {
+  padding: 8px 4px 0;
+}
+
+.radius-label {
+  display: block;
+  font-size: 0.875rem;
 }
 
 .filters {
