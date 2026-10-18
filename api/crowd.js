@@ -1,8 +1,6 @@
-// Owner: Ryan. Vercel serverless function: GET /api/crowd?at=2026-10-16T19:00:00+08:00 (at is optional, default now)
-// LTA DataMall platform crowd density. Needs LTA_ACCOUNT_KEY (sent as the AccountKey header).
-// Docs: https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html
-//
-// Replies with [{ station, lat, lng, level: 'l' | 'm' | 'h' }]
+// Owner: Ryan
+// GET /api/crowd?at=<iso time, default now>, replies with [{ station, lat, lng, level: 'l' | 'm' | 'h' }], needs LTA_ACCOUNT_KEY
+// docs: https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html
 import axios from 'axios'
 import { sampleCrowd } from './_mocks/crowd.js'
 import { STATIONS } from './_data/stations.js'
@@ -13,10 +11,8 @@ const RANK = { l: 1, m: 2, h: 3 }
 const HALF_HOUR = 30 * 60 * 1000
 const TEN_MINUTES = 10 * 60 * 1000
 
-// LTA only lets us call it a few times in a short while ("Rate limit quota violation"), and it only
-// updates crowd levels every 10 minutes anyway. So remember each answer for a while and reuse it,
-// instead of asking LTA again on every page load. Kept per line: { savedAt, value }.
-const realTimeCache = {} // real-time levels, reused for 10 minutes
+// lta rate-limits calls + only updates every 10 mins, so cache answers per line: { savedAt, value }
+const realTimeCache = {} // real-time levels => reused for 10 mins
 const forecastCache = {} // today's forecast, reused for half an hour
 
 async function remember(cache, key, maxAge, load) {
@@ -35,17 +31,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'at must be a date/time, e.g. 2026-10-16T19:00:00+08:00' })
   }
 
-  // No LTA key in .env.local → sample data, so teammates without keys can still work.
+  // no lta key => use sample data
   if (!process.env.LTA_ACCOUNT_KEY) {
     return res.json(sampleCrowd(at))
   }
 
-  // Within half an hour of now → real-time levels; otherwise → LTA's forecast
+  // within half an hour of now => use real-time levels, otherwise lta forecast
   const isNow = Math.abs(at.getTime() - Date.now()) < HALF_HOUR
 
   let crowd = []
   for (let line of TRAIN_LINES) {
-    // One line failing (e.g. LTA's quota) shouldn't throw away every other line
+    // if one line fail the others dont drop
     try {
       const readings = await getLine(line, at, isNow)
       for (let reading of readings) {
@@ -57,15 +53,14 @@ export default async function handler(req, res) {
     }
   }
 
-  // Nothing came back at all → sample data, so the page still shows something
+  // nothing come back, use our sample data
   if (crowd.length === 0) {
     return res.json(sampleCrowd(at))
   }
   return res.json(crowd)
 }
 
-// One line's levels. For "now", try real-time first; if LTA refuses (e.g. over its quota), use
-// the forecast for the current half hour instead, which counts against a different limit.
+// one line's levels: real-time first for "now", fall back to forecast if lta refuse
 async function getLine(line, at, isNow) {
   if (isNow) {
     try {
@@ -79,7 +74,7 @@ async function getLine(line, at, isNow) {
   return getForecast(line, at)
 }
 
-// One train line's current levels → [{ code: 'NS1', level: 'm' }, ...]
+// one line's current levels, as [{ code: 'NS1', level: 'm' }, ...]
 async function getRealTime(line) {
   const response = await axios.get(`${LTA}/PCDRealTime`, {
     params: { TrainLine: line },
@@ -88,10 +83,9 @@ async function getRealTime(line) {
   return response.data.value.map((r) => ({ code: r.Station, level: r.CrowdLevel }))
 }
 
-// One train line's forecast for the half-hour slot that contains `at`.
-// LTA only forecasts today, so any other day finds no slot and gives no readings.
+// one line's forecast for the half-hour slot containing `at` (lta only forecasts today)
 async function getForecast(line, at) {
-  // The forecast covers the whole day, so one answer per line serves every time slot for 30 min
+  // forecast covers whole day, so cache for 30 mins
   const days = await remember(forecastCache, line, HALF_HOUR, async () => {
     const response = await axios.get(`${LTA}/PCDForecast`, {
       params: { TrainLine: line },
@@ -112,10 +106,10 @@ async function getForecast(line, at) {
   return readings
 }
 
-// Adds one reading to the list. An interchange (e.g. NS1 + EW24) shows once, at its busiest level.
+// adds one reading, an interchange shows once at its busiest level
 function addReading(crowd, reading) {
   const place = STATIONS[reading.code]
-  if (!place || !RANK[reading.level]) return // station not in our table, or blank level
+  if (!place || !RANK[reading.level]) return // station not in table or blank level
   const existing = crowd.find((c) => c.station === place.name)
   if (!existing) {
     crowd.push({ station: place.name, lat: place.lat, lng: place.lng, level: reading.level })

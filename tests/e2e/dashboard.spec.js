@@ -1,4 +1,5 @@
-// Owner: Ryan. Page 04 My hangouts, using the demo hangout (sample data, no Supabase keys needed).
+// Owner: Ryan
+// page 04 my hangouts with the demo hangout (sample data, no supabase keys needed)
 import { test, expect } from '@playwright/test'
 
 test('shows the demo hangout with its voting status', async ({ page }) => {

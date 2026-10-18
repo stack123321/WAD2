@@ -1,11 +1,8 @@
-// Owner: Ryan. Crowd levels for the heat map on 08, via our /api/crowd function
-// (LTA DataMall needs an AccountKey, so the call happens server-side in api/crowd.js).
+// Owner: Ryan
+// crowd levels for the heat map on 08 via /api/crowd (lta needs an AccountKey, so the call happens server-side)
 import axios from 'axios'
 
-/**
- * @param {Date} at the time on the heat map's slider
- * @returns {Promise<Array<{ station: string, lat: number, lng: number, level: 'l' | 'm' | 'h' }>>}
- */
+// at: slider time (Date), gives back [{ station, lat, lng, level }]
 export async function getCrowdLevels(at) {
   const response = await axios.get('/api/crowd', {
     params: { at: at.toISOString() },

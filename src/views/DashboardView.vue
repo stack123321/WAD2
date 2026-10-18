@@ -1,5 +1,5 @@
 <script setup>
-// 04 My hangouts
+// 04 my hangouts
 // Owner: Ryan · Vet by: Eashvar
 import { ref, computed, onMounted } from 'vue'
 import { deleteHangout, getMyHangouts, leaveHangout } from '@/services/hangouts'
@@ -12,7 +12,7 @@ import WeekForecast from '@/components/weather/WeekForecast.vue'
 const hangouts = ref([])
 const loading = ref(false)
 const error = ref('')
-const tab = ref('upcoming') // which list is showing: 'upcoming' or 'past'
+const tab = ref('upcoming') // which list is showing, 'upcoming' or 'past'
 const auth = useAuthStore()
 
 const greeting = computed(() => {
@@ -22,13 +22,13 @@ const greeting = computed(() => {
   return 'Good evening'
 })
 
-// The name they typed at sign up, or '' when nobody is logged in
+// the name they typed at sign up, or '' if nobody is logged in
 const name = computed(() => {
   if (!auth.user) return ''
   return auth.user.user_metadata.display_name || ''
 })
 
-// "Good evening, Ryan!" or just "Good evening!" when we don't know the name
+// "Good evening, Ryan!" or just "Good evening!" when don't know name
 const heading = computed(() =>
   name.value ? `${greeting.value}, ${name.value}!` : `${greeting.value}!`,
 )
@@ -37,14 +37,14 @@ const upcoming = computed(() => hangouts.value.filter((h) => h.status !== 'done'
 const past = computed(() => hangouts.value.filter((h) => h.status === 'done'))
 const shown = computed(() => (tab.value === 'upcoming' ? upcoming.value : past.value))
 
-// Deleting (host) or leaving (other members) a hangout
+// deleting (host) or leaving (other members) a hangout
 const deleteError = ref('')
 
 function isHost(hangout) {
   return auth.user !== null && hangout.host_id === auth.user.id
 }
 
-// Logged in, in the hangout, but not the host
+// logged in, in the hangout, but not the host
 function isMember(hangout) {
   return auth.user !== null && !isHost(hangout)
 }

@@ -1,5 +1,5 @@
-// Owner: Ryan. Friends page with the sample people (no Supabase): you're Surya, friends with
-// Ryan, Nicole and Hugo, with a request from Matrix. Requests are kept in memory.
+// Owner: Ryan
+// friends page with the sample people, you're surya (requests kept in memory)
 import { test, expect } from '@playwright/test'
 
 test('shows my friends, a request for me, and nothing pending', async ({ page }) => {
@@ -32,4 +32,21 @@ test('Add to hangout opens page 05 with that friend', async ({ page }) => {
   await page.getByRole('link', { name: 'Add Ryan to hangout' }).click()
   await expect(page).toHaveURL('/hangouts/new?with=u-ryan')
   await expect(page.getByText('Hanging out with Ryan')).toBeVisible()
+})
+
+test('removing a friend asks "Are you sure?" then removes them', async ({ page }) => {
+  await page.goto('/friends')
+  await page.getByRole('button', { name: 'Remove Ryan as a friend' }).click()
+  await expect(page.locator('#my-friends')).toContainText('Are you sure?')
+  await page.getByRole('button', { name: 'Yes, remove' }).click()
+  await expect(page.locator('#my-friends')).not.toContainText('Ryan')
+  await expect(page.locator('#my-friends')).toContainText('Nicole')
+})
+
+test('cancelling "Are you sure?" keeps the friend', async ({ page }) => {
+  await page.goto('/friends')
+  await page.getByRole('button', { name: 'Remove Hugo as a friend' }).click()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.locator('#my-friends')).toContainText('Hugo')
+  await expect(page.locator('#my-friends')).not.toContainText('Are you sure?')
 })

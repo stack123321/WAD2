@@ -1,12 +1,12 @@
 <script setup>
-// One hangout in the "Your hangouts" list on 04 Dashboard.
-// Owner: Ryan.
+// Owner: Ryan
+// one hangout in the "your hangouts" list on 04 dashboard
 import { computed } from 'vue'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // same shape as src/mocks/hangout.json
-  canDelete: { type: Boolean, default: false }, // true for the host: shows a Delete button
-  canLeave: { type: Boolean, default: false }, // true for other members: shows a Leave button
+  canDelete: { type: Boolean, default: false }, // true for the host => show delete button
+  canLeave: { type: Boolean, default: false }, // true for other members => show leave button
 })
 
 const emit = defineEmits(['delete', 'leave'])
@@ -35,7 +35,7 @@ const details = computed(() => {
   return text + ` · ${props.hangout.members.length} friends`
 })
 
-// What the pill says, its colour, and where the button goes, for each stage of planning
+// what the pill says, colour, where the button goes, for each stage of planning
 const status = computed(() => {
   const h = props.hangout
   const total = h.members.length
@@ -126,7 +126,7 @@ const status = computed(() => {
   flex: 1 1 12rem; /* grow to fill, but wrap the button below when narrower than 12rem */
 }
 .delete-btn {
-  min-height: 44px; /* big enough to tap with a finger */
+  min-height: 44px; 
   text-decoration: none;
 }
 
@@ -164,6 +164,6 @@ const status = computed(() => {
   justify-content: center;
 }
 .avatar + .avatar {
-  margin-left: -8px; /* overlap the circles like the Figma */
+  margin-left: -8px; /* overlap the circles like the figma */
 }
 </style>

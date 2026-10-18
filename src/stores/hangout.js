@@ -1,5 +1,5 @@
-// Owner: Ryan. The hangout the user is currently planning, shared across pages 06–12,
-// so each page doesn't reload it. Shape = src/mocks/hangout.json.
+// Owner: Ryan
+// the hangout being planned, shared across pages 06–12 (shape = src/mocks/hangout.json)
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getHangout } from '@/services/hangouts'
@@ -13,7 +13,7 @@ export const useHangoutStore = defineStore('hangout', () => {
   const shortlist = computed(() => (hangout.value ? hangout.value.shortlist : []))
   const votes = computed(() => (hangout.value ? hangout.value.votes : []))
 
-  /** Load a hangout by id (skips the fetch if it's already loaded). Use id "demo" for mock data. */
+  // load a hangout by id, skip fetch if already loaded ("demo" = mock data)
   async function load(id) {
     if (hangout.value && hangout.value.id === id) return
     loading.value = true
