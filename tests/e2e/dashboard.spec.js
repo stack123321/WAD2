@@ -1,4 +1,5 @@
-// Owner: Ryan. Page 04 My hangouts, using the demo hangout (sample data, no Supabase keys needed).
+// Owner: Ryan
+// page 04 my hangouts with the demo hangout (sample data, no supabase keys needed)
 import { test, expect } from '@playwright/test'
 
 test('shows the demo hangout with its voting status', async ({ page }) => {
@@ -50,4 +51,18 @@ test('Open Friends List goes to the friends page', async ({ page }) => {
   await page.getByRole('link', { name: 'Open Friends List →' }).click()
   await expect(page).toHaveURL('/friends')
   await expect(page.getByRole('heading', { name: 'My Friends' })).toBeVisible()
+})
+
+test('pinning a hangout moves its card to the top', async ({ page }) => {
+  await page.goto('/dashboard')
+  await expect(page.locator('.card').first()).toContainText('Friday dinner after class')
+  await page.getByRole('button', { name: 'Pin Saturday study session' }).click()
+  await expect(page.locator('.card').first()).toContainText('Saturday study session')
+})
+
+test('unpinning puts the card back in its place', async ({ page }) => {
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: 'Pin Saturday study session' }).click()
+  await page.getByRole('button', { name: 'Unpin Saturday study session' }).click()
+  await expect(page.locator('.card').first()).toContainText('Friday dinner after class')
 })

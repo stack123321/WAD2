@@ -1,6 +1,5 @@
 // Owner: Nicole. Travel time per person and mode, via our /api/route function
 // (OneMap Routing needs a token, so the call happens server-side in api/route.js).
-// Until the real call is built, api/route.js answers with estimates from straight-line distance.
 import { centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint'
 
 /**

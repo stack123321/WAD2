@@ -1,10 +1,19 @@
 // Owner: Eashvar. Plain helper functions (no Vue, no API calls) for 11 Group voting and
 // 12 Final plan: keeping one vote per current member (their latest; votes from people who left
-// the hangout don't count), counting votes and picking the leader (ties go to the higher
-// match_pct), turning vote changes into activity events, Singapore-time formatting, the deadline
-// countdown, the longest/shortest trip and gap, leave-by times, and the Google Calendar link.
+// the hangout don't count), counting votes and ranking them (equal counts are listed by higher
+// match_pct), the spots tied for the most votes (for the tie-break wheel), turning vote changes
+// into activity events, Singapore-time formatting, the deadline
+// countdown, the deadline to use when the host starts the vote (the saved one if it's still ahead,
+// otherwise the hangout's start time, otherwise none), the longest/shortest trip and gap, leave-by
+// times, and the Google Calendar link.
 
 const SGT = 'Asia/Singapore'
+
+export function deadlineForStart(voteDeadlineIso, startsAtIso, nowMs) {
+  if (voteDeadlineIso && new Date(voteDeadlineIso).getTime() > nowMs) return voteDeadlineIso
+  if (startsAtIso && new Date(startsAtIso).getTime() > nowMs) return startsAtIso
+  return null
+}
 
 export function countableVotes(votes, members) {
   const latest = {}
@@ -34,6 +43,12 @@ export function pickLeader(rows) {
 export function isTied(rows) {
   const ranked = [...rows].sort(byVotesThenMatch)
   return ranked.length > 1 && ranked[0].count > 0 && ranked[0].count === ranked[1].count
+}
+
+export function tiedLeaders(rows) {
+  if (!isTied(rows)) return []
+  const top = Math.max(...rows.map((row) => row.count))
+  return rows.filter((row) => row.count === top).map((row) => row.spot)
 }
 
 export function runnerUp(rows, excludeId) {

@@ -1,7 +1,6 @@
 <script setup>
-// "Crowds right now" card on 04 Dashboard: how many MRT stations are busy at the moment,
-// plus a button to the full heat map (/crowds).
-// Owner: Ryan. Data: services/crowd.js → api/crowd.js → LTA DataMall.
+// Owner: Ryan
+// "crowds right now" card on 04 dashboard: how many mrt stations are busy now, plus a link to /crowds
 import { ref, computed, onMounted } from 'vue'
 import { getCrowdLevels } from '@/services/crowd'
 
@@ -9,7 +8,7 @@ const stations = ref([])
 const loading = ref(false)
 const error = ref('')
 
-// How many stations are at each level, e.g. { h: 12, m: 30, l: 148 }
+// how many stations are at each level e.g. { h: 12, m: 30, l: 148 }
 const counts = computed(() => {
   let result = { h: 0, m: 0, l: 0 }
   for (let s of stations.value) {
@@ -18,7 +17,7 @@ const counts = computed(() => {
   return result
 })
 
-// True when LTA was unavailable and api/crowd.js sent sample data instead
+// true when lta unavailable and api/crowd.js sent sample data 
 const isSample = computed(
   () => stations.value.length > 0 && stations.value[0].station.includes('(sample)'),
 )

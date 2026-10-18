@@ -1,33 +1,54 @@
 <script setup>
 // 11 Group voting
 // Owner: Eashvar · Vet by: Ryan
-// Figma frame "11". Everyone votes for one shortlisted spot and can change it until the deadline
-// (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally updates
-// straight away (also in demo mode), re-fetches all votes on every Realtime change, and lists
-// activity seen while open. "Me" is the logged-in user, or in demo mode the host, so the host
-// controls can be tried without keys. Validation: only one vote is sent at a time, only each
-// current member's latest vote counts, and the host can't close a vote nobody has voted in.
-// The host picks the winner and closes the vote; the store is then updated directly (a forced
-// reload would reset the demo hangout) and 12 Final plan opens.
+// Figma frame "11". While the hangout is still collecting, the host starts the vote (members see
+// who they're waiting for). Then everyone votes for one shortlisted spot and can change it until
+// the deadline (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally
+// updates straight away (also in demo mode), re-fetches all votes on every Realtime change, and
+// lists activity seen while open, next to Surya's group chat (members only). "Me" is the logged-in
+// user, or in demo mode the host, so the host controls can be tried without keys.
+// Validation: only members can vote (others are told why), only one vote is sent at a time, only
+// each current member's latest vote counts, and the host can't close a vote nobody has voted in.
+// The host can close the vote and pick the winner. Once voting is over (deadline passed or
+// everyone voted) and the top spots are tied, the host's close card is replaced by the tie-break
+// wheel: any member spins, the database picks the winner, and it's announced in the chat.
+// The store is updated directly after starting, closing or spinning (a forced reload would reset
+// the demo hangout).
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
-import { castVote, closeVote, getVotes, isMockHangout, subscribeToVotes } from '@/services/votes'
+import {
+  castVote,
+  closeVote,
+  getVotes,
+  isMockHangout,
+  spinTiebreak,
+  startVote,
+  subscribeToVotes,
+} from '@/services/votes'
+import { getHangout } from '@/services/hangouts'
+import { sendMessage } from '@/services/chat'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import StartPanel from '@/components/voting/StartPanel.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
+import SpinWheel from '@/components/voting/SpinWheel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
+import HangoutChat from '@/components/start/HangoutChat.vue'
 import {
   countableVotes,
   countVotes,
+  deadlineForStart,
   diffVotes,
   formatDateTime,
-  isTied,
   pickLeader,
+  tiedLeaders,
   timeLeft,
 } from '@/components/voting/voteHelpers'
+
+const SPIN_MS = 3200
 
 const route = useRoute()
 const router = useRouter()
@@ -43,7 +64,11 @@ const now = ref(Date.now())
 const pickedWinnerId = ref(null)
 const actionError = ref('')
 const closing = ref(false)
+const starting = ref(false)
 const savingId = ref(null)
+const spinning = ref(false)
+const spinWinnerId = ref(null)
+const spinSpots = ref([])
 
 let nextEventId = 1
 let unsubscribe = () => {}
@@ -53,6 +78,7 @@ const hangout = computed(() => store.hangout)
 
 const myId = computed(() => auth.user?.id ?? (isMock ? (hangout.value?.host_id ?? null) : null))
 const isHost = computed(() => myId.value !== null && myId.value === hangout.value?.host_id)
+const isMember = computed(() => store.members.some((m) => m.user_id === myId.value))
 const myVoteId = computed(
   () => votes.value.find((v) => v.user_id === myId.value)?.shortlist_id ?? null,
 )
@@ -65,7 +91,8 @@ const counts = computed(() => {
 })
 const leader = computed(() => pickLeader(rows.value))
 const leaderId = computed(() => (leader.value?.count > 0 ? leader.value.spot.id : null))
-const tied = computed(() => isTied(rows.value))
+const tiedSpots = computed(() => tiedLeaders(rows.value))
+const tiedIds = computed(() => tiedSpots.value.map((spot) => spot.id))
 const totalVotes = computed(() => votes.value.length)
 
 function memberOf(userId) {
@@ -100,7 +127,16 @@ const timeLeftText = computed(() => (deadline.value ? timeLeft(deadline.value, n
 const deadlinePassed = computed(() => deadline.value !== null && timeLeftText.value === null)
 const status = computed(() => hangout.value?.status)
 const votingOpen = computed(() => status.value === 'voting' && !deadlinePassed.value)
-const canVote = computed(() => votingOpen.value && myId.value !== null)
+const canVote = computed(() => votingOpen.value && isMember.value)
+const startDeadline = computed(() =>
+  deadlineForStart(hangout.value?.vote_deadline, hangout.value?.starts_at, now.value),
+)
+const hostName = computed(() => memberOf(hangout.value?.host_id)?.display_name ?? 'the host')
+const everyoneVoted = computed(() => store.members.length > 0 && waiting.value.length === 0)
+const votingOver = computed(
+  () => status.value === 'voting' && (deadlinePassed.value || everyoneVoted.value),
+)
+const needsSpin = computed(() => votingOver.value && tiedSpots.value.length > 1)
 
 function spotName(spotId) {
   return store.shortlist.find((s) => s.id === spotId)?.name ?? 'a removed spot'
@@ -159,6 +195,21 @@ async function vote(spotId) {
   }
 }
 
+async function onStart() {
+  if (store.shortlist.length === 0 || !startDeadline.value) return
+  starting.value = true
+  actionError.value = ''
+  try {
+    await startVote(hangoutId, startDeadline.value)
+    store.hangout.status = 'voting'
+    store.hangout.vote_deadline = startDeadline.value
+  } catch (e) {
+    actionError.value = `Couldn't start the vote: ${e.message}`
+  } finally {
+    starting.value = false
+  }
+}
+
 async function onClose(spotId) {
   if (totalVotes.value === 0) {
     actionError.value = 'Nobody has voted yet, so the vote can’t be closed.'
@@ -176,6 +227,41 @@ async function onClose(spotId) {
     actionError.value = `Couldn't close the vote: ${e.message}`
   } finally {
     closing.value = false
+  }
+}
+
+async function onSpin() {
+  if (!needsSpin.value || spinning.value || !isMember.value) return
+  spinning.value = true
+  actionError.value = ''
+  spinSpots.value = tiedSpots.value
+  try {
+    const winner = await spinTiebreak(hangoutId, tiedIds.value)
+    spinWinnerId.value = winner
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 0 : SPIN_MS))
+    store.hangout.status = 'confirmed'
+    store.hangout.final_shortlist_id = winner
+    store.hangout.votes = votes.value
+    await announceWinner(winner)
+  } catch (e) {
+    if (/already closed/i.test(e.message)) {
+      actionError.value = 'Someone else has already spun the wheel.'
+      store.hangout = await getHangout(hangoutId)
+    } else {
+      actionError.value = `Couldn't spin the wheel: ${e.message}`
+    }
+  } finally {
+    spinning.value = false
+  }
+}
+
+async function announceWinner(spotId) {
+  if (isMock) return
+  try {
+    await sendMessage(hangoutId, `🎡 Tie-break: the wheel picked ${spotName(spotId)}!`)
+  } catch {
+    actionError.value = 'The winner is saved, but the chat message didn’t send.'
   }
 }
 
@@ -209,13 +295,14 @@ onUnmounted(() => {
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
             <h1 class="h3 fw-bold mb-0">Group voting</h1>
             <p
-              v-if="hangout && deadline"
+              v-if="hangout && (deadline || status === 'collecting')"
               class="deadline small mb-0"
               :class="{ 'deadline--closed': !votingOpen }"
-              :title="`Voting closes ${formatDateTime(deadline)} SGT`"
+              :title="deadline ? `Voting closes ${formatDateTime(deadline)} SGT` : null"
             >
               <span class="dot" aria-hidden="true"></span>
-              <template v-if="votingOpen">
+              <template v-if="status === 'collecting'">Not started</template>
+              <template v-else-if="votingOpen">
                 Closes in <time :datetime="deadline">{{ timeLeftText }}</time>
               </template>
               <template v-else>Voting closed</template>
@@ -226,7 +313,7 @@ onUnmounted(() => {
             :voted-count="totalVotes"
             :member-count="store.members.length"
           >
-            Pick your favourite. Most votes wins; ties go to the higher group match.
+            Pick your favourite. Most votes wins; a tie is settled by spinning a wheel.
           </VoteTurnout>
         </header>
 
@@ -244,19 +331,30 @@ onUnmounted(() => {
           <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
 
           <div v-if="status === 'collecting'" class="alert alert-info">
-            Voting hasn't opened yet. The group is still adding starting points.
+            <template v-if="isHost">
+              Voting hasn't started yet. Start it when the shortlist is ready, and everyone can pick
+              their favourite.
+            </template>
+            <template v-else>Waiting for {{ hostName }} to start the vote.</template>
           </div>
           <div v-else-if="status === 'confirmed' || status === 'done'" class="alert alert-info">
-            The host has closed the vote.
+            Voting is closed.
             <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }">
               See the final plan
             </RouterLink>
+          </div>
+          <div v-else-if="needsSpin" class="alert alert-info">
+            Voting is over and it's a tie. Anyone in the group can spin the wheel to pick the
+            winner.
           </div>
           <div v-else-if="deadlinePassed" class="alert alert-info">
             The deadline ({{ formatDateTime(deadline) }} SGT) has passed, so voting is closed.
             Waiting for the host to confirm the plan.
           </div>
           <div v-else-if="!myId" class="alert alert-warning">Log in to vote.</div>
+          <div v-else-if="!isMember" class="alert alert-warning">
+            You're not in this hangout, so you can't vote. Ask the host for an invite link.
+          </div>
 
           <CandidateList
             :shortlist="store.shortlist"
@@ -264,14 +362,14 @@ onUnmounted(() => {
             :voters-by-spot="votersBySpot"
             :total-votes="totalVotes"
             :leader-id="leaderId"
-            :tied="tied"
+            :tied-ids="tiedIds"
             :my-vote-id="myVoteId"
             :saving-id="savingId"
             :disabled="!canVote"
             @vote="vote"
           />
 
-          <div class="waiting d-flex align-items-center gap-2 mt-3">
+          <div v-if="status === 'voting'" class="waiting d-flex align-items-center gap-2 mt-3">
             <template v-if="waiting.length">
               <span class="d-flex stack">
                 <MemberAvatar
@@ -288,7 +386,7 @@ onUnmounted(() => {
           </div>
 
           <RouterLink
-            v-if="votingOpen"
+            v-if="votingOpen || status === 'collecting'"
             class="btn suggest mt-3"
             :to="{ name: 'explore', params: { id: hangoutId } }"
           >
@@ -299,9 +397,26 @@ onUnmounted(() => {
 
       <div v-if="hangout && !store.loading && !store.error" class="col-12 col-lg-4">
         <div class="d-flex flex-column gap-3">
+          <StartPanel
+            v-if="isHost && status === 'collecting'"
+            :spot-count="store.shortlist.length"
+            :deadline-text="startDeadline ? formatDateTime(startDeadline) : null"
+            :explore-to="{ name: 'explore', params: { id: hangoutId } }"
+            :starting="starting"
+            @start="onStart"
+          />
+          <SpinWheel
+            v-if="isMember && (needsSpin || spinWinnerId)"
+            :spots="spinWinnerId ? spinSpots : tiedSpots"
+            :winner-id="spinWinnerId"
+            :spinning="spinning"
+            :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
+            @spin="onSpin"
+          />
           <ActivityFeed :items="feedItems" />
+          <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
           <ClosePanel
-            v-if="isHost && status === 'voting'"
+            v-if="isHost && status === 'voting' && !needsSpin"
             :shortlist="store.shortlist"
             :selected-id="winnerId"
             :vote-count="totalVotes"
@@ -317,6 +432,14 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 44px;
+}
+
 .deadline {
   display: inline-flex;
   align-items: center;

@@ -1,6 +1,6 @@
 <script setup>
-// Crowd heat map for the whole of Singapore, opened from "Crowds right now" on 04 Dashboard.
-// Owner: Ryan. Same map as page 08, but with no midpoint because there's no hangout here.
+// Owner: Ryan
+// crowd heat map for all of singapore, from "crowds right now" on 04 (same map as 08, no midpoint)
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 </script>
 

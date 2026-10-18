@@ -55,6 +55,7 @@ create table public.hangout_members (
   mode        text check (mode in ('mrt', 'bus', 'car', 'walk')), -- Nicole (07)
   travel_mins integer,  -- Nicole (07)
   travel_cost numeric(6, 2), -- Nicole (07)
+  pinned      boolean not null default false, -- Ryan (04): pinned on *this person's* My hangouts
   joined_at   timestamptz not null default now(),
   primary key (hangout_id, user_id)
 );
@@ -205,6 +206,74 @@ begin
 end;
 $$;
 
+-- Tie-break wheel (11 Group voting, Eashvar). Any member may spin once voting is over (the deadline
+-- has passed or every member has voted) and two or more spots share the most votes. The database
+-- picks the winner at random from the tied spots, so nobody can choose it, then closes the vote.
+-- Only votes from people who are still members count. "for update" stops two spins at once.
+create function public.spin_tiebreak(p_hangout uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  h hangouts%rowtype;
+  member_count integer;
+  voted_count integer;
+  top_count integer;
+  tied_count integer;
+  winner uuid;
+begin
+  if not (public.is_member(p_hangout) or public.is_host(p_hangout)) then
+    raise exception 'Only members of this hangout can spin the wheel';
+  end if;
+
+  select * into h from hangouts where id = p_hangout for update;
+  if h.status <> 'voting' then
+    raise exception 'The vote is already closed';
+  end if;
+
+  select count(*) into member_count from hangout_members where hangout_id = p_hangout;
+  select count(*) into voted_count
+  from votes v
+  join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+  where v.hangout_id = p_hangout;
+  if (h.vote_deadline is null or h.vote_deadline > now()) and voted_count < member_count then
+    raise exception 'Voting is still going';
+  end if;
+
+  select max(n) into top_count
+  from (
+    select count(*) as n
+    from votes v
+    join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+    where v.hangout_id = p_hangout
+    group by v.shortlist_id
+  ) as counts;
+
+  select count(*) into tied_count
+  from (
+    select v.shortlist_id
+    from votes v
+    join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+    where v.hangout_id = p_hangout
+    group by v.shortlist_id
+    having count(*) = top_count
+  ) as tied;
+  if top_count is null or tied_count < 2 then
+    raise exception 'There is no tie to break';
+  end if;
+
+  select v.shortlist_id into winner
+  from votes v
+  join hangout_members m on m.hangout_id = v.hangout_id and m.user_id = v.user_id
+  where v.hangout_id = p_hangout
+  group by v.shortlist_id
+  having count(*) = top_count
+  order by random()
+  limit 1;
+
+  update hangouts set status = 'confirmed', final_shortlist_id = winner where id = p_hangout;
+  return winner;
+end;
+$$;
+
 -- ───────────────────────── Row Level Security ─────────────────────────
 -- Members can read their hangout. You can only edit your own member row and your own vote.
 -- Only the host edits the hangout.
@@ -258,13 +327,16 @@ create policy "shortlist: members read" on public.shortlist
   for select to authenticated using (public.is_member(hangout_id));
 create policy "shortlist: members add" on public.shortlist
   for insert to authenticated with check (added_by = auth.uid() and public.is_member(hangout_id));
-create policy "shortlist: adder removes" on public.shortlist
-  for delete to authenticated using (added_by = auth.uid());
+-- You remove spots you added; the host can remove any spot (09 "Remove")
+create policy "shortlist: adder or host removes" on public.shortlist
+  for delete to authenticated using (added_by = auth.uid() or public.is_host(hangout_id));
 
--- At most 3 shortlisted spots per person per hangout
+-- At most 3 shortlisted spots per person per hangout (09 shows "2 of 3 added").
+-- The lock makes two quick "Add" clicks wait for each other, so both can't slip in as the 3rd spot.
 create or replace function public.enforce_shortlist_limit() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
+  perform pg_advisory_xact_lock(hashtext(new.hangout_id::text), hashtext(new.added_by::text));
   if (select count(*) from public.shortlist
       where hangout_id = new.hangout_id and added_by = new.added_by) >= 3 then
     raise exception 'You can only add 3 spots to the shortlist';
@@ -309,3 +381,108 @@ create policy "messages: delete own" on public.messages
 alter publication supabase_realtime add table public.votes, public.hangout_members;
 -- New chat messages appear live on 06
 alter publication supabase_realtime add table public.messages;
+-- The hangout itself: everyone sees the vote start, close or the wheel's winner (11, 12) live
+alter publication supabase_realtime add table public.hangouts;
+
+-- ───────────────────────── Friend groups (permanent group chat) ─────────────────────────
+-- Owner: Surya. A friend group (e.g. "Uni friends") keeps one chat across all its hangouts, on
+-- its own page (/groups/:id). New hangouts can be started from the group with everyone in it.
+-- Self-contained: this whole section can be run on its own in the Supabase SQL editor.
+
+create table public.groups (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null check (char_length(trim(name)) between 1 and 60),
+  owner_id   uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table public.group_members (
+  group_id  uuid not null references public.groups (id) on delete cascade,
+  user_id   uuid not null references public.profiles (id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
+create table public.group_messages (
+  id         uuid primary key default gen_random_uuid(),
+  group_id   uuid not null references public.groups (id) on delete cascade,
+  user_id    uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  body       text not null check (char_length(trim(body)) between 1 and 500),
+  created_at timestamptz not null default now()
+);
+create index group_messages_by_group on public.group_messages (group_id, created_at);
+
+-- Which group a hangout was started from (null for hangouts made on 05 Create hangout)
+alter table public.hangouts
+  add column group_id uuid references public.groups (id) on delete set null;
+
+-- Helpers ("security definer" for the same reason as is_member above)
+create function public.is_group_member(gid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from group_members where group_id = gid and user_id = auth.uid());
+$$;
+
+create function public.is_group_owner(gid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from groups where id = gid and owner_id = auth.uid());
+$$;
+
+-- True if you and `other` are in the same friend group. Lets a host add them to a hangout.
+create function public.shares_group_with(other uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1
+    from group_members mine
+    join group_members theirs on theirs.group_id = mine.group_id
+    where mine.user_id = auth.uid() and theirs.user_id = other
+  );
+$$;
+
+alter table public.groups         enable row level security;
+alter table public.group_members  enable row level security;
+alter table public.group_messages enable row level security;
+
+-- groups: members read; anyone can create one (as owner); only the owner renames or deletes it
+create policy "groups: members read" on public.groups
+  for select to authenticated using (owner_id = auth.uid() or public.is_group_member(id));
+create policy "groups: create as owner" on public.groups
+  for insert to authenticated with check (owner_id = auth.uid());
+create policy "groups: owner edits" on public.groups
+  for update to authenticated using (owner_id = auth.uid());
+create policy "groups: owner deletes" on public.groups
+  for delete to authenticated using (owner_id = auth.uid());
+
+-- group_members: members see each other. The owner adds themselves, then their friends
+-- (Friends page or past hangouts). You can leave; the owner can remove people.
+create policy "group members: members read" on public.group_members
+  for select to authenticated using (public.is_group_member(group_id) or public.is_group_owner(group_id));
+create policy "group members: owner adds" on public.group_members
+  for insert to authenticated
+  with check (
+    public.is_group_owner(group_id)
+    and (user_id = auth.uid() or public.is_friend(user_id) or public.shares_hangout_with(user_id))
+  );
+create policy "group members: leave or remove" on public.group_members
+  for delete to authenticated using (user_id = auth.uid() or public.is_group_owner(group_id));
+
+-- group_messages: members read and post; you delete only your own
+create policy "group messages: members read" on public.group_messages
+  for select to authenticated using (public.is_group_member(group_id));
+create policy "group messages: members post" on public.group_messages
+  for insert to authenticated
+  with check (user_id = auth.uid() and public.is_group_member(group_id));
+create policy "group messages: delete own" on public.group_messages
+  for delete to authenticated using (user_id = auth.uid());
+
+-- A host can also add people from their friend groups to a hangout ("Start a hangout" on a group)
+drop policy "members: host adds past friends" on public.hangout_members;
+create policy "members: host adds past friends" on public.hangout_members
+  for insert to authenticated
+  with check (
+    public.is_host(hangout_id)
+    and (public.shares_hangout_with(user_id) or public.is_friend(user_id)
+      or public.shares_group_with(user_id))
+  );
+
+-- New group messages appear live on the group page
+alter publication supabase_realtime add table public.group_messages;

@@ -257,6 +257,29 @@ export async function updateMemberMode(hangoutId, userId, mode) {
 }
 
 /**
+ * Pin or unpin a hangout on *your* My hangouts (04): pinned ones show first. It's saved on your
+ * own member row, so each person pins for themselves ("members: edit own row" in schema.sql).
+ * @param {boolean} pinned
+ */
+export async function setPinned(hangoutId, userId, pinned) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ pinned: pinned })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  if (data.length === 0) {
+    throw new Error("You're not a member of this hangout.")
+  }
+}
+
+/**
  * Live updates: calls onChange(row) whenever someone in this hangout changes their member row
  * (e.g. picks a mode on 07 or a starting point on 06), so everyone's screen stays the same.
  * Uses Supabase Realtime, switched on for hangout_members in schema.sql.

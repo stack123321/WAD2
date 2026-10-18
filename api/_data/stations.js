@@ -1,7 +1,5 @@
-// Owner: Ryan. MRT/LRT station positions, keyed by LTA station code. LTA's crowd API returns only the
-// code (e.g. "NS1"), so api/crowd.js looks it up here. Interchanges have one entry per code, with the
-// same name, so crowd.js can merge them into one dot.
-// Positions from OneMap search (onemap.gov.sg), looked up on 9 Oct 2026. TE22A (not open yet) left out.
+// Owner: Ryan
+// mrt/lrt station positions by lta code, from onemap (9 oct 2026), TE22A left out
 export const STATIONS = {
   // NSL
   NS1: { name: 'Jurong East', lat: 1.333, lng: 103.7424 },

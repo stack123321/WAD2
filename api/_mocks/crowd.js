@@ -1,7 +1,7 @@
-// Owner: Ryan. Sample MRT crowd levels for api/crowd.js, used when there's no LTA key or LTA is down.
-// Busy at interchanges during peak hours, so the heat map's time slider still shows a change.
+// Owner: Ryan
+// sample mrt crowd levels for api/crowd.js when there's no lta key or lta is down
 
-// Approximate station positions (sample data)
+// approximate station positions (sample data)
 const STATIONS = [
   { name: 'Jurong East', lat: 1.3331, lng: 103.7423, interchange: true },
   { name: 'Clementi', lat: 1.3151, lng: 103.7652, interchange: false },
@@ -27,9 +27,9 @@ const STATIONS = [
   { name: 'Choa Chu Kang', lat: 1.3853, lng: 103.7443, interchange: false },
 ]
 
-// at: the time on the heat map's slider (a Date). Gives back the same shape as LTA: [{ station, lat, lng, level }]
+// at: slider time (Date), gives back [{ station, lat, lng, level }] like lta
 export function sampleCrowd(at) {
-  // Singapore time as hours with minutes (e.g. 18.5 = 6:30 pm). Vercel's clock is UTC, so add 8 hours.
+  // singapore time in hours (18.5 = 6:30 pm), vercel runs in utc so add 8
   const sg = new Date(at.getTime() + 8 * 60 * 60 * 1000)
   const hour = sg.getUTCHours() + sg.getUTCMinutes() / 60
   const peak = (hour >= 7 && hour < 9.5) || (hour >= 17 && hour < 20)

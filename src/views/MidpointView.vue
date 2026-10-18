@@ -1,9 +1,7 @@
 <script setup>
-// 08 Midpoint + crowd heat map
+// 08 midpoint + crowd heat map
 // Owner: Ryan (heat map) + Surya (weather card, midpoint dragging) · Vet by: Eashvar
-// Shows the group's midpoint (the fairest MRT station, saved on 07) on a big map with live crowds
-// at the stations around it, and the weather there. Dragging the pin moves the midpoint to the
-// nearest MRT station, works out everyone's travel time to it again, and saves it for the group.
+// midpoint (fairest mrt station, saved on 07) on a map with live crowds and weather, dragging the pin snaps to the nearest station and re-saves it
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
@@ -20,7 +18,7 @@ onMounted(() => store.load(route.params.id))
 
 const midpoint = computed(() => {
   if (!store.hangout) return null
-  // No midpoint until page 07 has worked it out (Singapore's latitude is never 0)
+  // no midpoint until page 07 has worked it out (singapore's latitude never 0)
   if (!store.hangout.midpoint_lat) return null
   return {
     name: store.hangout.midpoint_name,
@@ -29,19 +27,19 @@ const midpoint = computed(() => {
   }
 })
 
-// Moving the midpoint by dragging its pin
+// moving midpoint by dragging pin
 const moving = ref(false)
 const moveMessage = ref('')
 const moveError = ref('')
 
 async function onMidpointMoved(position) {
-  // Snap to the closest MRT station to where the pin was dropped
+  // snap to closest mrt station to where pin dropped
   const station = nearestStations(position, 1)[0]
   moving.value = true
   moveMessage.value = ''
   moveError.value = ''
 
-  // Everyone's travel time to the new station, if we know how they're travelling (from 07)
+  // everyone's travel time to the new station, if we know how they're travelling (from 07)
   let avgMins = null
   let gapMins = null
   const travellers = store.members.filter((m) => m.mode && m.start_lat != null)
@@ -59,7 +57,7 @@ async function onMidpointMoved(position) {
     }
   }
 
-  // Show it straight away, then save it for the group
+  // show straight away, then save it for the group
   store.hangout.midpoint_name = station.name
   store.hangout.midpoint_lat = station.lat
   store.hangout.midpoint_lng = station.lng
@@ -101,13 +99,13 @@ async function onMidpointMoved(position) {
   </div>
 
   <div v-else-if="store.hangout">
-    <!-- The step bar comes from App.vue, which adds it to every hangout page -->
+    <!-- the step bar comes from App.vue, which adds it to every hangout page -->
     <main class="container py-4">
       <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
 
       <template v-if="midpoint">
         <div class="row g-4">
-          <!-- Big map: the midpoint pin (draggable) and live crowds at the stations around it -->
+          <!-- big map: the midpoint pin (draggable) and live crowds at the stations around it -->
           <div class="col-lg-8">
             <CrowdHeatmap
               :midpoint="midpoint"
@@ -117,7 +115,7 @@ async function onMidpointMoved(position) {
             />
           </div>
 
-          <!-- Beside it: the midpoint, then the weather there -->
+          <!-- beside it: the midpoint, then the weather there -->
           <div class="col-lg-4 d-flex flex-column gap-3">
             <section class="card">
               <div class="card-body">
@@ -157,7 +155,7 @@ async function onMidpointMoved(position) {
         </router-link>
       </template>
 
-      <!-- Reached from the step bar before page 07 has found the midpoint -->
+      <!-- reached from the step bar before page 07 has found the midpoint -->
       <div v-else class="alert alert-info" role="status">
         <p class="mb-2">
           No midpoint yet. Fairpoint finds it once everyone has picked how they're travelling.
