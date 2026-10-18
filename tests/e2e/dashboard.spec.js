@@ -52,3 +52,17 @@ test('Open Friends List goes to the friends page', async ({ page }) => {
   await expect(page).toHaveURL('/friends')
   await expect(page.getByRole('heading', { name: 'My Friends' })).toBeVisible()
 })
+
+test('pinning a hangout moves its card to the top', async ({ page }) => {
+  await page.goto('/dashboard')
+  await expect(page.locator('.card').first()).toContainText('Friday dinner after class')
+  await page.getByRole('button', { name: 'Pin Saturday study session' }).click()
+  await expect(page.locator('.card').first()).toContainText('Saturday study session')
+})
+
+test('unpinning puts the card back in its place', async ({ page }) => {
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: 'Pin Saturday study session' }).click()
+  await page.getByRole('button', { name: 'Unpin Saturday study session' }).click()
+  await expect(page.locator('.card').first()).toContainText('Friday dinner after class')
+})

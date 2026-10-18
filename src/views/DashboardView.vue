@@ -2,7 +2,7 @@
 // 04 my hangouts
 // Owner: Ryan · Vet by: Eashvar
 import { ref, computed, onMounted } from 'vue'
-import { deleteHangout, getMyHangouts, leaveHangout } from '@/services/hangouts'
+import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import CrowdsNow from '@/components/heatmap/CrowdsNow.vue'
@@ -35,7 +35,27 @@ const heading = computed(() =>
 
 const upcoming = computed(() => hangouts.value.filter((h) => h.status !== 'done'))
 const past = computed(() => hangouts.value.filter((h) => h.status === 'done'))
-const shown = computed(() => (tab.value === 'upcoming' ? upcoming.value : past.value))
+const pinError = ref('')
+
+// pinned ones first, the rest keep their order
+const shown = computed(() => {
+  const list = tab.value === 'upcoming' ? upcoming.value : past.value
+  return list.filter((h) => h.pinned).concat(list.filter((h) => !h.pinned))
+})
+
+async function onTogglePin(hangout) {
+  pinError.value = ''
+  hangout.pinned = !hangout.pinned // show the change right away
+  try {
+    if (auth.user !== null) {
+      await setPinned(hangout.id, auth.user.id, hangout.pinned)
+    }
+  } catch (err) {
+    console.error(err)
+    hangout.pinned = !hangout.pinned // saving failed, so put it back
+    pinError.value = `Couldn't update the pin on "${hangout.name}".`
+  }
+}
 
 // deleting (host) or leaving (other members) a hangout
 const deleteError = ref('')
@@ -87,6 +107,15 @@ onMounted(async () => {
   loading.value = true
   try {
     hangouts.value = await getMyHangouts()
+    // my pin is saved on my own member row of each hangout
+    for (let h of hangouts.value) {
+      h.pinned = false
+      for (let m of h.members) {
+        if (auth.user !== null && m.user_id === auth.user.id && m.pinned) {
+          h.pinned = true
+        }
+      }
+    }
   } catch (err) {
     console.log(err)
     error.value = 'Could not load your hangouts.'
@@ -150,6 +179,7 @@ onMounted(async () => {
         </p>
 
         <p v-if="deleteError" class="text-danger" role="alert">{{ deleteError }}</p>
+        <p v-if="pinError" class="text-danger" role="alert">{{ pinError }}</p>
 
         <div v-for="h in shown" :key="h.id" class="mb-3">
           <HangoutCard
@@ -158,6 +188,7 @@ onMounted(async () => {
             :can-leave="isMember(h)"
             @delete="onDelete"
             @leave="onLeave"
+            @toggle-pin="onTogglePin"
           />
         </div>
       </div>
