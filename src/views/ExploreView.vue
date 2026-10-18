@@ -7,61 +7,6 @@
       <GooglePlacesToggle />
     </section>
 
-    <div class="shortlist-panel">
-      <section class="shortlist">
-        <h2 class="h6">Vote Shortlist</h2>
-        <ul v-if="shortlisted.length" class="shortlist-list">
-          <li v-for="spot in shortlisted" :key="spot.id" class="shortlist-item">
-            <img v-if="spot.imageUrl" :src="spot.imageUrl" :alt="spot.name" class="shortlist-thumb" />
-            <span v-else class="shortlist-thumb"></span>
-            <span class="shortlist-name">{{ spot.name }}</span>
-            <MemberAvatar
-              :name="ownerProfile(spot.id)?.display_name ?? 'Someone'"
-              :color="ownerProfile(spot.id)?.avatar_color ?? null"
-              :size="24"
-            />
-            <span class="visually-hidden">Added by {{ ownerProfile(spot.id)?.display_name ?? 'someone' }}</span>
-            <button
-              v-if="isMine(spot.id)"
-              type="button"
-              class="shortlist-remove"
-              :aria-label="`Remove ${spot.name} from shortlist`"
-              @click="removeSpot(spot)"
-            >
-              &times;
-            </button>
-          </li>
-        </ul>
-        <p v-else class="text-secondary mb-0">No spots added yet.</p>
-      </section>
-      <div class="shortlist-actions">
-        <button
-          v-if="googlePlacesEnabled && hasMidpoint"
-          type="button"
-          class="btn btn-sm btn-outline-secondary"
-          :disabled="loadingSpots"
-          @click="refreshSpots"
-        >
-          Refresh spots
-        </button>
-        <button
-          v-if="shortlisted.length < 2"
-          type="button"
-          class="btn btn-sm btn-primary"
-          disabled
-        >
-          Go Vote!
-        </button>
-        <router-link
-          v-else
-          :to="{ name: 'vote', params: { id: route.params.id } }"
-          class="btn btn-sm btn-primary"
-        >
-          Go Vote!
-        </router-link>
-      </div>
-    </div>
-
     <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
     <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
       This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
@@ -77,15 +22,105 @@
     <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div class="map-section">
-      <BaseMap
-        v-if="mapCenter"
-        class="map"
-        :center="mapCenter"
-        :markers="mapMarkers"
-        @marker-click="selectSpot"
-      />
-      <p v-else class="text-secondary p-3 mb-0">A midpoint is needed to show nearby spots on the map.</p>
+    <div class="map-shortlist-row">
+      <div class="map-section">
+        <button
+          type="button"
+          class="mobile-collapse-toggle"
+          aria-controls="explore-map-content"
+          :aria-expanded="!isMapCollapsed"
+          @click="isMapCollapsed = !isMapCollapsed"
+        >
+          Map
+          <span aria-hidden="true">{{ isMapCollapsed ? '+' : '−' }}</span>
+        </button>
+        <div
+          id="explore-map-content"
+          class="map-content"
+          :class="{ 'is-collapsed': isMapCollapsed }"
+        >
+          <BaseMap
+            v-if="mapCenter && !isMapCollapsed"
+            class="map"
+            :center="mapCenter"
+            :markers="mapMarkers"
+            @marker-click="selectSpot"
+          />
+          <p v-else-if="!mapCenter && !isMapCollapsed" class="text-secondary p-3 mb-0">
+            A midpoint is needed to show nearby spots on the map.
+          </p>
+        </div>
+      </div>
+      <div class="shortlist-panel">
+        <section class="shortlist">
+          <h2 class="h6 shortlist-heading">Vote Shortlist</h2>
+          <button
+            type="button"
+            class="mobile-collapse-toggle shortlist-toggle"
+            aria-controls="explore-shortlist-content"
+            :aria-expanded="!isShortlistCollapsed"
+            @click="isShortlistCollapsed = !isShortlistCollapsed"
+          >
+            Vote Shortlist
+            <span aria-hidden="true">{{ isShortlistCollapsed ? '+' : '−' }}</span>
+          </button>
+          <div
+            id="explore-shortlist-content"
+            class="shortlist-content"
+            :class="{ 'is-collapsed': isShortlistCollapsed }"
+          >
+            <ul v-if="shortlisted.length" class="shortlist-list">
+              <li v-for="spot in shortlisted" :key="spot.id" class="shortlist-item">
+                <img v-if="spot.imageUrl" :src="spot.imageUrl" :alt="spot.name" class="shortlist-thumb" />
+                <span v-else class="shortlist-thumb"></span>
+                <span class="shortlist-name">{{ spot.name }}</span>
+                <MemberAvatar
+                  :name="ownerProfile(spot.id)?.display_name ?? 'Someone'"
+                  :color="ownerProfile(spot.id)?.avatar_color ?? null"
+                  :size="24"
+                />
+                <span class="visually-hidden">Added by {{ ownerProfile(spot.id)?.display_name ?? 'someone' }}</span>
+                <button
+                  v-if="isMine(spot.id)"
+                  type="button"
+                  class="shortlist-remove"
+                  :aria-label="`Remove ${spot.name} from shortlist`"
+                  @click="removeSpot(spot)"
+                >
+                  &times;
+                </button>
+              </li>
+            </ul>
+            <p v-else class="text-secondary mb-0">No spots added yet.</p>
+          </div>
+        </section>
+        <div class="shortlist-actions">
+          <button
+            v-if="googlePlacesEnabled && hasMidpoint"
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="loadingSpots"
+            @click="refreshSpots"
+          >
+            Refresh spots
+          </button>
+          <button
+            v-if="shortlisted.length < 2"
+            type="button"
+            class="btn btn-sm btn-primary"
+            disabled
+          >
+            Go Vote!
+          </button>
+          <router-link
+            v-else
+            :to="{ name: 'vote', params: { id: route.params.id } }"
+            class="btn btn-sm btn-primary"
+          >
+            Go Vote!
+          </router-link>
+        </div>
+      </div>
     </div>
     <section class="cards d-flex">
       <SpotCard
@@ -267,6 +302,8 @@ const mapMarkers = computed(() =>
 
 // Clicking a map marker scrolls the cards bar sideways to that spot's card
 const selectedId = ref(null)
+const isMapCollapsed = ref(false)
+const isShortlistCollapsed = ref(false)
 async function selectSpot(id) {
   selectedId.value = id
   await nextTick()
@@ -339,6 +376,14 @@ async function selectSpot(id) {
   margin-bottom: 16px;
 }
 
+.map-shortlist-row {
+  display: contents;
+}
+
+.mobile-collapse-toggle {
+  display: none;
+}
+
 .map {
   height: 120px;
 }
@@ -353,6 +398,10 @@ async function selectSpot(id) {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.shortlist-heading {
+  margin-bottom: 8px;
 }
 
 .shortlist-panel {
@@ -423,12 +472,10 @@ async function selectSpot(id) {
 
   .shortlist-panel {
     position: static;
-    width: min(100%, 320px);
-    margin: 0 0 16px auto;
-  }
-
-  .map {
-    height: 260px;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
   }
 
   .filters {
@@ -438,6 +485,97 @@ async function selectSpot(id) {
 
   .sort-select {
     width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .map-shortlist-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .map-section {
+    min-width: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-collapse-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 0;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .map-content {
+    padding: 0 6px 6px;
+  }
+
+  .map-content.is-collapsed,
+  .shortlist-content.is-collapsed {
+    display: none;
+  }
+
+  .shortlist-panel {
+    padding: 0;
+    background: transparent;
+  }
+
+  .shortlist {
+    padding: 0;
+  }
+
+  .shortlist-heading {
+    display: none;
+  }
+
+  .shortlist-toggle {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .shortlist-content {
+    padding: 0 8px 8px;
+    background: #fff;
+  }
+
+  .shortlist-actions {
+    margin-top: 0;
+    padding: 8px;
+    background: #fff;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .shortlist-item {
+    gap: 5px;
+  }
+
+  .shortlist-thumb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .shortlist-name {
+    overflow-wrap: anywhere;
+  }
+
+  .map {
+    height: 180px;
   }
 }
 </style>
