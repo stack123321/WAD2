@@ -245,8 +245,16 @@ const {
   addSpot,
   removeSpot,
 } = useShortlist(() => route.params.id)
-const shortlisted = computed(() => spots.value.filter((s) => addedIds.has(s.id)))
-
+const shortlisted = computed(() => {
+  const savedSpots = hangout.shortlist.map((savedSpot) => ({
+    id: savedSpot.source_place_id,
+    name: savedSpot.name,
+    imageUrl: savedSpot.image_url,
+  }))
+  const savedIds = new Set(savedSpots.map((spot) => spot.id))
+  const pendingSpots = spots.value.filter((spot) => addedIds.has(spot.id) && !savedIds.has(spot.id))
+  return [...savedSpots, ...pendingSpots]
+})
 
 const mapCenter = computed(() =>
   hasMidpoint.value
