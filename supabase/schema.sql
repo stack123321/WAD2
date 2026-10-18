@@ -55,6 +55,7 @@ create table public.hangout_members (
   mode        text check (mode in ('mrt', 'bus', 'car', 'walk')), -- Nicole (07)
   travel_mins integer,  -- Nicole (07)
   travel_cost numeric(6, 2), -- Nicole (07)
+  pinned      boolean not null default false, -- Ryan (04): pinned on *this person's* My hangouts
   joined_at   timestamptz not null default now(),
   primary key (hangout_id, user_id)
 );
@@ -326,13 +327,16 @@ create policy "shortlist: members read" on public.shortlist
   for select to authenticated using (public.is_member(hangout_id));
 create policy "shortlist: members add" on public.shortlist
   for insert to authenticated with check (added_by = auth.uid() and public.is_member(hangout_id));
-create policy "shortlist: adder removes" on public.shortlist
-  for delete to authenticated using (added_by = auth.uid());
+-- You remove spots you added; the host can remove any spot (09 "Remove")
+create policy "shortlist: adder or host removes" on public.shortlist
+  for delete to authenticated using (added_by = auth.uid() or public.is_host(hangout_id));
 
--- At most 3 shortlisted spots per person per hangout
+-- At most 3 shortlisted spots per person per hangout (09 shows "2 of 3 added").
+-- The lock makes two quick "Add" clicks wait for each other, so both can't slip in as the 3rd spot.
 create or replace function public.enforce_shortlist_limit() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
+  perform pg_advisory_xact_lock(hashtext(new.hangout_id::text), hashtext(new.added_by::text));
   if (select count(*) from public.shortlist
       where hangout_id = new.hangout_id and added_by = new.added_by) >= 3 then
     raise exception 'You can only add 3 spots to the shortlist';

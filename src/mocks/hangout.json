@@ -25,6 +25,7 @@
       "mode": "mrt",
       "travel_mins": 34,
       "travel_cost": 1.79,
+      "pinned": false,
       "joined_at": "2026-10-10T12:00:00+08:00"
     },
     {
@@ -37,6 +38,7 @@
       "mode": "mrt",
       "travel_mins": 36,
       "travel_cost": 1.86,
+      "pinned": false,
       "joined_at": "2026-10-10T12:05:00+08:00"
     },
     {
@@ -49,6 +51,7 @@
       "mode": "bus",
       "travel_mins": 27,
       "travel_cost": 1.52,
+      "pinned": false,
       "joined_at": "2026-10-10T12:20:00+08:00"
     },
     {
@@ -61,6 +64,7 @@
       "mode": "car",
       "travel_mins": 27,
       "travel_cost": 9.5,
+      "pinned": false,
       "joined_at": "2026-10-10T13:00:00+08:00"
     }
   ],
