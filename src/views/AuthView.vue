@@ -3,18 +3,22 @@
 // Owner: Matrix · Vet by: Hugo
 // Figma frame "02". Split screen: brand panel with a map preview on the left, auth card on the right.
 // ?mode=signup opens Sign up; ?redirect=/path is where to go after logging in;
-// ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in.
+// ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in;
+// ?mode=reset is where the "Forgot password" email link lands, to set a new password.
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { hasSupabase } from '@/services/supabase'
 import { joinByInviteCode } from '@/services/hangouts'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const mode = ref(route.query.mode === 'signup' ? 'signup' : 'login')
+const modeFrom = (m) => (m === 'signup' || m === 'reset' ? m : 'login')
+const mode = ref(modeFrom(route.query.mode))
 const isSignup = computed(() => mode.value === 'signup')
+const isReset = computed(() => mode.value === 'reset')
 
 const form = reactive({ name: '', email: '', password: '', remember: true })
 const showPassword = ref(false)
@@ -73,7 +77,7 @@ function resetValidation() {
 // Keep the tab in sync with the URL, so "Create an account" links and the back button work.
 watch(
   () => route.query.mode,
-  (m) => (mode.value = m === 'signup' ? 'signup' : 'login'),
+  (m) => (mode.value = modeFrom(m)),
 )
 watch(mode, () => {
   error.value = ''
@@ -82,7 +86,10 @@ watch(mode, () => {
 })
 
 function setMode(m) {
-  router.replace({ query: { ...route.query, mode: m === 'signup' ? 'signup' : undefined } })
+  const query = { ...route.query }
+  if (m === 'login') delete query.mode
+  else query.mode = m
+  router.replace({ query }) // also drops any #error=... left by an expired reset link
 }
 
 function nextRoute() {
@@ -165,6 +172,72 @@ async function forgotPassword() {
     notice.value = `If ${email} has an account, a reset link is on its way.`
   } catch (e) {
     error.value = e.message
+  }
+}
+
+// Set a new password (?mode=reset). The email link logs them in for this one purpose; without
+// that session (expired or already-used link) there's nothing to change, so explain instead.
+const reset = reactive({
+  status: 'checking', // 'checking' | 'ready' | 'invalid' | 'done'
+  password: '',
+  confirm: '',
+  touched: { password: false, confirm: false },
+  linkError: '',
+})
+
+// Supabase reports a bad link in the URL, e.g. #error_description=Email+link+is+invalid+or+has+expired
+function linkErrorFromUrl() {
+  const params = new URLSearchParams(window.location.hash.slice(1) || window.location.search)
+  return params.get('error_description')?.replace(/\+/g, ' ') ?? ''
+}
+
+watch(
+  () => [isReset.value, auth.ready],
+  ([resetting, ready]) => {
+    if (!resetting || !ready || reset.status === 'done') return
+    reset.linkError = linkErrorFromUrl()
+    reset.status = !hasSupabase || (auth.isLoggedIn && !reset.linkError) ? 'ready' : 'invalid'
+  },
+  { immediate: true },
+)
+
+const resetErrors = computed(() => ({
+  password: !reset.password
+    ? 'Enter a new password.'
+    : reset.password.length < MIN_PASSWORD
+      ? `Use at least ${MIN_PASSWORD} characters (${reset.password.length} so far).`
+      : '',
+  confirm: !reset.confirm
+    ? 'Type the new password again.'
+    : reset.confirm !== reset.password
+      ? 'The two passwords don’t match.'
+      : '',
+}))
+
+const resetShown = computed(() => ({
+  password: reset.touched.password ? resetErrors.value.password : '',
+  confirm: reset.touched.confirm ? resetErrors.value.confirm : '',
+}))
+
+async function submitNewPassword() {
+  error.value = ''
+  reset.touched.password = reset.touched.confirm = true
+  const firstInvalid = ['password', 'confirm'].find((key) => resetErrors.value[key])
+  if (firstInvalid) {
+    await nextTick()
+    document.getElementById(`reset-${firstInvalid}`)?.focus()
+    return
+  }
+
+  busy.value = true
+  try {
+    await auth.updatePassword(reset.password)
+    reset.status = 'done'
+    reset.password = reset.confirm = ''
+  } catch (e) {
+    error.value = e.message || 'Could not change your password. Please try again.'
+  } finally {
+    busy.value = false
   }
 }
 
@@ -273,7 +346,118 @@ const avatars = [
     </aside>
 
     <section class="form-side">
-      <div class="auth-card">
+      <div v-if="isReset" class="auth-card">
+        <h2 class="auth-card__title">Set a new password</h2>
+
+        <p v-if="reset.status === 'checking'" class="auth-card__sub" role="status">
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          Checking your reset link…
+        </p>
+
+        <template v-else-if="reset.status === 'invalid'">
+          <p class="auth-card__sub">This reset link can’t be used.</p>
+          <p class="alert alert-danger py-2 small" role="alert">
+            {{ reset.linkError || 'The link is invalid, has expired or has already been used.' }}
+          </p>
+          <p class="auth-card__sub">
+            Go back to log in, enter your email and press “Forgot password?” to get a new link.
+          </p>
+          <button type="button" class="btn btn-primary w-100 submit" @click="setMode('login')">
+            Back to log in
+          </button>
+        </template>
+
+        <template v-else-if="reset.status === 'done'">
+          <p class="alert alert-success py-2 small" role="status">
+            Your password has been changed. You’re logged in.
+          </p>
+          <RouterLink class="btn btn-primary w-100 submit" :to="{ name: 'dashboard' }">
+            Go to My hangouts
+          </RouterLink>
+        </template>
+
+        <form v-else novalidate @submit.prevent="submitNewPassword">
+          <p class="auth-card__sub">
+            <template v-if="auth.user?.email">For {{ auth.user.email }}. </template>
+            Choose a password you haven’t used here before.
+          </p>
+
+          <div class="field">
+            <label for="reset-password" class="form-label">New password</label>
+            <div class="password">
+              <input
+                id="reset-password"
+                v-model="reset.password"
+                class="form-control"
+                :class="{ 'is-invalid': resetShown.password }"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="new-password"
+                :placeholder="`At least ${MIN_PASSWORD} characters`"
+                required
+                :minlength="MIN_PASSWORD"
+                :aria-invalid="Boolean(resetShown.password)"
+                aria-describedby="reset-password-help"
+                @blur="reset.touched.password = true"
+              />
+              <button
+                type="button"
+                class="password__toggle"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                @click="showPassword = !showPassword"
+              >
+                {{ showPassword ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+            <p v-if="resetShown.password" id="reset-password-help" class="field-error">
+              {{ resetShown.password }}
+            </p>
+            <p
+              v-else
+              id="reset-password-help"
+              class="field-hint"
+              :class="{ 'field-hint--ok': reset.password.length >= MIN_PASSWORD }"
+            >
+              {{
+                reset.password.length >= MIN_PASSWORD
+                  ? '✓ Long enough'
+                  : `At least ${MIN_PASSWORD} characters`
+              }}
+            </p>
+          </div>
+
+          <div class="field">
+            <label for="reset-confirm" class="form-label">Confirm new password</label>
+            <input
+              id="reset-confirm"
+              v-model="reset.confirm"
+              class="form-control"
+              :class="{ 'is-invalid': resetShown.confirm }"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="new-password"
+              required
+              :aria-invalid="Boolean(resetShown.confirm)"
+              aria-describedby="reset-confirm-error"
+              @blur="reset.touched.confirm = true"
+            />
+            <p v-if="resetShown.confirm" id="reset-confirm-error" class="field-error">
+              {{ resetShown.confirm }}
+            </p>
+          </div>
+
+          <p v-if="error" class="alert alert-danger py-2 small" role="alert">{{ error }}</p>
+
+          <button type="submit" class="btn btn-primary w-100 submit" :disabled="busy">
+            <span
+              v-if="busy"
+              class="spinner-border spinner-border-sm me-2"
+              aria-hidden="true"
+            ></span>
+            {{ busy ? 'Saving…' : 'Save new password' }}
+          </button>
+        </form>
+      </div>
+
+      <div v-else class="auth-card">
         <p v-if="inviteCode" class="alert alert-success py-2 small" role="status">
           You’ve been invited to a hangout. {{ isSignup ? 'Sign up' : 'Log in' }} to join it.
         </p>
