@@ -122,4 +122,37 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
 .mins {
   font-weight: 800;
 }
+
+/* Phones and small tablets (below Bootstrap's md breakpoint): everything on one line doesn't
+   fit, so the mode buttons move to their own full-width line under the name and time */
+@media (max-width: 767.98px) {
+  .person {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .who {
+    flex: 1;
+    width: auto;
+    min-width: 0; /* lets a long place name wrap instead of pushing the time off the card */
+  }
+
+  .segmented {
+    order: 1; /* after the time, so it starts the second line */
+    width: 100%;
+  }
+
+  /* 4 equal buttons, tall enough to tap (at least 44px) */
+  .segmented button {
+    flex: 1;
+    min-height: 44px;
+    font-size: 0.9rem;
+  }
+
+  .from,
+  .cost {
+    font-size: 0.875rem;
+  }
+}
 </style>

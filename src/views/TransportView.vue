@@ -255,4 +255,11 @@
   font-size: 0.75rem;
   margin-top: 0.6rem;
 }
+
+/* Phones: slightly bigger text so it's easy to read */
+@media (max-width: 575.98px) {
+  .footnote {
+    font-size: 0.875rem;
+  }
+}
 </style>

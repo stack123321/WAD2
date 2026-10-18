@@ -80,4 +80,12 @@ function barWidth(mins) {
   font-weight: 700;
   text-align: right;
 }
+
+/* Phones: slightly bigger text so it's easy to read */
+@media (max-width: 575.98px) {
+  .panel-sub,
+  .bar-row {
+    font-size: 0.875rem;
+  }
+}
 </style>
