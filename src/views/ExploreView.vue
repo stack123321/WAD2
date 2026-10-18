@@ -5,94 +5,9 @@
     <section class="head">
       <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <GooglePlacesToggle />
-      <button
-        v-if="googlePlacesEnabled && hasMidpoint"
-        type="button"
-        class="btn btn-sm btn-outline-secondary"
-        :disabled="loadingSpots"
-        @click="refreshSpots"
-      >
-        Refresh spots
-      </button>
-      <div class="filters">
-        <div class="filter-buttons">
-          <button
-            v-for="filter in filters"
-            :key="filter.value"
-            type="button"
-            class="btn btn-sm"
-            :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
-            @click="activeFilter = filter.value"
-          >
-            {{ filter.label }}
-          </button>
-        </div>
-        <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
-          <option v-for="option in sortOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
     </section>
 
-    <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
-    <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
-      This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
-    </p>
-    <p v-else-if="!googlePlacesEnabled" class="text-secondary" role="status">
-      Google Places is off. Turn it on to find nearby spots. This preference is saved on this device.
-    </p>
-    <p v-else-if="loadingSpots" class="text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
-    <p v-if="loadError || shortlistError" class="text-danger">{{ loadError || shortlistError }}</p>
-    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
-      No nearby spots were found. Try again later or choose another midpoint.
-    </p>
-    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
-      No spots match this filter.
-    </p>
-    <section class="cards d-flex">
-      <SpotCard
-        v-for="spot in sortedSpots"
-        :key="spot.id"
-        :id="`spot-card-${spot.id}`"
-        :class="{ 'is-selected': selectedId === spot.id }"
-        :name="spot.name"
-        :image-url="spot.imageUrl"
-        :rating="spot.rating"
-        :station-distance-m="spot.stationDistanceM"
-        :nearest-station-name="spot.nearestStationName"
-        :price-level="spot.priceLevel"
-        :tags="spot.tags"
-        :added="addedIds.has(spot.id)"
-        :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
-        @add="addSpot(spot)"
-      />
-    </section>
-
-    <aside class="side">
-      <div class="map-section">
-        <button
-          type="button"
-          class="map-toggle"
-          aria-controls="explore-map-collapse"
-          :aria-expanded="isMapOpen"
-          @click="isMapOpen = !isMapOpen"
-        >
-          {{ isMapOpen ? 'Hide map' : 'Show map' }}
-          <span class="map-toggle-chevron" :class="{ open: isMapOpen }" aria-hidden="true">&#9662;</span>
-        </button>
-        <div id="explore-map-collapse" class="map-collapse" :class="{ open: isMapOpen }">
-          <BaseMap
-            v-if="mapCenter"
-            class="map"
-            :center="mapCenter"
-            :markers="mapMarkers"
-            @marker-click="selectSpot"
-          />
-          <p v-else class="text-secondary p-3 mb-0">A midpoint is needed to show nearby spots on the map.</p>
-        </div>
-      </div>
-
+    <div class="shortlist-panel">
       <section class="shortlist">
         <h2 class="h6">Vote Shortlist</h2>
         <ul v-if="shortlisted.length" class="shortlist-list">
@@ -119,7 +34,96 @@
         </ul>
         <p v-else class="text-secondary mb-0">No spots added yet.</p>
       </section>
-    </aside>
+      <div class="shortlist-actions">
+        <button
+          v-if="googlePlacesEnabled && hasMidpoint"
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="loadingSpots"
+          @click="refreshSpots"
+        >
+          Refresh spots
+        </button>
+        <button
+          v-if="shortlisted.length < 2"
+          type="button"
+          class="btn btn-sm btn-primary"
+          disabled
+        >
+          Go Vote!
+        </button>
+        <router-link
+          v-else
+          :to="{ name: 'vote', params: { id: route.params.id } }"
+          class="btn btn-sm btn-primary"
+        >
+          Go Vote!
+        </router-link>
+      </div>
+    </div>
+
+    <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
+    <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
+      This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
+    </p>
+    <p v-else-if="!googlePlacesEnabled" class="text-secondary" role="status">
+      Google Places is off. Turn it on to find nearby spots. This preference is saved on this device.
+    </p>
+    <p v-else-if="loadingSpots" class="text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
+    <p v-if="loadError || shortlistError" class="text-danger">{{ loadError || shortlistError }}</p>
+    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
+      No nearby spots were found. Try again later or choose another midpoint.
+    </p>
+    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
+      No spots match this filter.
+    </p>
+    <div class="map-section">
+      <BaseMap
+        v-if="mapCenter"
+        class="map"
+        :center="mapCenter"
+        :markers="mapMarkers"
+        @marker-click="selectSpot"
+      />
+      <p v-else class="text-secondary p-3 mb-0">A midpoint is needed to show nearby spots on the map.</p>
+    </div>
+    <section class="cards d-flex">
+      <SpotCard
+        v-for="spot in sortedSpots"
+        :key="spot.id"
+        :id="`spot-card-${spot.id}`"
+        :class="{ 'is-selected': selectedId === spot.id }"
+        :name="spot.name"
+        :image-url="spot.imageUrl"
+        :rating="spot.rating"
+        :station-distance-m="spot.stationDistanceM"
+        :nearest-station-name="spot.nearestStationName"
+        :price-level="spot.priceLevel"
+        :tags="spot.tags"
+        :added="addedIds.has(spot.id)"
+        :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
+        @add="addSpot(spot)"
+      />
+    </section>
+    <div class="filters">
+      <div class="filter-buttons">
+        <button
+          v-for="filter in filters"
+          :key="filter.value"
+          type="button"
+          class="btn btn-sm"
+          :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
+          @click="activeFilter = filter.value"
+        >
+          {{ filter.label }}
+        </button>
+      </div>
+      <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
+        <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
     </div>
   </div>
 </template>
@@ -263,8 +267,6 @@ async function selectSpot(id) {
     ?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
 }
 
-// Map starts collapsed on mobile, where it's shown behind a toggle; desktop always shows it expanded
-const isMapOpen = ref(false)
 </script>
 
 <style scoped>
@@ -273,6 +275,10 @@ const isMapOpen = ref(false)
   font-family: system-ui, sans-serif;
   background: #f5f5f5;
   color: #222;
+}
+
+.content {
+  position: relative;
 }
 
 .cards-title {
@@ -302,9 +308,9 @@ const isMapOpen = ref(false)
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding-right: 300px;
 }
 
-/* Cards and the side panel are placed on the page grid so the map shares the first card row's height */
 .cards {
   display: flex;
   gap: 16px;
@@ -320,37 +326,17 @@ const isMapOpen = ref(false)
   outline: 2px solid #0e7c6b;
   outline-offset: 2px;
 }
-.side{
-  display:contents;
-}
 
 .map-section {
-
-  display: flex;
-  flex-direction: column;
-}
-
-/* Hidden on desktop, where the map is always expanded */
-.map-toggle {
-  display: none;
-}
-
-.map-toggle-chevron {
-  display: inline-block;
-  transition: transform 0.2s ease;
-}
-
-.map-toggle-chevron.open {
-  transform: rotate(180deg);
-}
-
-.map-collapse {
-  flex: 1;
-  min-height: 0;
+  margin-bottom: 16px;
 }
 
 .map {
-  height: 100%;
+  height: 120px;
+}
+
+.filters {
+  margin-top: 4px;
 }
 
 .shortlist {
@@ -361,10 +347,31 @@ const isMapOpen = ref(false)
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
+.shortlist-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  width: 280px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+.shortlist-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .shortlist-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 120px;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -401,74 +408,28 @@ const isMapOpen = ref(false)
   background: #e0e0e0;
 }
 
-/** d in favour of a single scrollable column; .cards and .side
-/**     stay "contents" so their children can be reordered as flex items of .content */
-/**  .content {
-/**    display: flex;
-/**    flex-direction: column;
-/**    gap: 16px;
-/**    margin: 12px;
-/**  }
-/**
-/**  .head {
-/**    order: 1;
-/**  }
-/**
-/**  .filters {
-/**    flex-direction: column;
-/**    align-items: stretch;
-/**  }
-/**
-/**  .sort-select {
-/**    width: 100%;
-/**  }
-**/
-  .map-section {
-    display: block;
+@media (max-width: 768px) {
+  .head {
+    padding-right: 0;
   }
 
-  .map-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .shortlist-panel {
+    position: static;
+    width: min(100%, 320px);
+    margin: 0 0 16px auto;
+  }
+
+  .map {
+    height: 260px;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sort-select {
     width: 100%;
-    padding: 10px 14px;
-    background: #fff;
-    border: none;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    font: inherit;
-    font-weight: 600;
-    color: inherit;
   }
-
-  .map-collapse {
-    max-height: 0;
-    overflow: hidden;
-    margin-top: 0;
-    border-radius: 8px;
-    transition:
-      max-height 0.3s ease,
-      margin-top 0.3s ease;
-  }
-
-  .map-collapse.open {
-    max-height: 280px;
-    margin-top: 12px;
-  }
-/**
-/**  .map {
-/**    height: 260px;
-/**  }
-/**
-/**  /* Cards stack as a single scrolling column, overriding each card's desktop grid position */
-/**  .cards > * {
-/**    order: 3;
-/**    width: 100%;
-/**  }
-/**
-/**  .shortlist {
-/**    order: 4;
-/**  }
-/**} **/
+}
 </style>

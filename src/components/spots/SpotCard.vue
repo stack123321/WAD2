@@ -74,7 +74,7 @@ const distance = computed(() => {
 .spot-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  
   overflow: hidden;
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
