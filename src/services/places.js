@@ -93,7 +93,7 @@ function writeSearchCache(key, spots) {
  * reused for 20 minutes (per tab) to save Google calls; pass force to fetch fresh ones.
  * Also caches each spot for the details page.
  */
-export async function loadSpots(centre, options = { radiusM: 5000 }) {
+export async function loadSpots(centre, options = { radiusM: 3000 }) {
   if (!googlePlacesEnabled.value) return []
   const key = searchCacheKey(centre, options.radiusM ?? 5000)
   let spots = options.force ? null : readSearchCache(key)

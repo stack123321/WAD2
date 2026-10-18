@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   }
 
   const centre = { lat: Number(req.query.lat), lng: Number(req.query.lng) }
-  const radiusM = Number(req.query.radius ?? 5000)
+  const radiusM = Number(req.query.radius ?? 3000)
   const categories = req.query.categories ? req.query.categories.split(',').filter(Boolean) : []
 
   if (Number.isNaN(centre.lat) || Number.isNaN(centre.lng) || Number.isNaN(radiusM)) {

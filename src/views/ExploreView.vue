@@ -278,7 +278,7 @@ const filters = [
 ]
 const activeFilter = ref('all')
 
-const radiusKm = ref(5)
+const radiusKm = ref(1)
 
 function distanceFromMidpointKm(spot) {
   const toRad = (deg) => (deg * Math.PI) / 180
