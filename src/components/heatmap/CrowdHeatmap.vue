@@ -3,7 +3,7 @@
 // crowd heat map for 08 and /crowds: station circles, time slider, and on 08 the midpoint pin and starting points
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { createOneMap } from '@/components/map/oneMap'
 import { getCrowdLevels } from '@/services/crowd'
 
 const props = defineProps({
@@ -17,7 +17,7 @@ const emit = defineEmits(['move'])
 let map = null
 let midpointMarker = null
 let memberPins = null // a group holding everyone's starting-point pins
-let resizeWatcher = null // notices when the map's box changes size
+let stopMap = null // removes the map when leaving the page
 
 const LEVEL_NAMES = { l: 'Low', m: 'Moderate', h: 'High' }
 
@@ -96,7 +96,11 @@ function drawMidpoint() {
       iconAnchor: [14, 28], // tip of pin on the spot
     }),
   })
-    .bindTooltip(`Midpoint: ${props.midpoint.name}`, { permanent: true, direction: 'top', offset: [0, -28] })
+    .bindTooltip(`Midpoint: ${props.midpoint.name}`, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -28],
+    })
     .addTo(map)
 
   midpointMarker.on('dragend', () => {
@@ -159,25 +163,10 @@ function fitToGroup() {
 }
 
 onMounted(() => {
-  map = L.map('crowd-map', {
-    center: [1.3521, 103.8198], // centre of singapore
-    zoom: 11,
-    minZoom: 11,
-    zoomControl: false,
-    // stops map from scrolling away from singapore
-    maxBounds: [
-      [1.144, 103.535],
-      [1.494, 104.1],
-    ],
-  })
-  L.control.zoom({ position: 'topright' }).addTo(map)
-
-  // OneMap's free base map (no key needed), the same as every other map in the app
-  L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution:
-      '<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener">OneMap</a> &copy; contributors | <a href="https://www.sla.gov.sg/" target="_blank" rel="noopener">Singapore Land Authority</a>',
-  }).addTo(map)
+  // The shared OneMap map of Singapore (same as 06), zoom buttons top right
+  const created = createOneMap('crowd-map', { zoomTopRight: true })
+  map = created.map
+  stopMap = created.stop
 
   circles = L.layerGroup().addTo(map)
   memberPins = L.layerGroup().addTo(map)
@@ -186,21 +175,12 @@ onMounted(() => {
   drawMidpoint()
   fitToGroup()
   loadCrowd()
-
-  // re-measure the map if its box resizes, otherwise part of it stays grey
-  resizeWatcher = new ResizeObserver(() => {
-    map.invalidateSize()
-  })
-  resizeWatcher.observe(document.getElementById('crowd-map'))
 })
 
 // remove the map when we leave the page
 onBeforeUnmount(() => {
-  if (resizeWatcher) {
-    resizeWatcher.disconnect()
-  }
-  if (map) {
-    map.remove()
+  if (stopMap) {
+    stopMap()
   }
 })
 

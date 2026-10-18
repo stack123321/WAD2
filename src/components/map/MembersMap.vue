@@ -1,11 +1,11 @@
 <script setup>
 // Owner: Surya. Leaflet map of Singapore with one pin per hangout member, labelled with where
-// they're coming from. Used on 06 Starting points; 08 Midpoint can reuse it.
+// they're coming from. Used on 06 Starting points. The map itself comes from createOneMap().
 // Members without a starting point yet are skipped. The pins redraw whenever members change.
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { isInSingapore } from '@/services/onemap'
+import { createOneMap } from './oneMap'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
@@ -19,53 +19,25 @@ const props = defineProps({
 
 const emit = defineEmits(['move', 'outside'])
 
-const SINGAPORE = [1.3521, 103.8198]
 const mapEl = ref(null) // the <div> the map is drawn in
 let map = null
 let pins = null // Leaflet layer that holds the markers, so we can clear and redraw them
-let resizeWatcher = null // notices when the map's box changes size
+let stopMap = null // removes the map when leaving the page
 let justDragged = false // after a drag, redraw the pins but don't move the map around
 
 // Part (a) Create the map once the <div> is on the page
 onMounted(() => {
-  map = L.map(mapEl.value, {
-    center: SINGAPORE,
-    zoom: 11,
-    minZoom: 11,
-    zoomControl: false,
-    // stop the map from scrolling away from Singapore
-    maxBounds: [
-      [1.144, 103.535],
-      [1.494, 104.1],
-    ],
-  })
-  L.control.zoom({ position: 'topright' }).addTo(map)
-
-  // OneMap's free base map (no key needed)
-  L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution:
-      '<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener">OneMap</a> &copy; contributors | <a href="https://www.sla.gov.sg/" target="_blank" rel="noopener">Singapore Land Authority</a>',
-  }).addTo(map)
-
+  const created = createOneMap(mapEl.value, { zoomTopRight: true })
+  map = created.map
+  stopMap = created.stop
   pins = L.layerGroup().addTo(map)
   drawPins()
-
-  // If the map's box changes size after it's drawn (e.g. the step bar appears above it, or the
-  // window is resized), tell Leaflet to measure it again. Otherwise part of the map stays grey.
-  resizeWatcher = new ResizeObserver(() => {
-    map.invalidateSize()
-  })
-  resizeWatcher.observe(mapEl.value)
 })
 
 // Remove the map when we leave the page
 onBeforeUnmount(() => {
-  if (resizeWatcher) {
-    resizeWatcher.disconnect()
-  }
-  if (map) {
-    map.remove()
+  if (stopMap) {
+    stopMap()
   }
 })
 

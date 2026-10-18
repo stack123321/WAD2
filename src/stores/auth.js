@@ -15,8 +15,13 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data.session?.user ?? null
       ready.value = true
     })
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       user.value = session?.user ?? null
+      // Someone opened the "Forgot password" email link. If Supabase sent them somewhere other
+      // than the reset screen (e.g. the redirect URL isn't allowed yet), send them there.
+      if (event === 'PASSWORD_RECOVERY' && !window.location.search.includes('mode=reset')) {
+        window.location.assign('/login?mode=reset')
+      }
     })
   }
 
@@ -60,9 +65,19 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
+  // Emails a link that logs them in and opens the "Set a new password" screen (02 ?mode=reset)
   async function resetPassword(email) {
     if (!hasSupabase) return
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login?mode=reset`,
+    })
+    if (error) throw error
+  }
+
+  // Used by the reset screen, once the email link has logged them in
+  async function updatePassword(password) {
+    if (!hasSupabase) return
+    const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error
   }
 
@@ -74,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     signIn,
     signUp,
     resetPassword,
+    updatePassword,
     signOut,
   }
 })

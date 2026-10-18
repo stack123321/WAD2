@@ -1,10 +1,12 @@
 <script setup>
-// Owner: Surya. "Friends from past hangouts" on 06 Starting points (host only): everyone you've
-// been in a hangout with, each with an Add button, so you don't have to send the invite link again.
+// Owner: Surya. "Add friends" on 06 Starting points (host only): your friends (accepted on the
+// Friends page) and everyone you've been in a hangout with, once each. Tick as many as you like
+// and add them all at once, so you don't have to send the invite link.
 // Usage: <PastFriends :hangout="store.hangout" :my-id="myId" @added="reloadHangout" />
-//   added → someone was added (the page reloads the hangout so they appear in Your group)
+//   added → people were added (the page reloads the hangout so they appear in Your group)
 import { computed, onMounted, ref } from 'vue'
 import { addMember, getPastFriends } from '@/services/hangouts'
+import { getFriendships } from '@/services/friends'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
@@ -15,19 +17,36 @@ const props = defineProps({
 const emit = defineEmits(['added'])
 
 const friends = ref([])
+const selected = ref([]) // user_ids of the ticked friends
 const loading = ref(true)
+const adding = ref(false)
 const error = ref('')
-const addingId = ref(null) // the friend being added right now (to disable their button)
+const message = ref('')
 
-// Part (a) Load everyone you've had a hangout with
+// Part (a) Load your friends: accepted friends + people from past hangouts, once each
 async function loadFriends() {
   loading.value = true
   error.value = ''
   try {
-    friends.value = await getPastFriends(props.myId)
+    const past = await getPastFriends(props.myId)
+    const lists = await getFriendships(props.myId)
+
+    const all = []
+    for (const friend of lists.friends) {
+      all.push({ ...friend, together: 0, isFriend: true })
+    }
+    for (const person of past) {
+      const existing = all.find((f) => f.user_id === person.user_id)
+      if (existing) {
+        existing.together = person.together
+      } else {
+        all.push({ ...person, isFriend: false })
+      }
+    }
+    friends.value = all
   } catch (err) {
     console.error(err)
-    error.value = "Couldn't load your friends from past hangouts."
+    error.value = "Couldn't load your friends."
   }
   loading.value = false
 }
@@ -46,55 +65,103 @@ const notYetIn = computed(() => {
   return result
 })
 
-// Part (c) Add a friend to this hangout
-async function add(friend) {
-  error.value = ''
-  addingId.value = friend.user_id
-  try {
-    await addMember(props.hangout.id, friend.user_id)
-    emit('added', friend)
-  } catch (err) {
-    console.error(err)
-    error.value = `Couldn't add ${friend.display_name}: ${err.message}`
+// "Friend · 2 hangouts together"
+function detail(friend) {
+  const parts = []
+  if (friend.isFriend) {
+    parts.push('Friend')
   }
-  addingId.value = null
+  if (friend.together === 1) {
+    parts.push('1 hangout together')
+  } else if (friend.together > 1) {
+    parts.push(`${friend.together} hangouts together`)
+  }
+  return parts.join(' · ')
+}
+
+// Part (c) Add everyone ticked, one after the other
+async function addSelected() {
+  error.value = ''
+  message.value = ''
+  if (selected.value.length === 0) {
+    return
+  }
+  adding.value = true
+
+  const failed = []
+  let added = 0
+  for (const userId of selected.value) {
+    const friend = friends.value.find((f) => f.user_id === userId)
+    try {
+      await addMember(props.hangout.id, userId)
+      added++
+    } catch (err) {
+      console.error(err)
+      failed.push(friend ? friend.display_name : 'someone')
+    }
+  }
+
+  selected.value = []
+  adding.value = false
+  if (added > 0) {
+    message.value = added === 1 ? 'Added 1 friend.' : `Added ${added} friends.`
+    emit('added')
+  }
+  if (failed.length > 0) {
+    error.value = `Couldn't add ${failed.join(', ')}. Only the host can add people.`
+  }
 }
 </script>
 
 <template>
   <div class="past-friends">
-    <div class="fw-semibold">Friends from past hangouts</div>
+    <div class="d-flex justify-content-between align-items-baseline">
+      <div class="fw-semibold">Add friends</div>
+      <span v-if="selected.length > 0" class="small text-secondary">
+        {{ selected.length }} selected
+      </span>
+    </div>
 
     <p v-if="loading" class="small text-secondary mb-0">Loading…</p>
     <p v-else-if="friends.length === 0" class="small text-secondary mb-0">
-      People you've had a hangout with will show up here, so you can add them in one tap next time.
+      Your friends (from the Friends page or past hangouts) will show up here.
     </p>
     <p v-else-if="notYetIn.length === 0" class="small text-secondary mb-0">
-      All your friends from past hangouts are already in this one.
+      All your friends are already in this hangout.
     </p>
 
-    <ul v-else class="list-unstyled mb-0 mt-2">
-      <li v-for="friend in notYetIn" :key="friend.user_id" class="friend">
-        <MemberAvatar :name="friend.display_name" :color="friend.avatar_color" :size="32" />
-        <div class="min-w-0 flex-grow-1">
-          <div class="fw-semibold text-truncate">{{ friend.display_name }}</div>
-          <div class="small text-secondary">
-            {{ friend.together }} {{ friend.together === 1 ? 'hangout' : 'hangouts' }} together
-          </div>
-        </div>
-        <button
-          type="button"
-          class="btn btn-outline-primary btn-sm add-btn"
-          :disabled="addingId === friend.user_id"
-          :aria-label="`Add ${friend.display_name} to this hangout`"
-          @click="add(friend)"
-        >
-          <span v-if="addingId === friend.user_id">Adding…</span>
-          <span v-else>Add</span>
-        </button>
-      </li>
-    </ul>
+    <template v-else>
+      <ul class="list-unstyled mb-0 mt-2">
+        <li v-for="friend in notYetIn" :key="friend.user_id">
+          <label class="friend">
+            <input
+              v-model="selected"
+              type="checkbox"
+              class="form-check-input"
+              :value="friend.user_id"
+              :disabled="adding"
+            />
+            <MemberAvatar :name="friend.display_name" :color="friend.avatar_color" :size="32" />
+            <span class="min-w-0 flex-grow-1">
+              <span class="d-block fw-semibold text-truncate">{{ friend.display_name }}</span>
+              <span class="d-block small text-secondary">{{ detail(friend) }}</span>
+            </span>
+          </label>
+        </li>
+      </ul>
+      <button
+        type="button"
+        class="btn btn-primary w-100 mt-2 add-btn"
+        :disabled="adding || selected.length === 0"
+        @click="addSelected"
+      >
+        <span v-if="adding">Adding…</span>
+        <span v-else-if="selected.length > 1">Add {{ selected.length }} friends</span>
+        <span v-else>Add selected</span>
+      </button>
+    </template>
 
+    <p v-if="message" class="small save-ok mt-2 mb-0">✓ {{ message }}</p>
     <p v-if="error" class="small text-danger mt-2 mb-0" role="alert">{{ error }}</p>
   </div>
 </template>
@@ -111,7 +178,16 @@ async function add(friend) {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.4rem 0;
+  min-height: 44px; /* big enough to tap with a finger */
+  padding: 0.25rem 0;
+  cursor: pointer;
+}
+
+.friend .form-check-input {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
 }
 
 .min-w-0 {
@@ -119,7 +195,11 @@ async function add(friend) {
 }
 
 .add-btn {
-  flex-shrink: 0;
-  min-height: 44px; /* big enough to tap with a finger */
+  min-height: 44px;
+}
+
+.save-ok {
+  color: var(--fp-primary);
+  font-weight: 600;
 }
 </style>
