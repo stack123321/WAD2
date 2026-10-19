@@ -250,7 +250,7 @@ watch(
       forceNextLoad = false
       const results = await loadSpots(
         { lat, lng },
-        { radiusM: 5000, signal: controller.signal, force },
+        { radiusM: 3000, signal: controller.signal, force },
       )
       if (requestId === spotRequestId) spots.value = results
     } catch (err) {

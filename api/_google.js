@@ -114,12 +114,12 @@ export async function nearbyPlaces(key, centre, radiusM, categories) {
         fields: FIELDS.map((f) => `places.${f}`).join(','),
         body: {
           includedTypes: CATEGORY_TYPES[cat],
-          maxResultCount: 10,
+          maxResultCount: 20,
           rankPreference: 'POPULARITY',
           locationRestriction: {
             circle: {
               center: { latitude: centre.lat, longitude: centre.lng },
-              radius: Math.min(radiusM, 50000),
+              radius: Math.min(radiusM, 30000),
             },
           },
         },

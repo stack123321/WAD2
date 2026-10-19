@@ -95,7 +95,7 @@ function writeSearchCache(key, spots) {
  */
 export async function loadSpots(centre, options = { radiusM: 3000 }) {
   if (!googlePlacesEnabled.value) return []
-  const key = searchCacheKey(centre, options.radiusM ?? 5000)
+  const key = searchCacheKey(centre, options.radiusM ?? 3000)
   let spots = options.force ? null : readSearchCache(key)
   if (!spots) {
     spots = (await searchNearby(centre, options)).map(toSpot)
