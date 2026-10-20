@@ -8,17 +8,18 @@
 // Reads: hangout_members · Writes: start_label, start_lat, start_lng (mine, or anyone's in host mode)
 // The pieces live in components: PlaceSearch, GroupList, MembersMap. The step bar on top
 // (HangoutBar) is added for every hangout page in App.vue.
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
-import { getHangout, updateMemberStart } from '@/services/hangouts'
+import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
 import HangoutChat from '@/components/start/HangoutChat.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
+import { centroid } from '@/utils/midpoint'
 
 const route = useRoute()
 const store = useHangoutStore()
@@ -57,7 +58,86 @@ onMounted(async () => {
   if (firstLoad && route.params.id === 'demo' && me.value) {
     setStart(me.value, DEMO_START)
   }
+
+  loadLastPlace()
+
+  // the page is on screen now, so we can measure how much height is left for it
+  await nextTick()
+  fitToScreen()
+  window.addEventListener('resize', fitToScreen)
 })
+
+onUnmounted(() => window.removeEventListener('resize', fitToScreen))
+
+// Part (l) Fill the screen: on laptops the panel and map are exactly as tall as the space under
+// the step bar, so there's no empty band at the bottom. The step bar's height changes with the
+// screen width, so we measure where the page starts instead of guessing a number.
+const pageRow = ref(null) // the row holding the panel and the map
+const fillHeight = ref('auto')
+
+function fitToScreen() {
+  if (!pageRow.value) {
+    return
+  }
+  const top = pageRow.value.getBoundingClientRect().top + window.scrollY
+  fillHeight.value = `${window.innerHeight - top}px`
+}
+
+// Part (f) "Use Holland Village MRT again": the starting point you used in your latest other
+// hangout, so you can add yours with one tap
+const lastPlace = ref(null)
+
+async function loadLastPlace() {
+  try {
+    const hangouts = await getMyHangouts()
+    let latest = null // best-so-far: the other hangout with the latest date where I added a place
+    for (const h of hangouts) {
+      if (h.id === route.params.id) {
+        continue
+      }
+      const mine = h.members.find((m) => m.user_id === myId.value)
+      if (!mine || mine.start_lat == null) {
+        continue
+      }
+      if (latest === null || new Date(h.starts_at) > new Date(latest.starts_at)) {
+        latest = { starts_at: h.starts_at, member: mine }
+      }
+    }
+    if (latest) {
+      lastPlace.value = {
+        label: latest.member.start_label,
+        lat: latest.member.start_lat,
+        lng: latest.member.start_lng,
+      }
+    }
+  } catch (error) {
+    // only a shortcut: if it fails, the search box still works
+    console.error(error)
+  }
+}
+
+// Show the chip only for your own starting point, and only if it isn't already that place
+const showLastPlace = computed(() => {
+  if (!lastPlace.value || !targetIsMe.value || !me.value) {
+    return false
+  }
+  return me.value.start_label !== lastPlace.value.label
+})
+
+// Part (g) Group chat opens from the 💬 button instead of taking up space on the page
+const showChat = ref(false)
+const chatCloseBtn = ref(null) // the ✕ button, so we can move the keyboard focus into the panel
+
+async function openChat() {
+  showChat.value = true
+  await nextTick() // wait until the panel is on the page
+  if (chatCloseBtn.value) {
+    chatCloseBtn.value.focus()
+  }
+}
+
+// Part (h) "Add friends" starts folded away (most people add friends when creating the hangout)
+const showAddFriends = ref(false)
 
 // Part (b) Host mode
 // 05 Create hangout sends the host here with ?entry=host when friends don't add their own.
@@ -169,6 +249,10 @@ function onChoose(place) {
   const member = target.value
   setStart(member, place)
   saveStart(member)
+  // remember it in your recent places (only your own starting points)
+  if (member.user_id === myId.value) {
+    rememberPlace(place)
+  }
 
   // In host mode, move on to the next friend who still has no starting point (or back to you)
   if (hostMode.value) {
@@ -229,6 +313,83 @@ function onPinOutside() {
     mapWarning.value = ''
   }, 4000)
 }
+
+// Part (i) Recent places: your last 3 starting points, shown when you tap the empty search box.
+// Saved in this browser (localStorage), separately for each account.
+const MAX_RECENT = 3
+const recentPlaces = ref(loadRecentPlaces())
+
+function recentKey() {
+  return `fairpoint-recent-places-${myId.value}`
+}
+
+function loadRecentPlaces() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(recentKey()))
+    if (Array.isArray(saved)) {
+      return saved
+    }
+  } catch (error) {
+    console.error(error) // e.g. private browsing blocks localStorage
+  }
+  return []
+}
+
+// Newest first, no repeats, only 3
+function rememberPlace(place) {
+  const others = []
+  for (const old of recentPlaces.value) {
+    if (old.label !== place.label) {
+      others.push(old)
+    }
+  }
+  const newest = { label: place.label, lat: place.lat, lng: place.lng }
+  recentPlaces.value = [newest, ...others].slice(0, MAX_RECENT)
+  try {
+    localStorage.setItem(recentKey(), JSON.stringify(recentPlaces.value))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// Part (j) Rough middle so far: the average position of everyone who has added a place (2 or more).
+// Only a preview to show why we ask; 08 Midpoint picks the real fair spot by travel time.
+const roughMiddle = computed(() => {
+  const points = []
+  for (const m of store.members) {
+    if (hasStart(m)) {
+      points.push({ lat: m.start_lat, lng: m.start_lng })
+    }
+  }
+  if (points.length < 2) {
+    return null
+  }
+  return centroid(points)
+})
+
+// Part (k) Personal status line, e.g. "You're set. Waiting for Ryan and Nicole."
+const statusLine = computed(() => {
+  if (!me.value) {
+    return ''
+  }
+  if (!hasStart(me.value)) {
+    return 'Add where you’re coming from to continue.'
+  }
+  const waiting = []
+  for (const m of store.members) {
+    if (!hasStart(m)) {
+      waiting.push(m.display_name)
+    }
+  }
+  if (waiting.length === 0) {
+    return 'Everyone’s in. Choose your transport next.'
+  }
+  if (waiting.length === 1) {
+    return `You’re set. Waiting for ${waiting[0]}.`
+  }
+  const last = waiting[waiting.length - 1]
+  return `You’re set. Waiting for ${waiting.slice(0, -1).join(', ')} and ${last}.`
+})
 </script>
 
 <template>
@@ -245,11 +406,31 @@ function onPinOutside() {
   </div>
 
   <div v-else-if="store.hangout">
-    <div class="row g-0">
+    <div ref="pageRow" class="row g-0 fill-row" :style="{ '--fill-height': fillHeight }">
       <!-- Left panel: search + group -->
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
-        <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
-        <p class="text-secondary mb-4">Search an address, MRT station or postal code.</p>
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
+          <!-- Group chat opens in a side panel -->
+          <button
+            v-if="me"
+            type="button"
+            class="chat-icon"
+            aria-label="Open group chat"
+            title="Group chat"
+            :aria-expanded="showChat"
+            aria-controls="chat-panel"
+            @click="openChat"
+          >
+            💬
+          </button>
+        </div>
+        <!-- Personal status: what you need to do, or who you're waiting for -->
+        <p v-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
+        <p class="text-secondary mb-4">
+          Search an address, MRT station or postal code. We use everyone’s starting point to find a
+          spot that’s fair for all.
+        </p>
 
         <div v-if="!me" class="alert alert-warning small" role="alert">
           You're not a member of this hangout, so you can't add a starting point.
@@ -269,14 +450,25 @@ function onPinOutside() {
               Done
             </button>
           </div>
-          <PlaceSearch
-            :key="target.user_id"
-            class="mb-4"
-            :placeholder="hasStart(target) ? 'Search a new place' : 'e.g. Holland Village'"
-            :show-location="targetIsMe"
-            @choose="onChoose"
-            @typing="typing = $event"
-          />
+          <div class="mb-4">
+            <PlaceSearch
+              :key="target.user_id"
+              :placeholder="hasStart(target) ? 'Search a new place' : 'e.g. Holland Village'"
+              :show-location="targetIsMe"
+              :recent-places="targetIsMe ? recentPlaces : []"
+              @choose="onChoose"
+              @typing="typing = $event"
+            />
+            <!-- One tap: the place you started from last time -->
+            <button
+              v-if="showLastPlace"
+              type="button"
+              class="again-chip"
+              @click="onChoose(lastPlace)"
+            >
+              📍 Use {{ lastPlace.label }} again
+            </button>
+          </div>
         </template>
 
         <!-- Saving to the database -->
@@ -303,18 +495,7 @@ function onPinOutside() {
           @select="startEditing"
         />
 
-        <!-- Host only: add people from past hangouts without sending the link again -->
-        <PastFriends
-          v-if="isRealHost"
-          class="mb-4"
-          :hangout="store.hangout"
-          :my-id="myId"
-          @added="reloadHangout"
-        />
-
-        <!-- Group chat: everyone in this hangout, live -->
-        <HangoutChat v-if="me" class="mb-4" :hangout="store.hangout" :my-id="myId" />
-
+        <!-- Next comes straight after the group: you only need YOUR starting point to continue -->
         <RouterLink
           v-if="me && hasStart(me)"
           class="btn btn-primary btn-lg w-100"
@@ -326,11 +507,35 @@ function onPinOutside() {
           <button class="btn btn-primary btn-lg w-100" type="button" disabled>
             Next: choose transport →
           </button>
-          <!-- say why the button is greyed out -->
-          <p class="small text-secondary text-center mt-2 mb-0">
-            Add your starting point first to continue.
-          </p>
         </template>
+        <!-- say what's needed, and that nobody has to wait for friends -->
+        <p class="small text-secondary text-center mt-2 mb-4">
+          <template v-if="me && hasStart(me)">Your friends can add theirs later.</template>
+          <template v-else
+            >Add your starting point to continue. Friends can add theirs later.</template
+          >
+        </p>
+
+        <!-- Host only: add more people, folded away (most are added when creating the hangout) -->
+        <div v-if="isRealHost">
+          <button
+            type="button"
+            class="btn btn-link add-toggle"
+            :aria-expanded="showAddFriends"
+            aria-controls="add-friends"
+            @click="showAddFriends = !showAddFriends"
+          >
+            {{ showAddFriends ? 'Hide add friends ▴' : '+ Add friends ▾' }}
+          </button>
+          <PastFriends
+            v-if="showAddFriends"
+            id="add-friends"
+            class="mt-2"
+            :hangout="store.hangout"
+            :my-id="myId"
+            @added="reloadHangout"
+          />
+        </div>
       </div>
 
       <!-- Right: shared map -->
@@ -339,6 +544,7 @@ function onPinOutside() {
           :members="store.members"
           :highlight-id="target ? target.user_id : null"
           :draggable-id="me && target ? target.user_id : null"
+          :middle="roughMiddle"
           @move="onPinMoved"
           @outside="onPinOutside"
         />
@@ -349,10 +555,110 @@ function onPinOutside() {
         </div>
       </div>
     </div>
+
+    <!-- Group chat panel: slides in from the side, closes with ✕, Esc or a tap outside -->
+    <template v-if="me && showChat">
+      <div class="chat-backdrop" @click="showChat = false"></div>
+      <aside
+        id="chat-panel"
+        class="chat-panel"
+        role="dialog"
+        aria-label="Group chat"
+        @keydown.esc="showChat = false"
+      >
+        <button
+          ref="chatCloseBtn"
+          type="button"
+          class="btn-close chat-close"
+          aria-label="Close chat"
+          @click="showChat = false"
+        ></button>
+        <HangoutChat :hangout="store.hangout" :my-id="myId" :height="420" />
+      </aside>
+    </template>
   </div>
 </template>
 
 <style scoped>
+/* "Hi Surya 👋 You're set. Waiting for Ryan." */
+.status-line {
+  font-weight: 600;
+}
+
+/* 💬 round chat button next to the heading */
+.chat-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--fp-border);
+  border-radius: 50%;
+  background: var(--fp-surface);
+  font-size: 1.3rem;
+  box-shadow: var(--fp-shadow);
+}
+
+.chat-icon:hover {
+  border-color: var(--fp-primary);
+}
+
+/* "📍 Use Holland Village MRT again" */
+.again-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 44px;
+  margin-top: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px dashed var(--fp-primary);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fp-primary) 8%, var(--fp-surface));
+  color: var(--fp-primary-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+/* "+ Add friends ▾" */
+.add-toggle {
+  min-height: 44px;
+  padding: 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Chat panel: dark backdrop + a panel on the right (full width on phones) */
+.chat-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.chat-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1050; /* above the map and the navbar */
+  width: min(420px, 100%);
+  padding: 3.25rem 1rem 1rem;
+  overflow-y: auto;
+  background: var(--fp-surface);
+  box-shadow: -8px 0 30px rgb(0 0 0 / 0.15);
+}
+
+.chat-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
 .panel {
   background: var(--fp-surface);
   border-right: 1px solid var(--fp-border);
@@ -394,11 +700,22 @@ function onPinOutside() {
   height: 60vh; /* phones and tablets: the map sits under the panel */
 }
 
-/* Laptops: the map fills the rest of the screen beside the panel */
+/* Laptops: the panel and map fill exactly the rest of the screen (--fill-height is measured in the
+   script), like a map app. The map is always fully visible; if the panel has more in it than
+   fits, only the panel scrolls. */
 @media (min-width: 992px) {
+  .fill-row {
+    height: var(--fill-height);
+  }
+
+  .fill-row > .panel {
+    height: 100%;
+    overflow-y: auto;
+  }
+
   .map-col {
     height: auto;
-    min-height: 640px;
+    min-height: 480px;
   }
 }
 

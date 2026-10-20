@@ -12,6 +12,8 @@ const props = defineProps({
   members: { type: Array, required: true },
   // this member's pin is drawn bigger (the logged-in user)
   highlightId: { type: String, default: null },
+  // a soft "Rough middle so far" dot: { lat, lng }, or null to hide it
+  middle: { type: Object, default: null },
   // this member's pin can be dragged; the map emits "move" with the new { lat, lng },
   // or "outside" (and puts the pin back) if it was dropped outside Singapore
   draggableId: { type: String, default: null },
@@ -42,7 +44,9 @@ onBeforeUnmount(() => {
 })
 
 // Redraw whenever anyone's starting point changes (deep: also notices changes inside each member)
-watch(() => [props.members, props.highlightId, props.draggableId], drawPins, { deep: true })
+watch(() => [props.members, props.highlightId, props.draggableId, props.middle], drawPins, {
+  deep: true,
+})
 
 // Part (b) Draw one pin per member who has a starting point
 function drawPins() {
@@ -79,6 +83,20 @@ function drawPins() {
       emit('move', { lat: position.lat, lng: position.lng })
     })
     marker.addTo(pins)
+  }
+
+  // The rough middle of everyone so far (a preview: 08 Midpoint picks the real fair spot)
+  if (props.middle) {
+    L.marker([props.middle.lat, props.middle.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div class="middle-wrap"><span class="middle-dot"></span><span class="middle-label">Rough middle so far</span></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      }),
+      interactive: false, // just a picture: it can't be clicked or dragged
+      zIndexOffset: -100, // stays under people's pins
+    }).addTo(pins)
   }
 
   // Zoom to fit everyone, except right after a drag (the map would jump while you're adjusting)
@@ -172,6 +190,32 @@ function escapeHtml(text) {
 }
 
 /* Leaflet adds the pins itself, outside Vue's template, so they need :deep() */
+.members-map :deep(.middle-wrap) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+}
+
+.members-map :deep(.middle-dot) {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 3px dashed var(--fp-primary);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fp-primary) 25%, transparent);
+}
+
+.members-map :deep(.middle-label) {
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fp-primary) 90%, black);
+  color: var(--fp-surface);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .members-map :deep(.pin-wrap) {
   display: flex;
   align-items: center;

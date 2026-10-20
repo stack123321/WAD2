@@ -6,11 +6,16 @@ import 'leaflet/dist/leaflet.css'
 
 export const SINGAPORE = [1.3521, 103.8198]
 
-// Stop the map from scrolling away from Singapore
+// Stop the map from scrolling away from Singapore. OneMap only has map pictures inside this box
+// (west of about 103.6° there are none, which showed up as a grey strip).
 const BOUNDS = [
-  [1.144, 103.535],
+  [1.144, 103.6],
   [1.494, 104.1],
 ]
+
+// OneMap's sea colour. Leaflet shows grey wherever there's no map picture (outside Singapore when
+// you zoom out on a big screen), so we paint that background like the sea instead.
+const SEA_COLOR = '#6da8e4'
 
 // OneMap's terms of use require this credit on the map
 const ATTRIBUTION =
@@ -37,11 +42,13 @@ export function createOneMap(el, options = {}) {
     zoom: zoom,
     minZoom: 11,
     maxBounds: BOUNDS,
+    maxBoundsViscosity: 1, // the edges are firm: you can't drag the map past Singapore
     zoomControl: !options.zoomTopRight, // the default zoom buttons sit top-left
   })
   if (options.zoomTopRight) {
     L.control.zoom({ position: 'topright' }).addTo(map)
   }
+  map.getContainer().style.backgroundColor = SEA_COLOR
 
   L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
     maxZoom: 19,

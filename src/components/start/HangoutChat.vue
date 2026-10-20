@@ -113,7 +113,8 @@ function isForMe(message) {
   if (!myRow || isMine(message)) {
     return false
   }
-  return message.body.startsWith(`@${myRow.display_name}`)
+  // includes, not startsWith: "Remind everyone" tags several people in one message
+  return message.body.includes(`@${myRow.display_name}`)
 }
 
 // "7:05 PM"
