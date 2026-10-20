@@ -4,13 +4,16 @@
 // Figma frame "01" (Direction C): a giant teal "Meet in the middle." with one grey and one black
 // pill, three numbered steps, a panel showing everyone's trip on one scale, the weather and vote
 // panels, and a closing call to create an account. Logged-in visitors get "Start a hangout".
-// The hero is a scroll scene (HeroScroll): friends' routes draw across a map and it zooms into the
-// fair spot as you scroll.
+// A slowly spinning teal globe plays behind the headline; it's decoration only (muted, hidden from
+// screen readers) and stays on its first frame for anyone who has asked for reduced motion.
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import HeroScroll from '@/components/landing/HeroScroll.vue'
+import globeVideo from '@/assets/globe-teal.mp4'
 
 const auth = useAuthStore()
+
+// Reduced motion: show the globe still instead of spinning
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // Logged out: create an account first. Logged in: go straight to a new hangout.
 const mainAction = computed(() =>
@@ -54,7 +57,18 @@ const votes = [
 
 <template>
   <main class="landing">
-    <HeroScroll>
+    <section class="hero">
+      <video
+        class="hero-globe"
+        :src="globeVideo"
+        :autoplay="!reduceMotion"
+        :loop="!reduceMotion"
+        muted
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+        tabindex="-1"
+      ></video>
       <h1 class="hero-title">Meet in the middle.</h1>
       <p class="hero-lead">
         Add where everyone’s coming from. Fairpoint finds the fair spot, checks the weather and
@@ -66,7 +80,7 @@ const votes = [
           {{ mainAction.label }}
         </RouterLink>
       </div>
-    </HeroScroll>
+    </section>
 
     <section id="how-it-works" class="how">
       <h2 class="how-title">Three steps. One plan.</h2>
@@ -156,6 +170,33 @@ const votes = [
 }
 
 /* ---------- Hero: one headline, two pills ---------- */
+
+.hero {
+  position: relative;
+  isolation: isolate; /* keeps the globe behind the text without touching the rest of the page */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: min(720px, calc(100svh - 88px));
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+
+/* The spinning globe sits centred behind the headline and never takes a tap */
+.hero-globe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate(-50%, -50%);
+  opacity: 0.5; /* faded so the headline and the line under it stay easy to read */
+  pointer-events: none;
+}
 
 .hero-title {
   margin: 0;
@@ -478,6 +519,12 @@ const votes = [
 /* ---------- Tablet and phone ---------- */
 
 @media (max-width: 991.98px) {
+  /* narrower screens: let the globe overflow the sides so it stays big behind the title */
+  .hero-globe {
+    width: 135%;
+    height: auto;
+  }
+
   .steps {
     gap: 1.5rem;
   }
@@ -496,6 +543,15 @@ const votes = [
 }
 
 @media (max-width: 575.98px) {
+  .hero {
+    min-height: 0;
+    padding: 4.5rem 1rem 4rem;
+  }
+
+  .hero-globe {
+    width: 190%;
+  }
+
   .hero-lead {
     font-size: 1.125rem;
   }

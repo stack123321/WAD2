@@ -186,7 +186,7 @@ This is Direction C, pinned by the user from their own design canvas. It refuses
 - Flat grey panels (28px radius) and hairline outline cards; no shadows anywhere.
 - Teal means Fairpoint; coral is only a deadline dot or tint.
 - Big Fraunces numerals for dates, ranks and step numbers.
-- Motion is press feedback, bars growing in once, and colour transitions; nothing decorative. The one exception is the landing hero's scroll scene (below).
+- Motion is press feedback, bars growing in once, and colour transitions; nothing decorative.
 
 ## Colors
 
@@ -320,7 +320,7 @@ Pills that give a little under your finger.
 - **Do** draw icons as inline SVG in `currentColor`.
 - **Do** write component styles in `<style scoped>` using `var(--fp-*)` tokens; `src/styles/tokens.css` is the only global CSS (owner: Hugo).
 - **Do** keep every tap target at least 44px and every page free of sideways scroll at 375px.
-- **Do** limit motion to pill press feedback, bars growing in once, and colour transitions, all switched off under `prefers-reduced-motion`. The single exception is the landing hero (`src/components/landing/HeroScroll.vue`): a pinned scroll scene where friends' routes draw across a map of Singapore and it zooms into the fair spot, driven by scroll with anime.js `onScroll` (sync). Under reduced motion it shows as a still: headline, finished map, caption. anime.js is outside the course and is flagged for the team.
+- **Do** limit motion to pill press feedback, bars growing in once, and colour transitions, all switched off under `prefers-reduced-motion`.
 
 ### Don't:
 - **Don't** use shadows on anything.
