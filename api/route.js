@@ -9,9 +9,9 @@ import { getOneMapToken, hasOneMapLogin } from './_onemap.js'
 
 const ROUTE_URL = 'https://www.onemap.gov.sg/api/public/routingsvc/route'
 
-// OneMap has no price for driving, so we estimate petrol + parking from the distance
-const CAR_COST_PER_KM = 0.6
-const CAR_PARKING = 2
+// (Surya) For driving, the cost shown is the PARKING RATE PER HOUR (not petrol), and the app says
+// so ("$1.20/h parking"). Usual HDB / URA car park rate outside the city centre: $0.60 per half hour.
+const PARKING_PER_HOUR = 1.2
 
 // Answers we already got from OneMap, so reloading page 07 or a friend changing their mode
 // doesn't ask for the same routes again (faster, and fewer calls to OneMap)
@@ -76,7 +76,7 @@ async function walkOrDrive(from, to, mode, token) {
   let cost = 0
   let instruction = `Walk ${km.toFixed(1)} km`
   if (mode === 'car') {
-    cost = Math.round((km * CAR_COST_PER_KM + CAR_PARKING) * 100) / 100
+    cost = PARKING_PER_HOUR
     instruction = `Drive ${km.toFixed(1)} km`
   }
 
