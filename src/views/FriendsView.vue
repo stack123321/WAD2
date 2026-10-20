@@ -2,6 +2,7 @@
 // Owner: Ryan
 // friends: search, send and accept requests, see pending and my friends (data: services/friends.js)
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
   searchPeople,
@@ -11,8 +12,10 @@ import {
   declineFriendRequest,
   removeFriend,
 } from '@/services/friends'
+import { getOrCreateDirectChat } from '@/services/directChats'
 
 const auth = useAuthStore()
+const router = useRouter()
 const myId = computed(() => (auth.user ? auth.user.id : null))
 
 // each is [{ user_id, display_name, avatar_color }]
@@ -49,6 +52,7 @@ const searching = ref(false)
 const searchError = ref('')
 
 async function search() {
+  if (searching.value) return
   searchError.value = ''
   if (query.value.trim().length < 2) {
     searchError.value = 'Type at least 2 letters of a name, or a full email.'
@@ -106,6 +110,18 @@ async function decline(person) {
   }
 }
 
+// opens my one to one chat with a friend, made the first time
+async function openChat(person) {
+  actionError.value = ''
+  try {
+    const chat = await getOrCreateDirectChat(person)
+    router.push({ name: 'direct-chat', params: { chatId: chat.id } })
+  } catch (err) {
+    console.log(err)
+    actionError.value = `Couldn't open a chat with ${person.display_name}.`
+  }
+}
+
 const confirmingId = ref(null) // friend whose row shows "are you sure?"
 
 async function remove(person) {
@@ -127,16 +143,15 @@ async function remove(person) {
     <h1 class="h3 mt-2 mb-3">Friends</h1>
 
     <!-- search -->
-    <form class="d-flex gap-2 mb-2" role="search" @submit.prevent="search">
+    <form class="mb-2" role="search" @submit.prevent="search">
       <label for="friend-search" class="visually-hidden">Search by name or email</label>
       <input
         id="friend-search"
         v-model="query"
         type="search"
         class="form-control"
-        placeholder="Search by name or email"
+        placeholder="Search by name or email, then press Enter"
       />
-      <button type="submit" class="btn btn-primary" :disabled="searching">Search</button>
     </form>
     <p v-if="searchError" class="text-danger small mb-2">{{ searchError }}</p>
 
@@ -222,6 +237,14 @@ async function remove(person) {
             >
               Add to hangout
             </router-link>
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              :aria-label="`Chat with ${f.display_name}`"
+              @click="openChat(f)"
+            >
+              Chat
+            </button>
             <button
               type="button"
               class="btn btn-outline-danger btn-sm"

@@ -2,7 +2,7 @@
 // Owner: Surya. Group chat for a hangout. Everyone in the hangout can read and post; new messages
 // appear live for everyone (Supabase Realtime). Drop it into any hangout page (06, 09, 11, 12):
 // Usage: <HangoutChat :hangout="store.hangout" />
-//   or a friend group's permanent chat: <HangoutChat :group="group" /> (/groups/:id)
+//   or a one to one chat: <HangoutChat :direct="chat" /> (/chats/direct/:chatId)
 //   optional: :my-id (defaults to the logged-in user), title, :height (px of the message list)
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
@@ -11,7 +11,7 @@ import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
   hangout: { type: Object, default: null }, // needs id, members
-  group: { type: Object, default: null }, // or a friend group: needs id, members
+  direct: { type: Object, default: null }, // or a one to one chat: needs id, members
   myId: { type: String, default: null },
   title: { type: String, default: 'Group chat' },
   height: { type: Number, default: 260 },
@@ -29,9 +29,9 @@ const me = computed(() => {
   return null
 })
 
-// The chat is for a group if one is given, otherwise for the hangout
-const kind = props.group ? 'group' : 'hangout'
-const room = computed(() => props.group || props.hangout)
+// the chat is for a one to one chat if one is given, otherwise for the hangout
+const kind = props.direct ? 'direct' : 'hangout'
+const room = computed(() => props.direct || props.hangout)
 
 const messages = ref([])
 const draft = ref('')
@@ -39,7 +39,7 @@ const loading = ref(true)
 const sending = ref(false)
 const error = ref('')
 const listEl = ref(null) // the scrolling message list
-const isDemo = room.value.id === 'demo'
+const isDemo = room.value.id === 'demo' || room.value.id.startsWith('demo-direct')
 
 // Part (a) Load the messages, then listen for new ones
 let stopListening = () => {}
@@ -129,7 +129,9 @@ function timeLabel(message) {
   <section class="chat">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
       <h2 class="h6 fw-bold mb-0">{{ title }}</h2>
-      <span class="small text-secondary">Everyone in this {{ kind }}</span>
+      <span class="small text-secondary">{{
+        kind === 'direct' ? 'Just the two of you' : 'Everyone in this hangout'
+      }}</span>
     </div>
 
     <p v-if="isDemo" class="small text-secondary mb-0">
@@ -177,7 +179,7 @@ function timeLabel(message) {
           class="form-control"
           type="text"
           maxlength="500"
-          placeholder="Message your group"
+          :placeholder="kind === 'direct' ? 'Message' : 'Message your group'"
           autocomplete="off"
         />
         <button
