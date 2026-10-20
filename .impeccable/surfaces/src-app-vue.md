@@ -21,12 +21,12 @@ STORY: The visitor reads what the page is for in one glance, sees everyone's tri
 
 FIRST VIEWPORT: Landing: centred giant "Meet in the middle." over a quiet hero, one grey and one black pill. Inside a hangout (phone): navbar, grey step band with the hangout name and a six-segment progress bar, then the page's teal headline and its main action.
 
-SIGNATURE INTERACTION AND MOTION: Calm, physical press feedback on every pill (a quick scale-down on press, ease-out), progress bars and vote tallies that grow into place once when the page opens, chips and toggles that change colour smoothly. All of it is skipped under reduced motion. No decorative motion.
+SIGNATURE INTERACTION AND MOTION: Calm, physical press feedback on every pill (a quick scale-down on press, ease-out), progress bars and vote tallies that grow into place once when the page opens, chips and toggles that change colour smoothly. All of it is skipped under reduced motion. No decorative motion. One signature moment on the landing (user-requested, after animejs.com): the hero pins while you scroll, the headline lifts away, each friend's route draws across a map of Singapore to the fair spot, the map zooms in on it and a caption states the gap; scrubbed by scroll (anime.js onScroll sync), shown as a still under reduced motion.
 
 FORM: The user's pinned design, Direction C ("Tinder — bold type, nothing else" home direction extended to every page). No roll was made for this direction: the user supplied it. (The seed file under .impeccable/questions/seeds belongs to the separate Loteria Night proposal on branch design/radical-redesign.) seed: none (unavailable)
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 ## Unresolved
-- The landing hero video lives in the design canvas as an uploaded asset; it ships only if the user OKs downloading it.
+- The landing hero video was tried (a teal globe) and replaced by the user with the scroll-driven map scene.
 - Each file's owner must OK their page's restyle before this merges.
