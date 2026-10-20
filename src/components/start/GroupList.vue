@@ -46,6 +46,44 @@ const remindedId = ref(null) // user_id of the member who was just reminded
 const remindLabel = ref('') // "Sent!" or "Copied!"
 const remindError = ref('')
 
+// Remind everyone: one message that tags everyone who hasn't added a starting point yet
+const remindAllLabel = ref('') // "Sent!" or "Copied!" for 2 seconds
+
+const missing = computed(() => {
+  const result = []
+  for (const member of props.hangout.members) {
+    if (!hasStart(member) && member.user_id !== props.myId) {
+      result.push(member)
+    }
+  }
+  return result
+})
+
+async function remindEveryone() {
+  remindError.value = ''
+  const tags = []
+  for (const member of missing.value) {
+    tags.push(`@${member.display_name}`)
+  }
+  const text = `${tags.join(' ')}, please add where you're coming from for "${props.hangout.name}" 📍`
+
+  try {
+    if (props.hangout.id === 'demo') {
+      await navigator.clipboard.writeText(`${text} ${inviteLink.value}`)
+      remindAllLabel.value = 'Copied!'
+    } else {
+      await sendMessage(props.hangout.id, text)
+      remindAllLabel.value = 'Sent!'
+    }
+    setTimeout(() => {
+      remindAllLabel.value = ''
+    }, 2000)
+  } catch (error) {
+    console.error(error)
+    remindError.value = "Couldn't send the reminder. Try again."
+  }
+}
+
 async function remind(member) {
   remindError.value = ''
   const text = `@${member.display_name}, please add where you're coming from for "${props.hangout.name}" 📍`
@@ -71,11 +109,22 @@ async function remind(member) {
 
 <template>
   <div>
-    <div class="d-flex justify-content-between align-items-baseline mb-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
       <h2 class="h6 fw-bold mb-0">Your group</h2>
-      <span class="small text-secondary"
-        >{{ readyCount }} of {{ hangout.members.length }} added</span
-      >
+      <div class="d-flex align-items-center gap-2">
+        <span class="small text-secondary"
+          >{{ readyCount }} of {{ hangout.members.length }} added</span
+        >
+        <!-- One reminder for everyone still missing (2 or more; one person has their own Remind) -->
+        <button
+          v-if="!hostMode && missing.length >= 2"
+          type="button"
+          class="btn btn-outline-primary btn-sm remind-all"
+          @click="remindEveryone"
+        >
+          {{ remindAllLabel || 'Remind everyone' }}
+        </button>
+      </div>
     </div>
 
     <ul class="list-unstyled mb-0">
@@ -156,6 +205,11 @@ async function remind(member) {
   flex-shrink: 0;
   color: var(--fp-primary);
   font-size: 1.1rem;
+}
+
+.remind-all {
+  min-height: 44px; /* big enough to tap with a finger */
+  white-space: nowrap;
 }
 
 .row-action {

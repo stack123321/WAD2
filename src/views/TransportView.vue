@@ -2,14 +2,17 @@
   // 07 Mode of transport
   // Owner: Nicole · Vet by: Surya
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-  import { fairness } from '@/utils/midpoint'
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
   import { useAuthStore } from '@/stores/auth'
   import { rankStations } from '@/services/routing'
-  import { saveMidpoint, subscribeToMembers, updateMemberMode } from '@/services/hangouts'
+  import {
+    getMyHangouts,
+    saveMidpoint,
+    subscribeToMembers,
+    updateMemberMode,
+  } from '@/services/hangouts'
   import PersonModeRow from '@/components/transport/PersonModeRow.vue'
-  import TravelTimePanel from '@/components/transport/TravelTimePanel.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -17,17 +20,22 @@
   const ranked = ref([])
   const store = useHangoutStore()
   const missingMode = computed(() => store.members.filter((m) => !m.mode))
-  const allPicked = computed(() => store.members.length > 0 && missingMode.value.length === 0)
 
 
 
   // The fairest MRT station: the 8 stations nearest the middle of everyone's starting points,
   // ranked by everyone's travel time with their own mode (rankStations in services/routing.js)
+  // (Surya) Nobody waits for friends: anyone who hasn't picked a mode yet counts as MRT for now,
+  // and their row says "assuming MRT". When they pick, it's worked out again with their real mode.
   async function scoreAreas() {
-    const members = store.members.filter((m) => m.mode && m.start_lat != null)
+    const members = store.members.filter((m) => m.start_lat != null)
     if (members.length === 0) return
 
-    ranked.value = await rankStations(members, optimiseFor.value)
+    const withModes = []
+    for (const m of members) {
+      withModes.push({ ...m, mode: m.mode || 'mrt' })
+    }
+    ranked.value = await rankStations(withModes, optimiseFor.value)
     if (ranked.value.length === 0) return
 
     const best = ranked.value[0]
@@ -119,21 +127,64 @@
 
   onMounted(async () => {
     await store.load(route.params.id)
+    await useUsualMode()
     await scoreAreas()
     stopListening = subscribeToMembers(route.params.id, onMemberChanged)
+  })
+
+  // (Surya) Remember my usual mode: if I haven't picked one here yet, pick the mode I used in my
+  // latest other hangout, so most people don't need to click at all. They can still change it.
+  const usualModeNote = ref('')
+
+  async function useUsualMode() {
+    const me = store.members.find((m) => isMe(m))
+    if (!me || me.mode) return
+    try {
+      const hangouts = await getMyHangouts()
+      let latest = null // best-so-far: my latest other hangout where I picked a mode
+      for (const h of hangouts) {
+        if (h.id === route.params.id) continue
+        const mine = h.members.find((m) => m.user_id === myId.value)
+        if (!mine || !mine.mode) continue
+        if (latest === null || new Date(h.starts_at) > new Date(latest.starts_at)) {
+          latest = { starts_at: h.starts_at, mode: mine.mode }
+        }
+      }
+      if (!latest) return
+      me.mode = latest.mode
+      await updateMemberMode(route.params.id, me.user_id, latest.mode)
+      usualModeNote.value = `${modeName(latest.mode)}, like last time. Change it anytime.`
+    } catch (e) {
+      // only a shortcut: if it fails, you just pick your mode yourself
+      console.error(e)
+    }
+  }
+
+  function modeName(mode) {
+    const names = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walking' }
+    return names[mode] || mode
+  }
+
+
+  // "Ryan hasn't picked yet…" / "Ryan and Nicole haven't picked yet…"
+  const waitingNote = computed(() => {
+    const names = missingMode.value.map((m) => m.display_name)
+    if (names.length === 1) {
+      return `${names[0]} hasn’t picked yet, so we’re assuming MRT for now.`
+    }
+    const last = names[names.length - 1]
+    return `${names.slice(0, -1).join(', ')} and ${last} haven’t picked yet, so we’re assuming MRT for now.`
+  })
+
+  // I can find the midpoint once I've picked my own mode (friends can pick later)
+  const myModePicked = computed(() => {
+    const me = store.members.find((m) => isMe(m))
+    return me !== undefined && Boolean(me.mode)
   })
 
   onUnmounted(() => stopListening())
   watch(optimiseFor, scoreAreas)
 
-  // Longest, shortest and gap across everyone's current travel times
-  const stats = computed(() => {
-    // Only people who've picked a mode have a travel time yet
-    const times = store.members.filter((m) => m.travel_mins != null).map((m) => m.travel_mins)
-    if (times.length === 0) return null
-    const f = fairness(times)
-    return { ...f, shortest: f.longest - f.gap }
-  })
 
 
 
@@ -142,10 +193,8 @@
    <template>
     <section class="container py-4">
       <h1 class="title">How is everyone getting there?</h1>
-      <p class="subtitle">
-        Pick how you're getting there. Everyone picks their own, and you'll see your friends' choices
-        as they make them.
-      </p>
+      <p class="subtitle">Pick how you’re getting there. Your friends pick their own.</p>
+      <p v-if="usualModeNote" class="usual-note small">✓ {{ usualModeNote }}</p>
       <p v-if="modeError" class="text-danger small" role="alert">{{ modeError }}</p>
 
       <div class="row g-4">
@@ -160,31 +209,28 @@
           />
         </div>
 
-        <!-- Right column: travel-time bars and candidate areas go here later -->
-        <div v-if="stats" class="col-lg-4">
-          <TravelTimePanel
-            :members="store.members"
-            :station-name="ranked[0]?.name"
-            :longest="stats.longest"
-          />
-
-          <button
-            v-if="allPicked"
-            type="button"
-            class="btn btn-primary btn-lg w-100"
-            :disabled="saving || ranked.length === 0"
-            @click="findMidpoint"
-          >
-            <span v-if="saving">Saving…</span>
-            <span v-else>Find our midpoint →</span>
-          </button>
-          <template v-else>
-            <button class="btn btn-primary btn-lg w-100" disabled>Find our midpoint →</button>
-            <p class="footnote">
-              Waiting for {{missingMode.map((m) => m.display_name).join(', ')}} to pick a mode
+        <!-- Right column: the next step. Which station, and why, is shown on the next page (08) -->
+        <div class="col-lg-4">
+          <section class="next-card">
+            <h2 class="next-title">Ready?</h2>
+            <p class="next-text">
+              {{ store.members.length - missingMode.length }} of {{ store.members.length }} have
+              picked how they’re getting there.
             </p>
-          </template>
-          <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
+            <!-- Works once YOU have picked a mode; friends who haven't count as MRT for now -->
+            <button
+              type="button"
+              class="btn btn-primary btn-lg w-100"
+              :disabled="saving || ranked.length === 0 || !myModePicked"
+              @click="findMidpoint()"
+            >
+              <span v-if="saving">Saving…</span>
+              <span v-else>Find our midpoint →</span>
+            </button>
+            <p v-if="!myModePicked" class="footnote">Pick how you’re getting there first.</p>
+            <p v-else-if="missingMode.length > 0" class="footnote">{{ waitingNote }}</p>
+            <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
+          </section>
           <p class="footnote">Travel times via OneMap routing + LTA DataMall</p>
         </div>
       </div>
@@ -254,6 +300,31 @@
   color: var(--fp-muted);
   font-size: 0.75rem;
   margin-top: 0.6rem;
+}
+
+/* (Surya) "MRT, like last time." */
+.usual-note {
+  color: var(--fp-primary);
+  font-weight: 600;
+}
+
+/* (Surya) "Ready?" card with the button */
+.next-card {
+  padding: 1.25rem;
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius);
+  background: var(--fp-surface);
+}
+
+.next-title {
+  margin-bottom: 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.next-text {
+  color: var(--fp-muted);
+  font-size: 0.9rem;
 }
 
 /* Phones: slightly bigger text so it's easy to read */

@@ -5,16 +5,180 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
+import { useAuthStore } from '@/stores/auth'
 import { nearestStations } from '@/utils/midpoint'
-import { scoreStation } from '@/services/routing'
+import { rankStations, scoreStation } from '@/services/routing'
 import { saveMidpoint } from '@/services/hangouts'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
+import TravelTimePanel from '@/components/transport/TravelTimePanel.vue'
+import MidpointSpots from '@/components/midpoint/MidpointSpots.vue'
 
 const route = useRoute()
 const store = useHangoutStore()
+const auth = useAuthStore()
 
-onMounted(() => store.load(route.params.id))
+onMounted(async () => {
+  await store.load(route.params.id)
+  await loadRanking()
+})
+
+// (Surya) Why this station? Rank the 8 stations near the middle again (the same way 07 does), so
+// we can explain the choice and offer the next best ones. Anyone who hasn't picked a mode counts
+// as MRT, like on 07. (The routes were already worked out on 07, so the server has them saved.)
+const ranked = ref([])
+const rankedFor = ref([]) // the members in the same order as each station's travelMins
+
+async function loadRanking() {
+  if (!midpoint.value) return
+  const people = store.members.filter((m) => m.start_lat != null)
+  if (people.length === 0) return
+  const withModes = []
+  for (const m of people) {
+    withModes.push({ ...m, mode: m.mode || 'mrt' })
+  }
+  try {
+    ranked.value = await rankStations(withModes, 'fairest')
+    rankedFor.value = people
+    if (current.value) {
+      showTimes(current.value)
+    }
+  } catch (err) {
+    // only extra detail: the map, weather and midpoint still work without it
+    console.error(err)
+  }
+}
+
+// The saved midpoint's numbers from the ranking (null if it was dragged to a station further out)
+const current = computed(() => {
+  if (!midpoint.value) return null
+  const found = ranked.value.find((r) => r.name === midpoint.value.name)
+  if (!found) return null
+  return found
+})
+
+const isFairest = computed(() => ranked.value.length > 0 && current.value === ranked.value[0])
+
+// Put each person's time and cost to a station on them (for the travel-time bars)
+function showTimes(station) {
+  rankedFor.value.forEach((m, i) => {
+    m.travel_mins = station.travelMins[i]
+    m.travel_cost = station.travelCosts[i]
+  })
+}
+
+// The 3 best stations apart from the current one
+const otherOptions = computed(() => {
+  const result = []
+  for (const r of ranked.value) {
+    if (midpoint.value && r.name !== midpoint.value.name && result.length < 3) {
+      result.push(r)
+    }
+  }
+  return result
+})
+
+// "Longest trip 49 min (4 min longer) · trips up to 30 min apart (less fair)", compared with the
+// current midpoint, in plain words
+function compareLine(option) {
+  const spread = `trips up to ${option.gap} min apart`
+  if (!current.value) {
+    return `Longest trip ${option.longest} min · ${spread}`
+  }
+  return `Longest trip ${option.longest} min (${longerText(option.longest - current.value.longest)}) · ${spread} (${fairerText(option.gap - current.value.gap)})`
+}
+
+// 4 → "4 min longer", -19 → "19 min shorter", 0 → "same"
+function longerText(n) {
+  if (n === 0) return 'same'
+  if (n > 0) return `${n} min longer`
+  return `${Math.abs(n)} min shorter`
+}
+
+// smaller spread between trips = fairer
+function fairerText(n) {
+  if (n === 0) return 'just as fair'
+  if (n > 0) return 'less fair'
+  return 'fairer'
+}
+
+const longestTrip = computed(() => {
+  let longest = 0
+  for (const m of store.members) {
+    if (m.travel_mins != null && m.travel_mins > longest) {
+      longest = m.travel_mins
+    }
+  }
+  return longest
+})
+
+// (Surya) Your own trip to the midpoint, e.g. "27 min by MRT · $2.20". Null if we don't know it
+// yet (you haven't picked a mode, or the travel times haven't loaded), so the line is hidden.
+// In the demo hangout (sample people) you're Surya, like on 06 and 07.
+const myTrip = computed(() => {
+  let myId = 'u-surya'
+  if (route.params.id !== 'demo' && auth.user) {
+    myId = auth.user.id
+  }
+  const me = store.members.find((m) => m.user_id === myId)
+  if (!me || !me.mode || me.travel_mins == null) {
+    return null
+  }
+  const modes = { mrt: 'MRT', bus: 'bus', car: 'car', walk: 'walking' }
+  let cost
+  if (me.mode === 'car') {
+    cost = `$${Number(me.travel_cost).toFixed(2)}/h parking`
+  } else if (me.mode === 'walk' || !me.travel_cost) {
+    cost = 'free'
+  } else {
+    cost = `$${Number(me.travel_cost).toFixed(2)}`
+  }
+  return `${me.travel_mins} min by ${modes[me.mode]} · ${cost}`
+})
+
+// (Surya) The station tabs above "Things to do": your midpoint first, then the next best ones,
+// each with a one-line comparison so you can weigh better spots against a longer trip
+const stationTabs = computed(() => {
+  if (!midpoint.value) return []
+  const tabs = [{ ...midpoint.value, chosen: true, compareText: '', station: null }]
+  for (const o of otherOptions.value) {
+    tabs.push({
+      name: o.name,
+      lat: o.lat,
+      lng: o.lng,
+      chosen: false,
+      compareText: compareLine(o),
+      station: o,
+    })
+  }
+  return tabs
+})
+
+// "Make ___ our midpoint": make another station the midpoint, for everyone
+
+async function chooseStation(station) {
+  moveMessage.value = ''
+  moveError.value = ''
+  showTimes(station)
+  store.hangout.midpoint_name = station.name
+  store.hangout.midpoint_lat = station.lat
+  store.hangout.midpoint_lng = station.lng
+  store.hangout.avg_mins = station.average
+  store.hangout.gap_mins = station.gap
+  try {
+    await saveMidpoint(route.params.id, {
+      name: station.name,
+      lat: station.lat,
+      lng: station.lng,
+      avgMins: station.average,
+      gapMins: station.gap,
+    })
+    moveMessage.value = `Moved to ${station.name} MRT.`
+  } catch (err) {
+    console.error(err)
+    moveError.value = `Moved to ${station.name} MRT on your screen, but couldn't save it for the group.`
+  }
+}
 
 const midpoint = computed(() => {
   if (!store.hangout) return null
@@ -104,9 +268,19 @@ async function onMidpointMoved(position) {
       <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
 
       <template v-if="midpoint">
-        <div class="row g-4">
+        <!-- (Surya) What you can do near the midpoint, before choosing spots -->
+        <MidpointSpots
+          :stations="stationTabs"
+          :vibes="store.hangout.vibe || []"
+          :hangout-id="route.params.id"
+          :busy="moving"
+          @choose="chooseStation"
+        />
+
+        <!-- the map, with the midpoint, everyone's travel times and the weather beside it -->
+        <div class="row g-4 mt-1">
           <!-- big map: the midpoint pin (draggable) and live crowds at the stations around it -->
-          <div class="col-lg-8">
+          <div class="col-lg-8 d-flex flex-column gap-3">
             <CrowdHeatmap
               :midpoint="midpoint"
               :draggable="true"
@@ -121,11 +295,11 @@ async function onMidpointMoved(position) {
               <div class="card-body">
                 <p class="eyebrow mb-1">Your fair midpoint</p>
                 <h2 class="h4 fw-bold mb-1">{{ midpoint.name }} MRT</h2>
-                <p v-if="store.hangout.avg_mins != null" class="small text-secondary mb-2">
-                  {{ store.hangout.avg_mins }} min average · {{ store.hangout.gap_mins }} min gap
-                  between trips
+                <!-- (Surya) Your own trip there, only when we know it -->
+                <p v-if="myTrip" class="my-trip mb-0">
+                  <span class="text-secondary">Your trip:</span> {{ myTrip }}
                 </p>
-                <p class="small mb-0">
+                <p class="small mt-2 mb-0">
                   <strong>Tip:</strong> drag the pin on the map to move the midpoint to another MRT
                   station nearby.
                 </p>
@@ -139,6 +313,19 @@ async function onMidpointMoved(position) {
               </div>
             </section>
 
+            <!-- (Surya) Everyone's travel time to the midpoint -->
+            <TravelTimePanel
+              v-if="longestTrip > 0"
+              :members="store.members"
+              :station-name="midpoint.name"
+              :longest="longestTrip"
+              :subtitle="
+                isFairest || !current
+                  ? 'The fairest MRT station near the middle of everyone\'s starting points'
+                  : 'The station your group chose'
+              "
+            />
+
             <WeatherCard
               :lat="midpoint.lat"
               :lng="midpoint.lng"
@@ -149,7 +336,7 @@ async function onMidpointMoved(position) {
         </div>
         <router-link
           :to="{ name: 'explore', params: { id: route.params.id } }"
-          class="btn btn-primary mt-3"
+          class="btn btn-primary mt-3 see-spots-btn"
         >
           See nearby spots
         </router-link>
@@ -172,6 +359,23 @@ async function onMidpointMoved(position) {
 </template>
 
 <style scoped>
+/* big enough to tap with a finger */
+.see-spots-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* (Surya) "Your trip: 27 min by MRT · $2.20" */
+.my-trip {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
 .eyebrow {
   color: var(--fp-accent);
   font-size: 0.8rem;

@@ -5,6 +5,11 @@ const props = defineProps({
   members: { type: Array, required: true },
   stationName: { type: String, default: '' },
   longest: { type: Number, required: true },
+  // (Surya) the line under the title (08 says so when the group chose a different station)
+  subtitle: {
+    type: String,
+    default: "The fairest MRT station near the middle of everyone's starting points",
+  },
 })
 
 // Bar length as a percentage; the full bar represents at least 40 minutes
@@ -17,11 +22,10 @@ function barWidth(mins) {
 <template>
   <div class="panel">
     <h2 class="panel-title">Travel time to {{ stationName }} MRT</h2>
-    <p class="panel-sub">
-      The fairest MRT station near the middle of everyone's starting points
-    </p>
+    <p class="panel-sub">{{ subtitle }}</p>
 
-    <div v-for="m in members" :key="m.user_id" class="bar-row">
+    <!-- (Surya) only people with a travel time (anyone without a starting point is skipped) -->
+    <div v-for="m in members.filter((x) => x.travel_mins != null)" :key="m.user_id" class="bar-row">
       <span class="bar-name">{{ m.display_name }}</span>
       <div class="bar-track">
         <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: m.avatar_color }"></div>

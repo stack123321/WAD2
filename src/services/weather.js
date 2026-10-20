@@ -51,7 +51,8 @@ export async function getTwoHourForecast(lat, lng) {
 
 // Part (b) 4-day outlook
 /**
- * Outlook for the next 4 days (starting tomorrow), for the week strip on 04 Dashboard.
+ * Outlook for the next 4 days, for the week strip on 04 Dashboard and 05 New hangout.
+ * NEA issues it in the afternoon, so before then the first day can be TODAY, not tomorrow.
  * @returns {Promise<Array<{ date: string, forecast: string, rain: boolean, low: number, high: number }>>}
  */
 export async function getDayForecast() {
@@ -80,8 +81,12 @@ export async function getTodayForecast() {
   const record = data.records[0]
   const forecastText = record.general.forecast.text // e.g. "Partly Cloudy (Day)"
 
+  // record.date is the day NEA issued it: after about 11 pm that's yesterday, even though the
+  // forecast is for today. So use Singapore's date right now instead ("2026-10-21").
+  const todaySg = sgHourKey(new Date()).slice(0, 10)
+
   return {
-    date: record.date,
+    date: todaySg,
     forecast: forecastText,
     rain: isRain(forecastText),
     low: record.general.temperature.low,
