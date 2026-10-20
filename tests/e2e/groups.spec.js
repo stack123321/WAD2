@@ -10,7 +10,7 @@ const saturday = 'Saturday study session'
 const card = (page, hangoutName) => page.locator('.card', { hasText: hangoutName })
 
 async function openSaturdayVote(page) {
-  await card(page, saturday).getByRole('link', { name: 'Continue' }).click()
+  await card(page, saturday).getByRole('link', { name: saturday }).click()
   await page.getByRole('link', { name: '5 Vote', exact: true }).click()
   await expect(page).toHaveURL('/hangouts/demo-2/vote')
 }
@@ -23,12 +23,12 @@ test.beforeEach(async ({ page }) => {
 test('the dashboard lists both hangouts with their own people', async ({ page }) => {
   await expect(page.getByRole('heading', { name: friday })).toBeVisible()
   await expect(page.getByRole('heading', { name: saturday })).toBeVisible()
-  await expect(page.getByText('Voting · 3 of 4 voted')).toBeVisible()
-  await expect(page.getByText('Locations · 3 of 3 added')).toBeVisible()
+  await expect(page.getByText('Waiting on Surya')).toBeVisible()
+  await expect(page.getByText("Everyone's added")).toBeVisible()
 })
 
 test('switching hangouts shows only that group’s spots, people and votes', async ({ page }) => {
-  await card(page, friday).getByRole('link', { name: 'Open vote' }).click()
+  await card(page, friday).getByRole('link', { name: friday }).click()
   await expect(page.getByText(friday)).toBeVisible()
   await expect(page.getByText('3 of 4 voted')).toBeVisible()
   await page.getByRole('button', { name: 'Vote for Mock Hawker Centre (sample data)' }).click()

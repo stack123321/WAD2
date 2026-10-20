@@ -3,6 +3,7 @@
 // sized in px. Used on 11 Group voting's cards, waiting row and feed. Decorative only: the parent
 // always writes the person's name in text as well.
 import { computed } from 'vue'
+import { readableInk } from '@/utils/color'
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -22,6 +23,7 @@ const initial = computed(() => props.name.charAt(0).toUpperCase())
       height: size + 'px',
       fontSize: size * 0.45 + 'px',
       backgroundColor: color,
+      color: color ? readableInk(color) : null,
     }"
     :title="name"
     aria-hidden="true"
