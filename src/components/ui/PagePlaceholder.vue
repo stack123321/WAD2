@@ -17,7 +17,7 @@ defineProps({
   <section class="container py-5">
     <div class="placeholder-card">
       <p class="eyebrow">Page {{ number }} · owner: {{ owner }}</p>
-      <h1 class="h2">{{ title }}</h1>
+      <h1>{{ title }}</h1>
       <p class="purpose">{{ purpose }}</p>
       <dl class="row small mb-4">
         <dt class="col-sm-2">Reads</dt>

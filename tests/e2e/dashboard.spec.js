@@ -29,7 +29,7 @@ test('Open vote goes to the voting page', async ({ page }) => {
 test('Crowds right now counts stations and opens the heat map', async ({ page }) => {
   await page.goto('/dashboard')
   await expect(page.getByText(/\d+ busy/)).toBeVisible()
-  await page.getByRole('link', { name: 'Open heat map →' }).click()
+  await page.getByRole('link', { name: 'Open heat map' }).click()
   await expect(page).toHaveURL('/crowds')
   await expect(page.locator('#crowd-map path.crowd').first()).toBeVisible()
   await expect(page.locator('#crowd-map .midpoint-pin')).toHaveCount(0)
@@ -39,16 +39,16 @@ test('Hangout with shows the 3 newest friends and starts a hangout with one', as
   await page.goto('/dashboard')
   const card = page.locator('.hangout-with')
   await expect(card.getByText('Hugo')).toBeVisible()
-  await expect(card.getByRole('link', { name: /^Add .+ to new hangout$/ })).toHaveCount(3)
+  await expect(card.getByRole('link', { name: /^Start a hangout with .+$/ })).toHaveCount(3)
 
-  await card.getByRole('link', { name: 'Add Hugo to new hangout' }).click()
+  await card.getByRole('link', { name: 'Start a hangout with Hugo' }).click()
   await expect(page).toHaveURL('/hangouts/new?with=u-hugo')
   await expect(page.getByText('Hanging out with Hugo')).toBeVisible()
 })
 
 test('Open Friends List goes to the friends page', async ({ page }) => {
   await page.goto('/dashboard')
-  await page.getByRole('link', { name: 'Open Friends List →' }).click()
+  await page.getByRole('link', { name: 'All friends' }).click()
   await expect(page).toHaveURL('/friends')
   await expect(page.getByRole('heading', { name: 'My Friends' })).toBeVisible()
 })

@@ -1,8 +1,8 @@
 <script setup>
 // 12 Final plan & itinerary
 // Owner: Eashvar (routes section: Nicole) · Vet by: Ryan
-// Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
-// a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
+// Figma frame "12". The spot is the page's headline: the confirmed spot (or, before the vote
+// closes, the current leader with a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
 // spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
 // only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
 // current members' latest votes count. Surya's MembersMap shows everyone's starting point and
@@ -60,6 +60,8 @@ const confirmedSpot = computed(
 )
 const isConfirmed = computed(() => confirmedSpot.value !== null)
 const spot = computed(() => confirmedSpot.value ?? pickLeader(rows.value)?.spot ?? null)
+const spotVotes = computed(() => rows.value.find((r) => r.spot.id === spot.value?.id)?.count ?? 0)
+
 const backup = computed(() =>
   spot.value ? (runnerUp(rows.value, spot.value.id)?.spot ?? null) : null,
 )
@@ -143,11 +145,7 @@ onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
-  <main class="container py-4">
-    <header class="mb-4">
-      <h1 class="h2 mb-0">Final plan & itinerary</h1>
-    </header>
-
+  <main class="plan-page">
     <div v-if="store.loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading the plan…</span>
@@ -158,191 +156,304 @@ onUnmounted(() => clearInterval(timer))
       Couldn't load this hangout. {{ store.error.message }}
     </div>
 
-    <div v-else-if="hangout && !spot" class="alert alert-info">
-      Nothing has been shortlisted yet, so there's no plan to show.
-    </div>
+    <template v-else-if="hangout && !spot">
+      <h1 class="plan-empty-title">No plan yet.</h1>
+      <p class="plan-meta">Nothing has been shortlisted yet, so there's no plan to show.</p>
+    </template>
 
     <template v-else-if="hangout">
       <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
 
-      <div class="row g-4">
-        <div class="col-12 col-lg-7 d-flex flex-column gap-4">
-          <section class="panel hero" aria-labelledby="spot-heading">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <p class="label small mb-1">
-                {{ isConfirmed ? 'Confirmed spot' : 'Current leader' }}
-              </p>
-              <span v-if="status === 'done'" class="badge done">✓ Done</span>
-            </div>
-            <h2 id="spot-heading" class="h4 mb-1">{{ spot.name }}</h2>
-            <p class="muted mb-2">
-              <span class="text-capitalize">{{ spot.category }}</span>
-              <template v-if="spot.rating">
-                · <span aria-hidden="true">★</span><span class="visually-hidden">Rating</span>
-                {{ spot.rating }}
-              </template>
-              <template v-if="hangout.midpoint_name"> · {{ hangout.midpoint_name }}</template>
-            </p>
-            <p v-if="startsAt" class="mb-0">
-              <strong>{{ formatDateTime(startsAt) }}</strong> SGT
-            </p>
-            <p v-if="!isConfirmed" class="not-confirmed small mt-3 mb-0">
-              Not confirmed yet. The host hasn't closed the vote, so this is the spot with the most
-              votes so far.
-            </p>
-          </section>
+      <section class="plan-hero" aria-labelledby="spot-heading">
+        <p v-if="status === 'done'" class="fp-status fp-status--ok mb-0">Done</p>
+        <p v-else-if="isConfirmed" class="fp-status fp-status--ok mb-0">
+          Confirmed spot · {{ spotVotes }} of {{ store.members.length }} votes
+        </p>
+        <p v-else class="fp-status mb-0">Not confirmed yet</p>
 
+        <h1 id="spot-heading" class="plan-title">
+          {{ spot.name }}<span aria-hidden="true">.</span>
+        </h1>
+        <p class="plan-meta">
+          <strong v-if="startsAt">{{ formatDateTime(startsAt) }}</strong>
+          <template v-if="startsAt"> SGT · </template>
+          <span class="text-capitalize">{{ spot.category }}</span>
+          <template v-if="spot.rating">
+            ·
+            <svg
+              class="star"
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+            >
+              <path
+                d="M3.6 15.3c-.4.2-.8-.2-.7-.6l.8-4.7L.3 6.7c-.3-.3-.2-.9.3-.9l4.7-.7L7.4.8c.2-.4.8-.4 1 0l2.1 4.3 4.7.7c.5 0 .6.6.3.9l-3.4 3.3.8 4.7c.1.4-.3.8-.7.6L8 13.1z"
+              /></svg
+            ><span class="visually-hidden">Rating</span>
+            {{ spot.rating }}
+          </template>
+          <template v-if="hangout.midpoint_name"> · {{ hangout.midpoint_name }}</template>
+        </p>
+        <p v-if="!isConfirmed" class="plan-note">
+          The host hasn't closed the vote, so this is the spot with the most votes so far.
+        </p>
+
+        <div class="plan-actions">
+          <button type="button" class="btn btn-secondary btn-lg" @click="copyPlan">
+            Copy plan
+          </button>
+          <a
+            v-if="calendarLink"
+            class="btn btn-primary btn-lg"
+            :href="calendarLink"
+            target="_blank"
+            rel="noopener"
+          >
+            Add to Google Calendar
+          </a>
+        </div>
+        <div
+          v-if="copyMessage"
+          class="alert copy-alert"
+          :class="copyFailed ? 'alert-warning' : 'alert-success'"
+          role="status"
+        >
+          {{ copyMessage }}
+        </div>
+        <div v-if="copyFailed && copyMessage" class="copy-fallback">
+          <label for="plan-text" class="form-label">Plan text</label>
+          <textarea
+            id="plan-text"
+            class="form-control"
+            rows="8"
+            readonly
+            :value="summary"
+          ></textarea>
+        </div>
+      </section>
+
+      <div class="plan-body">
+        <div class="plan-main">
           <TripTable :members="store.members" :starts-at="startsAt" :my-id="myId" />
 
-          <section class="owner-box" aria-labelledby="routes-heading">
-            <h2 id="routes-heading" class="h6 mb-1">Getting there</h2>
-            <p class="small mb-0">Step-by-step routes for everyone are coming soon.</p>
+          <section class="panel" aria-labelledby="map-heading">
+            <h2 id="map-heading" class="panel-title">Where everyone's coming from</h2>
+            <div class="map-frame">
+              <MembersMap :members="store.members" :highlight-id="myId" />
+            </div>
           </section>
         </div>
 
-        <div class="col-12 col-lg-5 d-flex flex-column gap-4">
-          <div class="row g-3">
-            <div class="col-12 col-md-6 col-lg-12">
-              <section class="panel h-100" aria-labelledby="map-heading">
-                <h2 id="map-heading" class="h6 mb-2">Where everyone's coming from</h2>
-                <div class="map-frame">
-                  <MembersMap :members="store.members" :highlight-id="myId" />
-                </div>
-              </section>
-            </div>
-            <div v-if="weatherPlace" class="col-12 col-md-6 col-lg-12">
-              <WeatherCard
-                :lat="weatherPlace.lat"
-                :lng="weatherPlace.lng"
-                :place="weatherPlace.name"
-                :at="startsAt"
-              />
-            </div>
-          </div>
+        <aside class="plan-aside">
+          <WeatherCard
+            v-if="weatherPlace"
+            :lat="weatherPlace.lat"
+            :lng="weatherPlace.lng"
+            :place="weatherPlace.name"
+            :at="startsAt"
+          />
 
           <section class="panel" aria-labelledby="backup-heading">
-            <h2 id="backup-heading" class="h6 mb-1">Backup plan</h2>
-            <template v-if="backup">
-              <p class="fw-semibold mb-0">{{ backup.name }}</p>
-              <p class="small muted mb-0">
-                The runner-up, in case {{ spot.name }} is full or closed.
-              </p>
-            </template>
-            <p v-else class="small muted mb-0">There was only one spot, so there's no backup.</p>
+            <h2 id="backup-heading" class="side-title">Backup plan</h2>
+            <div v-if="backup" class="backup">
+              <span class="backup-tile" aria-hidden="true">{{ backup.name.charAt(0) }}</span>
+              <div>
+                <p class="backup-name">{{ backup.name }}</p>
+                <p class="small-muted">The runner-up, in case {{ spot.name }} is full or closed.</p>
+              </div>
+            </div>
+            <p v-else class="small-muted mt-2">There was only one spot, so there's no backup.</p>
           </section>
 
-          <section class="panel" aria-labelledby="actions-heading">
-            <h2 id="actions-heading" class="h6 mb-3">Save and share</h2>
-            <div class="d-grid gap-2">
-              <a
-                v-if="calendarLink"
-                class="btn btn-primary"
-                :href="calendarLink"
-                target="_blank"
-                rel="noopener"
-              >
-                Add to Google Calendar
-              </a>
-              <button type="button" class="btn btn-outline-primary" @click="copyPlan">
-                Copy plan
-              </button>
-              <button
-                v-if="isHost && status === 'confirmed'"
-                type="button"
-                class="btn btn-outline-primary"
-                :disabled="markingDone || !hasStarted"
-                @click="markDone"
-              >
-                Mark as done
-              </button>
-            </div>
-            <p v-if="isHost && status === 'confirmed' && !hasStarted" class="small muted mt-2 mb-0">
+          <section
+            v-if="isHost && status === 'confirmed'"
+            class="panel"
+            aria-labelledby="done-heading"
+          >
+            <h2 id="done-heading" class="side-title">After the hangout</h2>
+            <button
+              type="button"
+              class="btn btn-primary w-100 done-btn"
+              :disabled="markingDone || !hasStarted"
+              @click="markDone"
+            >
+              Mark as done
+            </button>
+            <p v-if="!hasStarted" class="small-muted text-center mt-2">
               You can mark it done once the hangout has started.
             </p>
-            <div
-              v-if="copyMessage"
-              class="alert small mt-3 mb-0"
-              :class="copyFailed ? 'alert-warning' : 'alert-success'"
-              role="status"
-            >
-              {{ copyMessage }}
-            </div>
-            <template v-if="copyFailed && copyMessage">
-              <label for="plan-text" class="form-label small fw-semibold mt-3">Plan text</label>
-              <textarea
-                id="plan-text"
-                class="form-control small"
-                rows="8"
-                readonly
-                :value="summary"
-              ></textarea>
-            </template>
           </section>
-        </div>
+        </aside>
       </div>
 
-      <nav class="mt-4" aria-label="Next step">
-        <RouterLink class="btn btn-link px-0" :to="{ name: 'dashboard' }">
-          Back to my hangouts
-        </RouterLink>
+      <nav class="plan-back" aria-label="Next step">
+        <RouterLink class="back-link" :to="{ name: 'dashboard' }">Back to my hangouts</RouterLink>
       </nav>
     </template>
   </main>
 </template>
 
 <style scoped>
-.btn {
-  display: inline-flex;
+.plan-page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 4rem clamp(1rem, 2.8vw, 2.5rem) 6rem;
+}
+
+/* The spot is the headline, centred, with the two actions right under it */
+.plan-hero {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 44px;
+  padding: 1.5rem 0 3.5rem;
+  text-align: center;
 }
 
-.panel {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.25rem;
+.plan-title {
+  margin: 1.25rem 0 0;
+  font-size: clamp(3.25rem, 9vw, 9.25rem);
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
 }
 
-.hero {
-  border-top: 4px solid var(--fp-primary);
+.plan-empty-title {
+  margin: 0 0 1rem;
 }
 
-.label {
-  color: var(--fp-primary);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.muted {
+.plan-meta {
+  margin: 1.4rem 0 0;
   color: var(--fp-muted);
+  font-size: 1.3rem;
 }
 
-.not-confirmed {
-  border-left: 3px solid var(--fp-accent);
-  padding-left: 0.75rem;
+.plan-meta strong {
   color: var(--fp-ink);
 }
 
-.done {
-  background: var(--fp-primary);
-  color: var(--fp-surface);
+.plan-note {
+  margin: 0.75rem 0 0;
+  color: var(--fp-muted);
+  font-size: 1rem;
 }
 
-.owner-box {
-  border: 2px dashed var(--fp-border);
-  border-radius: var(--fp-radius);
-  padding: 1.25rem;
-  color: var(--fp-muted);
+.plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 2rem;
+}
+
+.copy-alert {
+  margin: 1.25rem 0 0;
+}
+
+.copy-fallback {
+  width: min(100%, 520px);
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.plan-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.plan-main {
+  flex: 999 1 640px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.plan-aside {
+  flex: 1 1 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.panel {
+  padding: 1.75rem;
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius-lg);
+}
+
+.panel-title {
+  margin: 0 0 1rem;
+  font-size: 1.75rem;
 }
 
 .map-frame {
-  height: 16rem;
+  height: 18rem;
   border-radius: var(--fp-radius-sm);
   overflow: hidden;
+}
+
+.backup {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.6rem;
+}
+
+.backup-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--fp-radius-sm);
+  background: var(--fp-surface);
+  color: var(--fp-muted);
+  font-family: var(--fp-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+}
+
+.side-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.backup-name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.0625rem;
+}
+
+.star {
+  vertical-align: -1px;
+}
+
+.small-muted {
+  margin-bottom: 0;
+  color: var(--fp-muted);
+  font-size: 0.875rem;
+}
+
+.done-btn {
+  margin-top: 0.75rem;
+  min-height: 52px;
+}
+
+.plan-back {
+  margin-top: 3.5rem;
+  text-align: center;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  text-decoration: none;
 }
 </style>

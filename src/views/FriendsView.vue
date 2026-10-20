@@ -124,7 +124,7 @@ async function remove(person) {
 <template>
   <main class="container py-4 friends-page">
     <router-link :to="{ name: 'dashboard' }" class="small">← My hangouts</router-link>
-    <h1 class="h3 mt-2 mb-3">Friends</h1>
+    <h1 class="mt-2 mb-4">Friends.</h1>
 
     <!-- search -->
     <form class="d-flex gap-2 mb-2" role="search" @submit.prevent="search">
@@ -217,7 +217,7 @@ async function remove(person) {
           <template v-else>
             <router-link
               :to="{ name: 'create-hangout', query: { with: f.user_id } }"
-              class="btn btn-primary btn-sm ms-auto text-nowrap"
+              class="btn btn-secondary btn-sm ms-auto text-nowrap"
               :aria-label="`Add ${f.display_name} to hangout`"
             >
               Add to hangout

@@ -25,7 +25,7 @@ onMounted(async () => {
 
 <template>
   <section class="hangout-with">
-    <h2 class="h6 fw-bold mb-3">Hangout with</h2>
+    <h2 class="side-title">Hang out with</h2>
 
     <p v-if="loading" class="text-muted small mb-3">Loading your friends…</p>
     <p v-else-if="error" class="text-danger small mb-3">{{ error }}</p>
@@ -40,16 +40,14 @@ onMounted(async () => {
       <span class="name">{{ f.display_name }}</span>
       <router-link
         :to="{ name: 'create-hangout', query: { with: f.user_id } }"
-        class="btn btn-primary btn-sm ms-auto text-nowrap"
-        :aria-label="`Add ${f.display_name} to new hangout`"
+        class="invite-link ms-auto"
+        :aria-label="`Start a hangout with ${f.display_name}`"
       >
-        Add to new hangout
+        Invite
       </router-link>
     </div>
 
-    <router-link :to="{ name: 'friends' }" class="btn btn-outline-primary btn-sm w-100">
-      Open Friends List →
-    </router-link>
+    <router-link :to="{ name: 'friends' }" class="invite-link all-friends">All friends</router-link>
   </section>
 </template>
 
@@ -82,5 +80,24 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+.side-title {
+  margin: 0 0 1rem;
+  font-size: 1.375rem;
+}
+
+.invite-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--fp-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.invite-link:hover {
+  color: var(--fp-primary-dark);
 }
 </style>

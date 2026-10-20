@@ -1,5 +1,5 @@
 <script setup>
-// Owner: Eashvar. "Group activity" on 11 Group voting: who voted, changed or removed their vote,
+// Owner: Eashvar. "What's happening" on 11 Group voting: who voted, changed or removed their vote,
 // newest first, with an avatar and the time in SGT (date included if it wasn't today).
 // The database keeps only each person's latest vote, so changes are listed only while the page is open.
 import MemberAvatar from './MemberAvatar.vue'
@@ -15,44 +15,70 @@ function when(iso) {
 </script>
 
 <template>
-  <section class="panel" aria-labelledby="feed-heading">
-    <h2 id="feed-heading" class="h6 fw-bold mb-3">Group activity</h2>
-    <p v-if="items.length === 0" class="small muted">No votes yet.</p>
-    <ol v-else class="list-unstyled mb-3" aria-live="polite">
-      <li v-for="item in items" :key="item.id" class="d-flex gap-2 mb-3">
-        <MemberAvatar :name="item.displayName" :color="item.color" :size="24" />
-        <div class="small">
-          <p class="mb-0">
-            <strong>{{ item.name }}</strong>
-            <template v-if="item.kind === 'voted'"> voted for {{ item.toName }}</template>
-            <template v-else-if="item.kind === 'changed'">
-              changed {{ item.isMe ? 'your' : 'their' }} vote to {{ item.toName }} (was
-              {{ item.fromName }})
-            </template>
-            <template v-else> removed {{ item.isMe ? 'your' : 'their' }} vote</template>
-          </p>
-          <time class="muted time" :datetime="item.at">{{ when(item.at) }}</time>
-        </div>
+  <section class="feed" aria-labelledby="feed-heading">
+    <h2 id="feed-heading" class="feed-title">What's happening</h2>
+    <p v-if="items.length === 0" class="muted mb-0">No votes yet.</p>
+    <ol v-else class="feed-list" aria-live="polite">
+      <li v-for="item in items" :key="item.id" class="feed-item">
+        <MemberAvatar :name="item.displayName" :color="item.color" :size="30" />
+        <p class="mb-0">
+          <strong>{{ item.name }}</strong>
+          <template v-if="item.kind === 'voted'"> voted for {{ item.toName }}</template>
+          <template v-else-if="item.kind === 'changed'">
+            changed {{ item.isMe ? 'your' : 'their' }} vote to {{ item.toName }} (was
+            {{ item.fromName }})
+          </template>
+          <template v-else> removed {{ item.isMe ? 'your' : 'their' }} vote</template>
+          <span class="when">
+            · <time :datetime="item.at">{{ when(item.at) }}</time></span
+          >
+        </p>
       </li>
     </ol>
-    <p class="small muted mb-0">Vote changes are only listed while this page is open.</p>
+    <p class="feed-note">Vote changes are only listed while this page is open.</p>
   </section>
 </template>
 
 <style scoped>
-.panel {
-  background: var(--fp-surface);
+.feed {
+  padding: 1.6rem;
   border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.25rem;
+}
+
+.feed-title {
+  margin: 0 0 0.9rem;
+  font-size: 1.375rem;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.when {
+  color: var(--fp-faint);
 }
 
 .muted {
   color: var(--fp-muted);
 }
 
-.time {
-  font-size: 0.75rem;
+.feed-note {
+  margin: 1rem 0 0;
+  color: var(--fp-faint);
+  font-size: 0.85rem;
 }
 </style>

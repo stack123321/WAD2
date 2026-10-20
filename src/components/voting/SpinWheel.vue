@@ -18,8 +18,9 @@ const emit = defineEmits(['spin'])
 
 const COLOURS = [
   'var(--fp-primary)',
+  'var(--fp-ink)',
+  'var(--fp-pill)',
   'var(--fp-accent)',
-  'var(--fp-muted)',
   'var(--fp-primary-dark)',
 ]
 
@@ -90,7 +91,7 @@ const decided = computed(() => winner.value !== null && !props.spinning)
       <template v-else-if="winner">Spinning…</template>
     </p>
     <RouterLink v-if="decided" class="btn btn-primary w-100 fw-semibold mt-3" :to="planTo">
-      See the final plan <span aria-hidden="true">→</span>
+      See the final plan
     </RouterLink>
   </section>
 </template>
@@ -106,10 +107,9 @@ const decided = computed(() => winner.value !== null && !props.spinning)
 
 .panel {
   background: var(--fp-surface);
-  border: 2px solid var(--fp-accent);
+  border: 2px solid var(--fp-primary);
   border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.25rem;
+  padding: 1.6rem;
 }
 
 .muted {

@@ -101,7 +101,12 @@ async function onMidpointMoved(position) {
   <div v-else-if="store.hangout">
     <!-- the step bar comes from App.vue, which adds it to every hangout page -->
     <main class="container py-4">
-      <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
+      <h1 class="mb-4">
+        <template v-if="midpoint?.name"
+          >{{ midpoint.name }}<span aria-hidden="true">.</span></template
+        >
+        <template v-else>Your midpoint.</template>
+      </h1>
 
       <template v-if="midpoint">
         <div class="row g-4">

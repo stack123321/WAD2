@@ -36,8 +36,8 @@ const initial = computed(() => props.name.charAt(0).toUpperCase())
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 2px solid var(--fp-surface);
-  color: var(--fp-surface);
+  border: 2px solid var(--fp-bg);
+  color: var(--fp-bg);
   font-weight: 700;
   line-height: 1;
 }

@@ -16,16 +16,18 @@ const emit = defineEmits(['select', 'close'])
 </script>
 
 <template>
-  <section class="panel" aria-labelledby="close-heading">
-    <div class="d-flex align-items-center gap-2 mb-3">
-      <span class="badge host">Host</span>
-      <h2 id="close-heading" class="h6 mb-0">You started this hangout</h2>
-    </div>
+  <section class="host-card" aria-labelledby="close-heading">
+    <h2 id="close-heading" class="host-title">Close the vote.</h2>
+    <p class="host-text">
+      Only you see this, as the host. Lock in the winner now<template v-if="deadlineText"
+        >, or let it close on its own on {{ deadlineText }} SGT</template
+      >. The winner starts as the leading spot.
+    </p>
 
-    <label for="winner" class="form-label small fw-semibold mb-1">Winner</label>
+    <label for="winner" class="host-field-label">Winner</label>
     <select
       id="winner"
-      class="form-select mb-3"
+      class="form-select host-select"
       :value="selectedId"
       :disabled="disabled || closing"
       @change="emit('select', $event.target.value)"
@@ -35,58 +37,67 @@ const emit = defineEmits(['select', 'close'])
 
     <button
       type="button"
-      class="btn btn-primary w-100 fw-semibold"
+      class="btn btn-light host-btn"
       :disabled="disabled || closing || !selectedId || voteCount === 0"
       @click="emit('close', selectedId)"
     >
-      <span v-if="closing" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-      Close vote &amp; confirm plan <span aria-hidden="true">→</span>
+      <span v-if="closing" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      Close vote &amp; confirm plan
     </button>
-    <p v-if="voteCount === 0" class="small hint mt-2 mb-0" role="status">
+    <p v-if="voteCount === 0" class="host-hint" role="status">
       Wait for at least one vote before closing.
-    </p>
-
-    <p v-if="deadlineText" class="small muted mt-2 mb-0">
-      Voting closes {{ deadlineText }} SGT. The winner starts as the leading spot.
     </p>
   </section>
 </template>
-
 <style scoped>
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 44px;
+/* One black feature card per page: the thing the host most needs to tap */
+.host-card {
+  padding: 1.75rem;
+  background: var(--fp-ink);
+  color: var(--fp-bg);
+  border-radius: var(--fp-radius-lg);
 }
 
-.form-select {
-  min-height: 44px;
+.host-title {
+  margin: 0;
+  color: var(--fp-bg);
+  font-weight: 800;
+  font-size: 1.75rem;
 }
 
-.panel {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.25rem;
+.host-text {
+  margin: 0.5rem 0 1.1rem;
+  color: var(--fp-on-dark-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.host {
-  background: var(--fp-bg);
-  color: var(--fp-primary);
-  border: 1px solid var(--fp-border);
+.host-field-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
-.muted {
-  color: var(--fp-muted);
+.host-select {
+  background-color: var(--fp-bg);
 }
 
-.hint {
-  border-left: 3px solid var(--fp-accent);
-  padding-left: 0.5rem;
-  color: var(--fp-ink);
+.host-btn {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 0.9rem;
+  --bs-btn-bg: var(--fp-bg);
+  --bs-btn-hover-bg: var(--fp-surface);
+  --bs-btn-active-bg: var(--fp-surface);
+  --bs-btn-disabled-bg: var(--fp-ink-hover);
+  --bs-btn-disabled-color: var(--fp-on-dark-muted);
+}
+
+.host-hint {
+  margin: 0.6rem 0 0;
+  color: var(--fp-on-dark-muted);
+  font-size: 0.875rem;
+  text-align: center;
 }
 </style>

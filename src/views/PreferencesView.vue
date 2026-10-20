@@ -188,7 +188,7 @@ async function save() {
   <main class="container prefs">
     <header class="prefs__header">
       <div>
-        <h1 class="prefs__title">Tell us what you like</h1>
+        <h1 class="prefs__title">Tell us what you like.</h1>
         <p class="prefs__sub">Fairpoint uses this to rank cafes and activities for your group.</p>
       </div>
       <div v-if="isSetup" class="progress-step">
@@ -378,10 +378,7 @@ async function save() {
 }
 
 .prefs__title {
-  margin-bottom: 0.4rem;
-  font-size: 1.85rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
 }
 
 .prefs__sub {

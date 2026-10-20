@@ -31,7 +31,6 @@ import { getHangout } from '@/services/hangouts'
 import { sendMessage } from '@/services/chat'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import StartPanel from '@/components/voting/StartPanel.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
 import SpinWheel from '@/components/voting/SpinWheel.vue'
@@ -288,203 +287,198 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="container py-4">
-    <div class="row g-4">
-      <div class="col-12 col-lg-8">
-        <header class="mb-3">
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
-            <h1 class="h3 fw-bold mb-0">Group voting</h1>
-            <p
-              v-if="hangout && (deadline || status === 'collecting')"
-              class="deadline small mb-0"
-              :class="{ 'deadline--closed': !votingOpen }"
-              :title="deadline ? `Voting closes ${formatDateTime(deadline)} SGT` : null"
-            >
-              <span class="dot" aria-hidden="true"></span>
-              <template v-if="status === 'collecting'">Not started</template>
-              <template v-else-if="votingOpen">
-                Closes in <time :datetime="deadline">{{ timeLeftText }}</time>
-              </template>
-              <template v-else>Voting closed</template>
-            </p>
-          </div>
-          <VoteTurnout
-            v-if="hangout"
-            :voted-count="totalVotes"
-            :member-count="store.members.length"
-          >
-            Pick your favourite. Most votes wins; a tie is settled by spinning a wheel.
-          </VoteTurnout>
-        </header>
-
-        <div v-if="store.loading" class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading the vote…</span>
-          </div>
-        </div>
-
-        <div v-else-if="store.error" class="alert alert-danger" role="alert">
-          Couldn't load this hangout. {{ store.error.message }}
-        </div>
-
-        <template v-else-if="hangout">
-          <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
-
-          <div v-if="status === 'collecting'" class="alert alert-info">
-            <template v-if="isHost">
-              Voting hasn't started yet. Start it when the shortlist is ready, and everyone can pick
-              their favourite.
-            </template>
-            <template v-else>Waiting for {{ hostName }} to start the vote.</template>
-          </div>
-          <div v-else-if="status === 'confirmed' || status === 'done'" class="alert alert-info">
-            Voting is closed.
-            <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }">
-              See the final plan
-            </RouterLink>
-          </div>
-          <div v-else-if="needsSpin" class="alert alert-info">
-            Voting is over and it's a tie. Anyone in the group can spin the wheel to pick the
-            winner.
-          </div>
-          <div v-else-if="deadlinePassed" class="alert alert-info">
-            The deadline ({{ formatDateTime(deadline) }} SGT) has passed, so voting is closed.
-            Waiting for the host to confirm the plan.
-          </div>
-          <div v-else-if="!myId" class="alert alert-warning">Log in to vote.</div>
-          <div v-else-if="!isMember" class="alert alert-warning">
-            You're not in this hangout, so you can't vote. Ask the host for an invite link.
-          </div>
-
-          <CandidateList
-            :shortlist="store.shortlist"
-            :counts="counts"
-            :voters-by-spot="votersBySpot"
-            :total-votes="totalVotes"
-            :leader-id="leaderId"
-            :tied-ids="tiedIds"
-            :my-vote-id="myVoteId"
-            :saving-id="savingId"
-            :disabled="!canVote"
-            @vote="vote"
-          />
-
-          <div v-if="status === 'voting'" class="waiting d-flex align-items-center gap-2 mt-3">
-            <template v-if="waiting.length">
-              <span class="d-flex stack">
-                <MemberAvatar
-                  v-for="m in waiting"
-                  :key="m.user_id"
-                  :name="m.display_name"
-                  :color="m.avatar_color"
-                  :size="24"
-                />
-              </span>
-              <span class="small">Waiting on {{ waitingText }}</span>
-            </template>
-            <span v-else class="small">Everyone has voted.</span>
-          </div>
-
-          <RouterLink
-            v-if="votingOpen || status === 'collecting'"
-            class="btn suggest mt-3"
-            :to="{ name: 'explore', params: { id: hangoutId } }"
-          >
-            + Suggest another spot
-          </RouterLink>
+  <main class="vote-page">
+    <header class="vote-head">
+      <div>
+        <p
+          v-if="hangout && (deadline || status === 'collecting')"
+          class="fp-status mb-0"
+          :class="{ 'fp-status--live': votingOpen }"
+          :title="deadline ? `Voting closes ${formatDateTime(deadline)} SGT` : null"
+        >
+          <template v-if="status === 'collecting'">Not started</template>
+          <template v-else-if="votingOpen">
+            Closes in <time :datetime="deadline">{{ timeLeftText }}</time>
+          </template>
+          <template v-else>Voting closed</template>
+        </p>
+        <h1 class="vote-title">Pick one.</h1>
+        <p class="vote-sub">Most votes wins. A tie is settled by spinning a wheel.</p>
+      </div>
+      <VoteTurnout
+        v-if="hangout"
+        class="vote-turnout"
+        :voted-count="totalVotes"
+        :member-count="store.members.length"
+      >
+        <template v-if="status === 'voting'">
+          <template v-if="waiting.length">Waiting on {{ waitingText }}</template>
+          <template v-else>Everyone has voted.</template>
         </template>
+      </VoteTurnout>
+    </header>
+
+    <div v-if="store.loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading the vote…</span>
+      </div>
+    </div>
+
+    <div v-else-if="store.error" class="alert alert-danger" role="alert">
+      Couldn't load this hangout. {{ store.error.message }}
+    </div>
+
+    <div v-else-if="hangout" class="vote-body">
+      <div class="vote-main">
+        <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
+
+        <div v-if="status === 'collecting'" class="alert alert-info">
+          <template v-if="isHost">
+            Voting hasn't started yet. Start it when the shortlist is ready, and everyone can pick
+            their favourite.
+          </template>
+          <template v-else>Waiting for {{ hostName }} to start the vote.</template>
+        </div>
+        <div v-else-if="status === 'confirmed' || status === 'done'" class="alert alert-info">
+          Voting is closed.
+          <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }">
+            See the final plan
+          </RouterLink>
+        </div>
+        <div v-else-if="needsSpin" class="alert alert-info">
+          Voting is over and it's a tie. Anyone in the group can spin the wheel to pick the winner.
+        </div>
+        <div v-else-if="deadlinePassed" class="alert alert-info">
+          The deadline ({{ formatDateTime(deadline) }} SGT) has passed, so voting is closed. Waiting
+          for the host to confirm the plan.
+        </div>
+        <div v-else-if="!myId" class="alert alert-warning">Log in to vote.</div>
+        <div v-else-if="!isMember" class="alert alert-warning">
+          You're not in this hangout, so you can't vote. Ask the host for an invite link.
+        </div>
+
+        <CandidateList
+          :shortlist="store.shortlist"
+          :counts="counts"
+          :voters-by-spot="votersBySpot"
+          :total-votes="totalVotes"
+          :leader-id="leaderId"
+          :tied-ids="tiedIds"
+          :my-vote-id="myVoteId"
+          :saving-id="savingId"
+          :disabled="!canVote"
+          @vote="vote"
+        />
+
+        <RouterLink
+          v-if="votingOpen || status === 'collecting'"
+          class="suggest"
+          :to="{ name: 'explore', params: { id: hangoutId } }"
+        >
+          + Suggest another spot
+        </RouterLink>
       </div>
 
-      <div v-if="hangout && !store.loading && !store.error" class="col-12 col-lg-4">
-        <div class="d-flex flex-column gap-3">
-          <StartPanel
-            v-if="isHost && status === 'collecting'"
-            :spot-count="store.shortlist.length"
-            :deadline-text="startDeadline ? formatDateTime(startDeadline) : null"
-            :explore-to="{ name: 'explore', params: { id: hangoutId } }"
-            :starting="starting"
-            @start="onStart"
-          />
-          <SpinWheel
-            v-if="isMember && (needsSpin || spinWinnerId)"
-            :spots="spinWinnerId ? spinSpots : tiedSpots"
-            :winner-id="spinWinnerId"
-            :spinning="spinning"
-            :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
-            @spin="onSpin"
-          />
-          <ActivityFeed :items="feedItems" />
-          <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
-          <ClosePanel
-            v-if="isHost && status === 'voting' && !needsSpin"
-            :shortlist="store.shortlist"
-            :selected-id="winnerId"
-            :vote-count="totalVotes"
-            :deadline-text="deadline ? formatDateTime(deadline) : null"
-            :closing="closing"
-            @select="pickedWinnerId = $event"
-            @close="onClose"
-          />
-        </div>
-      </div>
+      <aside class="vote-aside">
+        <StartPanel
+          v-if="isHost && status === 'collecting'"
+          :spot-count="store.shortlist.length"
+          :deadline-text="startDeadline ? formatDateTime(startDeadline) : null"
+          :explore-to="{ name: 'explore', params: { id: hangoutId } }"
+          :starting="starting"
+          @start="onStart"
+        />
+        <SpinWheel
+          v-if="isMember && (needsSpin || spinWinnerId)"
+          :spots="spinWinnerId ? spinSpots : tiedSpots"
+          :winner-id="spinWinnerId"
+          :spinning="spinning"
+          :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
+          @spin="onSpin"
+        />
+        <ClosePanel
+          v-if="isHost && status === 'voting' && !needsSpin"
+          :shortlist="store.shortlist"
+          :selected-id="winnerId"
+          :vote-count="totalVotes"
+          :deadline-text="deadline ? formatDateTime(deadline) : null"
+          :closing="closing"
+          @select="pickedWinnerId = $event"
+          @close="onClose"
+        />
+        <ActivityFeed :items="feedItems" />
+        <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
+      </aside>
     </div>
   </main>
 </template>
 
 <style scoped>
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 44px;
+.vote-page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 3.5rem clamp(1rem, 2.8vw, 2.5rem) 6rem;
 }
 
-.deadline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.75rem;
-  border: 1px solid var(--fp-accent);
-  border-radius: 999px;
-  background: var(--fp-surface);
-  font-weight: 600;
+.vote-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
 }
 
-.dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--fp-accent);
+.vote-title {
+  margin: 1rem 0 0;
+  font-size: clamp(3.25rem, 7vw, 6rem);
+  line-height: 0.96;
+  letter-spacing: -0.025em;
 }
 
-.deadline--closed {
-  border-color: var(--fp-border);
+.vote-sub {
+  margin: 0.9rem 0 0;
   color: var(--fp-muted);
+  font-size: 1.125rem;
 }
 
-.deadline--closed .dot {
-  background: var(--fp-muted);
+.vote-turnout {
+  min-width: min(100%, 300px);
 }
 
-.waiting {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius-sm);
-  padding: 0.75rem 1rem;
+.vote-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.75rem;
+  margin-top: 3rem;
 }
 
-.stack > :not(:first-child) {
-  margin-left: -6px;
+.vote-main {
+  flex: 999 1 620px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.vote-main .alert {
+  margin-bottom: 0;
+}
+
+.vote-aside {
+  flex: 1 1 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .suggest {
-  --bs-btn-bg: var(--fp-surface);
-  --bs-btn-color: var(--fp-ink);
-  --bs-btn-border-color: var(--fp-border);
-  --bs-btn-hover-bg: var(--fp-bg);
-  --bs-btn-hover-color: var(--fp-ink);
-  --bs-btn-hover-border-color: var(--fp-muted);
-  font-weight: 600;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 0.25rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 </style>

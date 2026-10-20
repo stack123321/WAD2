@@ -64,7 +64,7 @@ function memberNames(group) {
 <template>
   <main class="container py-4 groups-page">
     <router-link :to="{ name: 'dashboard' }" class="small">← My hangouts</router-link>
-    <h1 class="h3 mt-2 mb-1">Friend groups</h1>
+    <h1 class="mt-2 mb-3">Friend groups.</h1>
     <p class="text-secondary mb-3">
       One chat for each group of friends that stays across all your hangouts.
     </p>

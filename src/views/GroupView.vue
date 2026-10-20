@@ -218,7 +218,7 @@ function dateLabel(when) {
 
     <template v-else-if="group">
       <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-3">
-        <h1 class="h3 mb-0 me-auto">{{ group.name }}</h1>
+        <h1 class="mb-0 me-auto">{{ group.name }}<span aria-hidden="true">.</span></h1>
         <button
           v-if="isOwner"
           type="button"

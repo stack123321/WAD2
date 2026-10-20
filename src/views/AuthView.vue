@@ -1,7 +1,8 @@
 <script setup>
 // 02 Log in / Sign up
 // Owner: Matrix · Vet by: Hugo
-// Figma frame "02". Split screen: brand panel with a map preview on the left, auth card on the right.
+// Figma frame "02" (Direction C): one centred column with the headline, a Log in / Sign up switch
+// and the form.
 // ?mode=signup opens Sign up; ?redirect=/path is where to go after logging in;
 // ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in;
 // ?mode=reset is where the "Forgot password" email link lands, to set a new password.
@@ -240,114 +241,13 @@ async function submitNewPassword() {
     busy.value = false
   }
 }
-
-// Map preview pins, in the SVG's 450×275 viewBox
-const friends = [
-  { initial: 'N', x: 183, y: 46, color: 'var(--auth-pink)' },
-  { initial: 'S', x: 385, y: 128, color: 'var(--fp-accent)' },
-  { initial: 'R', x: 64, y: 165, color: 'var(--auth-purple)' },
-]
-const midpoint = { x: 229, y: 128 }
-
-const avatars = [
-  { initial: 'S', color: 'var(--fp-accent)' },
-  { initial: 'N', color: 'var(--auth-pink)' },
-  { initial: 'H', color: 'var(--auth-blue)' },
-  { initial: 'M', color: 'var(--auth-amber)' },
-]
 </script>
 
 <template>
   <main class="auth">
-    <aside class="brand-panel">
-      <RouterLink class="logo" :to="{ name: 'landing' }">
-        <span class="logo__mark" aria-hidden="true"> <span></span><span></span><span></span> </span>
-        Fairpoint
-      </RouterLink>
-
-      <div class="brand-panel__copy">
-        <h1 class="brand-panel__title">Stop arguing about where to meet.</h1>
-        <p class="brand-panel__lead">
-          Fairpoint picks the fairest spot for everyone, then lets the group vote on what to do.
-        </p>
-      </div>
-
-      <svg
-        class="map"
-        viewBox="0 0 450 275"
-        role="img"
-        aria-label="Three friends meeting at a fair midpoint"
-      >
-        <defs>
-          <radialGradient id="auth-heat-red">
-            <stop offset="0%" stop-color="var(--fp-accent)" stop-opacity="0.75" />
-            <stop offset="100%" stop-color="var(--fp-accent)" stop-opacity="0" />
-          </radialGradient>
-          <radialGradient id="auth-heat-amber">
-            <stop offset="0%" stop-color="var(--auth-amber)" stop-opacity="0.75" />
-            <stop offset="100%" stop-color="var(--auth-amber)" stop-opacity="0" />
-          </radialGradient>
-        </defs>
-        <rect width="450" height="275" class="map__ground" />
-
-        <ellipse cx="270" cy="-5" rx="70" ry="25" class="map__water" />
-        <ellipse cx="225" cy="290" rx="300" ry="50" class="map__water" />
-        <rect x="25" y="60" width="70" height="40" rx="18" class="map__park" />
-        <rect x="370" y="70" width="65" height="45" rx="20" class="map__park" />
-        <rect x="80" y="175" width="55" height="35" rx="16" class="map__park" />
-        <rect x="270" y="170" width="65" height="35" rx="16" class="map__park" />
-
-        <g class="map__road">
-          <path d="M0 75 L450 80" />
-          <path d="M0 150 L450 140" />
-          <path d="M0 175 L450 195" />
-          <path d="M135 0 L120 275" />
-          <path d="M225 0 L235 275" />
-          <path d="M290 0 L315 275" />
-          <path d="M385 145 L450 130" />
-        </g>
-        <g class="map__road map__road--major">
-          <path d="M65 0 C80 70 100 150 50 275" />
-          <path d="M405 0 C370 90 360 180 410 275" />
-          <path d="M0 125 C120 110 300 120 450 115" />
-        </g>
-
-        <circle cx="230" cy="135" r="95" fill="url(#auth-heat-red)" />
-        <circle cx="110" cy="70" r="40" fill="url(#auth-heat-amber)" />
-
-        <line
-          v-for="f in friends"
-          :key="`route-${f.initial}`"
-          :x1="f.x"
-          :y1="f.y"
-          :x2="midpoint.x"
-          :y2="midpoint.y"
-          :stroke="f.color"
-          class="map__route"
-        />
-        <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
-        <circle :cx="midpoint.x" :cy="midpoint.y" r="22" class="map__halo" />
-        <circle :cx="midpoint.x" :cy="midpoint.y" r="8" class="map__mid" />
-
-        <g v-for="f in friends" :key="`pin-${f.initial}`" class="map__pin">
-          <circle :cx="f.x" :cy="f.y" r="14" :fill="f.color" />
-          <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.initial }}</text>
-        </g>
-      </svg>
-
-      <div class="social-proof">
-        <span class="avatars" aria-hidden="true">
-          <span v-for="a in avatars" :key="a.initial" :style="{ background: a.color }">
-            {{ a.initial }}
-          </span>
-        </span>
-        Your friends are already planning
-      </div>
-    </aside>
-
     <section class="form-side">
       <div v-if="isReset" class="auth-card">
-        <h2 class="auth-card__title">Set a new password</h2>
+        <h1 class="auth-card__title">Set a new password.</h1>
 
         <p v-if="reset.status === 'checking'" class="auth-card__sub" role="status">
           <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
@@ -458,14 +358,33 @@ const avatars = [
       </div>
 
       <div v-else class="auth-card">
-        <p v-if="inviteCode" class="alert alert-success py-2 small" role="status">
+        <p v-if="inviteCode" class="invite-note" role="status">
           You’ve been invited to a hangout. {{ isSignup ? 'Sign up' : 'Log in' }} to join it.
         </p>
 
-        <h2 class="auth-card__title">{{ isSignup ? 'Create your account' : 'Welcome back' }}</h2>
+        <h1 class="auth-card__title">{{ isSignup ? 'Create your account.' : 'Welcome back.' }}</h1>
         <p class="auth-card__sub">
           {{ isSignup ? 'Start planning fairer hangouts.' : 'Log in to see your hangouts.' }}
         </p>
+
+        <div class="mode-switch" role="group" aria-label="Log in or sign up">
+          <button
+            type="button"
+            :class="{ on: !isSignup }"
+            :aria-pressed="!isSignup"
+            @click="setMode('login')"
+          >
+            Log in
+          </button>
+          <button
+            type="button"
+            :class="{ on: isSignup }"
+            :aria-pressed="isSignup"
+            @click="setMode('signup')"
+          >
+            Sign up
+          </button>
+        </div>
 
         <form novalidate @submit.prevent="submit">
           <div v-if="isSignup" class="field">
@@ -592,194 +511,77 @@ const avatars = [
 
 <style scoped>
 .auth {
-  /* Illustration-only colours for the map preview and avatars */
-  --auth-pink: #d6528f;
-  --auth-blue: #4a7fe8;
-  --auth-purple: #7056e0;
-  --auth-amber: #f2b33d;
-  --auth-panel: #275b4f;
-
-  display: grid;
-  grid-template-columns: minmax(0, 43fr) minmax(0, 57fr);
-  min-height: calc(100vh - 57px); /* fill the screen below the navbar */
+  min-height: calc(100vh - 88px); /* fill the screen below the navbar */
   background: var(--fp-bg);
 }
 
-/* Left brand panel */
-.brand-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-  padding: 3rem 3.5rem 3.5rem;
-  background: var(--auth-panel);
-  color: var(--fp-surface);
-}
-
-.logo {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: inherit;
-  font-size: 1.25rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.logo__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--fp-surface);
-}
-
-.logo__mark span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--fp-primary);
-}
-
-.logo__mark span:nth-child(2) {
-  background: var(--fp-accent);
-}
-
-.brand-panel__copy {
-  margin-top: auto;
-}
-
-.brand-panel__title {
-  max-width: 24rem;
-  margin-bottom: 1rem;
-  font-size: clamp(2rem, 3.2vw, 2.75rem);
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-}
-
-.brand-panel__lead {
-  max-width: 21rem;
-  margin: 0;
-  color: rgb(255 255 255 / 0.75);
-  font-size: 1.05rem;
-  line-height: 1.55;
-}
-
-.map {
-  display: block;
-  width: 100%;
-  max-width: 460px;
-  height: auto;
-  border-radius: var(--fp-radius-sm);
-}
-
-.map__ground {
-  fill: #e9ece4;
-}
-
-.map__water {
-  fill: #cfdfe6;
-}
-
-.map__park {
-  fill: #cfe0c3;
-  opacity: 0.8;
-}
-
-.map__road path {
-  fill: none;
-  stroke: var(--fp-surface);
-  stroke-width: 4;
-}
-
-.map__road--major path {
-  stroke: #f2d48f;
-  stroke-width: 6;
-}
-
-.map__route {
-  stroke-width: 2;
-  stroke-dasharray: 5 4;
-}
-
-.map__halo {
-  fill: rgb(0 0 0 / 0.1);
-}
-
-.map__mid {
-  fill: var(--fp-primary);
-  stroke: var(--fp-surface);
-  stroke-width: 3;
-}
-
-.map__pin circle {
-  stroke: var(--fp-surface);
-  stroke-width: 2.5;
-}
-
-.map__pin text {
-  fill: var(--fp-surface);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.social-proof {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: auto;
-  font-size: 0.9rem;
-}
-
-.avatars {
-  display: inline-flex;
-}
-
-.avatars span {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--auth-panel);
-  border-radius: 50%;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.avatars span + span {
-  margin-left: -8px;
-}
-
-/* Right form side */
 .form-side {
-  display: grid;
-  place-items: center;
-  padding: 3rem 1.5rem;
+  display: flex;
+  justify-content: center;
+  padding: 5.5rem 1.5rem 7.5rem;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 400px;
-  padding: 2rem;
-  background: var(--fp-surface);
-  border-radius: var(--fp-radius);
-  box-shadow: 0 10px 40px rgb(0 0 0 / 0.08);
+  max-width: 472px;
 }
 
 .auth-card__title {
-  margin-bottom: 0.25rem;
-  font-size: 1.6rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: clamp(3.25rem, 7vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.025em;
 }
 
 .auth-card__sub {
-  margin-bottom: 1.5rem;
+  margin: 0.9rem 0 0;
   color: var(--fp-muted);
-  font-size: 0.9rem;
+  font-size: 1.2rem;
+}
+
+.invite-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 2rem;
+  padding: 0.75rem 1.1rem;
+  border-radius: var(--fp-radius-pill);
+  background: var(--fp-tint);
+  color: var(--fp-primary-dark);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Log in / Sign up: a grey track with the chosen side in black */
+.mode-switch {
+  display: flex;
+  margin: 2.25rem 0 1.75rem;
+  padding: 5px;
+  background: var(--fp-surface);
+  border-radius: var(--fp-radius-pill);
+}
+
+.mode-switch button {
+  flex: 1;
+  min-height: 46px;
+  border: 0;
+  border-radius: var(--fp-radius-pill);
+  background: transparent;
+  color: var(--fp-ink);
+  font-weight: 700;
+}
+
+.mode-switch button.on {
+  background: var(--fp-ink);
+  color: var(--fp-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mode-switch button {
+    transition:
+      background-color 160ms var(--fp-ease),
+      color 160ms var(--fp-ease);
+  }
 }
 
 .field {
@@ -787,15 +589,9 @@ const avatars = [
 }
 
 .form-label {
-  margin-bottom: 0.4rem;
-  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
   font-weight: 600;
-}
-
-.form-control {
-  padding: 0.7rem 0.9rem;
-  background-color: var(--fp-surface);
-  font-size: 0.9rem;
 }
 
 .form-control:focus {
@@ -884,50 +680,20 @@ const avatars = [
 }
 
 .submit {
-  padding: 0.75rem;
-  font-weight: 600;
+  min-height: 60px;
+  margin-top: 0.5rem;
+  font-size: 1.2rem;
 }
 
 .switch {
-  margin: 1.25rem 0 0;
+  margin: 1.75rem 0 0;
   color: var(--fp-muted);
-  font-size: 0.85rem;
-}
-
-/* Responsive: stack, and keep just the headline from the brand panel */
-@media (max-width: 991.98px) {
-  .auth {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-
-  .brand-panel {
-    gap: 1.5rem;
-    padding: 2rem 1.5rem;
-  }
-
-  .brand-panel__copy {
-    margin-top: 0;
-  }
-
-  .map,
-  .social-proof {
-    display: none;
-  }
-
-  .form-side {
-    place-items: start center;
-    padding-block: 2rem;
-  }
+  text-align: center;
 }
 
 @media (max-width: 575.98px) {
   .form-side {
-    padding-inline: 1rem;
-  }
-
-  .auth-card {
-    padding: 1.5rem;
+    padding: 3rem 1rem 5rem;
   }
 }
 </style>

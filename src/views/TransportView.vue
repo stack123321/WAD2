@@ -141,7 +141,7 @@
 
    <template>
     <section class="container py-4">
-      <h1 class="title">How is everyone getting there?</h1>
+      <h1 class="title">How’s everyone getting there?</h1>
       <p class="subtitle">
         Pick how you're getting there. Everyone picks their own, and you'll see your friends' choices
         as they make them.
@@ -193,9 +193,7 @@
 
 <style scoped>
 .title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .subtitle {

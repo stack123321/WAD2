@@ -15,23 +15,14 @@ const error = ref('')
 const tab = ref('upcoming') // which list is showing, 'upcoming' or 'past'
 const auth = useAuthStore()
 
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-})
-
 // the name they typed at sign up, or '' if nobody is logged in
 const name = computed(() => {
   if (!auth.user) return ''
   return auth.user.user_metadata.display_name || ''
 })
 
-// "Good evening, Ryan!" or just "Good evening!" when don't know name
-const heading = computed(() =>
-  name.value ? `${greeting.value}, ${name.value}!` : `${greeting.value}!`,
-)
+// "Hey Ryan." or just "Hey there." when we don't know the name
+const heading = computed(() => (name.value ? `Hey ${name.value}.` : 'Hey there.'))
 
 const upcoming = computed(() => hangouts.value.filter((h) => h.status !== 'done'))
 const past = computed(() => hangouts.value.filter((h) => h.status === 'done'))
@@ -125,42 +116,40 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container py-4">
-    <div class="row g-4">
-      <div class="col-lg-8">
-        <h1 class="h2 mb-1">{{ heading }}</h1>
-        <p class="text-muted">
-          You have {{ upcoming.length }} {{ upcoming.length === 1 ? 'hangout' : 'hangouts' }} in
-          progress.
-        </p>
+  <main class="dash">
+    <h1 class="dash-title">{{ heading }}</h1>
+    <p class="dash-sub">
+      You have {{ upcoming.length }} {{ upcoming.length === 1 ? 'hangout' : 'hangouts' }} in
+      progress.
+    </p>
 
-        <section
-          class="plan-banner d-flex flex-wrap align-items-center justify-content-between gap-3 p-4 mb-4"
-        >
-          <div>
-            <h2 class="h4 mb-1">Plan a new hangout</h2>
-            <p class="mb-0">Invite friends, find a fair midpoint and vote on what to do.</p>
+    <div class="dash-body">
+      <div class="dash-main">
+        <section class="plan-banner">
+          <div class="plan-copy">
+            <h2 class="plan-title">Plan a new hangout.</h2>
+            <p class="plan-text">Invite friends, find a fair midpoint and vote on what to do.</p>
           </div>
-          <router-link :to="{ name: 'create-hangout' }" class="btn btn-light fw-semibold">
+          <router-link :to="{ name: 'create-hangout' }" class="btn btn-light btn-lg plan-btn">
             Start planning
           </router-link>
         </section>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h2 class="h5 mb-0">Your hangouts</h2>
-          <div class="btn-group" role="group" aria-label="Show upcoming or past hangouts">
+        <div class="list-head">
+          <h2 class="list-title">Your hangouts</h2>
+          <div class="segmented" role="group" aria-label="Show upcoming or past hangouts">
             <button
               type="button"
-              class="btn btn-sm"
-              :class="tab === 'upcoming' ? 'btn-primary' : 'btn-outline-primary'"
+              :class="{ on: tab === 'upcoming' }"
+              :aria-pressed="tab === 'upcoming'"
               @click="tab = 'upcoming'"
             >
               Upcoming
             </button>
             <button
               type="button"
-              class="btn btn-sm"
-              :class="tab === 'past' ? 'btn-primary' : 'btn-outline-primary'"
+              :class="{ on: tab === 'past' }"
+              :aria-pressed="tab === 'past'"
               @click="tab = 'past'"
             >
               Past
@@ -181,31 +170,165 @@ onMounted(async () => {
         <p v-if="deleteError" class="text-danger" role="alert">{{ deleteError }}</p>
         <p v-if="pinError" class="text-danger" role="alert">{{ pinError }}</p>
 
-        <div v-for="h in shown" :key="h.id" class="mb-3">
-          <HangoutCard
-            :hangout="h"
-            :can-delete="isHost(h)"
-            :can-leave="isMember(h)"
-            @delete="onDelete"
-            @leave="onLeave"
-            @toggle-pin="onTogglePin"
-          />
-        </div>
+        <HangoutCard
+          v-for="h in shown"
+          :key="h.id"
+          :hangout="h"
+          :can-delete="isHost(h)"
+          :can-leave="isMember(h)"
+          @delete="onDelete"
+          @leave="onLeave"
+          @toggle-pin="onTogglePin"
+        />
       </div>
 
-      <div class="col-lg-4 d-flex flex-column gap-4">
-        <HangoutWith />
-        <WeekForecast />
-        <CrowdsNow />
-      </div>
+      <aside class="dash-aside">
+        <HangoutWith class="side-card" />
+        <WeekForecast class="side-card" />
+        <CrowdsNow class="side-card" />
+      </aside>
     </div>
   </main>
 </template>
 
 <style scoped>
-.plan-banner {
-  background: var(--fp-primary-dark);
-  color: var(--fp-surface);
+.dash {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 4.5rem clamp(1rem, 4vw, 3rem) 7.5rem;
+}
+
+.dash-title {
+  margin: 0;
+  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+}
+
+.dash-sub {
+  margin: 1rem 0 0;
+  color: var(--fp-muted);
+  font-size: 1.25rem;
+}
+
+.dash-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2rem;
+  margin-top: 3.5rem;
+}
+
+.dash-main {
+  flex: 999 1 620px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dash-aside {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* The side cards are outlined in a hairline, so the hangouts stay the grey panels */
+.dash-aside .side-card {
+  padding: 1.75rem;
+  background: transparent;
+  border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
+}
+
+.dash-aside .side-card :deep(.card-body) {
+  padding: 0;
+}
+
+/* The one black feature card: plan something new */
+.plan-banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  background: var(--fp-ink);
+  color: var(--fp-bg);
+  border-radius: var(--fp-radius-lg);
+}
+
+.plan-copy {
+  max-width: 460px;
+}
+
+.plan-title {
+  margin: 0;
+  color: var(--fp-bg);
+  font-weight: 800;
+  font-size: clamp(2rem, 3.6vw, 2.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.plan-text {
+  margin: 0.75rem 0 0;
+  color: var(--fp-on-dark-muted);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.plan-btn {
+  --bs-btn-bg: var(--fp-bg);
+  --bs-btn-color: var(--fp-ink);
+  --bs-btn-hover-bg: var(--fp-surface);
+  --bs-btn-active-bg: var(--fp-surface);
+}
+
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.list-title {
+  margin: 0;
+  font-size: 2rem;
+}
+
+/* Upcoming / Past: a grey track with the chosen side in black */
+.segmented {
+  display: inline-flex;
+  padding: 4px;
+  background: var(--fp-surface);
+  border-radius: var(--fp-radius-pill);
+}
+
+.segmented button {
+  min-height: 44px;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: var(--fp-radius-pill);
+  background: transparent;
+  color: var(--fp-ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.segmented button.on {
+  background: var(--fp-ink);
+  color: var(--fp-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .segmented button {
+    transition:
+      background-color 160ms var(--fp-ease),
+      color 160ms var(--fp-ease);
+  }
 }
 </style>

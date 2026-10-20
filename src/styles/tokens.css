@@ -1,64 +1,444 @@
 /*
   Owner: Hugo. The ONLY global CSS file in the project.
-  Holds the Figma design values as CSS variables. Components use var(--fp-...) inside
-  <style scoped> and never hard-code hex codes.
-  Font: Plus Jakarta Sans, loaded in index.html.
+  Fairpoint's look (Direction C): white pages, one big teal Fraunces headline per page, soft grey
+  panels instead of shadows, and one black pill for the main action. Teal means Fairpoint (logo,
+  headlines, selected chips, progress, done steps); coral only ever appears as a dot or a tint.
+  Components use var(--fp-...) inside <style scoped> and never hard-code hex codes.
+  Fonts (loaded in index.html): Fraunces for headlines and big numbers, DM Sans for everything else.
 */
 
 :root {
-  /* Brand (from Figma) */
-  --fp-primary: #0e7c6b; /* teal */
-  --fp-primary-dark: #0a5f52; /* hover/pressed. Hugo: confirm against Figma */
-  --fp-accent: #f2684a; /* coral */
-  --fp-bg: #f6f4ef; /* page background */
-  --fp-surface: #ffffff; /* cards */
+  /* Brand */
+  --fp-primary: #0e7c6b; /* teal: logo, headlines, selected, progress, done */
+  --fp-primary-dark: #0a5f52; /* hover, text on the teal tint */
+  --fp-tint: #e8f3f0; /* teal tint: confirmed, today */
+  --fp-accent: #f2684a; /* coral: deadlines, as a dot or tint only */
+  --fp-accent-text: #a3341b; /* text on the coral tint */
+  --fp-accent-tint: #fde7e1;
 
-  /* Text. Hugo: confirm against Figma */
-  --fp-ink: #1d2322;
-  --fp-muted: #5f6b69;
-  --fp-border: #e3e0d8;
+  /* Ground and ink */
+  --fp-bg: #ffffff; /* every page background */
+  --fp-surface: #f5f5f3; /* grey panels, step bar, fields on white */
+  --fp-raised: #ffffff; /* fields and chips sitting on a grey panel */
+  --fp-ink: #111111; /* text and the primary button */
+  --fp-ink-hover: #2a2a2a;
+  --fp-muted: #555555; /* secondary text */
+  --fp-faint: #707070; /* small caps labels, timestamps */
+  --fp-border: #e6e6e6; /* hairlines and outlines */
+  --fp-pill: #e4e4e2; /* secondary buttons, empty tracks */
+  --fp-pill-hover: #d9d9d7;
+  --fp-chip-line: #d4d4d2; /* unselected chips, off toggles */
+  --fp-disabled: #8a8a8a; /* disabled button text */
+  --fp-danger: #b42318;
+  --fp-on-dark-muted: #c9c9c9; /* secondary text on the black feature card */
+  --fp-mint: #5fd3c0; /* the leading bar on the black feature card */
 
-  /* Shape */
-  --fp-radius: 16px;
-  --fp-radius-sm: 10px;
-  --fp-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+  /* Member avatar colours for sample people (white initials on each) */
+  --fp-avatar-blue: #3b6fd8;
+  --fp-avatar-rust: #c2410c;
+  --fp-avatar-violet: #6c63ff;
+  --fp-avatar-ochre: #a87900;
+
+  /* Shape: no shadows; white space and grey panels do the separating */
+  --fp-radius: 28px;
+  --fp-radius-lg: 32px;
+  --fp-radius-sm: 16px;
+  --fp-radius-pill: 999px;
+  --fp-shadow: none;
 
   /* Type */
-  --fp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fp-font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fp-display: 'Fraunces', Georgia, serif;
+
+  /* Motion: quick, ease-out, never decorative */
+  --fp-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --fp-focus: 0 0 0 3px rgb(14 124 107 / 0.35);
 
   /* Point Bootstrap at our values so its components pick up the theme */
   --bs-body-font-family: var(--fp-font);
+  --bs-body-font-size: 1.0625rem;
   --bs-body-bg: var(--fp-bg);
   --bs-body-color: var(--fp-ink);
+  --bs-emphasis-color: var(--fp-ink);
+  --bs-heading-color: var(--fp-ink);
   --bs-secondary-color: var(--fp-muted);
+  --bs-secondary-rgb: 85, 85, 85;
+  --bs-tertiary-bg: var(--fp-surface);
   --bs-border-color: var(--fp-border);
   --bs-border-radius: var(--fp-radius-sm);
+  --bs-border-radius-sm: 12px;
   --bs-border-radius-lg: var(--fp-radius);
   --bs-primary: var(--fp-primary);
   --bs-primary-rgb: 14, 124, 107;
+  --bs-danger: var(--fp-danger);
+  --bs-danger-rgb: 180, 35, 24;
+  --bs-success: var(--fp-primary);
+  --bs-success-rgb: 14, 124, 107;
   --bs-link-color: var(--fp-primary);
   --bs-link-color-rgb: 14, 124, 107;
   --bs-link-hover-color: var(--fp-primary-dark);
   --bs-link-hover-color-rgb: 10, 95, 82;
+  --bs-focus-ring-color: rgb(14 124 107 / 0.35);
+  --bs-form-valid-color: var(--fp-primary);
+  --bs-form-valid-border-color: var(--fp-primary);
+  --bs-form-invalid-color: var(--fp-danger);
+  --bs-form-invalid-border-color: var(--fp-danger);
+
+  accent-color: var(--fp-primary);
+  scrollbar-color: var(--fp-chip-line) var(--fp-bg);
 }
 
-/* Bootstrap buttons set their colours per class, so they need their own mapping */
-.btn-primary {
+/* ---------- Type ---------- */
+
+body {
+  -webkit-font-smoothing: antialiased;
+  caret-color: var(--fp-primary);
+}
+
+/* One headline per page: Fraunces 800, teal, ending in a full stop */
+h1,
+.h1 {
+  font-family: var(--fp-display);
+  font-weight: 800;
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--fp-primary);
+  text-wrap: balance;
+}
+
+/* Section and card titles: Fraunces 700, ink */
+h2,
+h3,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+  font-family: var(--fp-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/* Small caps label: "GET THERE", "BACKUP PLAN" */
+.fp-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fp-faint);
+}
+
+table,
+time,
+.fp-num {
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  text-underline-offset: 0.18em;
+}
+
+::selection {
+  background: var(--fp-tint);
+  color: var(--fp-primary-dark);
+}
+
+:focus-visible {
+  outline: 2px solid var(--fp-primary);
+  outline-offset: 3px;
+}
+
+/* ---------- Buttons: pills ---------- */
+
+.btn {
+  --bs-btn-font-weight: 700;
+  --bs-btn-border-width: 0;
+  --bs-btn-border-radius: var(--fp-radius-pill);
+  --bs-btn-padding-x: 1.4rem;
+  --bs-btn-padding-y: 0.7rem;
+  --bs-btn-focus-box-shadow: var(--fp-focus);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+}
+
+/* A pill gives a little under your finger */
+@media (prefers-reduced-motion: no-preference) {
+  .btn {
+    transition:
+      transform 160ms var(--fp-ease),
+      background-color 160ms var(--fp-ease),
+      color 160ms var(--fp-ease);
+  }
+
+  .btn:not(.btn-link):active {
+    transform: scale(0.97);
+  }
+}
+
+.btn-lg {
+  --bs-btn-font-size: 1.15rem;
+  --bs-btn-padding-x: 1.75rem;
+  --bs-btn-padding-y: 0.95rem;
+  min-height: 56px;
+}
+
+.btn-sm {
+  --bs-btn-font-size: 0.9rem;
+  --bs-btn-padding-x: 1.1rem;
+  --bs-btn-padding-y: 0.5rem;
+}
+
+/* Primary: the one black pill per section */
+.btn-primary,
+.btn-dark {
+  --bs-btn-color: var(--fp-bg);
+  --bs-btn-bg: var(--fp-ink);
+  --bs-btn-hover-color: var(--fp-bg);
+  --bs-btn-hover-bg: var(--fp-ink-hover);
+  --bs-btn-active-color: var(--fp-bg);
+  --bs-btn-active-bg: var(--fp-ink);
+  --bs-btn-disabled-color: var(--fp-disabled);
+  --bs-btn-disabled-bg: var(--fp-pill);
+  --bs-btn-disabled-opacity: 1;
+}
+
+/* Secondary and repeated list actions: grey pill */
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-secondary,
+.btn-light {
+  --bs-btn-color: var(--fp-ink);
+  --bs-btn-bg: var(--fp-pill);
+  --bs-btn-hover-color: var(--fp-ink);
+  --bs-btn-hover-bg: var(--fp-pill-hover);
+  --bs-btn-active-color: var(--fp-ink);
+  --bs-btn-active-bg: var(--fp-pill-hover);
+  --bs-btn-disabled-color: var(--fp-disabled);
+  --bs-btn-disabled-bg: var(--fp-pill);
+  --bs-btn-disabled-opacity: 1;
+}
+
+/* Brand pill: the nav bar's "New hangout" and "Log in" only */
+.btn-brand {
+  --bs-btn-color: var(--fp-bg);
   --bs-btn-bg: var(--fp-primary);
-  --bs-btn-border-color: var(--fp-primary);
+  --bs-btn-hover-color: var(--fp-bg);
   --bs-btn-hover-bg: var(--fp-primary-dark);
-  --bs-btn-hover-border-color: var(--fp-primary-dark);
+  --bs-btn-active-color: var(--fp-bg);
   --bs-btn-active-bg: var(--fp-primary-dark);
-  --bs-btn-active-border-color: var(--fp-primary-dark);
+  --bs-btn-disabled-color: var(--fp-bg);
   --bs-btn-disabled-bg: var(--fp-primary);
-  --bs-btn-disabled-border-color: var(--fp-primary);
+  --bs-btn-disabled-opacity: 1;
 }
 
-.btn-outline-primary {
+.btn-outline-danger,
+.btn-danger {
+  --bs-btn-color: var(--fp-danger);
+  --bs-btn-bg: var(--fp-pill);
+  --bs-btn-hover-color: var(--fp-bg);
+  --bs-btn-hover-bg: var(--fp-danger);
+  --bs-btn-active-color: var(--fp-bg);
+  --bs-btn-active-bg: var(--fp-danger);
+}
+
+/* Text link: back links, "skip" */
+.btn-link {
   --bs-btn-color: var(--fp-primary);
-  --bs-btn-border-color: var(--fp-primary);
-  --bs-btn-hover-bg: var(--fp-primary);
-  --bs-btn-hover-border-color: var(--fp-primary);
-  --bs-btn-active-bg: var(--fp-primary-dark);
-  --bs-btn-active-border-color: var(--fp-primary-dark);
+  --bs-btn-hover-color: var(--fp-primary-dark);
+  text-decoration: none;
+}
+
+/* ---------- Forms ---------- */
+
+.form-control,
+.form-select {
+  min-height: 56px;
+  padding-inline: 1.1rem;
+  background-color: var(--fp-surface);
+  border: 2px solid transparent;
+  border-radius: var(--fp-radius-sm);
+  font-weight: 500;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--fp-raised);
+  border-color: var(--fp-primary);
+  box-shadow: none;
+}
+
+.form-control::placeholder {
+  color: var(--fp-faint);
+}
+
+.form-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.form-check-input {
+  border: 1.5px solid var(--fp-chip-line);
+}
+
+.form-check-input:checked {
+  background-color: var(--fp-primary);
+  border-color: var(--fp-primary);
+}
+
+.form-check-input:focus {
+  border-color: var(--fp-primary);
+  box-shadow: var(--fp-focus);
+}
+
+/* Toggles: a 52 × 32 pill switch */
+.form-switch .form-check-input {
+  width: 3.25rem;
+  height: 2rem;
+  margin-top: 0;
+  border: 0;
+  background-color: var(--fp-chip-line);
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+.form-switch .form-check-input:focus {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+.form-switch .form-check-input:checked {
+  background-color: var(--fp-primary);
+}
+
+/* ---------- Containers: flat grey panels, no shadows ---------- */
+
+.card,
+.modal-content {
+  --bs-card-bg: var(--fp-surface);
+  --bs-card-border-width: 0;
+  --bs-card-border-radius: var(--fp-radius);
+  background-color: var(--fp-surface);
+  border: 0;
+  border-radius: var(--fp-radius);
+  box-shadow: none;
+}
+
+.dropdown-menu {
+  background-color: var(--fp-bg);
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius-sm);
+}
+
+.list-group {
+  --bs-list-group-border-color: var(--fp-border);
+  --bs-list-group-active-bg: var(--fp-primary);
+  --bs-list-group-active-border-color: var(--fp-primary);
+}
+
+.alert {
+  --bs-alert-border-color: transparent;
+  --bs-alert-color: var(--fp-ink);
+  --bs-alert-bg: var(--fp-surface);
+  border-radius: var(--fp-radius-sm);
+}
+
+.alert-info,
+.alert-success {
+  --bs-alert-bg: var(--fp-tint);
+  --bs-alert-color: var(--fp-primary-dark);
+}
+
+.alert-warning,
+.alert-danger {
+  --bs-alert-bg: var(--fp-accent-tint);
+  --bs-alert-color: var(--fp-accent-text);
+}
+
+.badge {
+  border-radius: var(--fp-radius-pill);
+  font-weight: 700;
+  padding: 0.45em 0.8em;
+}
+
+.text-bg-success {
+  background-color: var(--fp-tint) !important;
+  color: var(--fp-primary-dark) !important;
+}
+
+.text-bg-warning {
+  background-color: var(--fp-pill) !important;
+  color: var(--fp-ink) !important;
+}
+
+.text-bg-danger {
+  background-color: var(--fp-accent-tint) !important;
+  color: var(--fp-accent-text) !important;
+}
+
+.progress {
+  --bs-progress-height: 10px;
+  --bs-progress-bg: var(--fp-pill);
+  --bs-progress-bar-bg: var(--fp-primary);
+  --bs-progress-border-radius: var(--fp-radius-pill);
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--fp-border);
+}
+
+/* Status pills (dot + tint) shared by the dashboard, vote and plan pages */
+.fp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--fp-radius-pill);
+  background: var(--fp-pill);
+  color: var(--fp-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.fp-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fp-disabled);
+}
+
+.fp-status--live {
+  background: var(--fp-accent-tint);
+  color: var(--fp-accent-text);
+}
+
+.fp-status--live::before {
+  background: var(--fp-accent);
+}
+
+.fp-status--ok {
+  background: var(--fp-tint);
+  color: var(--fp-primary-dark);
+}
+
+.fp-status--ok::before {
+  background: var(--fp-primary);
+}
+
+/* Bars that grow into place once when the page opens */
+@media (prefers-reduced-motion: no-preference) {
+  .fp-grow {
+    animation: fp-grow 700ms var(--fp-ease) both;
+    transform-origin: left center;
+  }
+
+  @keyframes fp-grow {
+    from {
+      transform: scaleX(0);
+    }
+  }
 }

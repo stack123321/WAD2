@@ -14,68 +14,75 @@ const emit = defineEmits(['start'])
 </script>
 
 <template>
-  <section class="panel" aria-labelledby="start-heading">
-    <div class="d-flex align-items-center gap-2 mb-2">
-      <span class="badge host">Host</span>
-      <h2 id="start-heading" class="h6 mb-0">Ready to vote?</h2>
-    </div>
-    <p class="small muted mb-3">
-      Nobody can vote until you start it.
+  <section class="host-card" aria-labelledby="start-heading">
+    <h2 id="start-heading" class="host-title">Start the vote.</h2>
+    <p class="host-text">
+      Only you see this, as the host. Nobody can vote until you start it.
       {{ spotCount === 1 ? '1 spot is' : `${spotCount} spots are` }} on the shortlist.
     </p>
 
     <button
       type="button"
-      class="btn btn-primary w-100 fw-semibold"
+      class="btn btn-light host-btn"
       :disabled="starting || spotCount === 0 || !deadlineText"
       @click="emit('start')"
     >
-      <span v-if="starting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-      Start the vote <span aria-hidden="true">→</span>
+      <span v-if="starting" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      Start the vote
     </button>
 
-    <p v-if="spotCount === 0" class="small hint mt-2 mb-0" role="status">
+    <p v-if="spotCount === 0" class="host-hint" role="status">
       Add at least one spot first.
-      <RouterLink :to="exploreTo">Find nearby spots</RouterLink>
+      <RouterLink :to="exploreTo" class="host-link">Find nearby spots</RouterLink>
     </p>
-    <p v-else-if="!deadlineText" class="small hint mt-2 mb-0" role="status">
+    <p v-else-if="!deadlineText" class="host-hint" role="status">
       The hangout's start time has passed, so there's no time left to vote.
     </p>
-    <p v-else class="small muted mt-2 mb-0">Voting will close {{ deadlineText }} SGT.</p>
+    <p v-else class="host-hint">Voting will close {{ deadlineText }} SGT.</p>
   </section>
 </template>
-
 <style scoped>
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 44px;
+.host-card {
+  padding: 1.75rem;
+  background: var(--fp-ink);
+  color: var(--fp-bg);
+  border-radius: var(--fp-radius-lg);
 }
 
-.panel {
-  background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1.25rem;
+.host-title {
+  margin: 0;
+  color: var(--fp-bg);
+  font-weight: 800;
+  font-size: 1.75rem;
 }
 
-.host {
-  background: var(--fp-bg);
-  color: var(--fp-primary);
-  border: 1px solid var(--fp-border);
-  font-weight: 600;
+.host-text {
+  margin: 0.5rem 0 0;
+  color: var(--fp-on-dark-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.muted {
-  color: var(--fp-muted);
+.host-btn {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 1.1rem;
+  --bs-btn-bg: var(--fp-bg);
+  --bs-btn-hover-bg: var(--fp-surface);
+  --bs-btn-active-bg: var(--fp-surface);
+  --bs-btn-disabled-bg: var(--fp-ink-hover);
+  --bs-btn-disabled-color: var(--fp-on-dark-muted);
 }
 
-.hint {
-  border-left: 3px solid var(--fp-accent);
-  padding-left: 0.5rem;
-  color: var(--fp-ink);
+.host-hint {
+  margin: 0.6rem 0 0;
+  color: var(--fp-on-dark-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.host-link {
+  color: var(--fp-tint);
+  font-weight: 700;
 }
 </style>

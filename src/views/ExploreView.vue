@@ -3,7 +3,7 @@
   <div class="nearby-page">
     <div class="content">
     <section class="head">
-      <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
+      <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}<span aria-hidden="true">.</span></h1>
       <div class="head-actions">
         <GooglePlacesToggle />
         <button
@@ -366,9 +366,10 @@ async function selectSpot(id) {
 <style scoped>
 .nearby-page {
   min-height: 100vh;
-  font-family: system-ui, sans-serif;
-  background: #f5f5f5;
-  color: #222;
+  font-family: var(--fp-font);
+  padding: 2.5rem clamp(1rem, 2.8vw, 2.5rem) 4rem;
+  background: var(--fp-bg);
+  color: var(--fp-ink);
 }
 
 .content {
@@ -377,7 +378,6 @@ async function selectSpot(id) {
 
 .cards-title {
   margin: 0;
-  font-size: 1.5rem;
 }
 
 .filters {
@@ -432,7 +432,7 @@ async function selectSpot(id) {
 }
 
 .cards > .is-selected {
-  outline: 2px solid #0e7c6b;
+  outline: 2px solid var(--fp-primary);
   outline-offset: 2px;
 }
 
@@ -488,9 +488,9 @@ async function selectSpot(id) {
 .shortlist {
   align-self: start;
   padding: 12px 16px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: var(--fp-surface);
+  border-radius: var(--fp-radius-sm);
+  box-shadow: none;
 }
 
 .shortlist-panel {
@@ -500,7 +500,7 @@ async function selectSpot(id) {
   z-index: 1;
   width: 280px;
   padding: 10px;
-  background: #f5f5f5;
+  background: var(--fp-bg);
   border-radius: 10px;
 }
 
@@ -532,7 +532,7 @@ async function selectSpot(id) {
   padding: 0 6px;
   border: 0;
   background: none;
-  color: #dc3545;
+  color: var(--fp-danger);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
@@ -551,7 +551,7 @@ async function selectSpot(id) {
   height: 40px;
   border-radius: 6px;
   object-fit: cover;
-  background: #e0e0e0;
+  background: var(--fp-pill);
 }
 
 @media (max-width: 768px) {
@@ -621,9 +621,9 @@ async function selectSpot(id) {
     min-width: 0;
     margin-bottom: 0;
     overflow: hidden;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    background: var(--fp-surface);
+    border-radius: var(--fp-radius-sm);
+    box-shadow: none;
   }
 
   .mobile-collapse-toggle {
@@ -634,7 +634,7 @@ async function selectSpot(id) {
     min-height: 40px;
     padding: 8px 10px;
     border: 0;
-    background: #fff;
+    background: var(--fp-surface);
     color: inherit;
     font: inherit;
     font-size: 0.875rem;
@@ -662,22 +662,22 @@ async function selectSpot(id) {
   .shortlist-toggle {
     min-height: 40px;
     padding: 8px 10px;
-    background: #fff;
+    background: var(--fp-surface);
     border-radius: 8px 8px 0 0;
     font-size: 0.875rem;
   }
 
   .shortlist-content {
     padding: 0 8px 8px;
-    background: #fff;
+    background: var(--fp-surface);
   }
 
   .shortlist-actions {
     margin-top: 0;
     padding: 8px;
-    background: #fff;
+    background: var(--fp-surface);
     border-radius: 0 0 8px 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
   }
 
   .shortlist-item {

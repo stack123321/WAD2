@@ -121,7 +121,7 @@ const distance = computed(() => {
 
     <section class="spot__info d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div>
-        <h1 class="h3 mb-1">{{ spot?.name ?? 'Spot not found' }}</h1>
+        <h1 class="mb-2">{{ spot?.name ?? 'Spot not found' }}<span aria-hidden="true">.</span></h1>
         <div v-if="spot" class="d-flex flex-wrap align-items-center column-gap-3">
           <p class="text-secondary mb-0">{{ categoryLabels[spot.category] ?? spot.category }}</p>
           <p v-if="spot.rating !== null" class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>

@@ -248,7 +248,7 @@ function onPinOutside() {
     <div class="row g-0">
       <!-- Left panel: search + group -->
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
-        <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
+        <h1 class="mb-3">Where is everyone coming from?</h1>
         <p class="text-secondary mb-4">Search an address, MRT station or postal code.</p>
 
         <div v-if="!me" class="alert alert-warning small" role="alert">

@@ -1,6 +1,6 @@
 <script setup>
-// Owner: Eashvar. Turnout on 11 Group voting: "3 of 4 voted" and a bar with the % of the group
-// that has voted. The default slot is the intro text shown to the left of the count.
+// Owner: Eashvar. Turnout on 11 Group voting: "3 of 4 voted", one segment per member (teal once
+// they've voted), and the default slot beside the count for who we're still waiting on.
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -8,45 +8,67 @@ const props = defineProps({
   memberCount: { type: Number, required: true },
 })
 
-const percent = computed(() =>
-  props.memberCount === 0 ? 0 : Math.round((props.votedCount / props.memberCount) * 100),
+const segments = computed(() =>
+  Array.from({ length: props.memberCount }, (_, i) => i < props.votedCount),
 )
 </script>
 
 <template>
   <div>
-    <div class="d-flex flex-wrap justify-content-between align-items-baseline column-gap-3 mb-2">
-      <p class="muted small mb-0"><slot /></p>
-      <p class="muted small mb-0" aria-live="polite">{{ votedCount }} of {{ memberCount }} voted</p>
+    <div class="turnout-row">
+      <p class="count mb-0" aria-live="polite">{{ votedCount }} of {{ memberCount }} voted</p>
+      <p class="waiting mb-0"><slot /></p>
     </div>
-    <div class="d-flex align-items-center gap-2">
-      <div
-        class="progress flex-grow-1"
-        role="progressbar"
-        aria-label="Friends who have voted"
-        :aria-valuenow="votedCount"
-        aria-valuemin="0"
-        :aria-valuemax="memberCount"
-        :aria-valuetext="`${votedCount} of ${memberCount} voted`"
-      >
-        <div class="progress-bar" :style="{ width: percent + '%' }"></div>
-      </div>
-      <span class="small fw-semibold" aria-hidden="true">{{ percent }}%</span>
+    <div
+      class="segments"
+      role="progressbar"
+      aria-label="Friends who have voted"
+      :aria-valuenow="votedCount"
+      aria-valuemin="0"
+      :aria-valuemax="memberCount"
+      :aria-valuetext="`${votedCount} of ${memberCount} voted`"
+      :style="{ gridTemplateColumns: `repeat(${Math.max(memberCount, 1)}, minmax(0, 1fr))` }"
+    >
+      <span
+        v-for="(voted, i) in segments"
+        :key="i"
+        class="segment"
+        :class="{ 'segment--voted fp-grow': voted }"
+      ></span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.muted {
+.turnout-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  font-size: 0.95rem;
+}
+
+.count {
+  font-weight: 700;
+}
+
+.waiting {
   color: var(--fp-muted);
 }
 
-.progress {
-  height: 6px;
-  background: var(--fp-border);
+.segments {
+  display: grid;
+  gap: 4px;
+  margin-top: 0.6rem;
 }
 
-.progress-bar {
+.segment {
+  height: 10px;
+  border-radius: var(--fp-radius-pill);
+  background: var(--fp-pill);
+}
+
+.segment--voted {
   background: var(--fp-primary);
 }
 </style>

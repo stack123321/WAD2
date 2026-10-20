@@ -25,9 +25,10 @@ const emit = defineEmits(['vote'])
     Nothing has been shortlisted yet. Add spots from the nearby spots page first.
   </p>
   <ul v-else class="list-unstyled d-flex flex-column gap-3 mb-0">
-    <li v-for="spot in shortlist" :key="spot.id">
+    <li v-for="(spot, i) in shortlist" :key="spot.id">
       <CandidateCard
         :spot="spot"
+        :rank="i + 1"
         :count="counts[spot.id] ?? 0"
         :total-votes="totalVotes"
         :voters="votersBySpot[spot.id] ?? []"

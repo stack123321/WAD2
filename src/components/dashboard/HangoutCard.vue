@@ -43,7 +43,7 @@ const status = computed(() => {
     const added = h.members.filter((m) => m.start_label).length
     return {
       label: `Locations · ${added} of ${total} added`,
-      badge: 'text-bg-info',
+      badge: 'fp-status',
       action: 'Continue',
       page: 'starting-points',
     }
@@ -51,15 +51,20 @@ const status = computed(() => {
   if (h.status === 'voting') {
     return {
       label: `Voting · ${h.votes.length} of ${total} voted`,
-      badge: 'text-bg-warning',
+      badge: 'fp-status fp-status--live',
       action: 'Open vote',
       page: 'vote',
     }
   }
   if (h.status === 'confirmed') {
-    return { label: 'Confirmed', badge: 'text-bg-success', action: 'View plan', page: 'final-plan' }
+    return {
+      label: 'Confirmed',
+      badge: 'fp-status fp-status--ok',
+      action: 'View plan',
+      page: 'final-plan',
+    }
   }
-  return { label: 'Done', badge: 'text-bg-secondary', action: 'View plan', page: 'final-plan' }
+  return { label: 'Done', badge: 'fp-status', action: 'View plan', page: 'final-plan' }
 })
 </script>
 
@@ -67,16 +72,15 @@ const status = computed(() => {
   <div class="card">
     <div class="card-body d-flex flex-wrap align-items-center gap-3">
       <div class="date-block text-center">
-        <div class="weekday">{{ weekday }}</div>
         <div class="day">{{ day }}</div>
-        <div class="month">{{ month }}</div>
+        <div class="month">{{ month }} · {{ weekday }}</div>
       </div>
 
       <div class="info">
-        <h3 class="h6 mb-1">{{ hangout.name }}</h3>
-        <p class="text-muted small mb-2">{{ details }}</p>
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge rounded-pill" :class="status.badge">{{ status.label }}</span>
+        <h3 class="card-name">{{ hangout.name }}</h3>
+        <p class="details">{{ details }}</p>
+        <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+          <span :class="status.badge">{{ status.label }}</span>
           <div class="d-flex">
             <span
               v-for="m in hangout.members"
@@ -160,48 +164,67 @@ const status = computed(() => {
 </template>
 
 <style scoped>
-.info {
-  flex: 1 1 12rem; /* grow to fill, but wrap the button below when narrower than 12rem */
+.card-body {
+  padding: 1.5rem 1.75rem;
+  column-gap: 1.75rem !important;
 }
+
+.info {
+  flex: 1 1 16rem; /* grow to fill, but wrap the button below when narrower than 16rem */
+  min-width: 0;
+}
+
 .delete-btn,
 .pin-btn {
-  min-height: 44px; 
+  min-height: 44px;
   text-decoration: none;
 }
 
 .date-block {
-  width: 64px;
-  padding: 8px 0;
-  background: var(--fp-bg);
-  border-radius: var(--fp-radius-sm);
-  line-height: 1.2;
+  width: 72px;
+  flex: none;
+  line-height: 1;
 }
-.weekday {
-  color: var(--fp-accent);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
+
 .day {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-family: var(--fp-display);
+  font-weight: 800;
+  font-size: 2.75rem;
 }
+
 .month {
-  color: var(--fp-muted);
+  margin-top: 0.3rem;
+  color: var(--fp-faint);
   font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+
+.card-name {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.details {
+  margin: 0.25rem 0 0;
+  color: var(--fp-muted);
+  font-size: 0.95rem;
+}
+
 .avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   border: 2px solid var(--fp-surface);
-  color: var(--fp-surface);
-  font-size: 0.75rem;
-  font-weight: 600;
+  color: var(--fp-bg);
+  font-size: 0.7rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .avatar + .avatar {
   margin-left: -8px; /* overlap the circles like the figma */
 }

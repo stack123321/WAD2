@@ -36,7 +36,7 @@ test.describe('11 Group voting', () => {
 
   test('shows the group chat next to the vote', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Group chat' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Group activity' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: "What's happening" })).toBeVisible()
   })
 
   test('shows the step bar with Vote as the current step', async ({ page }) => {
@@ -84,7 +84,6 @@ test.describe('11 Group voting', () => {
     await page.getByRole('button', { name: 'Close vote' }).click()
 
     await expect(page).toHaveURL(/\/hangouts\/demo\/plan$/)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Final plan & itinerary')
     await expect(page.getByRole('heading', { name: boardGames, exact: true })).toBeVisible()
     await expect(page.getByText('Confirmed spot')).toBeVisible()
     await expect(page.getByText('Not confirmed yet')).toBeHidden()
@@ -136,7 +135,7 @@ test.describe('12 Final plan', () => {
 
     await page.getByRole('button', { name: 'Mark as done' }).click()
 
-    await expect(page.getByText('✓ Done')).toBeVisible()
+    await expect(page.getByText('Done', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mark as done' })).toBeHidden()
   })
 })

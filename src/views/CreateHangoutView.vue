@@ -125,7 +125,7 @@ async function submit() {
     <RouterLink class="back" :to="{ name: 'dashboard' }">&larr; My hangouts</RouterLink>
 
     <header class="create__header">
-      <h1 class="create__title">New hangout</h1>
+      <h1 class="create__title">New hangout.</h1>
       <p class="create__sub">Set the basics, then invite your friends.</p>
     </header>
 
@@ -268,10 +268,7 @@ async function submit() {
 }
 
 .create__title {
-  margin-bottom: 0.4rem;
-  font-size: 1.85rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
 }
 
 .create__sub {

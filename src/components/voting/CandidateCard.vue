@@ -1,13 +1,15 @@
 <script setup>
-// Owner: Eashvar. One shortlisted spot on 11 Group voting: photo, name, category, rating,
-// price and match %, its live tally (bar, votes and % of votes cast, avatars of who voted for it),
-// and a vote button that shows "✓ Your vote" when it's my choice and "Saving…" while this vote is
-// being saved. Emits vote(spotId).
+// Owner: Eashvar. One shortlisted spot on 11 Group voting: its rank, photo (or a tinted tile with
+// its initial), name, category, rating, price and match %, its live tally (bar, votes and % of votes
+// cast, avatars of who voted for it), and a vote button: a grey "Vote" pill, a teal "Your vote" when
+// it's my choice, "Saving…" while this vote is being saved. The leader sits on the teal tint with a
+// black "Leading" badge (or "Tied" for every spot tied at the top). Emits vote(spotId).
 import { computed } from 'vue'
 import MemberAvatar from './MemberAvatar.vue'
 
 const props = defineProps({
   spot: { type: Object, required: true },
+  rank: { type: Number, default: 1 },
   count: { type: Number, default: 0 },
   totalVotes: { type: Number, default: 0 },
   voters: { type: Array, default: () => [] },
@@ -25,27 +27,41 @@ const percent = computed(() =>
   props.totalVotes === 0 ? 0 : Math.round((props.count / props.totalVotes) * 100),
 )
 const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
+const ahead = computed(() => props.leading || props.tied)
 </script>
 
 <template>
   <article
-    class="candidate d-flex flex-wrap align-items-center gap-3"
-    :class="{ 'candidate--selected': selected }"
+    class="candidate"
+    :class="{ 'candidate--ahead': ahead }"
     :aria-labelledby="`spot-${spot.id}`"
   >
+    <span class="rank fp-num" aria-hidden="true">{{ rank }}</span>
     <img v-if="spot.image_url" class="thumb" :src="spot.image_url" :alt="`Photo of ${spot.name}`" />
-    <div v-else class="thumb thumb--empty" aria-hidden="true">{{ spot.name.charAt(0) }}</div>
+    <span v-else class="thumb thumb--empty" aria-hidden="true">{{ spot.name.charAt(0) }}</span>
 
     <div class="body">
-      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-        <h3 :id="`spot-${spot.id}`" class="name h6 mb-0">{{ spot.name }}</h3>
-        <span v-if="leading || tied" class="badge leading">{{ tied ? 'Tied' : 'Leading' }}</span>
+      <div class="title-row">
+        <h3 :id="`spot-${spot.id}`" class="name">{{ spot.name }}</h3>
+        <span v-if="ahead" class="badge leading">{{ tied ? 'Tied' : 'Leading' }}</span>
       </div>
 
-      <p class="meta small mb-2">
+      <p class="meta">
         <span class="text-capitalize">{{ spot.category }}</span>
         <template v-if="spot.rating">
-          · <span aria-hidden="true">★</span><span class="visually-hidden">Rating</span>
+          ·
+          <svg
+            class="star"
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
+            <path
+              d="M3.6 15.3c-.4.2-.8-.2-.7-.6l.8-4.7L.3 6.7c-.3-.3-.2-.9.3-.9l4.7-.7L7.4.8c.2-.4.8-.4 1 0l2.1 4.3 4.7.7c.5 0 .6.6.3.9l-3.4 3.3.8 4.7c.1.4-.3.8-.7.6L8 13.1z"
+            /></svg
+          ><span class="visually-hidden">Rating</span>
           {{ spot.rating }}
         </template>
         <template v-if="price">
@@ -55,9 +71,9 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
         <template v-if="spot.match_pct != null"> · {{ spot.match_pct }}% match</template>
       </p>
 
-      <div class="d-flex align-items-center gap-2">
+      <div class="tally-row">
         <div
-          class="progress flex-grow-1"
+          class="bar"
           role="progressbar"
           :aria-label="spot.name"
           :aria-valuenow="count"
@@ -65,22 +81,16 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
           :aria-valuemax="totalVotes"
           :aria-valuetext="`${count} ${count === 1 ? 'vote' : 'votes'}, ${percent}%`"
         >
-          <div
-            class="progress-bar"
-            :class="{ 'progress-bar--leading': leading || tied }"
-            :style="{ width: percent + '%' }"
-          ></div>
+          <span class="bar-fill fp-grow" :style="{ width: percent + '%' }"></span>
         </div>
-        <span class="small fw-semibold text-nowrap">
-          {{ count }} {{ count === 1 ? 'vote' : 'votes' }} · {{ percent }}%
-        </span>
-        <span v-if="voters.length" class="voters d-flex">
+        <span class="votes">{{ count }} {{ count === 1 ? 'vote' : 'votes' }} · {{ percent }}%</span>
+        <span v-if="voters.length" class="voters">
           <MemberAvatar
             v-for="voter in voters"
             :key="voter.userId"
             :name="voter.name"
             :color="voter.color"
-            :size="22"
+            :size="26"
           />
           <span class="visually-hidden">Voted for this: {{ voterNames }}</span>
         </span>
@@ -89,39 +99,70 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
 
     <button
       type="button"
-      class="vote-btn btn"
-      :class="selected ? 'btn-primary' : 'vote-btn--idle'"
+      class="btn vote-btn"
+      :class="selected ? 'btn-brand' : 'btn-secondary'"
       :aria-label="`Vote for ${spot.name}`"
       :aria-pressed="selected"
       :aria-busy="saving"
       :disabled="disabled"
       @click="emit('vote', spot.id)"
     >
-      <span v-if="saving" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-      {{ saving ? 'Saving…' : selected ? '✓ Your vote' : 'Vote' }}
+      <span v-if="saving" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      <svg
+        v-else-if="selected"
+        aria-hidden="true"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+      >
+        <path
+          d="M5 12.5l4.5 4.5L19 7.5"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      {{ saving ? 'Saving…' : selected ? 'Your vote' : 'Vote' }}
     </button>
   </article>
 </template>
 
 <style scoped>
 .candidate {
+  display: grid;
+  grid-template-columns: 36px 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem 1.35rem;
+  padding: 1.35rem 1.5rem;
   background: var(--fp-surface);
-  border: 1px solid var(--fp-border);
+  border: 2px solid transparent;
   border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
-  padding: 1rem;
 }
 
-.candidate--selected {
+/* The spot in front sits on the teal tint, outlined in teal */
+.candidate--ahead {
+  background: var(--fp-tint);
   border-color: var(--fp-primary);
-  box-shadow: 0 0 0 1px var(--fp-primary);
+}
+
+.rank {
+  font-family: var(--fp-display);
+  font-weight: 900;
+  font-size: 2.75rem;
+  line-height: 1;
+  color: var(--fp-chip-line);
+}
+
+.candidate--ahead .rank {
+  color: var(--fp-primary);
 }
 
 .thumb {
-  width: 56px;
-  height: 56px;
-  flex-shrink: 0;
-  border-radius: var(--fp-radius-sm);
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
   object-fit: cover;
 }
 
@@ -129,73 +170,121 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--fp-bg);
-  border: 1px solid var(--fp-border);
+  background: var(--fp-pill);
   color: var(--fp-muted);
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-family: var(--fp-display);
+  font-weight: 800;
+  font-size: 1.75rem;
+}
+
+.candidate--ahead .thumb--empty {
+  background: var(--fp-bg);
+  color: var(--fp-primary);
 }
 
 .body {
-  flex: 1 1 13rem;
   min-width: 0;
 }
 
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .name {
-  font-weight: 700;
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
 }
 
 .leading {
-  background: var(--fp-bg);
-  color: var(--fp-primary);
-  border: 1px solid var(--fp-primary);
+  background: var(--fp-ink);
+  color: var(--fp-bg);
+  font-size: 0.75rem;
+}
+
+.star {
+  vertical-align: -1px;
 }
 
 .meta {
+  margin: 0.15rem 0 0;
   color: var(--fp-muted);
+  font-size: 0.9rem;
 }
 
-.progress {
-  height: 6px;
-  background: var(--fp-bg);
+.tally-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
-.progress-bar {
-  background: var(--fp-muted);
+.bar {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--fp-radius-pill);
+  background: var(--fp-pill);
+  overflow: hidden;
 }
 
-.progress-bar--leading {
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--fp-radius-pill);
+  background: var(--fp-ink);
+}
+
+.candidate--ahead .bar-fill {
   background: var(--fp-primary);
 }
 
-.voters > :not(:first-child) {
+.votes {
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.voters {
+  display: flex;
+  padding-left: 6px;
+}
+
+.voters > * {
   margin-left: -6px;
 }
 
 .vote-btn {
-  width: 100%;
-  min-height: 44px;
-  font-weight: 600;
+  min-height: 48px;
+  min-width: 7rem;
 }
 
-.vote-btn--idle {
-  --bs-btn-bg: var(--fp-surface);
-  --bs-btn-color: var(--fp-ink);
-  --bs-btn-border-color: var(--fp-border);
-  --bs-btn-hover-bg: var(--fp-bg);
-  --bs-btn-hover-color: var(--fp-ink);
-  --bs-btn-hover-border-color: var(--fp-muted);
-  --bs-btn-active-bg: var(--fp-bg);
-  --bs-btn-active-color: var(--fp-ink);
-  --bs-btn-disabled-bg: var(--fp-surface);
-  --bs-btn-disabled-color: var(--fp-muted);
-  --bs-btn-disabled-border-color: var(--fp-border);
-}
+/* Phones: rank and photo on the first row, the vote button full width underneath */
+@media (max-width: 575.98px) {
+  .candidate {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 0.75rem 0.9rem;
+    padding: 1.1rem;
+  }
 
-@media (min-width: 576px) {
+  /* the name needs the width more than the photo does */
+  .thumb {
+    display: none;
+  }
+
+  .rank {
+    font-size: 2rem;
+  }
+
+  .tally-row {
+    flex-wrap: wrap;
+  }
+
   .vote-btn {
-    width: auto;
-    min-width: 6.5rem;
+    grid-column: 1 / -1;
+    width: 100%;
   }
 }
 </style>
