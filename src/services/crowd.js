@@ -12,3 +12,11 @@ export async function getCrowdLevels(at) {
   // each station is { station: 'Jurong East', lat: 1.333, lng: 103.742, level: 'm' }
   return response.data
 }
+
+// the level at one station at that time: 'l', 'm' or 'h', or null if lta has no real reading for it
+// sample data names end in "(sample)", so they never match and we never show made-up crowds
+export async function getStationCrowd(stationName, at) {
+  const stations = await getCrowdLevels(at)
+  const station = stations.find((s) => s.station === stationName)
+  return station ? station.level : null
+}

@@ -180,7 +180,7 @@ test.describe('Starting the vote', () => {
 
     await page
       .locator('.card', { hasText: 'Friday dinner after class' })
-      .getByRole('link', { name: 'Open vote' })
+      .getByRole('link', { name: 'Friday dinner after class' })
       .click()
 
     await expect(page.getByText("You're not in this hangout, so you can't vote.")).toBeVisible()

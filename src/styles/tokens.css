@@ -62,3 +62,10 @@
   --bs-btn-active-bg: var(--fp-primary-dark);
   --bs-btn-active-border-color: var(--fp-primary-dark);
 }
+
+/* the bottom tab bar (NavBar, below 768px) sits on top of the page, so leave room for it (Ryan) */
+@media (max-width: 767.98px) {
+  body.has-tabbar {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}

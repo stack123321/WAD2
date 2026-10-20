@@ -40,6 +40,7 @@ const pages = [
   ['/login', 'Stop arguing about where to meet.'],
   ['/preferences', 'Tell us what you like'],
   ['/dashboard', GREETING],
+  ['/chats', 'My Chats'],
   ['/hangouts/new', 'New hangout'],
   ['/hangouts/demo/start', 'Where is everyone coming from?'],
   ['/hangouts/demo/transport', 'How is everyone getting there?'],

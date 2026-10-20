@@ -44,13 +44,6 @@ async function getMemberRows() {
   }))
 }
 
-// 3 newest friends: the friendships accepted most recently
-export async function getNewestFriends(myId, count) {
-  const lists = await getFriendships(myId)
-  lists.friends.sort((a, b) => b.since - a.since) // newest first
-  return lists.friends.slice(0, count)
-}
-
 // one person's name and colour, for "hanging out with …" on 05
 export async function getFriend(userId) {
   if (!hasSupabase) {
