@@ -43,7 +43,7 @@ const distance = computed(() => {
           <RouterLink v-if="to" :to="to" class="spot-card__link">{{ name }}</RouterLink>
           <template v-else>{{ name }}</template>
         </h3>
-        <span v-if="rating !== null" class="spot-card__rating">&#9733; {{ rating.toFixed(1) }}</span>
+        <span v-if="rating !== null" class="spot-card__rating"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -1px"><path d="M3.6 15.3c-.4.2-.8-.2-.7-.6l.8-4.7L.3 6.7c-.3-.3-.2-.9.3-.9l4.7-.7L7.4.8c.2-.4.8-.4 1 0l2.1 4.3 4.7.7c.5 0 .6.6.3.9l-3.4 3.3.8 4.7c.1.4-.3.8-.7.6L8 13.1z" /></svg><span class="visually-hidden">Rating</span> {{ rating.toFixed(1) }}</span>
       </div>
 
       <p class="spot-card__meta mb-0">

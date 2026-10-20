@@ -565,13 +565,13 @@ legend.form-label {
 }
 
 .badge-status--host {
-  background: color-mix(in srgb, #7056e0 12%, transparent);
-  color: #7056e0;
+  background: var(--fp-tint);
+  color: var(--fp-primary-dark);
 }
 
 .badge-status--invited {
-  background: color-mix(in srgb, #f2b33d 22%, transparent);
-  color: #a86f00;
+  background: var(--fp-pill);
+  color: var(--fp-ink);
 }
 
 /* Footer actions */

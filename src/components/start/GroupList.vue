@@ -1,6 +1,6 @@
 <script setup>
 // Owner: Surya. "Your group" list on 06 Starting points: each member with where they're coming
-// from and a status on the right: ✓ added, "Editing" (whoever's location is being chosen), or a
+// from and a status on the right: a tick once added, "Editing" (whoever's location is being chosen), or a
 // Remind button (posts a reminder in the group chat). In host mode (the host enters everyone's locations) each row instead has a
 // Set / Change button, which emits "select" with that member.
 // Usage: <GroupList :hangout="store.hangout" :my-id="myId" :editing-id="editingId"
@@ -108,7 +108,16 @@ async function remind(member) {
         >
           {{ hasStart(m) ? 'Change' : 'Set' }}
         </button>
-        <span v-else-if="hasStart(m)" class="check" aria-label="Added">✓</span>
+        <span v-else-if="hasStart(m)" class="check" role="img" aria-label="Added"
+          ><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M5 12.5l4.5 4.5L19 7.5"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg
+        ></span>
         <button
           v-else
           type="button"

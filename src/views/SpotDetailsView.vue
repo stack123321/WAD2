@@ -124,7 +124,7 @@ const distance = computed(() => {
         <h1 class="mb-2">{{ spot?.name ?? 'Spot not found' }}<span aria-hidden="true">.</span></h1>
         <div v-if="spot" class="d-flex flex-wrap align-items-center column-gap-3">
           <p class="text-secondary mb-0">{{ categoryLabels[spot.category] ?? spot.category }}</p>
-          <p v-if="spot.rating !== null" class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
+          <p v-if="spot.rating !== null" class="mb-0"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -1px"><path d="M3.6 15.3c-.4.2-.8-.2-.7-.6l.8-4.7L.3 6.7c-.3-.3-.2-.9.3-.9l4.7-.7L7.4.8c.2-.4.8-.4 1 0l2.1 4.3 4.7.7c.5 0 .6.6.3.9l-3.4 3.3.8 4.7c.1.4-.3.8-.7.6L8 13.1z" /></svg><span class="visually-hidden">Rating</span> {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
           <p v-if="price" class="text-secondary mb-0">{{ price }}</p>
           <p v-if="distance" class="text-secondary mb-0">{{ distance }} from nearest MRT station</p>
         </div>

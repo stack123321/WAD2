@@ -26,7 +26,14 @@ defineProps({
         <dd class="col-sm-10">{{ writes }}</dd>
       </dl>
       <slot />
-      <RouterLink v-if="next" class="btn btn-primary" :to="next">{{ nextLabel }} →</RouterLink>
+      <RouterLink v-if="next" class="btn btn-primary" :to="next"
+        >{{ nextLabel }}
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path
+            fill-rule="evenodd"
+            d="M1 8a.5.5 0 0 1 .5-.5h11.8L10.1 4.4a.5.5 0 1 1 .7-.8l4 4a.5.5 0 0 1 0 .8l-4 4a.5.5 0 0 1-.7-.8l3.2-3.1H1.5A.5.5 0 0 1 1 8"
+          /></svg
+      ></RouterLink>
     </div>
   </section>
 </template>

@@ -161,7 +161,18 @@ async function addSelected() {
       </button>
     </template>
 
-    <p v-if="message" class="small save-ok mt-2 mb-0">✓ {{ message }}</p>
+    <p v-if="message" class="small save-ok mt-2 mb-0">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M5 12.5l4.5 4.5L19 7.5"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      {{ message }}
+    </p>
     <p v-if="error" class="small text-danger mt-2 mb-0" role="alert">{{ error }}</p>
   </div>
 </template>
