@@ -10,6 +10,7 @@ const DEMO_ME = 'u-surya'
 
 // every hangout member you can see, one row per person per hangout
 async function getMemberRows() {
+  // no supabase, so use the sample hangouts
   if (!hasSupabase) {
     let rows = []
     for (let h of [mockHangout, mockHangout2]) {
@@ -27,6 +28,7 @@ async function getMemberRows() {
   }
 
   // no filter needed: the security rules only let you read the members of hangouts you're in
+  // each member's name and colour come from the profiles table, as profile
   const { data, error } = await supabase
     .from('hangout_members')
     .select('user_id, hangout_id, joined_at, profile:profiles(display_name, avatar_color)')
@@ -70,7 +72,7 @@ export async function getFriend(userId) {
   return { user_id: data.id, display_name: data.display_name, avatar_color: data.avatar_color }
 }
 
-// add a friend to a hangout you just made 
+// add a friend to a hangout you just made
 export async function addFriendToHangout(hangoutId, userId) {
   if (!hasSupabase) {
     return
@@ -78,7 +80,7 @@ export async function addFriendToHangout(hangoutId, userId) {
   await addMember(hangoutId, userId)
 }
 
-// friend requests (friendships table in supabase/schema.sql) ──
+// friend requests, kept in the friendships table (see supabase/schema.sql)
 
 // demo only: requests kept in memory, reset on reload
 let demoFriendships = [

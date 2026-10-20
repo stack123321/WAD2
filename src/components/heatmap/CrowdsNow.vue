@@ -2,8 +2,9 @@
 // Owner: Ryan
 // "crowds right now" card on 04 dashboard: how many mrt stations are busy now, plus a link to /crowds
 import { ref, computed, onMounted } from 'vue'
-import { getCrowdLevels } from '@/services/crowd'
+import { getCrowdLevels } from '@/services/crowd' // @ means src, so no ../../ needed, and vite adds the .js
 
+// every station from the server, e.g. [{ station: 'Jurong East', lat: 1.333, lng: 103.7424, level: 'm' }, ...]
 const stations = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -17,7 +18,7 @@ const counts = computed(() => {
   return result
 })
 
-// true when lta unavailable and api/crowd.js sent sample data 
+// true when lta unavailable and api/crowd.js sent sample data
 const isSample = computed(
   () => stations.value.length > 0 && stations.value[0].station.includes('(sample)'),
 )
@@ -25,7 +26,7 @@ const isSample = computed(
 onMounted(async () => {
   loading.value = true
   try {
-    stations.value = await getCrowdLevels(new Date())
+    stations.value = await getCrowdLevels(new Date()) // current time
   } catch (err) {
     console.log(err)
     error.value = 'Could not load crowd levels.'
