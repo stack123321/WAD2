@@ -2,6 +2,7 @@
   
   <div class="nearby-page">
     <div class="content">
+    <div class="main-col">
     <section class="head">
       <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <div class="head-actions">
@@ -39,6 +40,46 @@
     <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
       No spots match this filter.
     </p>
+    <div class="filters">
+      <div class="filter-buttons">
+        <button
+          v-for="filter in filters"
+          :key="filter.value"
+          type="button"
+          class="btn btn-sm"
+          :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
+          @click="activeFilter = filter.value"
+        >
+          {{ filter.label }}
+        </button>
+      </div>
+    </div>
+    <div class="sort-control">
+      <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
+        <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
+    <section class="cards">
+      <SpotCard
+        v-for="spot in sortedSpots"
+        :key="spot.id"
+        :id="`spot-card-${spot.id}`"
+        :class="{ 'is-selected': selectedId === spot.id }"
+        :name="spot.name"
+        :image-url="spot.imageUrl"
+        :rating="spot.rating"
+        :station-distance-m="spot.stationDistanceM"
+        :nearest-station-name="spot.nearestStationName"
+        :price-level="spot.priceLevel"
+        :tags="spot.tags"
+        :added="addedIds.has(spot.id)"
+        :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
+        @add="addSpot(spot)"
+      />
+    </section>
+    </div>
     <div class="map-shortlist-row">
       <div class="map-section">
         <button
@@ -150,45 +191,6 @@
             Go Vote!
           </router-link>
         </div>
-      </div>
-    </div>
-    <div class="sort-control">
-      <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
-        <option v-for="option in sortOptions" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
-    </div>
-    <section class="cards d-flex">
-      <SpotCard
-        v-for="spot in sortedSpots"
-        :key="spot.id"
-        :id="`spot-card-${spot.id}`"
-        :class="{ 'is-selected': selectedId === spot.id }"
-        :name="spot.name"
-        :image-url="spot.imageUrl"
-        :rating="spot.rating"
-        :station-distance-m="spot.stationDistanceM"
-        :nearest-station-name="spot.nearestStationName"
-        :price-level="spot.priceLevel"
-        :tags="spot.tags"
-        :added="addedIds.has(spot.id)"
-        :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
-        @add="addSpot(spot)"
-      />
-    </section>
-    <div class="filters">
-      <div class="filter-buttons">
-        <button
-          v-for="filter in filters"
-          :key="filter.value"
-          type="button"
-          class="btn btn-sm"
-          :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
-          @click="activeFilter = filter.value"
-        >
-          {{ filter.label }}
-        </button>
       </div>
     </div>
     </div>
@@ -554,7 +556,103 @@ async function selectSpot(id) {
   background: #e0e0e0;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 768px) {
+  .nearby-page {
+    min-height: 0;
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+    gap: 16px;
+    height: calc(100vh - 120px);
+    min-height: 480px;
+  }
+
+  .main-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .head {
+    padding-right: 0;
+  }
+
+  .filters {
+    margin-bottom: 8px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* max-content keeps each row at its card's full height; otherwise grid can shrink rows
+       (and clip card text) below content size when this scroll area is shorter than its content. */
+    grid-auto-rows: max-content;
+    align-content: start;
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: 12px;
+  }
+
+  .cards > * {
+    flex: none;
+    min-width: 0;
+  }
+
+  .map-shortlist-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .map-section {
+    margin-bottom: 0;
+  }
+
+  .map {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .shortlist-panel {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .shortlist {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  .shortlist-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .shortlist-list {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 767px) {
   .head {
     padding-right: 0;
   }
@@ -581,6 +679,10 @@ async function selectSpot(id) {
   .content {
     display: flex;
     flex-direction: column;
+  }
+
+  .main-col {
+    display: contents;
   }
 
   .head-actions {
