@@ -93,7 +93,7 @@ const rows = computed(() =>
           <td class="text-end text-nowrap">
             {{ row.travel_mins != null ? `${row.travel_mins} min` : '—' }}
           </td>
-          <td class="d-none d-md-table-cell text-end">
+          <td class="d-none d-md-table-cell text-end text-nowrap">
             {{ formatCost(row.travel_cost, row.mode) }}
           </td>
           <td class="text-end text-nowrap fw-semibold">{{ row.leaveAt }}</td>
