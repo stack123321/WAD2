@@ -151,6 +151,49 @@ function resetPreferences() {
 
 const noRestrictions = computed(() => prefs.dietary.length === 0)
 
+const setupStep = ref(0)
+const setupTotal = 4
+const setupStepLabel = computed(() => {
+  if (setupStep.value === 0) return 'Let’s get started'
+  return `Step ${setupStep.value} of ${setupTotal}`
+})
+
+async function nextSetupStep() {
+  if (setupStep.value === 1) {
+    showErrors.value = true
+    if (activitiesError.value) {
+      await nextTick()
+      activitiesPanel.value?.querySelector('.chip')?.focus()
+      return
+    }
+  }
+
+  if (setupStep.value < setupTotal) {
+    setupStep.value += 1
+    showErrors.value = false
+  } else {
+    await save()
+  }
+}
+
+function previousSetupStep() {
+  if (setupStep.value > 0) {
+    setupStep.value -= 1
+    showErrors.value = false
+    error.value = ''
+  }
+}
+
+async function skipSetupStep() {
+  if (setupStep.value < setupTotal) {
+    setupStep.value += 1
+    showErrors.value = false
+    error.value = ''
+  } else {
+    await save()
+  }
+}
+
 // Slider fill: CSS needs the % of the track that's filled
 const travelFill = computed(
   () => `${((prefs.max_travel_mins - travel.min) / (travel.max - travel.min)) * 100}%`,
@@ -161,7 +204,7 @@ watch(prefs, () => (saved.value = false))
 async function save() {
   error.value = ''
   showErrors.value = true
-  if (activitiesError.value) {
+  if (activitiesError.value && !isSetup.value) {
     await nextTick()
     activitiesPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     activitiesPanel.value?.querySelector('.chip')?.focus({ preventScroll: true })
@@ -189,11 +232,19 @@ async function save() {
     <header class="prefs__header">
       <div>
         <h1 class="prefs__title">Tell us what you like</h1>
-        <p class="prefs__sub">Fairpoint uses this to rank cafes and activities for your group.</p>
+        <p class="prefs__sub">
+          {{
+            isSetup
+              ? 'Answer a few quick questions to personalise your recommendations.'
+              : 'Fairpoint uses this to rank cafes and activities for your group.'
+          }}
+        </p>
       </div>
       <div v-if="isSetup" class="progress-step">
-        <span>Profile setup · 2 of 2</span>
-        <div class="progress-step__bar"><span></span></div>
+        <span>{{ setupStepLabel }}</span>
+        <div class="progress-step__bar">
+          <span :style="{ width: `${(setupStep / setupTotal) * 100}%` }"></span>
+        </div>
       </div>
     </header>
 
@@ -212,15 +263,29 @@ async function save() {
       Loading your preferences…
     </div>
 
-    <form v-else id="prefs-form" novalidate @submit.prevent="save">
-      <div class="prefs__grid">
+    <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
+      <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
+        <h2 class="panel__title">Tell us what you like</h2>
+        <p class="panel__sub">
+          Your answers help Fairpoint suggest places that work for you and your group.
+        </p>
+        <button type="submit" class="btn btn-primary">Get started</button>
+      </section>
+
+      <div v-else class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
         <div class="prefs__col">
           <section
+            v-if="!isSetup || setupStep === 1"
             ref="activitiesPanel"
             class="panel"
             :class="{ 'panel--invalid': shownActivitiesError }"
           >
-            <h2 id="prefs-activities-title" class="panel__title">What do you enjoy?</h2>
+            <h2 id="prefs-activities-title" class="panel__title">
+              What do you enjoy?
+              <span class="panel__count"
+                >{{ prefs.activities.length }}/{{ activityOptions.length }} selected</span
+              >
+            </h2>
             <p class="panel__sub">Pick at least one, as many as you like</p>
             <div
               class="chips"
@@ -251,10 +316,15 @@ async function save() {
             </p>
           </section>
 
-          <section class="panel">
-            <h2 class="panel__title">Dietary needs</h2>
+          <section v-if="!isSetup || setupStep === 2" class="panel dietary-panel">
+            <h2 id="prefs-dietary-title" class="panel__title">
+              Dietary needs
+              <span class="panel__count"
+                >{{ prefs.dietary.length }}/{{ dietaryOptions.length }} selected</span
+              >
+            </h2>
             <p class="panel__sub">We only suggest food spots that fit everyone</p>
-            <div class="chips">
+            <div class="chips" role="group" aria-labelledby="prefs-dietary-title">
               <button
                 v-for="o in dietaryOptions"
                 :key="o.value"
@@ -282,7 +352,7 @@ async function save() {
         </div>
 
         <div class="prefs__col">
-          <section class="panel">
+          <section v-if="!isSetup || setupStep === 3" class="panel">
             <h2 class="panel__title">Budget per person</h2>
             <p class="panel__sub">Used to filter spots by price level</p>
             <div class="segmented" role="radiogroup" aria-label="Budget per person">
@@ -301,7 +371,7 @@ async function save() {
             </div>
           </section>
 
-          <section class="panel">
+          <section v-if="!isSetup || setupStep === 4" class="panel">
             <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
 
             <div class="travel">
@@ -342,14 +412,32 @@ async function save() {
 
       <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
 
-      <footer class="actions">
+      <footer v-if="!isSetup || setupStep > 0" class="actions">
         <div class="actions__buttons">
           <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
-          <RouterLink v-if="isSetup" class="btn btn-light btn-skip" :to="{ name: 'dashboard' }">
+          <button
+            v-if="isSetup"
+            type="button"
+            class="btn btn-light btn-skip"
+            @click="skipSetupStep"
+          >
             Skip for now
-          </RouterLink>
-          <button type="button" class="btn btn-outline-primary btn-reset" @click="resetPreferences">
+          </button>
+          <button
+            v-if="!isSetup"
+            type="button"
+            class="btn btn-outline-primary btn-reset"
+            @click="resetPreferences"
+          >
             Reset preferences
+          </button>
+          <button
+            v-if="isSetup && setupStep > 0"
+            type="button"
+            class="btn btn-outline-primary btn-back"
+            @click="previousSetupStep"
+          >
+            Back
           </button>
           <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
             <span
@@ -357,7 +445,13 @@ async function save() {
               class="spinner-border spinner-border-sm me-2"
               aria-hidden="true"
             ></span>
-            Save preferences
+            {{
+              isSetup
+                ? setupStep === setupTotal
+                  ? 'Save preferences'
+                  : 'Next'
+                : 'Save preferences'
+            }}
           </button>
         </div>
       </footer>
@@ -421,9 +515,25 @@ async function save() {
   align-items: start;
 }
 
+.prefs__grid--setup {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 680px;
+  margin-inline: auto;
+}
+
+.prefs__grid--setup .prefs__col {
+  display: contents;
+}
+
 .prefs__col {
   display: grid;
   gap: 1.25rem;
+}
+
+.setup-intro {
+  max-width: 680px;
+  margin-inline: auto;
+  text-align: center;
 }
 
 .panel {
@@ -433,10 +543,26 @@ async function save() {
   border-radius: var(--fp-radius);
 }
 
+.dietary-panel {
+  min-height: 13rem;
+}
+
 .panel__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 0.2rem;
   font-size: 1.1rem;
   font-weight: 700;
+}
+
+.panel__count {
+  flex-shrink: 0;
+  color: var(--fp-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .panel__sub {
@@ -675,6 +801,14 @@ async function save() {
 @media (max-width: 767.98px) {
   .prefs__grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prefs__grid--setup {
+    max-width: none;
+  }
+
+  .dietary-panel {
+    min-height: 0;
   }
 
   .actions__buttons {
