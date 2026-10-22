@@ -5,7 +5,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
 import { createOneMap } from '@/components/map/oneMap'
-import { readableInk } from '@/utils/color'
+import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_lat, start_lng }], the ones with no start point are skipped
@@ -61,14 +61,12 @@ function draw() {
 
   // a small avatar for each member, the initial in their colour
   for (let m of placed) {
-    const color = /^#[0-9a-f]{6}$/i.test(m.avatar_color ?? '') ? m.avatar_color : null
-    const background = color ?? 'var(--fp-muted)'
-    const ink = color ? readableInk(color) : 'var(--fp-surface)'
+    const background = avatarColor(m.avatar_color, m.display_name)
     L.marker([m.start_lat, m.start_lng], {
       interactive: false,
       icon: L.divIcon({
         className: '',
-        html: `<span class="member-dot" style="background:${background};color:${ink}">${escapeHtml(m.display_name.charAt(0))}</span>`,
+        html: `<span class="member-dot" style="background:${background};color:#fff">${escapeHtml(m.display_name.charAt(0))}</span>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       }),
