@@ -44,7 +44,7 @@ test.beforeEach(async ({ page }) => {
 test('shows the demo hangout with its voting status', async ({ page }) => {
   await page.goto('/dashboard')
   await expect(page.getByRole('heading', { name: 'Friday dinner after class' })).toBeVisible()
-  await expect(page.getByText('7:00 pm · Near Bishan')).toBeVisible()
+  await expect(page.getByText('7:00 pm · Midpoint: Bishan')).toBeVisible()
   await expect(page.getByText('Waiting on Surya')).toBeVisible()
 })
 
@@ -162,9 +162,9 @@ test('each card shows the weather at its start time, amber when rain is likely',
 }) => {
   await page.goto('/dashboard')
   const rainy = page.locator('.card', { hasText: 'Friday dinner after class' })
-  await expect(rainy).toContainText('Thunderstorms, go indoors')
+  await expect(rainy).toContainText('Thunderstorms · 70% rain, go indoors')
   const fine = page.locator('.card', { hasText: 'Saturday study session' })
-  await expect(fine).toContainText('Clear')
+  await expect(fine).toContainText('Clear · 5% rain')
   await expect(fine).not.toContainText('go indoors')
   await expect(fine).not.toContainText('umbrella')
 })
@@ -202,7 +202,8 @@ test('the header counts what is being planned and has no "Your hangouts" heading
   page,
 }) => {
   await page.goto('/dashboard')
-  await expect(page.getByText('2 being planned · 0 confirmed')).toBeVisible()
+  await expect(page.getByText('2 being planned')).toBeVisible()
+  await expect(page.getByText('· 0 confirmed')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Your hangouts' })).toHaveCount(0)
 })
 
@@ -239,10 +240,10 @@ test('1400px and wider: the week and its first free day sit beside the list', as
   const week = page.locator('section', { hasText: 'Next 7 days' })
   await expect(week.locator('.day')).toHaveCount(7)
   await expect(week).toContainText('14 Oct – 20 Oct')
-  await expect(week).toContainText('Thu 15 Oct is free.') // tomorrow has nothing on
+  await expect(week).toContainText('Next free day: Thu 15 Oct') // tomorrow has nothing on
   await expect(week.locator('.day.open')).toContainText('15')
   await expect(week.locator('.dots .planning')).toHaveCount(1) // Friday is still being planned
-  await expect(week.getByRole('link', { name: 'Plan something' })).toBeVisible()
+  await expect(week.getByRole('link', { name: 'Start planning' })).toBeVisible()
 })
 
 test('below 1400px the rail is hidden', async ({ page }) => {
@@ -251,10 +252,13 @@ test('below 1400px the rail is hidden', async ({ page }) => {
   await expect(page.getByText('Next 7 days')).toBeHidden()
 })
 
-test('Plan something opens Start planning with the free day filled in', async ({ page }) => {
+test('the week card opens Start planning with the free day filled in', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/dashboard')
-  await page.getByRole('link', { name: 'Plan something' }).click()
+  await page
+    .locator('section', { hasText: 'Next 7 days' })
+    .getByRole('link', { name: 'Start planning' })
+    .click()
   await expect(page).toHaveURL(/\/hangouts\/new\?date=2026-10-15/)
   await expect(page.getByLabel('Date')).toHaveValue('2026-10-15')
 })
@@ -263,7 +267,7 @@ test('rows say how far along people are', async ({ page }) => {
   await page.goto('/dashboard')
   // once everyone has added theirs, "Everyone's added" says it, so no count is repeated
   await expect(page.locator('.card', { hasText: 'Saturday study session' })).not.toContainText(
-    'added a location',
+    'added a starting point',
   )
   await expect(page.locator('.card', { hasText: 'Friday dinner after class' })).toContainText(
     /\d of 4 voted/,
@@ -314,6 +318,20 @@ test('rain shows its chance', async ({ page }) => {
   await expect(page.locator('.card', { hasText: 'Saturday study session' })).toContainText(
     '60% rain, bring an umbrella',
   )
+})
+
+test('the Needs your input card is hidden for a short list', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/dashboard')
+  await expect(page.getByText('Next 7 days')).toBeVisible()
+  await expect(page.getByText('Needs your input')).toHaveCount(0)
+})
+
+test('the starting points page says who sees a starting point', async ({ page }) => {
+  await page.goto('/hangouts/demo/start')
+  await expect(
+    page.getByText('Only people in this hangout can see your starting point.'),
+  ).toBeVisible()
 })
 
 test('one action per card: outline View while waiting on others, no Continue anywhere', async ({

@@ -31,10 +31,10 @@ function whenOf(h) {
     <div v-for="x in items.slice(0, MAX)" :key="x.hangout.id" class="item">
       <div class="text">
         <p class="name">{{ x.hangout.name }}</p>
-        <p class="when">{{ whenOf(x.hangout) }} · {{ x.status.button }}</p>
+        <p class="when">{{ whenOf(x.hangout) }}</p>
       </div>
       <router-link :to="{ name: x.status.page, params: { id: x.hangout.id } }" class="open">
-        Open →
+        {{ x.status.button }} →
       </router-link>
     </div>
     <p v-if="items.length > MAX" class="more">and {{ items.length - MAX }} more in the list</p>
