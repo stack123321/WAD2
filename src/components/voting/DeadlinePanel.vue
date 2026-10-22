@@ -101,8 +101,9 @@ function save() {
 }
 
 .hint {
-  border-left: 3px solid var(--fp-accent);
-  padding-left: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--fp-bg);
+  border-radius: var(--fp-radius-sm);
   color: var(--fp-ink);
 }
 </style>
