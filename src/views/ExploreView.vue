@@ -73,6 +73,7 @@
         :station-distance-m="spot.stationDistanceM"
         :nearest-station-name="spot.nearestStationName"
         :price-level="spot.priceLevel"
+        :match-pct="spot.matchPct"
         :tags="spot.tags"
         :added="addedIds.has(spot.id)"
         :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
@@ -210,6 +211,8 @@ import {
 } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
+import { matchScore } from '@/utils/matchScore'
+import { willRainAt } from '@/services/weather'
 
 const route = useRoute()
 const hangout = useHangoutStore()
@@ -222,6 +225,42 @@ const hasMidpoint = computed(
   () =>
     hangout.hangout?.midpoint_lat != null &&
     hangout.hangout?.midpoint_lng != null,
+)
+
+// Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.
+// One call covers every spot (they're all close to the midpoint), refreshed when the hangout's
+// time or place changes.
+const raining = ref(false)
+watch(
+  () => [hangout.hangout?.midpoint_lat, hangout.hangout?.midpoint_lng, hangout.hangout?.starts_at],
+  async ([lat, lng, startsAt]) => {
+    if (lat == null || lng == null || !startsAt) {
+      raining.value = false
+      return
+    }
+    try {
+      const forecast = await willRainAt(lat, lng, startsAt)
+      raining.value = forecast?.rain ?? false
+    } catch {
+      raining.value = false
+    }
+  },
+  { immediate: true },
+)
+
+// Spots with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
+const scoredSpots = computed(() =>
+  spots.value.map((spot) => ({
+    ...spot,
+    matchPct: matchScore(spot, hangout.members, {
+      vibes: hangout.hangout?.vibe,
+      startAt: hangout.hangout?.starts_at,
+      raining: raining.value,
+      midpoint: hasMidpoint.value
+        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
+        : null,
+    }),
+  })),
 )
 let spotRequestId = 0
 const refreshCount = ref(0)
@@ -295,7 +334,7 @@ function distanceFromMidpointKm(spot) {
 }
 
 const filteredSpots = computed(() =>
-  spots.value.filter(
+  scoredSpots.value.filter(
     (s) =>
       (activeFilter.value === 'all' || s.category === activeFilter.value) &&
       (!hasMidpoint.value || distanceFromMidpointKm(s) <= radiusKm.value),

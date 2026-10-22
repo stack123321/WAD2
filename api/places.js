@@ -5,9 +5,9 @@
 // Uses Google Places API (New) with GOOGLE_PLACES_API_KEY.
 //
 // Replies with shortlist-shaped places, nearest first:
-// [{ source, source_place_id, name, category, lat, lng, rating, review_count, price_level, image_url,
-//    distance_m, address, google_maps_uri, open_now, description, tags,
-//    nearest_station_name, station_distance_m }]
+// [{ source, source_place_id, name, category, types, primary_type, lat, lng, rating, review_count,
+//    price_level, image_url, distance_m, address, google_maps_uri, open_now, opening_hours,
+//    wheelchair_accessible, description, tags, nearest_station_name, station_distance_m }]
 import { nearbyPlaces, placeById, placeSummary } from './_google.js'
 
 export default async function handler(req, res) {

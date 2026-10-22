@@ -10,6 +10,8 @@ const props = defineProps({
   nearestStationName: { type: String, default: null },
   // 0 (free) to 3 (pricey), matching price_level from the places API
   priceLevel: { type: Number, default: null },
+  // 0-100 group match %, from src/utils/matchScore.js
+  matchPct: { type: Number, default: null },
   tags: { type: Array, default: () => [] },
   added: { type: Boolean, default: false },
   // Route location for the spot details page; image and name link to it when set
@@ -28,6 +30,14 @@ const distance = computed(() => {
   if (m === null) return null
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`
 })
+
+// Colour band for the match badge: green = strong fit, amber = so-so, red = weak/vetoed
+const matchTone = computed(() => {
+  if (props.matchPct === null) return null
+  if (props.matchPct >= 70) return 'good'
+  if (props.matchPct >= 40) return 'ok'
+  return 'poor'
+})
 </script>
 
 <template>
@@ -45,6 +55,14 @@ const distance = computed(() => {
         </h3>
         <span v-if="rating !== null" class="spot-card__rating">&#9733; {{ rating.toFixed(1) }}</span>
       </div>
+
+      <span
+        v-if="matchPct !== null"
+        class="spot-card__match"
+        :class="`spot-card__match--${matchTone}`"
+      >
+        {{ matchPct }}% match
+      </span>
 
       <p class="spot-card__meta mb-0">
         <span v-if="distance">
@@ -129,6 +147,29 @@ const distance = computed(() => {
   flex-shrink: 0;
   font-weight: 600;
   font-size: 0.875rem;
+}
+
+.spot-card__match {
+  align-self: flex-start;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.spot-card__match--good {
+  background: #e3f6ec;
+  color: #0e7c3f;
+}
+
+.spot-card__match--ok {
+  background: #fdf2d7;
+  color: #a16207;
+}
+
+.spot-card__match--poor {
+  background: #fbe4e4;
+  color: #b42318;
 }
 
 .spot-card__meta {

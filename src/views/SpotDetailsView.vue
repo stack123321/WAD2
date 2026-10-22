@@ -10,6 +10,8 @@ import WeatherCard from '@/components/weather/WeatherCard.vue'
 import { googlePlacesEnabled, loadSpot, loadSpotSummary } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
+import { matchScore, matchReasons } from '@/utils/matchScore'
+import { willRainAt } from '@/services/weather'
 
 const route = useRoute()
 const hangout = useHangoutStore()
@@ -75,6 +77,54 @@ const distance = computed(() => {
   if (m === undefined || m === null) return null
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`
 })
+
+// Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.
+const raining = ref(false)
+watch(
+  () => [
+    hangout.hangout?.midpoint_lat,
+    hangout.hangout?.midpoint_lng,
+    hangout.hangout?.starts_at,
+  ],
+  async ([lat, lng, startsAt]) => {
+    if (lat == null || lng == null || !startsAt) {
+      raining.value = false
+      return
+    }
+    try {
+      const forecast = await willRainAt(lat, lng, startsAt)
+      raining.value = forecast?.rain ?? false
+    } catch {
+      raining.value = false
+    }
+  },
+  { immediate: true },
+)
+
+const matchContext = computed(() => ({
+  vibes: hangout.hangout?.vibe,
+  startAt: hangout.hangout?.starts_at,
+  raining: raining.value,
+  midpoint:
+    hangout.hangout?.midpoint_lat != null && hangout.hangout?.midpoint_lng != null
+      ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
+      : null,
+}))
+
+// This spot's group match % and the reasons behind it (src/utils/matchScore.js), for the
+// "Criteria" section below.
+const matchPct = computed(() =>
+  spot.value ? matchScore(spot.value, hangout.members, matchContext.value) : null,
+)
+const matchTone = computed(() => {
+  if (matchPct.value === null) return null
+  if (matchPct.value >= 70) return 'good'
+  if (matchPct.value >= 40) return 'ok'
+  return 'poor'
+})
+const reasons = computed(() =>
+  spot.value ? matchReasons(spot.value, hangout.members, matchContext.value) : [],
+)
 </script>
 
 <template>
@@ -163,17 +213,6 @@ const distance = computed(() => {
     </section>
     <p v-if="shortlistError" class="spot__error text-danger">{{ shortlistError }}</p>
 
-    <section class="spot__criteria card-box">
-      <h2 class="h6">Criteria</h2>
-      <p class="text-secondary mb-0">Why it fits the group.</p>
-    </section>
-
-
-    <section class="spot__traveltime card-box">
-      <h2 class="h6">Travel time</h2>
-      <p class="text-secondary mb-0">Travel time per friend.</p>
-    </section>
-
     <section class="spot__about card-box">
       <h2 class="h6">About</h2>
       
@@ -188,6 +227,40 @@ const distance = computed(() => {
         <p class="text-secondary small mb-2">{{ summary.disclosure }}</p>
       </template>
       <p v-if="!spot" class="text-secondary mb-0">Description and details.</p>
+    </section>
+
+
+    <section class="spot__traveltime card-box">
+      <h2 class="h6">Travel time</h2>
+      <p class="text-secondary mb-0">Travel time per friend.</p>
+    </section>
+
+    
+    <section class="spot__criteria card-box">
+      <div class="d-flex align-items-center justify-content-between gap-2">
+        <h2 class="h6 mb-0">Criteria</h2>
+        <span
+          v-if="matchPct !== null"
+          class="criteria__score"
+          :class="`criteria__score--${matchTone}`"
+        >
+          {{ matchPct }}% match
+        </span>
+      </div>
+      <p v-if="!spot" class="text-secondary mb-0">Why it fits the group.</p>
+      <p v-else-if="!reasons.length" class="text-secondary mb-0">
+        Add members with preferences to see why this spot fits (or doesn't).
+      </p>
+      <ul v-else class="criteria__list">
+        <li
+          v-for="(reason, i) in reasons"
+          :key="i"
+          class="criteria__item"
+          :class="`criteria__item--${reason.tone}`"
+        >
+          {{ reason.text }}
+        </li>
+      </ul>
     </section>
 
     <section class="spot__weather card-box">
@@ -214,8 +287,8 @@ const distance = computed(() => {
     'nav nav'
     'preview preview'
     'info info'
-    'criteria traveltime'
-    'about weather';
+    'about traveltime'
+    'criteria weather';
   gap: 1rem;
   padding-block: 1.5rem;
 }
@@ -255,6 +328,70 @@ const distance = computed(() => {
   border-radius: var(--fp-radius);
   box-shadow: var(--fp-shadow);
   padding: 1.25rem;
+}
+
+.criteria__score {
+  flex-shrink: 0;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.criteria__score--good {
+  background: #e3f6ec;
+  color: #0e7c3f;
+}
+
+.criteria__score--ok {
+  background: #fdf2d7;
+  color: #a16207;
+}
+
+.criteria__score--poor {
+  background: #fbe4e4;
+  color: #b42318;
+}
+
+.criteria__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.criteria__item {
+  position: relative;
+  padding-left: 1.1rem;
+  font-size: 0.875rem;
+}
+
+.criteria__item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.4em;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.criteria__item--good::before {
+  background: #0e7c3f;
+}
+
+.criteria__item--warn::before {
+  background: #a16207;
+}
+
+.criteria__item--bad::before {
+  background: #b42318;
+}
+
+.criteria__item--neutral::before {
+  background: var(--fp-muted);
 }
 
 .preview-image img {

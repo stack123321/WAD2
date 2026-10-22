@@ -26,7 +26,12 @@
       "travel_mins": 34,
       "travel_cost": 1.79,
       "pinned": false,
-      "joined_at": "2026-10-10T12:00:00+08:00"
+      "joined_at": "2026-10-10T12:00:00+08:00",
+      "activities": ["cafes", "food"],
+      "budget": 2,
+      "indoor_if_rain": true,
+      "step_free": false,
+      "vote_history": { "cafe": 4, "restaurant": 1 }
     },
     {
       "user_id": "u-nicole",
@@ -39,7 +44,12 @@
       "travel_mins": 36,
       "travel_cost": 1.86,
       "pinned": false,
-      "joined_at": "2026-10-10T12:05:00+08:00"
+      "joined_at": "2026-10-10T12:05:00+08:00",
+      "activities": ["board_games", "food"],
+      "budget": 3,
+      "indoor_if_rain": false,
+      "step_free": false,
+      "vote_history": { "restaurant": 2 }
     },
     {
       "user_id": "u-surya",
@@ -52,7 +62,12 @@
       "travel_mins": 27,
       "travel_cost": 1.52,
       "pinned": false,
-      "joined_at": "2026-10-10T12:20:00+08:00"
+      "joined_at": "2026-10-10T12:20:00+08:00",
+      "activities": ["outdoor", "sports"],
+      "budget": 1,
+      "indoor_if_rain": false,
+      "step_free": true,
+      "vote_history": {}
     },
     {
       "user_id": "u-hugo",
@@ -65,7 +80,12 @@
       "travel_mins": 27,
       "travel_cost": 1.2,
       "pinned": false,
-      "joined_at": "2026-10-10T13:00:00+08:00"
+      "joined_at": "2026-10-10T13:00:00+08:00",
+      "activities": ["cafes", "movies"],
+      "budget": 2,
+      "indoor_if_rain": true,
+      "step_free": false,
+      "vote_history": { "cafe": 2, "library": 1 }
     }
   ],
   "shortlist": [

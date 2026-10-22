@@ -39,13 +39,14 @@ export async function searchNearby(centre, { radiusM = 3000, categories = [], si
 
 const spotCache = new Map()
 
-/** Camel-cased shape used by SpotCard and the spot pages. */
+/** Camel-cased shape used by SpotCard, matchScore() and the spot pages. */
 function toSpot(p) {
   return {
     id: p.source_place_id,
     name: p.name,
     category: p.category,
     types: p.types ?? [],
+    primaryType: p.primary_type ?? null,
     imageUrl: p.image_url,
     lat: p.lat,
     lng: p.lng,
@@ -57,6 +58,8 @@ function toSpot(p) {
     address: p.address ?? null,
     googleMapsUri: p.google_maps_uri ?? null,
     openNow: p.open_now ?? null,
+    openingHours: p.opening_hours ?? null,
+    wheelchairAccessible: p.wheelchair_accessible ?? null,
     description: p.description ?? null,
     tags: p.tags ?? [],
     matchPct: 0,

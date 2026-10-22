@@ -26,7 +26,12 @@
       "travel_mins": 38,
       "travel_cost": 1.69,
       "pinned": false,
-      "joined_at": "2026-10-11T10:00:00+08:00"
+      "joined_at": "2026-10-11T10:00:00+08:00",
+      "activities": ["study", "cafes"],
+      "budget": 1,
+      "indoor_if_rain": true,
+      "step_free": false,
+      "vote_history": { "library": 3 }
     },
     {
       "user_id": "u-matrix",
@@ -39,7 +44,12 @@
       "travel_mins": 30,
       "travel_cost": 1.74,
       "pinned": false,
-      "joined_at": "2026-10-11T10:15:00+08:00"
+      "joined_at": "2026-10-11T10:15:00+08:00",
+      "activities": ["study"],
+      "budget": 2,
+      "indoor_if_rain": false,
+      "step_free": false,
+      "vote_history": { "cafe": 1, "library": 2 }
     },
     {
       "user_id": "u-hugo",
@@ -52,7 +62,12 @@
       "travel_mins": 33,
       "travel_cost": 1.2,
       "pinned": false,
-      "joined_at": "2026-10-11T11:00:00+08:00"
+      "joined_at": "2026-10-11T11:00:00+08:00",
+      "activities": ["cafes", "movies"],
+      "budget": 2,
+      "indoor_if_rain": true,
+      "step_free": false,
+      "vote_history": { "cafe": 2, "library": 1 }
     }
   ],
   "shortlist": [
