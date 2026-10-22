@@ -38,6 +38,7 @@ const vibes = [
     nameWord: 'celebration',
   },
   { value: 'active', label: 'Active', emoji: '🏃', color: '#3a9d5d', nameWord: 'workout' },
+  { value: 'shopping', label: 'Shopping', emoji: '🛍️', color: '#8b5cf6', nameWord: 'shopping' },
 ]
 
 function toDateInput(d) {
