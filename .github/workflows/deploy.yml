@@ -13,6 +13,8 @@ name: Deploy to Vercel
 on:
   push:
     branches: [main]
+  # also a "Run workflow" button on the Actions tab, to deploy again without pushing
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -31,6 +33,22 @@ jobs:
 
       - name: Install the Vercel command-line tool
         run: npm install --global vercel@latest
+
+      # Shows whether the 3 secrets arrived, and what the token can see. Prints only the start of
+      # the two IDs (they aren't secret) and the token's LENGTH, never the token itself.
+      - name: Check the Vercel secrets
+        env:
+          TOKEN_CHECK: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$TOKEN_CHECK" ]; then echo "VERCEL_TOKEN: EMPTY"; else echo "VERCEL_TOKEN: set (${#TOKEN_CHECK} characters)"; fi
+          if [ -z "$VERCEL_ORG_ID" ]; then echo "VERCEL_ORG_ID: EMPTY"; else echo "VERCEL_ORG_ID starts with: ${VERCEL_ORG_ID:0:5} (${#VERCEL_ORG_ID} characters)"; fi
+          if [ -z "$VERCEL_PROJECT_ID" ]; then echo "VERCEL_PROJECT_ID: EMPTY"; else echo "VERCEL_PROJECT_ID starts with: ${VERCEL_PROJECT_ID:0:4} (${#VERCEL_PROJECT_ID} characters)"; fi
+          echo "--- Logged in as:"
+          env -u VERCEL_ORG_ID -u VERCEL_PROJECT_ID vercel whoami --token="$TOKEN_CHECK" || true
+          echo "--- Teams this token can use:"
+          env -u VERCEL_ORG_ID -u VERCEL_PROJECT_ID vercel teams ls --token="$TOKEN_CHECK" || true
+          echo "--- Projects this token can see:"
+          env -u VERCEL_ORG_ID -u VERCEL_PROJECT_ID vercel project ls --token="$TOKEN_CHECK" || true
 
       - name: Download the project settings and keys from Vercel
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
