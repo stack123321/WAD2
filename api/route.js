@@ -6,12 +6,9 @@
 import axios from 'axios'
 import { sampleRoute, MODE_NAMES } from './_mocks/route.js'
 import { getOneMapToken, hasOneMapLogin } from './_onemap.js'
+import { averageParking } from './_parking.js'
 
 const ROUTE_URL = 'https://www.onemap.gov.sg/api/public/routingsvc/route'
-
-// (Surya) For driving, the cost shown is the PARKING RATE PER HOUR (not petrol), and the app says
-// so ("$1.20/h parking"). Usual HDB / URA car park rate outside the city centre: $0.60 per half hour.
-const PARKING_PER_HOUR = 1.2
 
 // Answers we already got from OneMap, so reloading page 07 or a friend changing their mode
 // doesn't ask for the same routes again (faster, and fewer calls to OneMap)
@@ -76,7 +73,9 @@ async function walkOrDrive(from, to, mode, token) {
   let cost = 0
   let instruction = `Walk ${km.toFixed(1)} km`
   if (mode === 'car') {
-    cost = PARKING_PER_HOUR
+    // For driving, the cost is parking per hour, not petrol (the card says "$1.07/h parking"):
+    // the malls near the meeting point, or the usual HDB / URA $1.20 (see _parking.js)
+    cost = await averageParking(to)
     instruction = `Drive ${km.toFixed(1)} km`
   }
 
