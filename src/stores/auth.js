@@ -9,14 +9,33 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => user.value !== null)
 
+  // Make sure a logged-in user has a profile row (their name for friends, groups and hangouts).
+  // Sign-up only creates it when Supabase logs them straight in; with email confirmation on, it
+  // was only made once they saved Preferences, so people who skipped that couldn't send friend
+  // requests or be found. This adds the row if it's missing and never overwrites an existing one.
+  async function ensureProfile(authUser) {
+    if (!hasSupabase || !authUser) return
+    const name = authUser.user_metadata?.display_name || authUser.email?.split('@')[0] || 'Friend'
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ id: authUser.id, display_name: name }, { onConflict: 'id', ignoreDuplicates: true })
+    if (error) console.error("Couldn't create your profile", error)
+  }
+
   function init() {
     if (!hasSupabase) return
     supabase.auth.getSession().then(({ data }) => {
       user.value = data.session?.user ?? null
       ready.value = true
+      ensureProfile(user.value)
     })
     supabase.auth.onAuthStateChange((event, session) => {
       user.value = session?.user ?? null
+      // Back from the confirmation email, or logged in in another tab. Supabase asks for no other
+      // Supabase calls inside this callback, so the profile check runs just after it.
+      if (event === 'SIGNED_IN') {
+        setTimeout(() => ensureProfile(session?.user), 0)
+      }
       // Someone opened the "Forgot password" email link. If Supabase sent them somewhere other
       // than the reset screen (e.g. the redirect URL isn't allowed yet), send them there.
       if (event === 'PASSWORD_RECOVERY' && !window.location.search.includes('mode=reset')) {
@@ -40,6 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     user.value = data.user
+    await ensureProfile(data.user)
   }
 
   // Returns true when the user must confirm their email before they can log in.
