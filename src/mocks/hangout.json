@@ -31,7 +31,7 @@
     {
       "user_id": "u-nicole",
       "display_name": "Nicole",
-      "avatar_color": "#F2684A",
+      "avatar_color": "#C2410C",
       "start_label": "Jurong East MRT",
       "start_lat": 1.3331,
       "start_lng": 103.7423,
@@ -44,7 +44,7 @@
     {
       "user_id": "u-surya",
       "display_name": "Surya",
-      "avatar_color": "#6C63FF",
+      "avatar_color": "#6C4FD6",
       "start_label": "Woodlands MRT",
       "start_lat": 1.437,
       "start_lng": 103.7865,
@@ -57,7 +57,7 @@
     {
       "user_id": "u-hugo",
       "display_name": "Hugo",
-      "avatar_color": "#E0A100",
+      "avatar_color": "#A16207",
       "start_label": "Punggol MRT",
       "start_lat": 1.4052,
       "start_lng": 103.9024,

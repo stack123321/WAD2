@@ -18,7 +18,7 @@
     {
       "user_id": "u-eashvar",
       "display_name": "Eashvar",
-      "avatar_color": "#3F9A5B",
+      "avatar_color": "#3F7D20",
       "start_label": "Bedok MRT",
       "start_lat": 1.324,
       "start_lng": 103.93,
@@ -31,7 +31,7 @@
     {
       "user_id": "u-matrix",
       "display_name": "Matrix",
-      "avatar_color": "#D6528F",
+      "avatar_color": "#BE185D",
       "start_label": "Choa Chu Kang MRT",
       "start_lat": 1.3853,
       "start_lng": 103.7443,
@@ -44,7 +44,7 @@
     {
       "user_id": "u-hugo",
       "display_name": "Hugo",
-      "avatar_color": "#E0A100",
+      "avatar_color": "#A16207",
       "start_label": "Punggol MRT",
       "start_lat": 1.4052,
       "start_lng": 103.9024,

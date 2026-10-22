@@ -1,6 +1,7 @@
 <script setup>
 // Owner: Nicole. Panel on 07 Mode of transport: one bar per person showing their travel time
 // to the fairest MRT station.
+import { avatarColor } from '@/utils/avatarColor'
 const props = defineProps({
   members: { type: Array, required: true },
   stationName: { type: String, default: '' },
@@ -28,7 +29,7 @@ function barWidth(mins) {
     <div v-for="m in members.filter((x) => x.travel_mins != null)" :key="m.user_id" class="bar-row">
       <span class="bar-name">{{ m.display_name }}</span>
       <div class="bar-track">
-        <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: m.avatar_color }"></div>
+        <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: avatarColor(m.avatar_color, m.display_name) }"></div>
       </div>
       <span class="bar-mins">{{ m.travel_mins }} min</span>
     </div>
