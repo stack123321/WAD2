@@ -3,16 +3,42 @@
 // the hangout don't count), counting votes and ranking them (equal counts are listed by higher
 // match_pct), the spots tied for the most votes (for the tie-break wheel), turning vote changes
 // into activity events, Singapore-time formatting, the deadline
-// countdown, the deadline to use when the host starts the vote (the saved one if it's still ahead,
-// otherwise the hangout's start time, otherwise none), the longest/shortest trip and gap, leave-by
-// times, and the Google Calendar link.
+// countdown, the choices for when voting closes (picked by the host when they start the vote on 11,
+// since 05 no longer sets it), the longest/shortest trip and gap, leave-by times, costs (driving
+// is hourly parking), and the Google Calendar link.
 
 const SGT = 'Asia/Singapore'
 
-export function deadlineForStart(voteDeadlineIso, startsAtIso, nowMs) {
-  if (voteDeadlineIso && new Date(voteDeadlineIso).getTime() > nowMs) return voteDeadlineIso
-  if (startsAtIso && new Date(startsAtIso).getTime() > nowMs) return startsAtIso
-  return null
+const CLOSE_CHOICES = [
+  { hoursBefore: 24, label: '1 day before the hangout' },
+  { hoursBefore: 6, label: '6 hours before the hangout' },
+  { hoursBefore: 2, label: '2 hours before the hangout' },
+  { hoursBefore: 1, label: '1 hour before the hangout' },
+  { hoursBefore: 0, label: 'When the hangout starts' },
+]
+
+// When voting can close, for the host's "Voting closes" menu: only times still at least 15 minutes
+// away, earliest first. A deadline already saved on the hangout is offered first if still ahead.
+export function closeOptions(voteDeadlineIso, startsAtIso, nowMs) {
+  const soonest = nowMs + 15 * 60 * 1000
+  const options = []
+  if (voteDeadlineIso && new Date(voteDeadlineIso).getTime() > soonest) {
+    options.push({ iso: voteDeadlineIso, label: 'As planned when the hangout was made' })
+  }
+  if (!startsAtIso) return options
+  const start = new Date(startsAtIso).getTime()
+  for (const choice of CLOSE_CHOICES) {
+    const at = start - choice.hoursBefore * 3600 * 1000
+    if (at > soonest) options.push({ iso: new Date(at).toISOString(), label: choice.label })
+  }
+  return options
+}
+
+// The choice selected to begin with: 2 hours before if it's still possible, otherwise the latest
+export function defaultCloseOption(options) {
+  if (options.length === 0) return null
+  const twoHours = options.find((o) => o.label === '2 hours before the hangout')
+  return (twoHours ?? options[options.length - 1]).iso
 }
 
 export function countableVotes(votes, members) {
@@ -152,8 +178,11 @@ export function modeLabel(mode) {
   return MODE_LABELS[mode] ?? '—'
 }
 
-export function formatCost(cost) {
-  return cost == null ? '—' : `S$${Number(cost).toFixed(2)}`
+// "S$1.79", or for driving the hourly parking rate (what 07 saves for a car): "S$1.20/h parking"
+export function formatCost(cost, mode) {
+  if (cost == null) return '—'
+  const amount = `S$${Number(cost).toFixed(2)}`
+  return mode === 'car' ? `${amount}/h parking` : amount
 }
 
 function toCalendarTime(ms) {

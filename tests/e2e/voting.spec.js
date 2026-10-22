@@ -161,6 +161,34 @@ test.describe('Starting the vote', () => {
     await expect(page.getByRole('button', { name: 'Close vote' })).toBeEnabled()
   })
 
+  test('the host picks when voting closes before starting it', async ({ page }) => {
+    // demo-2 starts Sat 24 Oct, 2 pm, and 05 no longer sets a deadline
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+
+    const closes = page.getByLabel('Voting closes')
+    await expect(closes).toHaveValue('2026-10-24T04:00:00.000Z') // 2 hours before, to begin with
+    await closes.selectOption({ label: '1 day before the hangout' })
+    await expect(page.getByText('Voting will close Fri, 23 Oct, 2:00 pm SGT.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Start the vote' }).click()
+    await expect(page.getByText('Closes in 8d 16h')).toBeVisible()
+  })
+
+  test('only closing times still ahead are offered', async ({ page }) => {
+    // 3 pm on the Friday: "1 day before" (2 pm) has passed, the rest are still to come
+    await page.clock.setFixedTime(new Date('2026-10-23T15:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+
+    const labels = await page.getByLabel('Voting closes').locator('option').allTextContents()
+    expect(labels).toEqual([
+      '6 hours before the hangout',
+      '2 hours before the hangout',
+      '1 hour before the hangout',
+      'When the hangout starts',
+    ])
+  })
+
   test('the vote can’t start once the hangout’s start time has passed', async ({ page }) => {
     await page.clock.setFixedTime(new Date('2026-10-25T10:00:00+08:00'))
     await page.goto('/hangouts/demo-2/vote')

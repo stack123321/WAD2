@@ -12,7 +12,7 @@
   "midpoint_lng": 103.8474,
   "avg_mins": 34,
   "gap_mins": 8,
-  "vote_deadline": "2026-10-24T12:00:00+08:00",
+  "vote_deadline": null,
   "final_shortlist_id": null,
   "members": [
     {
@@ -50,7 +50,7 @@
       "start_lng": 103.9024,
       "mode": "car",
       "travel_mins": 33,
-      "travel_cost": 8.2,
+      "travel_cost": 1.2,
       "pinned": false,
       "joined_at": "2026-10-11T11:00:00+08:00"
     }

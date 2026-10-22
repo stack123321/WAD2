@@ -40,7 +40,7 @@ import HangoutChat from '@/components/start/HangoutChat.vue'
 import {
   countableVotes,
   countVotes,
-  deadlineForStart,
+  closeOptions,
   diffVotes,
   formatDateTime,
   pickLeader,
@@ -128,8 +128,9 @@ const deadlinePassed = computed(() => deadline.value !== null && timeLeftText.va
 const status = computed(() => hangout.value?.status)
 const votingOpen = computed(() => status.value === 'voting' && !deadlinePassed.value)
 const canVote = computed(() => votingOpen.value && isMember.value)
-const startDeadline = computed(() =>
-  deadlineForStart(hangout.value?.vote_deadline, hangout.value?.starts_at, now.value),
+// when voting can close, for the host's "Voting closes" menu on the start card
+const startOptions = computed(() =>
+  closeOptions(hangout.value?.vote_deadline, hangout.value?.starts_at, now.value),
 )
 const hostName = computed(() => memberOf(hangout.value?.host_id)?.display_name ?? 'the host')
 const everyoneVoted = computed(() => store.members.length > 0 && waiting.value.length === 0)
@@ -195,14 +196,14 @@ async function vote(spotId) {
   }
 }
 
-async function onStart() {
-  if (store.shortlist.length === 0 || !startDeadline.value) return
+async function onStart(deadlineIso) {
+  if (store.shortlist.length === 0 || !deadlineIso) return
   starting.value = true
   actionError.value = ''
   try {
-    await startVote(hangoutId, startDeadline.value)
+    await startVote(hangoutId, deadlineIso)
     store.hangout.status = 'voting'
-    store.hangout.vote_deadline = startDeadline.value
+    store.hangout.vote_deadline = deadlineIso
   } catch (e) {
     actionError.value = `Couldn't start the vote: ${e.message}`
   } finally {
@@ -400,7 +401,7 @@ onUnmounted(() => {
           <StartPanel
             v-if="isHost && status === 'collecting'"
             :spot-count="store.shortlist.length"
-            :deadline-text="startDeadline ? formatDateTime(startDeadline) : null"
+            :options="startOptions"
             :explore-to="{ name: 'explore', params: { id: hangoutId } }"
             :starting="starting"
             @start="onStart"
