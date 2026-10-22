@@ -26,6 +26,7 @@ import {
   spinTiebreak,
   startVote,
   subscribeToVotes,
+  changeVoteDeadline,
 } from '@/services/votes'
 import { getHangout } from '@/services/hangouts'
 import { sendMessage } from '@/services/chat'
@@ -36,11 +37,13 @@ import StartPanel from '@/components/voting/StartPanel.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
 import SpinWheel from '@/components/voting/SpinWheel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
+import DeadlinePanel from '@/components/voting/DeadlinePanel.vue'
 import HangoutChat from '@/components/start/HangoutChat.vue'
 import {
   countableVotes,
   countVotes,
-  deadlineForStart,
+  closeOptions,
+  changeOptions,
   diffVotes,
   formatDateTime,
   pickLeader,
@@ -65,6 +68,7 @@ const pickedWinnerId = ref(null)
 const actionError = ref('')
 const closing = ref(false)
 const starting = ref(false)
+const changingDeadline = ref(false)
 const savingId = ref(null)
 const spinning = ref(false)
 const spinWinnerId = ref(null)
@@ -128,8 +132,12 @@ const deadlinePassed = computed(() => deadline.value !== null && timeLeftText.va
 const status = computed(() => hangout.value?.status)
 const votingOpen = computed(() => status.value === 'voting' && !deadlinePassed.value)
 const canVote = computed(() => votingOpen.value && isMember.value)
-const startDeadline = computed(() =>
-  deadlineForStart(hangout.value?.vote_deadline, hangout.value?.starts_at, now.value),
+// where the host can move the closing time to once voting has started
+const moveOptions = computed(() => changeOptions(hangout.value?.starts_at, now.value))
+
+// when voting can close, for the host's "Voting closes" menu on the start card
+const startOptions = computed(() =>
+  closeOptions(hangout.value?.vote_deadline, hangout.value?.starts_at, now.value),
 )
 const hostName = computed(() => memberOf(hangout.value?.host_id)?.display_name ?? 'the host')
 const everyoneVoted = computed(() => store.members.length > 0 && waiting.value.length === 0)
@@ -195,14 +203,28 @@ async function vote(spotId) {
   }
 }
 
-async function onStart() {
-  if (store.shortlist.length === 0 || !startDeadline.value) return
+// The host moves when voting closes; moving a passed deadline ahead opens voting again
+async function onChangeDeadline(deadlineIso) {
+  changingDeadline.value = true
+  actionError.value = ''
+  try {
+    await changeVoteDeadline(hangoutId, deadlineIso)
+    store.hangout.vote_deadline = deadlineIso
+  } catch (e) {
+    actionError.value = `Couldn't change when voting closes: ${e.message}`
+  } finally {
+    changingDeadline.value = false
+  }
+}
+
+async function onStart(deadlineIso) {
+  if (store.shortlist.length === 0 || !deadlineIso) return
   starting.value = true
   actionError.value = ''
   try {
-    await startVote(hangoutId, startDeadline.value)
+    await startVote(hangoutId, deadlineIso)
     store.hangout.status = 'voting'
-    store.hangout.vote_deadline = startDeadline.value
+    store.hangout.vote_deadline = deadlineIso
   } catch (e) {
     actionError.value = `Couldn't start the vote: ${e.message}`
   } finally {
@@ -400,7 +422,7 @@ onUnmounted(() => {
           <StartPanel
             v-if="isHost && status === 'collecting'"
             :spot-count="store.shortlist.length"
-            :deadline-text="startDeadline ? formatDateTime(startDeadline) : null"
+            :options="startOptions"
             :explore-to="{ name: 'explore', params: { id: hangoutId } }"
             :starting="starting"
             @start="onStart"
@@ -412,6 +434,14 @@ onUnmounted(() => {
             :spinning="spinning"
             :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
             @spin="onSpin"
+          />
+          <DeadlinePanel
+            v-if="isHost && status === 'voting'"
+            :deadline="deadline"
+            :closed="deadlinePassed"
+            :options="moveOptions"
+            :saving="changingDeadline"
+            @change="onChangeDeadline"
           />
           <ActivityFeed :items="feedItems" />
           <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />

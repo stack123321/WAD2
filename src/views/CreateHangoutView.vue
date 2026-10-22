@@ -139,16 +139,16 @@ async function loadFriends() {
     // The people you hang out with most come first (like "suggested" contacts)
     all.sort((a, b) => b.together - a.together)
 
-    // "Add to hangout" on the Friends page opens this page with ?with=<friend's id>: tick them
-    const withId = route.query.with
-    if (withId) {
+    // "Add to hangout" on the Friends page opens this page with ?with=<friend's id>: tick them.
+    // The debrief's "Plan another with this group" passes several (?with=a&with=b).
+    for (const withId of [].concat(route.query.with ?? [])) {
       if (!all.find((f) => f.user_id === withId)) {
         const picked = await getFriend(withId)
         if (picked) {
           all.unshift(picked)
         }
       }
-      if (all.find((f) => f.user_id === withId)) {
+      if (all.find((f) => f.user_id === withId) && !selectedFriends.value.includes(withId)) {
         selectedFriends.value.push(withId)
       }
     }
@@ -162,9 +162,10 @@ async function loadFriends() {
 
 onMounted(loadFriends)
 
-// The friend you came from on the Friends page or dashboard (?with=), or null
+// The friend you came from on the Friends page or dashboard (?with=), or null (also when several
+// people were passed: they're simply ticked in the list)
 const withFriend = computed(() => {
-  if (!route.query.with) {
+  if (!route.query.with || Array.isArray(route.query.with)) {
     return null
   }
   const found = friends.value.find((f) => f.user_id === route.query.with)

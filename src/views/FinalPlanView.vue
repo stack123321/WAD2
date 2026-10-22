@@ -172,7 +172,12 @@ onUnmounted(() => clearInterval(timer))
               <p class="label small mb-1">
                 {{ isConfirmed ? 'Confirmed spot' : 'Current leader' }}
               </p>
-              <span v-if="status === 'done'" class="badge done">✓ Done</span>
+              <span v-if="status === 'done'" class="d-flex align-items-center gap-2">
+                <span class="badge done">✓ Done</span>
+                <RouterLink :to="{ name: 'debrief', params: { id: hangoutId } }" class="small">
+                  See how it went
+                </RouterLink>
+              </span>
             </div>
             <h2 id="spot-heading" class="h4 mb-1">{{ spot.name }}</h2>
             <p class="muted mb-2">

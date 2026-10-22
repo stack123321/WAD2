@@ -102,6 +102,12 @@ const routes = [
     component: () => import('@/views/FinalPlanView.vue'),
     meta: { requiresAuth: true },
   }, // 12 Eashvar
+  {
+    path: '/hangouts/:id/debrief',
+    name: 'debrief',
+    component: () => import('@/views/DebriefView.vue'),
+    meta: { requiresAuth: true },
+  }, // Eashvar: looking back on a past hangout, from 04's Past tab and 12 once it's done
 
   // unknown urls go back to the landing page
   { path: '/:pathMatch(.*)*', redirect: '/' },
