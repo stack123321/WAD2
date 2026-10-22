@@ -108,14 +108,17 @@ function toPlace(p, centre, fallbackCategory) {
 export async function nearbyPlaces(key, centre, radiusM, categories) {
   const wanted = categories.filter((c) => CATEGORY_TYPES[c])
   const cats = wanted.length ? wanted : ALL_CATEGORIES
+  // Each request is capped at 20 results, so one request per type, ranked by distance, keeps the
+  // results dense around the centre instead of spread thinly over the whole radius.
+  const queries = cats.flatMap((cat) => CATEGORY_TYPES[cat].map((type) => ({ cat, type })))
   const results = await Promise.all(
-    cats.map(async (cat) => {
+    queries.map(async ({ cat, type }) => {
       const data = await google('/places:searchNearby', key, {
         fields: FIELDS.map((f) => `places.${f}`).join(','),
         body: {
-          includedTypes: CATEGORY_TYPES[cat],
+          includedTypes: [type],
           maxResultCount: 20,
-          rankPreference: 'POPULARITY',
+          rankPreference: 'DISTANCE',
           locationRestriction: {
             circle: {
               center: { latitude: centre.lat, longitude: centre.lng },
