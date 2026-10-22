@@ -1,6 +1,7 @@
 <script setup>
-// Owner: Surya. "Weather this week" card for 04 Dashboard (Figma frame 04).
-// Today + the next 4 days from NEA, each with an icon and the day's high, plus today's haze.
+// Owner: Surya. "Weather this week" card for 05 New hangout, to help pick a dry day.
+// (It used to be on 04 Dashboard; Ryan's dashboard redesign took it off there.)
+// Today + the next few days from NEA (up to 4), each with an icon and the day's high, plus haze.
 // Usage: <WeekForecast />
 import { onMounted, ref } from 'vue'
 import { getDayForecast, getHaze, getTodayForecast, weatherKind } from '@/services/weather'
@@ -17,8 +18,17 @@ const error = ref(false)
 async function loadData() {
   try {
     const today = await getTodayForecast()
-    const nextFourDays = await getDayForecast()
-    days.value = [today, ...nextFourDays]
+    const outlook = await getDayForecast()
+
+    // The outlook can start today (depending on when NEA issued it), so only add the days
+    // after today. Dates look like "2026-10-21", so comparing them as text works.
+    const list = [today]
+    for (const day of outlook) {
+      if (day.date > today.date) {
+        list.push(day)
+      }
+    }
+    days.value = list
   } catch (err) {
     console.error(err)
     error.value = true
@@ -62,8 +72,8 @@ function weekday(date) {
     </p>
 
     <ul v-else class="days list-unstyled mb-0">
-      <li v-for="day in days" :key="day.date" class="day" :title="day.forecast">
-        <span class="small text-secondary">{{ weekday(day.date) }}</span>
+      <li v-for="(day, i) in days" :key="day.date" class="day" :title="day.forecast">
+        <span class="small text-secondary">{{ i === 0 ? 'Today' : weekday(day.date) }}</span>
         <WeatherIcon :kind="weatherKind(day.forecast)" :label="day.forecast" />
         <span class="fw-semibold">{{ day.high }}°</span>
       </li>

@@ -9,7 +9,7 @@ import devApi from './scripts/dev-api.js'
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
+    ...(process.env.DEVTOOLS ? [vueDevTools()] : []), // the floating devtools button, only when DEVTOOLS=1
     devApi(), // runs api/*.js during `npm run dev`
   ],
   resolve: {

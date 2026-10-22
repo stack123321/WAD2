@@ -27,25 +27,31 @@ const routes = [
     name: 'crowds',
     component: () => import('@/views/CrowdsView.vue'),
     meta: { requiresAuth: true },
-  }, // Ryan: full crowd heat map, from 04's "Crowds right now"
+  }, // Ryan: full crowd heat map, no link to it yet
   {
     path: '/friends',
     name: 'friends',
     component: () => import('@/views/FriendsView.vue'),
     meta: { requiresAuth: true },
-  }, // Ryan: friends list, from 04's "Hangout with"
+  }, // Ryan: friends list, from the navbar
   {
-    path: '/groups',
-    name: 'groups',
-    component: () => import('@/views/GroupsView.vue'),
+    path: '/chats',
+    name: 'chats',
+    component: () => import('@/views/MyChatsView.vue'),
     meta: { requiresAuth: true },
-  }, // Surya: your friend groups
+  }, // Ryan: my chats, one row per hangout
   {
-    path: '/groups/:groupId',
-    name: 'group',
-    component: () => import('@/views/GroupView.vue'),
+    path: '/chats/:hangoutId',
+    name: 'chat',
+    component: () => import('@/views/ChatView.vue'),
     meta: { requiresAuth: true },
-  }, // Surya: one friend group, with its permanent chat
+  }, // Ryan: one hangout's chat
+  {
+    path: '/chats/direct/:chatId',
+    name: 'direct-chat',
+    component: () => import('@/views/DirectChatView.vue'),
+    meta: { requiresAuth: true },
+  }, // Ryan: one to one chat with a friend
   {
     path: '/hangouts/new',
     name: 'create-hangout',
@@ -96,6 +102,12 @@ const routes = [
     component: () => import('@/views/FinalPlanView.vue'),
     meta: { requiresAuth: true },
   }, // 12 Eashvar
+  {
+    path: '/hangouts/:id/debrief',
+    name: 'debrief',
+    component: () => import('@/views/DebriefView.vue'),
+    meta: { requiresAuth: true },
+  }, // Eashvar: looking back on a past hangout, from 04's Past tab and 12 once it's done
 
   // unknown urls go back to the landing page
   { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -85,7 +85,7 @@ const rows = computed(() =>
             <span v-if="row.isLongest" class="badge tag tag--long">Longest</span>
             <span v-if="row.isShortest" class="badge tag tag--short">Shortest</span>
             <span class="d-block d-md-none small muted fw-normal">
-              {{ row.start_label ?? '—' }} · {{ formatCost(row.travel_cost) }}
+              {{ row.start_label ?? '—' }} · {{ formatCost(row.travel_cost, row.mode) }}
             </span>
           </th>
           <td class="d-none d-md-table-cell">{{ row.start_label ?? '—' }}</td>
@@ -93,7 +93,9 @@ const rows = computed(() =>
           <td class="text-end text-nowrap">
             {{ row.travel_mins != null ? `${row.travel_mins} min` : '—' }}
           </td>
-          <td class="d-none d-md-table-cell text-end">{{ formatCost(row.travel_cost) }}</td>
+          <td class="d-none d-md-table-cell text-end text-nowrap">
+            {{ formatCost(row.travel_cost, row.mode) }}
+          </td>
           <td class="text-end text-nowrap fw-semibold">{{ row.leaveAt }}</td>
         </tr>
       </tbody>

@@ -19,7 +19,8 @@ const MODES = {
     fare: (km) => Math.min(1.09 + 0.07 * km, 2.37),
     via: 'MRT',
   },
-  car: { kmh: 35, detour: 1.3, wait: 4, fare: (km) => 0.6 * km + 2, via: 'Car' },
+  // (Surya) car: the parking rate per hour ($0.60 per half hour), same as api/route.js
+  car: { kmh: 35, detour: 1.3, wait: 4, fare: () => 1.2, via: 'Car' },
 }
 
 /**

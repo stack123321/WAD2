@@ -44,9 +44,18 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
     <div class="time">
       <template v-if="member.mode && member.travel_mins != null">
         <div class="mins">{{ member.travel_mins }} min</div>
-        <div class="cost">${{ Number(member.travel_cost).toFixed(2) }} one way</div>
+        <!-- (Surya) driving shows the parking rate per hour, and says so -->
+        <div v-if="member.mode === 'car'" class="cost">
+          ${{ Number(member.travel_cost).toFixed(2) }}/h parking
+        </div>
+        <div v-else class="cost">${{ Number(member.travel_cost).toFixed(2) }} one way</div>
       </template>
       <div v-else-if="isMe" class="cost">Pick your mode</div>
+      <!-- (Surya) not picked yet: show the time if they go by MRT, so nobody has to wait -->
+      <template v-else-if="member.travel_mins != null">
+        <div class="mins">{{ member.travel_mins }} min</div>
+        <div class="cost">assuming MRT</div>
+      </template>
       <div v-else class="cost">Waiting for {{ member.display_name }}</div>
     </div>
   </div>

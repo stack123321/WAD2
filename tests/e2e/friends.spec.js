@@ -21,7 +21,7 @@ test('accepting a request moves them to My Friends', async ({ page }) => {
 test('searching and adding someone puts them in Pending', async ({ page }) => {
   await page.goto('/friends')
   await page.locator('#friend-search').fill('eash')
-  await page.getByRole('button', { name: 'Search' }).click()
+  await page.locator('#friend-search').press('Enter')
   await page.getByRole('button', { name: 'Add Eashvar as a friend' }).click()
   await expect(page.locator('#pending')).toContainText('Eashvar')
   await expect(page.locator('#search-results')).toContainText('Requested')

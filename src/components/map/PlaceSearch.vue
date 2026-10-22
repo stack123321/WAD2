@@ -9,9 +9,11 @@
 import { computed, ref, watch } from 'vue'
 import { isInSingapore, reverseGeocode, searchAddress } from '@/services/onemap'
 
-defineProps({
+const props = defineProps({
   placeholder: { type: String, default: 'Search a place' },
   showLocation: { type: Boolean, default: false }, // show the "Use my current location" button
+  // your last few starting points, shown when you tap the empty box: [{ label, lat, lng }]
+  recentPlaces: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['choose', 'typing'])
@@ -24,6 +26,12 @@ const postalHint = ref('') // validation message for postal codes
 const activeIndex = ref(0) // the result highlighted with the arrow keys
 
 const showResults = computed(() => query.value.trim().length >= 2)
+
+// Recent places: shown while the box is focused and still empty
+const focused = ref(false)
+const showRecent = computed(
+  () => focused.value && query.value.trim() === '' && props.recentPlaces.length > 0,
+)
 
 // Part (a) Search as you type
 // We wait until the user stops typing for 0.3 s before searching, so we don't call OneMap on
@@ -178,7 +186,8 @@ async function onLocationFound(position) {
     console.error(error)
   }
 
-  let label = 'My current location'
+  // Not "My current location": friends see this label under your name, so it must read well for them
+  let label = 'Pinned location'
   let address = null
   let postal = null
   if (place) {
@@ -226,6 +235,8 @@ function onLocationError(error) {
         @keydown.up.prevent="moveUp"
         @keydown.enter.prevent="pickActive"
         @keydown.esc="query = ''"
+        @focus="focused = true"
+        @blur="focused = false"
       />
       <span class="onemap-tag">OneMap</span>
     </div>
@@ -245,6 +256,22 @@ function onLocationError(error) {
       <span v-else>Use my current location</span>
     </button>
     <p v-if="locationError" class="small text-danger mb-0" role="alert">{{ locationError }}</p>
+
+    <!-- Recent places: tap the empty box to reuse one (@mousedown so the box doesn't lose focus first) -->
+    <ul v-if="showRecent" class="results" aria-label="Recent places">
+      <li class="result-msg recent-title">Recent</li>
+      <li
+        v-for="place in recentPlaces"
+        :key="place.label"
+        class="result"
+        @mousedown.prevent="choose(place)"
+      >
+        <span class="result-icon" aria-hidden="true">🕘</span>
+        <span class="min-w-0">
+          <span class="d-block fw-semibold text-truncate">{{ place.label }}</span>
+        </span>
+      </li>
+    </ul>
 
     <ul v-if="showResults" id="place-results" class="results" role="listbox">
       <li v-if="postalHint" class="result-msg">{{ postalHint }}</li>
@@ -337,6 +364,13 @@ function onLocationError(error) {
   box-shadow: var(--fp-shadow);
   max-height: 340px;
   overflow-y: auto;
+}
+
+.recent-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .result {
