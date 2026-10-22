@@ -97,9 +97,12 @@ function saveFriendsAddStart() {
 // "More options" (the starting-point switch) is folded away unless it's been switched off
 const showMoreOptions = ref(!loadFriendsAddStart())
 
+// "Plan something" on the dashboard opens this page with ?date=2026-10-26
+const queryDate = /^\d{4}-\d{2}-\d{2}$/.test(route.query.date ?? '') ? route.query.date : ''
+
 const form = reactive({
   name: '',
-  date: '',
+  date: queryDate,
   time: '19:00',
   vibe: [],
   friendsAddStart: loadFriendsAddStart(),

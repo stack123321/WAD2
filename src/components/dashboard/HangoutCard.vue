@@ -9,7 +9,7 @@ import UpNextMap from '@/components/dashboard/UpNextMap.vue'
 import WeatherLineIcon from '@/components/dashboard/WeatherLineIcon.vue'
 import { isRain, sgHourKey } from '@/services/weather'
 import { shortDate, countdownLabel } from '@/utils/dates'
-import { getStatus } from '@/utils/hangoutStatus'
+import { getStatus, getProgress } from '@/utils/hangoutStatus'
 import { useMediaQuery } from '@/utils/useMediaQuery'
 
 const props = defineProps({
@@ -55,6 +55,17 @@ const details = computed(() => {
 // what the status line says, the button and where the card goes
 const status = computed(() => getStatus(props.hangout, props.myId))
 
+// the step shown, from the stored status (steps 2 to 4 aren't stored, so collecting stays on step 1)
+const STAGES = {
+  collecting: { n: 1, name: 'Starting points' },
+  voting: { n: 5, name: 'Vote' },
+}
+// null once confirmed or done: "Confirmed" already says it
+const stage = computed(() => STAGES[props.hangout.status] ?? null)
+
+// "2 of 5 added a location", and who is still to do it (their avatars go grey)
+const progress = computed(() => getProgress(props.hangout))
+
 // the chip at the top of the UP NEXT card
 const countdown = computed(() => (props.hangout.starts_at ? countdownLabel(startsAt.value) : ''))
 
@@ -75,7 +86,7 @@ const weatherLine = computed(() => {
   const rainy = hour.value.rainChance >= 50 || isRain(hour.value.condition)
   let text = hour.value.condition
   if (hour.value.kind === 'thunder') text = 'Thunderstorms, go indoors'
-  else if (rainy) text = `${text}, bring an umbrella`
+  else if (rainy) text = `${text} · ${hour.value.rainChance}% rain, bring an umbrella`
   return { kind: hour.value.kind, text: text, warn: rainy }
 })
 
@@ -126,7 +137,13 @@ async function copyInvite() {
 <template>
   <article class="card hangout" :class="[tone.edge, { featured }]">
     <div :class="showMap ? 'd-flex flex-column flex-md-row-reverse' : ''">
-      <UpNextMap v-if="showMap" class="map-panel" :members="hangout.members" :midpoint="midpoint" />
+      <UpNextMap
+        v-if="showMap"
+        class="map-panel"
+        :members="hangout.members"
+        :midpoint="midpoint"
+        :label="hangout.midpoint_name ?? ''"
+      />
 
       <div class="body">
         <div class="main">
@@ -150,6 +167,16 @@ async function copyInvite() {
           </p>
         </div>
 
+        <div v-if="!featured" class="stage">
+          <template v-if="stage">
+            <span class="stage-label">Step {{ stage.n }} of 6</span>
+            <span class="stage-name"> · {{ stage.name }}</span>
+            <div class="stage-track" aria-hidden="true">
+              <div class="stage-fill" :style="{ width: (stage.n / 6) * 100 + '%' }"></div>
+            </div>
+          </template>
+        </div>
+
         <div class="foot">
           <div class="people">
             <div class="avatars d-flex align-items-center">
@@ -159,6 +186,7 @@ async function copyInvite() {
                 :name="m.display_name"
                 :color="m.avatar_color"
                 :size="featured ? 32 : 28"
+                :class="{ 'is-waiting': progress?.waitingIds.includes(m.user_id) }"
               />
               <div v-if="extraMembers > 0" class="dropdown">
                 <button
@@ -194,6 +222,9 @@ async function copyInvite() {
               </svg>
               {{ status.text }}
             </span>
+            <span v-if="progress?.waitingIds.length" class="progress-text">{{
+              progress.text
+            }}</span>
           </div>
 
           <div class="act">
@@ -440,6 +471,39 @@ async function copyInvite() {
   height: 140px;
 }
 
+/* the step and its bar: only in the wide row (lg), where there is a column for it */
+.avatars :deep(.avatar.is-waiting) {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.progress-text {
+  font-size: 0.75rem;
+  color: var(--fp-muted);
+}
+.stage {
+  display: none;
+}
+.stage-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.stage-name {
+  font-size: 0.8125rem;
+  color: var(--fp-muted);
+}
+.stage-track {
+  height: 6px;
+  margin-top: 0.375rem;
+  border-radius: 3px;
+  background: var(--bs-border-color);
+  overflow: hidden;
+}
+.stage-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--fp-primary);
+}
+
 /* sm 576: status beside the avatars, all buttons shown, the map above the content */
 @media (min-width: 576px) {
   .people {
@@ -472,7 +536,7 @@ async function copyInvite() {
   }
 }
 
-/* lg 992: a row becomes a four column grid: content | avatars + status | button | ⋯ */
+/* lg 992: a row becomes a five column grid: content | step | avatars + status | button | ⋯ */
 @media (min-width: 992px) {
   .map-panel {
     flex-basis: 33.3333%;
@@ -482,10 +546,13 @@ async function copyInvite() {
   }
   .hangout:not(.featured) .body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 240px 170px 32px;
+    grid-template-columns: minmax(0, 1fr) 190px 200px 170px 32px;
     align-items: center;
-    column-gap: 1rem;
+    column-gap: 1.5rem;
     padding: 0.875rem 1rem;
+  }
+  .hangout:not(.featured) .stage {
+    display: block;
   }
   .hangout:not(.featured) .foot {
     display: contents;

@@ -5,13 +5,15 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
 import { createOneMap } from '@/components/map/oneMap'
-import { readableInk } from '@/utils/color'
+import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_lat, start_lng }], the ones with no start point are skipped
   members: { type: Array, default: () => [] },
   // the fair midpoint as { lat, lng }, or null before there is one
   midpoint: { type: Object, default: null },
+  // the place name written under the midpoint pin
+  label: { type: String, default: '' },
 })
 
 const mapEl = ref(null)
@@ -61,14 +63,14 @@ function draw() {
 
   // a small avatar for each member, the initial in their colour
   for (let m of placed) {
-    const color = /^#[0-9a-f]{6}$/i.test(m.avatar_color ?? '') ? m.avatar_color : null
-    const background = color ?? 'var(--fp-muted)'
-    const ink = color ? readableInk(color) : 'var(--fp-surface)'
+    const background = avatarColor(m.avatar_color, m.display_name)
     L.marker([m.start_lat, m.start_lng], {
-      interactive: false,
+      interactive: true, // so the name shows on hover
+      keyboard: false, // but no tab stop on each dot
+      title: m.display_name,
       icon: L.divIcon({
         className: '',
-        html: `<span class="member-dot" style="background:${background};color:${ink}">${escapeHtml(m.display_name.charAt(0))}</span>`,
+        html: `<span class="member-dot" style="background:${background};color:#fff">${escapeHtml(m.display_name.charAt(0))}</span>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       }),
@@ -82,7 +84,9 @@ function draw() {
       zIndexOffset: 1000,
       icon: L.divIcon({
         className: '',
-        html: '<span class="up-next-pin"></span>',
+        html: `<span class="up-next-pin"></span>${
+          props.label ? `<span class="up-next-label">${escapeHtml(props.label)}</span>` : ''
+        }`,
         iconSize: [28, 28],
         iconAnchor: [14, 28],
       }),
@@ -128,7 +132,7 @@ onBeforeUnmount(() => {
   if (stopMap) stopMap()
 })
 
-watch(() => [props.members, props.midpoint], draw, { deep: true })
+watch(() => [props.members, props.midpoint, props.label], draw, { deep: true })
 </script>
 
 <template>
@@ -182,6 +186,22 @@ watch(() => [props.members, props.midpoint], draw, { deep: true })
   stroke: var(
     --fp-muted
   ); /* leaflet draws lines as svg, so the colour is set here and not as an option */
+}
+:deep(.up-next-label) {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 140px;
+  padding: 0.1rem 0.5rem;
+  overflow: hidden;
+  background: var(--fp-surface);
+  border-radius: var(--fp-radius-sm);
+  box-shadow: var(--fp-shadow);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 :deep(.up-next-pin) {
   display: block;

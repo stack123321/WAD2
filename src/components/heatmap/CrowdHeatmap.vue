@@ -5,6 +5,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet' // the map library
 import { createOneMap } from '@/components/map/oneMap' // sets up the shared onemap map of singapore
 import { getCrowdLevels } from '@/services/crowd'
+import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({
   // the group's midpoint as { name, lat, lng }, or null when there isn't one (the /crowds page)
@@ -131,11 +132,8 @@ function drawMembers() {
     if (m.start_lat == null || m.start_lng == null) {
       continue // no starting point yet
     }
-    // avatar_color comes from the database, so only use it if it looks like a colour (#0E7C6B)
-    let color = 'var(--fp-primary)'
-    if (m.avatar_color && m.avatar_color.startsWith('#')) {
-      color = escapeHtml(m.avatar_color)
-    }
+    // the saved colour if it looks like #0E7C6B, otherwise one picked from the name
+    const color = avatarColor(m.avatar_color, m.display_name)
     // a coloured circle with the first letter of the name, escaped because it goes into html
     L.marker([m.start_lat, m.start_lng], {
       icon: L.divIcon({
@@ -301,7 +299,7 @@ watch(() => props.members, drawMembers, { deep: true })
   border-radius: 50%;
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
-  color: var(--fp-surface);
+  color: #fff;
   font-weight: 700;
   font-size: 0.8rem;
 }

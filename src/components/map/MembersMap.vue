@@ -6,6 +6,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import { isInSingapore } from '@/services/onemap'
 import { createOneMap } from './oneMap'
+import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
@@ -126,11 +127,8 @@ function pinIcon(m) {
     wrapClass = 'pin-wrap pin-me'
   }
 
-  // avatar_color comes from the database, so only use it if it looks like a colour (#0E7C6B)
-  let color = 'var(--fp-primary)'
-  if (m.avatar_color && m.avatar_color.startsWith('#')) {
-    color = escapeHtml(m.avatar_color)
-  }
+  // the saved colour if it looks like #0E7C6B, otherwise one picked from the name
+  const color = avatarColor(m.avatar_color, m.display_name)
 
   const initial = escapeHtml(m.display_name.charAt(0))
   const place = escapeHtml(shortPlace(m.start_label))
@@ -231,7 +229,7 @@ function escapeHtml(text) {
   border-radius: 50%;
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
-  color: var(--fp-surface);
+  color: #fff;
   font-weight: 700;
   font-size: 0.85rem;
 }

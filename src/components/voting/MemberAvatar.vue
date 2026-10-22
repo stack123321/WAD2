@@ -1,9 +1,9 @@
 <script setup>
-// Owner: Eashvar. A member's initial in a circle of their avatar_color (grey if they have none),
+// Owner: Eashvar. A member's initial in white on a circle of their avatar_color (a colour from their name if they have none),
 // sized in px. Used on 11 Group voting's cards, waiting row and feed. Decorative only: the parent
 // always writes the person's name in text as well.
 import { computed } from 'vue'
-import { readableInk } from '@/utils/color'
+import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -12,18 +12,17 @@ const props = defineProps({
 })
 
 const initial = computed(() => props.name.charAt(0).toUpperCase())
+const background = computed(() => avatarColor(props.color, props.name))
 </script>
 
 <template>
   <span
     class="avatar"
-    :class="{ 'avatar--plain': !color }"
     :style="{
       width: size + 'px',
       height: size + 'px',
       fontSize: size * 0.45 + 'px',
-      backgroundColor: color,
-      color: color ? readableInk(color) : null,
+      backgroundColor: background,
     }"
     :title="name"
     aria-hidden="true"
@@ -39,12 +38,8 @@ const initial = computed(() => props.name.charAt(0).toUpperCase())
   flex-shrink: 0;
   border-radius: 50%;
   border: 2px solid var(--fp-surface);
-  color: var(--fp-surface);
+  color: #fff;
   font-weight: 700;
   line-height: 1;
-}
-
-.avatar--plain {
-  background: var(--fp-muted);
 }
 </style>
