@@ -12,6 +12,8 @@ const props = defineProps({
   members: { type: Array, default: () => [] },
   // the fair midpoint as { lat, lng }, or null before there is one
   midpoint: { type: Object, default: null },
+  // the place name written under the midpoint pin
+  label: { type: String, default: '' },
 })
 
 const mapEl = ref(null)
@@ -63,7 +65,9 @@ function draw() {
   for (let m of placed) {
     const background = avatarColor(m.avatar_color, m.display_name)
     L.marker([m.start_lat, m.start_lng], {
-      interactive: false,
+      interactive: true, // so the name shows on hover
+      keyboard: false, // but no tab stop on each dot
+      title: m.display_name,
       icon: L.divIcon({
         className: '',
         html: `<span class="member-dot" style="background:${background};color:#fff">${escapeHtml(m.display_name.charAt(0))}</span>`,
@@ -80,7 +84,9 @@ function draw() {
       zIndexOffset: 1000,
       icon: L.divIcon({
         className: '',
-        html: '<span class="up-next-pin"></span>',
+        html: `<span class="up-next-pin"></span>${
+          props.label ? `<span class="up-next-label">${escapeHtml(props.label)}</span>` : ''
+        }`,
         iconSize: [28, 28],
         iconAnchor: [14, 28],
       }),
@@ -126,7 +132,7 @@ onBeforeUnmount(() => {
   if (stopMap) stopMap()
 })
 
-watch(() => [props.members, props.midpoint], draw, { deep: true })
+watch(() => [props.members, props.midpoint, props.label], draw, { deep: true })
 </script>
 
 <template>
@@ -180,6 +186,22 @@ watch(() => [props.members, props.midpoint], draw, { deep: true })
   stroke: var(
     --fp-muted
   ); /* leaflet draws lines as svg, so the colour is set here and not as an option */
+}
+:deep(.up-next-label) {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 140px;
+  padding: 0.1rem 0.5rem;
+  overflow: hidden;
+  background: var(--fp-surface);
+  border-radius: var(--fp-radius-sm);
+  box-shadow: var(--fp-shadow);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 :deep(.up-next-pin) {
   display: block;

@@ -5,6 +5,8 @@ import { ref, computed, onMounted } from 'vue'
 import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
+import WeekStrip from '@/components/dashboard/WeekStrip.vue'
+import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
 import { getHaze, getHourlyForecast } from '@/services/weather'
 import { getStationCrowd } from '@/services/crowd'
 import { sgDate, dayHeading } from '@/utils/dates'
@@ -316,7 +318,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container-fluid px-3 py-4">
+  <main class="container-fluid px-3 py-4 page">
     <div class="content">
       <div class="mb-3">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -325,7 +327,7 @@ onMounted(async () => {
             :to="{ name: 'create-hangout' }"
             class="btn btn-primary fw-semibold d-none d-md-inline-flex align-items-center start-btn"
           >
-            + Start planning
+            Start planning
           </router-link>
         </div>
 
@@ -427,6 +429,12 @@ onMounted(async () => {
       </section>
     </div>
 
+    <!-- wide screens only: the week and what needs you, beside the list -->
+    <aside v-if="upcoming.length > 0" class="rail" aria-label="This week">
+      <WeekStrip :hangouts="upcoming" :my-id="myId" />
+      <NeedsInputCard :hangouts="upcoming" :my-id="myId" />
+    </aside>
+
     <!-- confirm leaving or deleting, opened by the card's menu item -->
     <div
       id="confirm-modal"
@@ -515,5 +523,42 @@ onMounted(async () => {
 .day-label {
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
+}
+/* md 768: the two buttons at the top right share one width */
+@media (min-width: 768px) {
+  .start-btn,
+  .btn-group {
+    width: 14rem;
+  }
+  .start-btn {
+    justify-content: center;
+  }
+  .toggle-btn {
+    flex: 1;
+  }
+}
+.rail {
+  display: none;
+}
+
+/* xxl 1400: the list keeps its 1040px and the rail sits beside it */
+@media (min-width: 1400px) {
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1040px) 340px;
+    gap: 1.75rem;
+    justify-content: center;
+  }
+  .content {
+    margin: 0;
+  }
+  .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+  }
 }
 </style>

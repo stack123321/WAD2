@@ -214,6 +214,108 @@ test('UP NEXT says how soon it is', async ({ page }) => {
   await expect(page.locator('section', { hasText: 'UP NEXT' })).toContainText('Today · in 9 hours')
 })
 
+test('each row shows its step with a bar (wide screens)', async ({ page }) => {
+  // Friday is UP NEXT (no step there), so check it once it has started and joined COMING UP
+  await page.clock.setFixedTime(new Date('2026-10-16T20:00:00+08:00'))
+  await page.goto('/dashboard')
+  const voting = page.locator('.card', { hasText: 'Friday dinner after class' })
+  await expect(voting).toContainText('Step 5 of 6 · Vote')
+  await expect(page.locator('.card.featured')).not.toContainText('Step')
+  await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+  await page.goto('/dashboard')
+  const collecting = page.locator('.card', { hasText: 'Saturday study session' })
+  await expect(collecting).toContainText('Step 1 of 6 · Starting points')
+})
+
+test('the step is hidden on a tablet', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 })
+  await page.goto('/dashboard')
+  await expect(page.getByText('Step 1 of 6')).toBeHidden()
+})
+
+test('1400px and wider: the week and its first free day sit beside the list', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/dashboard')
+  const week = page.locator('section', { hasText: 'Next 7 days' })
+  await expect(week.locator('.day')).toHaveCount(7)
+  await expect(week).toContainText('14 Oct – 20 Oct')
+  await expect(week).toContainText('Thu 15 Oct is free.') // tomorrow has nothing on
+  await expect(week.locator('.day.open')).toContainText('15')
+  await expect(week.locator('.dots .planning')).toHaveCount(1) // Friday is still being planned
+  await expect(week.getByRole('link', { name: 'Plan something' })).toBeVisible()
+})
+
+test('below 1400px the rail is hidden', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 900 })
+  await page.goto('/dashboard')
+  await expect(page.getByText('Next 7 days')).toBeHidden()
+})
+
+test('Plan something opens Start planning with the free day filled in', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/dashboard')
+  await page.getByRole('link', { name: 'Plan something' }).click()
+  await expect(page).toHaveURL(/\/hangouts\/new\?date=2026-10-15/)
+  await expect(page.getByLabel('Date')).toHaveValue('2026-10-15')
+})
+
+test('rows say how far along people are', async ({ page }) => {
+  await page.goto('/dashboard')
+  // once everyone has added theirs, "Everyone's added" says it, so no count is repeated
+  await expect(page.locator('.card', { hasText: 'Saturday study session' })).not.toContainText(
+    'added a location',
+  )
+  await expect(page.locator('.card', { hasText: 'Friday dinner after class' })).toContainText(
+    /\d of 4 voted/,
+  )
+})
+
+test('avatars of people still to vote go grey, and nobody is grey once everyone has acted', async ({
+  page,
+}) => {
+  await page.goto('/dashboard')
+  const friday = page.locator('.card', { hasText: 'Friday dinner after class' })
+  await expect(friday.locator('.avatar.is-waiting')).not.toHaveCount(0)
+  const saturday = page.locator('.card', { hasText: 'Saturday study session' })
+  await expect(saturday.locator('.avatar.is-waiting')).toHaveCount(0)
+})
+
+test('a confirmed hangout has no step bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/dashboard')
+  await expect(page.getByText('Step 6 of 6')).toHaveCount(0)
+})
+
+test('the map names its midpoint and each person', async ({ page }) => {
+  await page.goto('/dashboard')
+  const next = page.locator('section', { hasText: 'UP NEXT' })
+  await expect(next.locator('.up-next-label')).toHaveText('Bishan')
+  await expect(next.locator('.leaflet-marker-icon[title="Surya"]')).toHaveCount(1)
+})
+
+test('rain shows its chance', async ({ page }) => {
+  // later routes win: a rainy, not thundery, Saturday at 60%
+  await page.route('https://api.open-meteo.com/**', (route) =>
+    route.fulfill({
+      json: {
+        hourly: {
+          time: ['2026-10-16T19:00', '2026-10-24T14:00'],
+          temperature_2m: [30, 28],
+          precipitation_probability: [10, 60],
+          relative_humidity_2m: [70, 80],
+          uv_index: [0, 2],
+          weather_code: [0, 3],
+          is_day: [0, 1],
+        },
+      },
+    }),
+  )
+  await page.goto('/dashboard')
+  await expect(page.locator('.card', { hasText: 'Saturday study session' })).toContainText(
+    '60% rain, bring an umbrella',
+  )
+})
+
 test('one action per card: outline View while waiting on others, no Continue anywhere', async ({
   page,
 }) => {
