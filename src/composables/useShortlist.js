@@ -50,6 +50,7 @@ export function useShortlist(getHangoutId) {
         source_place_id: spot.id,
         name: spot.name,
         category: spot.category,
+        types: spot.types,
         lat: spot.lat,
         lng: spot.lng,
         rating: spot.rating,

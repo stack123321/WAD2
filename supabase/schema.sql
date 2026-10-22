@@ -20,6 +20,7 @@ create table public.profiles (
   indoor_if_rain  boolean not null default false,
   avoid_crowds    boolean not null default false,
   step_free       boolean not null default false,
+  vote_history    jsonb not null default '{}', -- how often they voted for each Google place type, e.g. {"cafe": 3}; written only by record_vote_history()
   created_at      timestamptz not null default now()
 );
 
@@ -69,6 +70,7 @@ create table public.shortlist (
   source_place_id text not null,
   name            text not null,
   category        text,
+  types           text[] not null default '{}', -- Google's place types, e.g. {cafe, food}
   lat             float8 not null,
   lng             float8 not null,
   rating          numeric(2, 1),
@@ -345,6 +347,43 @@ begin
 end $$;
 create trigger shortlist_limit before insert on public.shortlist
   for each row execute function public.enforce_shortlist_limit();
+
+-- Vote history: voting for a spot adds 1 to each of that spot's Google types in the voter's
+-- profiles.vote_history, e.g. {"cafe": 3}. Changing the vote to another spot first subtracts 1
+-- from the old spot's types (never below 0). Done in the database so it is atomic and can't be
+-- skipped by the client.
+create function public.record_vote_history() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  place_type text;
+begin
+  if tg_op = 'UPDATE' then
+    if old.shortlist_id = new.shortlist_id then
+      return new;
+    end if;
+    for place_type in select unnest(types) from shortlist where id = old.shortlist_id loop
+      update profiles
+      set vote_history = jsonb_set(
+        vote_history,
+        array[place_type],
+        to_jsonb(greatest(coalesce((vote_history ->> place_type)::integer, 0) - 1, 0))
+      )
+      where id = new.user_id;
+    end loop;
+  end if;
+  for place_type in select unnest(types) from shortlist where id = new.shortlist_id loop
+    update profiles
+    set vote_history = jsonb_set(
+      vote_history,
+      array[place_type],
+      to_jsonb(coalesce((vote_history ->> place_type)::integer, 0) + 1)
+    )
+    where id = new.user_id;
+  end loop;
+  return new;
+end $$;
+create trigger votes_record_history after insert or update of shortlist_id on public.votes
+  for each row execute function public.record_vote_history();
 
 -- votes
 create policy "votes: members read" on public.votes

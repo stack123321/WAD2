@@ -87,6 +87,7 @@ function toPlace(p, centre, fallbackCategory) {
     source_place_id: p.id,
     name: p.displayName?.text ?? 'Unnamed place',
     category: categoryOf(p.types, fallbackCategory),
+    types: p.types ?? [],
     lat,
     lng,
     rating: p.rating ?? null,
