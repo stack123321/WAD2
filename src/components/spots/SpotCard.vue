@@ -101,6 +101,9 @@ const distance = computed(() => {
 .spot-card__image img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio:16/9;
   object-fit: cover;
   display: block;
 }
@@ -108,6 +111,7 @@ const distance = computed(() => {
 .spot-card__no-image {
   display: grid;
   place-items: center;
+  width: 100%;
   height: 100%;
   color: var(--fp-muted);
   font-size: 0.875rem;
