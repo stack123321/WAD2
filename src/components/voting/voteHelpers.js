@@ -81,6 +81,25 @@ export function runnerUp(rows, excludeId) {
   return [...rows].sort(byVotesThenMatch).find((row) => row.spot.id !== excludeId) ?? null
 }
 
+// How the final spot was chosen, in one sentence for the debrief: most votes, a tie at the top
+// (settled by the wheel or the host), or the host's pick over the leader. Null if nothing was chosen.
+export function decisionSummary(rows, finalId) {
+  const winner = rows.find((row) => row.spot.id === finalId)
+  if (!winner) return null
+  const total = rows.reduce((sum, row) => sum + row.count, 0)
+  const top = Math.max(...rows.map((row) => row.count))
+  const tied = rows.filter((row) => row.count === top)
+  const votes = (n) => `${n} ${n === 1 ? 'vote' : 'votes'}`
+  if (total === 0) return `The host picked ${winner.spot.name} before anyone voted.`
+  if (winner.count < top) {
+    return `The host picked ${winner.spot.name} (${winner.count} of ${votes(total)}).`
+  }
+  if (tied.length > 1) {
+    return `${tied.length} spots tied on ${votes(top)}, and ${winner.spot.name} was picked.`
+  }
+  return `${winner.spot.name} got the most votes: ${winner.count} of ${total}.`
+}
+
 export function diffVotes(before, after, nowIso) {
   const events = []
   for (const vote of after) {

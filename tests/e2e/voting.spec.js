@@ -180,8 +180,7 @@ test.describe('Starting the vote', () => {
     await page.clock.setFixedTime(new Date('2026-10-23T15:00:00+08:00'))
     await page.goto('/hangouts/demo-2/vote')
 
-    const labels = await page.getByLabel('Voting closes').locator('option').allTextContents()
-    expect(labels).toEqual([
+    await expect(page.getByLabel('Voting closes').locator('option')).toHaveText([
       '6 hours before the hangout',
       '2 hours before the hangout',
       '1 hour before the hangout',

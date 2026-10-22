@@ -36,10 +36,10 @@ export function getStatus(h, myId) {
     return {
       tone: 'grey',
       text: 'Done',
-      button: 'View plan',
+      button: 'See how it went',
       fill: false,
       needsYou: false,
-      page: 'final-plan',
+      page: 'debrief',
     }
   }
 
