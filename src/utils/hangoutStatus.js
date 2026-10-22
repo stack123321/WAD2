@@ -33,7 +33,7 @@ export function getProgress(h) {
   if (h.status === 'collecting') {
     const waiting = members.filter((m) => !m.start_label)
     return {
-      text: `${members.length - waiting.length} of ${members.length} added a location`,
+      text: `${members.length - waiting.length} of ${members.length} added a starting point`,
       waitingIds: waiting.map((m) => m.user_id),
     }
   }
@@ -96,7 +96,7 @@ export function getStatus(h, myId) {
     return {
       tone: 'amber',
       text: 'Your turn',
-      button: 'Add your location',
+      button: 'Add starting point',
       fill: true,
       needsYou: true,
       page: 'starting-points',

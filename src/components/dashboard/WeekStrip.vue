@@ -86,10 +86,10 @@ function summary(count) {
     </p>
     <p v-if="freeDay" class="free">
       <span>
-        <strong>{{ shortDate(freeDay.date) }}</strong> is free.
+        Next free day: <strong>{{ shortDate(freeDay.date) }}</strong>
       </span>
       <router-link :to="{ name: 'create-hangout', query: { date: freeDay.key } }">
-        Plan something →
+        Start planning →
       </router-link>
     </p>
   </section>

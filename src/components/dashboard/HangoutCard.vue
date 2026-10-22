@@ -36,14 +36,14 @@ const time = computed(() =>
   }),
 )
 
-// the winning spot once confirmed, otherwise the midpoint station
+// the winning spot once confirmed, otherwise the midpoint
 const location = computed(() => {
   const h = props.hangout
   if ((h.status === 'confirmed' || h.status === 'done') && h.final_shortlist_id) {
     const spot = (h.shortlist ?? []).find((s) => s.id === h.final_shortlist_id)
     if (spot) return spot.name
   }
-  return h.midpoint_name ? `Near ${h.midpoint_name}` : 'Location not set yet'
+  return h.midpoint_name ? `Midpoint: ${h.midpoint_name}` : 'Midpoint not found yet'
 })
 
 // "7:00 pm · Near Bishan", with the date in front when the card has no day heading
@@ -83,11 +83,14 @@ const hour = computed(() => {
 // the weather line: advice only when the weather changes the plan
 const weatherLine = computed(() => {
   if (!hour.value) return null
-  const rainy = hour.value.rainChance >= 50 || isRain(hour.value.condition)
-  let text = hour.value.condition
-  if (hour.value.kind === 'thunder') text = 'Thunderstorms, go indoors'
-  else if (rainy) text = `${text} · ${hour.value.rainChance}% rain, bring an umbrella`
-  return { kind: hour.value.kind, text: text, warn: rainy }
+  const { rainChance, condition, kind } = hour.value
+  const rainy = rainChance >= 50 || isRain(condition)
+  // the chance is always shown, so every card reads the same
+  let text = `${kind === 'thunder' ? 'Thunderstorms' : condition} · ${rainChance}% rain`
+  if (kind === 'thunder') text += ', go indoors'
+  else if (rainy) text += ', bring an umbrella'
+  // a sun or cloud icon beside "80% rain" reads wrong, so use the rain icon unless it's thundery
+  return { kind: rainy && kind !== 'thunder' ? 'rain' : kind, text: text, warn: rainy }
 })
 
 // the crowd at the midpoint station, only when we have a live reading
