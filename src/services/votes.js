@@ -1,5 +1,6 @@
 // Owner: Eashvar. Votes for 11 Group voting, including live updates (Supabase Realtime), the
-// host starting the vote (11), closing it (11) and marking the hangout done (12), and the
+// host starting the vote (11), changing when it closes (11), closing it (11) and marking the
+// hangout done (12), and the
 // tie-break wheel (11), which any member can spin: the database function spin_tiebreak() picks
 // the winner at random, so nobody can choose it (sample hangouts pick one on the page instead).
 // Every function does nothing for mock hangouts (no keys, or an id starting "demo"). Host updates
@@ -49,6 +50,11 @@ export function subscribeToVotes(hangoutId, onChange) {
 
 export async function startVote(hangoutId, voteDeadline) {
   await updateHangout(hangoutId, { status: 'voting', vote_deadline: voteDeadline })
+}
+
+// Move when voting closes (earlier or later); a passed deadline moved ahead opens voting again
+export async function changeVoteDeadline(hangoutId, voteDeadline) {
+  await updateHangout(hangoutId, { vote_deadline: voteDeadline })
 }
 
 export async function closeVote(hangoutId, shortlistId) {

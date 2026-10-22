@@ -141,6 +141,40 @@ test.describe('12 Final plan', () => {
   })
 })
 
+test.describe('Changing when voting closes', () => {
+  // The demo vote closes Thu 15 Oct, 9 pm; the hangout is Fri 16 Oct, 7 pm
+  const card = (page) => page.getByRole('region', { name: 'Voting closes' })
+
+  test('the host can move the closing time while voting is open', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+
+    await expect(card(page).getByText('Voting closes Thu, 15 Oct, 9:00 pm SGT.')).toBeVisible()
+    await page
+      .getByLabel('Change it to')
+      .selectOption({ label: 'In 3 hours (Thu, 15 Oct, 1:00 am)' })
+    await page.getByRole('button', { name: 'Update closing time' }).click()
+
+    await expect(card(page).getByText('Voting closes Thu, 15 Oct, 1:00 am SGT.')).toBeVisible()
+    await expect(page.getByText('Closes in 3h 0m')).toBeVisible()
+  })
+
+  test('moving a passed closing time ahead opens voting again', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-15T22:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+
+    await expect(card(page).getByText('Voting closed Thu, 15 Oct, 9:00 pm SGT.')).toBeVisible()
+    await expect(voteButton(page, hawker)).toBeDisabled()
+    await page
+      .getByLabel('Open voting again until')
+      .selectOption({ label: 'In 1 hour (Thu, 15 Oct, 11:00 pm)' })
+    await page.getByRole('button', { name: 'Open voting again' }).click()
+
+    await expect(page.getByText('Closes in 1h 0m')).toBeVisible()
+    await expect(voteButton(page, hawker)).toBeEnabled()
+  })
+})
+
 test.describe('Starting the vote', () => {
   const studyCafe = 'Mock Study Cafe (sample data)'
 

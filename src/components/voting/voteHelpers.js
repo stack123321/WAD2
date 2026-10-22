@@ -34,6 +34,31 @@ export function closeOptions(voteDeadlineIso, startsAtIso, nowMs) {
   return options
 }
 
+const FROM_NOW_CHOICES = [
+  { mins: 30, label: 'In 30 minutes' },
+  { mins: 60, label: 'In 1 hour' },
+  { mins: 180, label: 'In 3 hours' },
+  { mins: 1440, label: 'In 1 day' },
+]
+
+// Times the host can move the closing time to once voting has started: a few from now plus the
+// ones before the hangout, all before it starts, earliest first. Two within 10 minutes of each
+// other count as one (the first is kept).
+export function changeOptions(startsAtIso, nowMs) {
+  const start = startsAtIso ? new Date(startsAtIso).getTime() : Infinity
+  const fromNow = FROM_NOW_CHOICES.map((c) => ({ at: nowMs + c.mins * 60000, label: c.label }))
+  const beforeStart = closeOptions(null, startsAtIso, nowMs).map((o) => ({
+    at: new Date(o.iso).getTime(),
+    label: o.label,
+  }))
+  const all = [...fromNow.filter((o) => o.at <= start), ...beforeStart].sort((a, b) => a.at - b.at)
+  const kept = []
+  for (const option of all) {
+    if (!kept.some((k) => Math.abs(k.at - option.at) < 10 * 60000)) kept.push(option)
+  }
+  return kept.map((o) => ({ iso: new Date(o.at).toISOString(), label: o.label }))
+}
+
 // The choice selected to begin with: 2 hours before if it's still possible, otherwise the latest
 export function defaultCloseOption(options) {
   if (options.length === 0) return null
