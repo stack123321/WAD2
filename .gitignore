@@ -46,3 +46,6 @@ playwright-report/
 .env.*
 !.env.example
 .vercel
+
+# The team uses npm (package-lock.json). A pnpm lockfile makes Vercel try pnpm and fail.
+pnpm-lock.yaml

@@ -7,6 +7,7 @@ import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 defineProps({
   member: { type: Object, required: true },
   isMe: { type: Boolean, default: false },
+  updating: { type: Boolean, default: false }, // the page is working out new times
 })
 
 const emit = defineEmits(['pick'])
@@ -42,7 +43,10 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
     </div>
 
     <div class="time">
-      <template v-if="member.mode && member.travel_mins != null">
+      <!-- A new mode can move the meeting station and change everyone's time, so every row
+           waits instead of showing the old numbers -->
+      <div v-if="updating" class="cost">Working out…</div>
+      <template v-else-if="member.mode && member.travel_mins != null">
         <div class="mins">{{ member.travel_mins }} min</div>
         <!-- (Surya) driving shows the parking rate per hour, and says so -->
         <div v-if="member.mode === 'car'" class="cost">

@@ -58,6 +58,7 @@ const past = computed(() => {
 const pinError = ref('')
 
 const MAX_PINS = 3
+const NEEDS_CARD_MIN = 5 // the rail's "Needs your input" card only shows for a long list
 
 // who is looking, null when nobody is logged in
 const myId = computed(() => (auth.user ? auth.user.id : null))
@@ -333,7 +334,7 @@ onMounted(async () => {
 
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
           <span v-if="upcoming.length > 0" class="text-muted small">
-            {{ planned }} being planned · {{ confirmed }} confirmed
+            {{ planned }} being planned
           </span>
           <button
             v-if="tab === 'upcoming' && needCount > 0"
@@ -344,6 +345,9 @@ onMounted(async () => {
           >
             {{ needCount }} need your input
           </button>
+          <span v-if="upcoming.length > 0" class="text-muted small">
+            · {{ confirmed }} confirmed
+          </span>
           <div class="btn-group ms-auto" role="group" aria-label="Show upcoming or past hangouts">
             <button
               type="button"
@@ -432,7 +436,7 @@ onMounted(async () => {
     <!-- wide screens only: the week and what needs you, beside the list -->
     <aside v-if="upcoming.length > 0" class="rail" aria-label="This week">
       <WeekStrip :hangouts="upcoming" :my-id="myId" />
-      <NeedsInputCard :hangouts="upcoming" :my-id="myId" />
+      <NeedsInputCard v-if="upcoming.length >= NEEDS_CARD_MIN" :hangouts="upcoming" :my-id="myId" />
     </aside>
 
     <!-- confirm leaving or deleting, opened by the card's menu item -->
