@@ -27,22 +27,38 @@
   // ranked by everyone's travel time with their own mode (rankStations in services/routing.js)
   // (Surya) Nobody waits for friends: anyone who hasn't picked a mode yet counts as MRT for now,
   // and their row says "assuming MRT". When they pick, it's worked out again with their real mode.
+  // Each ranking gets a number. A second click or a friend's change can start a new one before
+  // the last has finished; only the latest is allowed to update the page
+  let latestRanking = 0
+  const working = ref(false) // true while the travel times are being worked out
+
   async function scoreAreas() {
     const members = store.members.filter((m) => m.start_lat != null)
     if (members.length === 0) return
+
+    latestRanking++
+    const thisRanking = latestRanking
+    working.value = true
 
     const withModes = []
     for (const m of members) {
       withModes.push({ ...m, mode: m.mode || 'mrt' })
     }
-    ranked.value = await rankStations(withModes, optimiseFor.value)
-    if (ranked.value.length === 0) return
 
-    const best = ranked.value[0]
-    members.forEach((m, i) => {
-      m.travel_mins = best.travelMins[i]
-      m.travel_cost = best.travelCosts[i]
-    })
+    try {
+      const result = await rankStations(withModes, optimiseFor.value)
+      if (thisRanking !== latestRanking) return // a newer ranking started: throw this one away
+
+      ranked.value = result
+      if (result.length === 0) return
+      const best = result[0]
+      members.forEach((m, i) => {
+        m.travel_mins = best.travelMins[i]
+        m.travel_cost = best.travelCosts[i]
+      })
+    } finally {
+      if (thisRanking === latestRanking) working.value = false // only the latest one turns it off
+    }
   }
 
   // "Find our midpoint": save the fairest station for the whole group, then show it on page 08
@@ -205,6 +221,7 @@
             :key="m.user_id"
             :member="m"
             :is-me="isMe(m)"
+            :updating="working"
             @pick="pickMode(m, $event)"
           />
         </div>
@@ -217,11 +234,13 @@
               {{ store.members.length - missingMode.length }} of {{ store.members.length }} have
               picked how they’re getting there.
             </p>
-            <!-- Works once YOU have picked a mode; friends who haven't count as MRT for now -->
+            <!-- Works once YOU have picked a mode; friends who haven't count as MRT for now.
+                 Waits while the times are being worked out, so we never save a station that's
+                 about to change -->
             <button
               type="button"
               class="btn btn-primary btn-lg w-100"
-              :disabled="saving || ranked.length === 0 || !myModePicked"
+              :disabled="saving || working || ranked.length === 0 || !myModePicked"
               @click="findMidpoint()"
             >
               <span v-if="saving">Saving…</span>
