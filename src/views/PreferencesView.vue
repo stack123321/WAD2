@@ -17,24 +17,24 @@ const isSetup = computed(() => route.query.setup === '1')
 
 // Values are what gets stored in profiles.activities / profiles.dietary
 const activityOptions = [
-  { value: 'cafes', label: 'Cafes' },
-  { value: 'food', label: 'Food spots' },
-  { value: 'board_games', label: 'Board games' },
-  { value: 'outdoor', label: 'Outdoor & parks' },
-  { value: 'museums', label: 'Museums' },
-  { value: 'shopping', label: 'Shopping' },
-  { value: 'arcades', label: 'Arcades' },
-  { value: 'karaoke', label: 'Karaoke' },
-  { value: 'sports', label: 'Sports' },
-  { value: 'movies', label: 'Movies' },
-  { value: 'study', label: 'Study spots' },
+  { value: 'cafes', label: 'Cafes', emoji: '☕', color: 'teal' },
+  { value: 'food', label: 'Food spots', emoji: '🍜', color: 'orange' },
+  { value: 'board_games', label: 'Board games', emoji: '🎲', color: 'purple' },
+  { value: 'outdoor', label: 'Outdoor & parks', emoji: '🌳', color: 'green' },
+  { value: 'museums', label: 'Museums', emoji: '🏛️', color: 'blue' },
+  { value: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'pink' },
+  { value: 'arcades', label: 'Arcades', emoji: '🕹️', color: 'purple' },
+  { value: 'karaoke', label: 'Karaoke', emoji: '🎤', color: 'pink' },
+  { value: 'sports', label: 'Sports', emoji: '⚽', color: 'green' },
+  { value: 'movies', label: 'Movies', emoji: '🎬', color: 'blue' },
+  { value: 'study', label: 'Study spots', emoji: '📚', color: 'blue' },
 ]
 
 const dietaryOptions = [
-  { value: 'halal', label: 'Halal' },
-  { value: 'vegetarian', label: 'Vegetarian' },
-  { value: 'no_beef', label: 'No beef' },
-  { value: 'no_seafood', label: 'No seafood' },
+  { value: 'halal', label: 'Halal', emoji: '☪️', color: 'teal' },
+  { value: 'vegetarian', label: 'Vegetarian', emoji: '🥬', color: 'green' },
+  { value: 'no_beef', label: 'No beef', emoji: '🚫', color: 'orange' },
+  { value: 'no_seafood', label: 'No seafood', emoji: '🐟', color: 'blue' },
 ]
 
 const budgetOptions = [
@@ -233,10 +233,11 @@ async function save() {
                 :key="o.value"
                 type="button"
                 class="chip"
-                :class="{ 'is-on': prefs.activities.includes(o.value) }"
+                :class="[`chip--${o.color}`, { 'is-on': prefs.activities.includes(o.value) }]"
                 :aria-pressed="prefs.activities.includes(o.value)"
                 @click="toggle(prefs.activities, o.value)"
               >
+                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
                 {{ o.label }}
               </button>
             </div>
@@ -259,19 +260,21 @@ async function save() {
                 :key="o.value"
                 type="button"
                 class="chip"
-                :class="{ 'is-on': prefs.dietary.includes(o.value) }"
+                :class="[`chip--${o.color}`, { 'is-on': prefs.dietary.includes(o.value) }]"
                 :aria-pressed="prefs.dietary.includes(o.value)"
                 @click="toggle(prefs.dietary, o.value)"
               >
+                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
                 {{ o.label }}
               </button>
               <button
                 type="button"
                 class="chip"
-                :class="{ 'is-on': noRestrictions }"
+                :class="['chip--orange', { 'is-on': noRestrictions }]"
                 :aria-pressed="noRestrictions"
                 @click="prefs.dietary = []"
               >
+                <span class="chip__emoji" aria-hidden="true">✅</span>
                 No restrictions
               </button>
             </div>
@@ -466,6 +469,14 @@ async function save() {
   background: var(--fp-surface);
   color: var(--fp-ink);
   font-size: 0.85rem;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.chip__emoji {
+  margin-right: 0.35rem;
 }
 
 .chip:hover {
@@ -473,9 +484,46 @@ async function save() {
 }
 
 .chip.is-on {
-  border-color: var(--fp-primary);
-  background: var(--fp-primary);
-  color: var(--fp-surface);
+  border-color: var(--chip-color);
+  background: var(--chip-background);
+  color: var(--chip-ink);
+  font-weight: 700;
+}
+
+.chip--teal {
+  --chip-color: #0f9d91;
+  --chip-background: #dcefed;
+  --chip-ink: #155e59;
+}
+
+.chip--orange {
+  --chip-color: #f47721;
+  --chip-background: #fff0e6;
+  --chip-ink: #93410f;
+}
+
+.chip--blue {
+  --chip-color: #4b7bec;
+  --chip-background: #e5edff;
+  --chip-ink: #284eaa;
+}
+
+.chip--pink {
+  --chip-color: #df4b91;
+  --chip-background: #fbe5f0;
+  --chip-ink: #96305e;
+}
+
+.chip--green {
+  --chip-color: #39a75a;
+  --chip-background: #e2f2e6;
+  --chip-ink: #24703b;
+}
+
+.chip--purple {
+  --chip-color: #8b62d9;
+  --chip-background: #eee8fb;
+  --chip-ink: #5d3c9e;
 }
 
 /* Budget */
