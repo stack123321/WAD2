@@ -25,14 +25,6 @@
       </div>
     </section>
 
-    <!-- Eashvar: Ask box. Its results replace the cards below until "Show all spots" -->
-    <AskSpots
-      v-if="hasMidpoint"
-      :hangout="hangout.hangout"
-      :members="hangout.members"
-      @found="askedSpots = $event"
-    />
-
     <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
     <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
       This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
@@ -48,7 +40,7 @@
     <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div v-if="!askedSpots" class="filters">
+    <div class="filters">
       <div class="filter-buttons">
         <button
           v-for="filter in filters"
@@ -62,7 +54,7 @@
         </button>
       </div>
     </div>
-    <div v-if="!askedSpots" class="sort-control">
+    <div class="sort-control">
       <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
         <option v-for="option in sortOptions" :key="option.value" :value="option.value">
           {{ option.label }}
@@ -71,7 +63,7 @@
     </div>
     <section class="cards">
       <SpotCard
-        v-for="spot in shownSpots"
+        v-for="spot in sortedSpots"
         :key="spot.id"
         :id="`spot-card-${spot.id}`"
         :class="{ 'is-selected': selectedId === spot.id }"
@@ -214,7 +206,6 @@ import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
-import AskSpots from '@/components/assistant/AskSpots.vue'
 import {
   googlePlacesEnabled,
   loadSpots,
@@ -258,9 +249,9 @@ watch(
   { immediate: true },
 )
 
-// A spot with its live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
-function withMatch(spot) {
-  return {
+// Spots with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
+const scoredSpots = computed(() =>
+  spots.value.map((spot) => ({
     ...spot,
     matchPct: matchScore(spot, hangout.members, {
       vibes: hangout.hangout?.vibe,
@@ -270,9 +261,8 @@ function withMatch(spot) {
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
     }),
-  }
-}
-const scoredSpots = computed(() => spots.value.map(withMatch))
+  })),
+)
 let spotRequestId = 0
 const refreshCount = ref(0)
 let forceNextLoad = false
@@ -373,12 +363,6 @@ const comparators = {
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
 
-// Spots found by the Ask box (in its own order), or null to show the usual list
-const askedSpots = ref(null)
-const shownSpots = computed(() =>
-  askedSpots.value ? askedSpots.value.map(withMatch) : sortedSpots.value,
-)
-
 const {
   addedIds,
   error: shortlistError,
@@ -394,12 +378,7 @@ const shortlisted = computed(() => {
     imageUrl: savedSpot.image_url,
   }))
   const savedIds = new Set(savedSpots.map((spot) => spot.id))
-  const pendingSpots = [...spots.value, ...(askedSpots.value ?? [])].filter(
-    (spot, i, all) =>
-      addedIds.has(spot.id) &&
-      !savedIds.has(spot.id) &&
-      all.findIndex((s) => s.id === spot.id) === i,
-  )
+  const pendingSpots = spots.value.filter((spot) => addedIds.has(spot.id) && !savedIds.has(spot.id))
   return [...savedSpots, ...pendingSpots]
 })
 
@@ -409,7 +388,7 @@ const mapCenter = computed(() =>
     : null,
 )
 const mapMarkers = computed(() =>
-  shownSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
+  sortedSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
 )
 
 // Clicking a map marker scrolls the cards bar sideways to that spot's card
@@ -630,14 +609,11 @@ async function selectSpot(id) {
     min-height: 480px;
   }
 
-  /* The whole column scrolls (not just the cards), so the cards keep their full height under the
-     Ask box. Eashvar */
   .main-col {
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    overflow-y: auto;
   }
 
   .head {
@@ -655,8 +631,10 @@ async function selectSpot(id) {
        (and clip card text) below content size when this scroll area is shorter than its content. */
     grid-auto-rows: max-content;
     align-content: start;
-    flex: none;
-    overflow: visible;
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding-bottom: 12px;
   }
 
