@@ -630,11 +630,14 @@ async function selectSpot(id) {
     min-height: 480px;
   }
 
+  /* The whole column scrolls (not just the cards), so the cards keep their full height under the
+     Ask box. Eashvar */
   .main-col {
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+    overflow-y: auto;
   }
 
   .head {
@@ -652,10 +655,8 @@ async function selectSpot(id) {
        (and clip card text) below content size when this scroll area is shorter than its content. */
     grid-auto-rows: max-content;
     align-content: start;
-    flex: 1;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
+    flex: none;
+    overflow: visible;
     padding-bottom: 12px;
   }
 

@@ -4,6 +4,9 @@
 // that fit, found by /api/assistant (Gemini reads the request, Google Places finds the spots).
 // Follow-up buttons ("Cheaper", "Closer to the MRT") refine the last search, and when only a
 // few spots turn up it offers 08 Midpoint, where the group can preview other stations.
+// The group's dietary needs from 03 (e.g. someone eats halal) show as "Halal only" buttons that
+// start off: tap one to narrow the search, which also redoes the last one. Typing "halal" in the
+// message works too.
 // Each question uses one Google Places search, so it follows the same on/off switch as the page.
 // Usage: <AskSpots :hangout="store.hangout" :members="store.members" @found="askedSpots = $event" />
 //   found → camel-cased spots (as from loadSpots()) to show instead of the usual list, or null
@@ -28,21 +31,37 @@ const message = ref('')
 const history = ref([]) // [{ role: 'user' | 'model', text }], for follow-ups
 const loading = ref(false)
 const error = ref('')
-const result = ref(null) // { reply, query, count, suggestOtherStations }
+const result = ref(null) // { reply, query, suggestOtherStations }
+const lastTurn = ref(null) // { text, history } of the last question, to redo it
+const dietOn = ref([]) // the group's dietary needs the user switched on, e.g. ['halal']
 
-const needs = computed(() => groupNeeds(props.members))
+const groupHas = computed(() => groupNeeds(props.members))
+// What's sent: everyone's size and budget, but only the dietary needs that are switched on
+const needs = computed(() => ({
+  ...groupHas.value,
+  dietary: groupHas.value.dietary.filter((d) => dietOn.value.includes(d)),
+}))
 
-// "For 5 people · halal · under $15 each", so it's clear the whole group is taken into account
+// "For 5 people · under $15 each", so it's clear the whole group is taken into account
 const needsText = computed(() => {
   const parts = [`For ${needs.value.size} ${needs.value.size === 1 ? 'person' : 'people'}`]
-  parts.push(...needs.value.dietary)
   if (BUDGET_TEXT[needs.value.maxPrice]) parts.push(BUDGET_TEXT[needs.value.maxPrice])
   return parts.join(' · ')
 })
 
+const dietLabel = (d) => `${d.charAt(0).toUpperCase()}${d.slice(1)} only`
+
+function toggleDiet(d) {
+  dietOn.value = dietOn.value.includes(d)
+    ? dietOn.value.filter((x) => x !== d)
+    : [...dietOn.value, d]
+  // Redo the last search with the new setting, as if it had been on from the start
+  if (lastTurn.value) ask(lastTurn.value.text, lastTurn.value.history)
+}
+
 const canAsk = computed(() => googlePlacesEnabled.value && !loading.value)
 
-async function ask(text) {
+async function ask(text, before = history.value) {
   const asked = text.trim()
   if (!asked || !canAsk.value) return
   loading.value = true
@@ -50,7 +69,7 @@ async function ask(text) {
   try {
     const answer = await askAssistant({
       message: asked,
-      history: history.value,
+      history: before,
       hangout: props.hangout,
       needs: needs.value,
     })
@@ -60,8 +79,9 @@ async function ask(text) {
         "The assistant isn't set up yet. Add GEMINI_API_KEY and GOOGLE_PLACES_API_KEY to .env.local.",
       )
     }
+    lastTurn.value = { text: asked, history: before }
     history.value = [
-      ...history.value,
+      ...before,
       { role: 'user', text: asked },
       { role: 'model', text: answer.reply },
     ].slice(-4)
@@ -82,6 +102,7 @@ async function ask(text) {
 
 function showAll() {
   result.value = null
+  lastTurn.value = null
   history.value = []
   error.value = ''
   emit('found', null)
@@ -120,6 +141,26 @@ function showAll() {
           >Turn on Google Places above to ask. Each question uses one search.</template
         >
       </p>
+      <div
+        v-if="googlePlacesEnabled && groupHas.dietary.length"
+        class="ask__diet"
+        role="group"
+        aria-label="Dietary needs in your group"
+      >
+        <button
+          v-for="d in groupHas.dietary"
+          :key="d"
+          type="button"
+          class="btn ask__chip"
+          :class="dietOn.includes(d) ? 'btn-primary' : 'btn-outline-primary'"
+          :aria-pressed="dietOn.includes(d)"
+          :disabled="loading"
+          @click="toggleDiet(d)"
+        >
+          {{ dietLabel(d) }}
+        </button>
+        <span class="ask__note">Someone in your group needs this</span>
+      </div>
     </form>
 
     <p v-if="error" class="ask__error text-danger" role="alert">{{ error }}</p>
@@ -202,6 +243,13 @@ function showAll() {
 .ask__error {
   margin: 0;
   font-weight: 600;
+}
+
+.ask__diet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .ask__result {

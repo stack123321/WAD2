@@ -2,6 +2,7 @@
 // halal"). /api/assistant and /api/places are stubbed, so these never call Gemini or Google and
 // run without keys. Google Places is switched on for each test, as the Ask box follows that switch.
 import { test, expect } from '@playwright/test'
+import friday from '../../src/mocks/hangout.json' with { type: 'json' }
 
 const place = (id, name, extra = {}) => ({
   source: 'google',
@@ -114,6 +115,39 @@ test('the whole group is taken into account, without sending anyone’s name', a
   for (const name of ['Ryan', 'Nicole', 'Surya', 'Hugo']) {
     expect(JSON.stringify(sent[0])).not.toContain(name)
   }
+})
+
+// Serve the Friday sample with Ryan eating halal
+async function withHalalMember(page) {
+  const hangout = structuredClone(friday)
+  hangout.members.find((m) => m.display_name === 'Ryan').dietary = ['halal']
+  await page.route('**/src/mocks/hangout.json*', (route) =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      body: `export default ${JSON.stringify(hangout)}`,
+    }),
+  )
+}
+
+test('a group member’s dietary need is a button that starts off', async ({ page }) => {
+  await withHalalMember(page)
+  const sent = await stubAssistant(page, PRATA, PRATA)
+  await page.goto('/hangouts/demo/explore')
+  const halal = page.getByRole('button', { name: 'Halal only' })
+  await expect(halal).toHaveAttribute('aria-pressed', 'false')
+
+  // "a cafe for us" shouldn't turn into a halal search on its own
+  await askBox(page).fill('find a cafe for us')
+  await askBox(page).press('Enter')
+  await expect(page.getByText(PRATA.reply)).toBeVisible()
+  expect(sent[0].needs.dietary).toEqual([])
+
+  // switching it on redoes the same question, now halal only
+  await halal.click()
+  await expect(halal).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => sent.length).toBe(2)
+  expect(sent[1]).toMatchObject({ message: 'find a cafe for us', history: [] })
+  expect(sent[1].needs.dietary).toEqual(['halal'])
 })
 
 test('a follow-up sends the earlier search along with it', async ({ page }) => {
