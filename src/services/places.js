@@ -67,6 +67,13 @@ function toSpot(p) {
   }
 }
 
+/** Places from the API (e.g. /api/assistant's) as spot cards, remembered for 10 Spot details. */
+export function cacheSpots(places) {
+  const spots = places.map(toSpot)
+  for (const s of spots) spotCache.set(s.id, s)
+  return spots
+}
+
 const SEARCH_CACHE_PREFIX = 'fairpoint.spots.'
 const SEARCH_CACHE_TTL_MS = 20 * 60 * 1000
 
