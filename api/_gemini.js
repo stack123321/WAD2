@@ -4,20 +4,23 @@
 // Docs: https://ai.google.dev/gemini-api/docs/structured-output
 import axios from 'axios'
 
-// A fast, cheap model is enough for this. GEMINI_MODEL in .env.local overrides it if Google
-// renames or retires this one.
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+// A fast, cheap model is enough for this: Flash-Lite answers in about 1.5 s, while the bigger
+// Flash models took from 4 s to over a minute for the same structured answer. GEMINI_MODEL in
+// .env.local overrides it if Google renames or retires this one (2.5 Flash went that way).
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite'
 
 const SYSTEM_PROMPT = `You help a group of friends in Singapore find somewhere to go near their agreed meeting point (an MRT station).
 Turn the latest message into a Google Places text search. Fill in:
 - isSearch: false if the message isn't asking for a place to go (a greeting, a question about something else). Otherwise true.
-- query: a few search words for Google Places, e.g. "prata", "halal prata", "bubble tea", "board game cafe". Add "halal" or "vegetarian" when the group needs it. Leave out the area name; the search is already limited to the meeting point.
+- query: the food or kind of place only, in a few words, e.g. "prata", "bubble tea", "board game cafe". Leave out dietary words and the area name; those are handled separately.
+- dietary: dietary needs from the message plus the group's, e.g. ["halal"]. Empty if there are none.
 - maxPrice: 1 (cheap, under $15 a person), 2 ($15-30), 3 ($30-50) or 4 (pricier). Use the group's lowest budget unless the message says otherwise. 0 if there's no limit.
 - walkMins: how many minutes' walk from the station they'd accept. Default 10. "Near the MRT" or "close by" means 5. "Don't mind walking" means 15.
 - needsGroup: true if they mention a group, friends, "fits us", or 4 or more people.
 - reply: one short, friendly sentence about what you're searching for, e.g. "Looking for halal prata near Bishan for dinner."
 Never name specific places, ratings, prices or opening hours in the reply; the app shows the real results.
-If the message changes an earlier search ("cheaper", "closer", "something else"), start from the earlier search and adjust it.
+If the message changes an earlier search ("cheaper", "closer"), start from the earlier search and adjust it.
+"Something else" means a different but similar idea for the same meal and needs (after "prata", try "nasi lemak" or "murtabak"), so isSearch stays true.
 If isSearch is false, the reply says in one sentence what you can help with, and query is "".`
 
 const SCHEMA = {
@@ -28,6 +31,7 @@ const SCHEMA = {
     maxPrice: { type: 'INTEGER' },
     walkMins: { type: 'INTEGER' },
     needsGroup: { type: 'BOOLEAN' },
+    dietary: { type: 'ARRAY', items: { type: 'STRING' } },
     reply: { type: 'STRING' },
   },
   required: ['isSearch', 'query', 'reply'],
@@ -63,7 +67,7 @@ function describe({ message, midpoint, startsAt, needs }) {
 /**
  * The message as a structured search.
  * @returns {Promise<{ isSearch: boolean, query: string, maxPrice?: number, walkMins?: number,
- *   needsGroup?: boolean, reply: string }>}
+ *   needsGroup?: boolean, dietary?: string[], reply: string }>}
  */
 export async function toSearch(key, { message, history, midpoint, startsAt, needs }) {
   const model = process.env.GEMINI_MODEL || DEFAULT_MODEL

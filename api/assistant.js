@@ -1,8 +1,9 @@
 // Owner: Eashvar. Vercel serverless function behind the Ask box on 09 Nearby spots:
 //   POST /api/assistant  { message, history, midpoint: { name, lat, lng }, startsAt, needs }
 //   needs = { size, dietary: ['halal'], maxPrice: 1-3 | null } (from groupNeeds() on the page)
-// 1. Gemini turns the message into a search ("prata for dinner, one of us is halal" → "halal prata")
-// 2. Google Places Text Search finds real places within that walk of the meeting point
+// 1. Gemini turns the message into a search ("prata for dinner, one of us is halal" → "prata", halal)
+// 2. Google Places Text Search finds real places within that walk of the meeting point ("halal
+//    prata", then plain "prata" too if that finds too few, as Google doesn't record what's halal)
 // 3. Our own code keeps the ones open at the hangout's time and within budget, groups first
 // Replies with { reply, query, places (same shape as /api/places), suggestOtherStations, sample }.
 // The keys stay here on the server (GEMINI_API_KEY, GOOGLE_PLACES_API_KEY in .env.local / Vercel).
@@ -44,22 +45,35 @@ export default async function handler(req, res) {
 
   const walkMins = clamp(search.walkMins || 10, 4, 25)
   const radiusM = walkMins * WALK_M_PER_MIN
-  let found
+  const food = search.query.trim()
+  const diet = dietWords(search.dietary, input.needs.dietary)
+  // "halal prata", without doubling a word Gemini already put in ("vegetarian food")
+  const query = [...diet.filter((d) => !food.toLowerCase().includes(d)), food].join(' ')
+  const pick = (found) =>
+    pickForGroup(found, {
+      startsAt: input.startsAt,
+      maxPrice: search.maxPrice || input.needs.maxPrice,
+      preferGroups: search.needsGroup || input.needs.size >= 4,
+    })
+
+  let places
   try {
-    found = await textSearch(placesKey, input.midpoint, radiusM, search.query.trim())
+    places = pick(await textSearch(placesKey, input.midpoint, radiusM, query))
+    // Google doesn't record which places are halal or vegetarian, so "halal prata" misses places
+    // that are. Too few? Add the plain "prata" places after them (the reply says to check)
+    if (diet.length && places.length < FEW_RESULTS) {
+      const seen = new Set(places.map((p) => p.source_place_id))
+      const plain = pick(await textSearch(placesKey, input.midpoint, radiusM, food))
+      places = [...places, ...plain.filter((p) => !seen.has(p.source_place_id))]
+    }
   } catch (err) {
     return res.status(502).json({ error: `Couldn't search for places right now (${err.message})` })
   }
-
-  const places = pickForGroup(found, {
-    startsAt: input.startsAt,
-    maxPrice: search.maxPrice || input.needs.maxPrice,
-    preferGroups: search.needsGroup || input.needs.size >= 4,
-  }).slice(0, MAX_RESULTS)
+  places = places.slice(0, MAX_RESULTS)
 
   return res.json({
-    reply: summarise(places.length, { query: search.query.trim(), walkMins, ...input }),
-    query: search.query.trim(),
+    reply: summarise(places.length, { query, diet, walkMins, ...input }),
+    query,
     places,
     suggestOtherStations: places.length < FEW_RESULTS,
   })
@@ -133,7 +147,17 @@ function isOpenAt(periods, startsAt, forMins = 60) {
   })
 }
 
-function summarise(count, { query, walkMins, midpoint, startsAt }) {
+// Dietary words from Gemini and the group, tidied: lowercase, one word each, at most 3
+function dietWords(...lists) {
+  const words = lists
+    .flat()
+    .filter((d) => typeof d === 'string')
+    .map((d) => d.trim().toLowerCase())
+    .filter((d) => /^[a-z-]{3,15}$/.test(d))
+  return [...new Set(words)].slice(0, 3)
+}
+
+function summarise(count, { query, diet, walkMins, midpoint, startsAt }) {
   const time = startsAt
     ? new Intl.DateTimeFormat('en-SG', {
         timeZone: 'Asia/Singapore',
@@ -145,7 +169,10 @@ function summarise(count, { query, walkMins, midpoint, startsAt }) {
   if (count === 0) {
     return `Couldn't find "${query}" ${where}${time ? ` that's open at ${time}` : ''}. Try something else, or another station.`
   }
-  const found = `Found ${count} ${count === 1 ? 'spot' : 'spots'} for "${query}" ${where}${time ? `, open at ${time}` : ''}.`
+  const check = diet.length
+    ? ` Google doesn't say which places are ${diet.join(' or ')}, so check before you go.`
+    : ''
+  const found = `Found ${count} ${count === 1 ? 'spot' : 'spots'} for "${query}" ${where}${time ? `, open at ${time}` : ''}.${check}`
   return count < FEW_RESULTS
     ? `${found} Not many here, so another station might suit you better.`
     : found
