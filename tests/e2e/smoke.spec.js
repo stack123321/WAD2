@@ -2,6 +2,7 @@
 // journeys click through on the demo hangout, finding each link or button by its accessible name.
 // Run without Supabase keys, or the login guard sends every page to /login.
 import { test, expect } from '@playwright/test'
+import { signUp, skipOnboarding } from './helpers/onboarding.js'
 
 const GREETING = /^Good (morning|afternoon|evening)(, .+)?!$/
 
@@ -111,14 +112,10 @@ test('new hangout: landing to final plan', async ({ page }) => {
 
 test('sign up: log in page to dashboard', async ({ page }) => {
   const h1 = page.getByRole('heading', { level: 1 })
-  await page.goto('/login?mode=signup')
-  await page.getByLabel('Name').fill('Test User')
-  await page.getByLabel('Email').fill('test@example.test')
-  await page.getByLabel('Password', { exact: true }).fill('testpass123')
-  await page.getByRole('button', { name: 'Create account' }).click()
+  await signUp(page, { email: 'test@example.test' })
   await expect(h1).toHaveText('Tell us what you like')
 
-  await page.getByRole('link', { name: 'Skip for now' }).click()
+  await skipOnboarding(page)
   await expect(h1).toHaveText(GREETING)
   await expect(h1).toContainText('Test User')
 })
