@@ -12,6 +12,8 @@
     subscribeToMembers,
     updateMemberMode,
   } from '@/services/hangouts'
+  import { sendMessage } from '@/services/chat'
+  import { hasSupabase } from '@/services/supabase'
   import PersonModeRow from '@/components/transport/PersonModeRow.vue'
 
   const route = useRoute()
@@ -127,6 +129,41 @@
     }
   }
 
+  // Remind a friend who's holding the group up, without going back to 06: posts a message that
+  // tags them in the hangout's group chat (it shows up live for everyone there). The demo hangouts
+  // have no chat, so there it copies the message (and the invite link) to paste instead.
+  const remindedId = ref(null) // user_id of the friend who was just reminded
+  const remindStatus = ref('') // "Sent ✓" or "Copied ✓" for 3 seconds
+  const remindError = ref('')
+
+  async function doRemind(member) {
+    remindError.value = ''
+    const hangoutName = store.hangout.name
+    let text = `@${member.display_name}, please pick how you're getting there for "${hangoutName}" 🚇`
+    if (member.start_lat == null) {
+      text = `@${member.display_name}, please add where you're coming from for "${hangoutName}" 📍`
+    }
+
+    try {
+      if (route.params.id.startsWith('demo') || !hasSupabase) {
+        const inviteLink = `${window.location.origin}/login?invite=${store.hangout.invite_code}`
+        await navigator.clipboard.writeText(`${text} ${inviteLink}`)
+        remindStatus.value = 'Copied ✓'
+      } else {
+        await sendMessage(route.params.id, text)
+        remindStatus.value = 'Sent ✓'
+      }
+      remindedId.value = member.user_id
+      setTimeout(() => {
+        remindedId.value = null
+        remindStatus.value = ''
+      }, 3000)
+    } catch (e) {
+      console.error(e)
+      remindError.value = `Couldn't remind ${member.display_name}. Try again.`
+    }
+  }
+
   // Live updates: when a friend picks their mode (or changes their starting point), copy it into
   // our store and re-rank, so everyone sees the same thing without refreshing
   let stopListening = () => {}
@@ -222,8 +259,25 @@
             :member="m"
             :is-me="isMe(m)"
             :updating="working"
+            :remind-status="remindedId === m.user_id ? remindStatus : ''"
             @pick="pickMode(m, $event)"
+            @remind="doRemind(m)"
           />
+
+          <!-- Says where the reminder went (the prof asked "how is the reminder sent?") -->
+          <p v-if="remindStatus === 'Sent ✓'" class="small remind-note" role="status">
+            Posted in the group chat ·
+            <!-- from=transport: the chat page then offers "← Back to Transport" -->
+            <RouterLink
+              :to="{ name: 'chat', params: { hangoutId: route.params.id }, query: { from: 'transport' } }"
+            >
+              Open chat →
+            </RouterLink>
+          </p>
+          <p v-else-if="remindStatus === 'Copied ✓'" class="small remind-note" role="status">
+            Copied the reminder. Paste it to them (the demo hangout has no group chat).
+          </p>
+          <p v-if="remindError" class="text-danger small" role="alert">{{ remindError }}</p>
         </div>
 
         <!-- Right column: the next step. Which station, and why, is shown on the next page (08) -->
@@ -319,6 +373,12 @@
   color: var(--fp-muted);
   font-size: 0.75rem;
   margin-top: 0.6rem;
+}
+
+/* "Posted in the group chat · Open chat →" under the cards, after a Remind */
+.remind-note {
+  color: var(--fp-muted);
+  margin-bottom: 0.5rem;
 }
 
 /* (Surya) "MRT, like last time." */
