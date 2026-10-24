@@ -2,12 +2,32 @@
 // Owner: Ryan
 // my chats: one row per hangout and per one to one chat, search by chat or person name
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getMyHangouts } from '@/services/hangouts'
+import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
+import { planningLinks } from '@/utils/planningLinks'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
+const route = useRoute()
 const auth = useAuthStore()
+
+// (Nicole) Came here from a hangout's chat (?hangout=<id>, and ?from= the planning page before
+// that): a banner offers the way back into planning, so nobody gets stuck in the chats
+const planning = ref(null) // { hangout, links } or null
+
+async function loadPlanning() {
+  if (!route.query.hangout) return
+  try {
+    const hangout = await getHangout(route.query.hangout)
+    const links = planningLinks(hangout, auth.user?.id, route.query.from)
+    if (links.back || links.next) {
+      planning.value = { hangout: hangout, links: links }
+    }
+  } catch (err) {
+    console.log(err) // no banner, the list still works
+  }
+}
 // each is { key, name, members, to }, hangout chats first and then one to one chats
 const chats = ref([])
 const loading = ref(false)
@@ -15,6 +35,7 @@ const error = ref('')
 const query = ref('')
 
 onMounted(async () => {
+  loadPlanning()
   loading.value = true
   try {
     const hangouts = await getMyHangouts()
@@ -56,6 +77,26 @@ const shown = computed(() => {
   <main class="container py-4 chats-page">
     <h1 class="h3 mt-2 mb-3">My Chats</h1>
 
+    <div v-if="planning" class="planning-banner mb-3" role="region" aria-label="Back to planning">
+      <span class="planning-text">Still planning “{{ planning.hangout.name }}”?</span>
+      <span class="planning-actions">
+        <router-link
+          v-if="planning.links.back"
+          class="btn btn-outline-primary"
+          :to="{ name: planning.links.back.page, params: { id: planning.hangout.id } }"
+        >
+          ← Back to {{ planning.links.back.label }}
+        </router-link>
+        <router-link
+          v-if="planning.links.next"
+          class="btn btn-primary"
+          :to="{ name: planning.links.next.page, params: { id: planning.hangout.id } }"
+        >
+          Continue planning →
+        </router-link>
+      </span>
+    </div>
+
     <form class="mb-3" role="search" @submit.prevent>
       <label for="chat-search" class="visually-hidden">Search by hangout or person</label>
       <input
@@ -91,6 +132,35 @@ const shown = computed(() => {
 <style scoped>
 .chats-page {
   max-width: 720px;
+}
+
+/* "Still planning …?" with the way back, above the list */
+.planning-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  background: var(--fp-surface);
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius);
+  padding: 0.85rem 1.25rem;
+}
+
+.planning-text {
+  font-weight: 600;
+}
+
+.planning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.planning-actions .btn {
+  min-height: 44px; /* easy to tap on a phone */
+  display: inline-flex;
+  align-items: center;
 }
 
 .box {

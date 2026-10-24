@@ -1,16 +1,25 @@
 <script setup>
 // Owner: Nicole. One person's row on 07 Mode of transport: avatar, where they're coming from,
 // the MRT / Bus / Car / Walk picker and their travel time. Only your own row can be clicked;
-// picking a mode emits "pick" and the page saves it.
+// picking a mode emits "pick" and the page saves it. A friend who hasn't added a starting point
+// or picked a mode gets a Remind button, which emits "remind" and the page sends the reminder.
+import { computed } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
-defineProps({
+const props = defineProps({
   member: { type: Object, required: true },
   isMe: { type: Boolean, default: false },
   updating: { type: Boolean, default: false }, // the page is working out new times
+  remindStatus: { type: String, default: '' }, // "Sent ✓" / "Copied ✓" just after reminding them
 })
 
-const emit = defineEmits(['pick'])
+const emit = defineEmits(['pick', 'remind'])
+
+// Friends (never yourself) who are holding the group up: no starting point, or no mode yet
+const needsReminder = computed(() => {
+  if (props.isMe) return false
+  return props.member.start_lat == null || !props.member.mode
+})
 
 const modes = ['mrt', 'bus', 'car', 'walk']
 const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
@@ -24,7 +33,10 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
       <div class="name">
         {{ member.display_name }}<span v-if="isMe"> (you)</span>
       </div>
-      <div class="from">From {{ member.start_label }}</div>
+      <div class="from">
+        <template v-if="member.start_label">From {{ member.start_label }}</template>
+        <template v-else>No starting point yet</template>
+      </div>
     </div>
 
     <!-- Your row: pick your mode. Friends' rows: shows what they picked (they choose it) -->
@@ -61,6 +73,17 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
         <div class="cost">assuming MRT</div>
       </template>
       <div v-else class="cost">Waiting for {{ member.display_name }}</div>
+
+      <!-- Says "Sent ✓" for a few seconds after, and can't be pressed twice meanwhile -->
+      <button
+        v-if="needsReminder"
+        type="button"
+        class="btn btn-sm btn-outline-primary remind"
+        :disabled="remindStatus !== ''"
+        @click="emit('remind')"
+      >
+        {{ remindStatus || 'Remind' }}
+      </button>
     </div>
   </div>
 </template>
@@ -136,6 +159,12 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
   font-weight: 800;
 }
 
+/* Remind button under a friend's time */
+.remind {
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
 /* Phones and small tablets (below Bootstrap's md breakpoint): everything on one line doesn't
    fit, so the mode buttons move to their own full-width line under the name and time */
 @media (max-width: 767.98px) {
@@ -161,6 +190,11 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
     flex: 1;
     min-height: 44px;
     font-size: 0.9rem;
+  }
+
+  /* tall enough to tap too */
+  .remind {
+    min-height: 44px;
   }
 
   .from,
