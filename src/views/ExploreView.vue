@@ -69,6 +69,7 @@
         :class="{ 'is-selected': selectedId === spot.id }"
         :name="spot.name"
         :image-url="spot.imageUrl"
+        :category="spot.category"
         :rating="spot.rating"
         :station-distance-m="spot.stationDistanceM"
         :nearest-station-name="spot.nearestStationName"

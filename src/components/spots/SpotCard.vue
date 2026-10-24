@@ -1,10 +1,15 @@
 <script setup>
 // Owner: Hugo. Card for one spot, used on 09 Explore. Emits "add" when the user shortlists it.
+// Styled to match 08 Midpoint's "Things to do" cards (Surya): same emoji placeholder, 2-line
+// clamped name with a leading category emoji, and a muted meta row with icon-prefixed details.
 import { computed } from 'vue'
+import { CATEGORY_EMOJI } from '@/utils/vibes'
 
 const props = defineProps({
   name: { type: String, required: true },
   imageUrl: { type: String, default: null },
+  // e.g. 'cafe', 'food', 'activity', 'outdoor' — picks the emoji (api/_google.js's categoryOf())
+  category: { type: String, default: null },
   rating: { type: Number, default: null },
   stationDistanceM: { type: Number, default: null },
   nearestStationName: { type: String, default: null },
@@ -20,6 +25,8 @@ const props = defineProps({
 
 defineEmits(['add'])
 
+const emoji = computed(() => CATEGORY_EMOJI[props.category] ?? '📍')
+
 const price = computed(() => {
   if (props.priceLevel === null) return null
   return props.priceLevel === 0 ? 'Free' : '$'.repeat(props.priceLevel)
@@ -29,6 +36,13 @@ const distance = computed(() => {
   const m = props.stationDistanceM
   if (m === null) return null
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`
+})
+
+// Same 80 m/min walking pace as MidpointSpots' walkLabel()
+const walkMinutes = computed(() => {
+  const m = props.stationDistanceM
+  if (m === null) return null
+  return Math.max(1, Math.round(m / 80))
 })
 
 // Colour band for the match badge: green = strong fit, amber = so-so, red = weak/vetoed
@@ -44,16 +58,17 @@ const matchTone = computed(() => {
   <article class="spot-card">
     <component :is="to ? 'RouterLink' : 'div'" :to="to ?? undefined" class="spot-card__image">
       <img v-if="imageUrl" :src="imageUrl" :alt="name" loading="lazy" />
-      <span v-else class="spot-card__no-image">No preview</span>
+      <span v-else class="spot-card__no-image" aria-hidden="true">{{ emoji }}</span>
     </component>
 
     <div class="spot-card__body">
       <div class="d-flex justify-content-between align-items-start gap-2">
-        <h3 class="h6 mb-0">
+        <h3 class="h6 mb-0 spot-card__name">
+          <span aria-hidden="true">{{ emoji }}</span>
           <RouterLink v-if="to" :to="to" class="spot-card__link">{{ name }}</RouterLink>
           <template v-else>{{ name }}</template>
         </h3>
-        <span v-if="rating !== null" class="spot-card__rating">&#9733; {{ rating.toFixed(1) }}</span>
+        <span v-if="rating !== null" class="spot-card__rating">⭐ {{ rating.toFixed(1) }}</span>
       </div>
 
       <span
@@ -68,6 +83,7 @@ const matchTone = computed(() => {
         <span v-if="distance">
           {{ distance }} from {{ nearestStationName || 'nearest station' }}
         </span>
+        <span v-if="walkMinutes !== null">🚶 {{ walkMinutes }} min walk</span>
         <span v-if="price" class="spot-card__price">{{ price }}</span>
       </p>
 
@@ -92,12 +108,14 @@ const matchTone = computed(() => {
 .spot-card {
   display: flex;
   flex-direction: column;
-  
   overflow: hidden;
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  box-shadow: var(--fp-shadow);
+  border-radius: var(--fp-radius-sm);
+}
+
+.spot-card:hover {
+  border-color: var(--fp-primary);
 }
 
 .spot-card__image {
@@ -107,7 +125,7 @@ const matchTone = computed(() => {
 }
 
 .spot-card__link {
-  color:black;
+  color: black;
   text-decoration: none;
 }
 
@@ -121,7 +139,7 @@ const matchTone = computed(() => {
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  aspect-ratio:16/9;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   display: block;
 }
@@ -131,8 +149,8 @@ const matchTone = computed(() => {
   place-items: center;
   width: 100%;
   height: 100%;
-  color: var(--fp-muted);
-  font-size: 0.875rem;
+  background: color-mix(in srgb, var(--fp-primary) 8%, var(--fp-surface));
+  font-size: 2rem;
 }
 
 .spot-card__body {
@@ -141,6 +159,15 @@ const matchTone = computed(() => {
   flex: 1;
   gap: 0.5rem;
   padding: 1rem;
+}
+
+.spot-card__name {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; /* at most 2 lines, then "…" */
+  overflow-wrap: anywhere;
 }
 
 .spot-card__rating {
@@ -174,10 +201,10 @@ const matchTone = computed(() => {
 
 .spot-card__meta {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
   color: var(--fp-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .spot-card__price {
