@@ -40,6 +40,14 @@ export function getProgress(h) {
   return null
 }
 
+// the planning step I'm up to: add my starting point, then pick how I'm travelling and find the
+// midpoint (both on Transport), then shortlist spots near it
+function myStep(h, me) {
+  if (!me || !me.start_label) return 'starting-points'
+  if (!me.mode || !h.midpoint_name) return 'transport'
+  return 'explore'
+}
+
 // the status line, the button and where the card goes, for one hangout
 // myId is null when nobody is logged in or the person is not in the hangout
 export function getStatus(h, myId) {
@@ -119,6 +127,6 @@ export function getStatus(h, myId) {
     button: 'View',
     fill: false,
     needsYou: false,
-    page: 'starting-points',
+    page: myStep(h, me),
   }
 }

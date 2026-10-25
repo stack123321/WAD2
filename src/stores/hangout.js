@@ -3,6 +3,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getHangout } from '@/services/hangouts'
+import { hasSupabase } from '@/services/supabase'
 
 export const useHangoutStore = defineStore('hangout', () => {
   const hangout = ref(null)
@@ -13,17 +14,29 @@ export const useHangoutStore = defineStore('hangout', () => {
   const shortlist = computed(() => (hangout.value ? hangout.value.shortlist : []))
   const votes = computed(() => (hangout.value ? hangout.value.votes : []))
 
-  // load a hangout by id, skip fetch if already loaded ("demo" = mock data)
+  let wantedId = null // the hangout asked for last, in case we move on before an older one arrives
+
+  // load a hangout by id, fetched fresh every time a hangout page opens so it shows what
+  // friends changed since ("demo" = mock data, only fetched once so demo edits are kept)
   async function load(id) {
-    if (hangout.value && hangout.value.id === id) return
-    loading.value = true
-    error.value = null
-    try {
-      hangout.value = await getHangout(id)
-    } catch (e) {
-      error.value = e
+    const cached = hangout.value !== null && hangout.value.id === id
+    if (cached && (id.startsWith('demo') || !hasSupabase)) return
+    wantedId = id
+
+    // first visit: show the loading state. coming back: keep showing the copy we have until the fresh one arrives
+    if (!cached) {
+      loading.value = true
+      error.value = null
     }
-    loading.value = false
+    try {
+      const fresh = await getHangout(id)
+      if (wantedId === id) hangout.value = fresh
+    } catch (e) {
+      // if a refresh fails, the copy we already have is still worth showing
+      if (cached) console.error("Couldn't refresh the hangout", e)
+      else if (wantedId === id) error.value = e
+    }
+    if (wantedId === id) loading.value = false
   }
 
   return { hangout, loading, error, members, shortlist, votes, load }

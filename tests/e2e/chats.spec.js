@@ -31,17 +31,17 @@ test('the Chat button on Friends opens a one to one chat and adds it to My Chats
   await page.getByLabel('Email').fill('ryan@example.com')
   await page.getByLabel('Password', { exact: true }).fill('password123')
   await page.getByRole('button', { name: 'Log in', exact: true }).last().click()
-  await page.getByRole('navigation').getByRole('link', { name: 'Friends', exact: true }).click()
+  await page.getByRole('navigation').getByRole('link', { name: /^Friends/ }).click()
 
   await page.getByRole('button', { name: 'Chat with Hugo' }).click()
   await expect(page).toHaveURL('/chats/direct/demo-direct-u-hugo')
   await expect(page.getByRole('heading', { name: 'Hugo' })).toBeVisible()
 
   // a second click goes to the same chat instead of making another
-  await page.getByRole('navigation').getByRole('link', { name: 'Friends', exact: true }).click()
+  await page.getByRole('navigation').getByRole('link', { name: /^Friends/ }).click()
   await page.getByRole('button', { name: 'Chat with Hugo' }).click()
   await expect(page).toHaveURL('/chats/direct/demo-direct-u-hugo')
 
-  await page.getByRole('navigation').getByRole('link', { name: 'Chats', exact: true }).click()
+  await page.getByRole('navigation').getByRole('link', { name: /^Chats/ }).click()
   await expect(page.locator('#chat-list').getByText('Hugo', { exact: true })).toHaveCount(1)
 })

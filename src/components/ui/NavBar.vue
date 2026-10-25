@@ -1,12 +1,16 @@
 <script setup>
 // Owner: Hugo (UI kit). Basic version so the app runs; restyle to match Figma.
 // Ryan: top links and a profile menu from 768px, a bottom tab bar with a centre "+" below that.
-import { computed, watchEffect } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, watch, watchEffect } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAlertsStore } from '@/stores/alerts'
+import { subscribeToAlerts } from '@/services/unread'
 
 const auth = useAuthStore()
+const alerts = useAlertsStore()
 const router = useRouter()
+const route = useRoute()
 
 // the first letter of their name (or email) for the profile circle
 const initial = computed(() => {
@@ -19,6 +23,38 @@ const initial = computed(() => {
 watchEffect(() => {
   document.body.classList.toggle('has-tabbar', auth.isLoggedIn)
 })
+
+// Ryan: badges on Friends and Chats. Check when someone logs in, on every page change, and
+// straight away when a message or friend request arrives
+let stopAlerts = () => {}
+
+watch(
+  () => (auth.user ? auth.user.id : null),
+  (id) => {
+    stopAlerts()
+    stopAlerts = () => {}
+    if (id) {
+      alerts.refresh(id)
+      stopAlerts = subscribeToAlerts(id, () => alerts.refresh(id))
+    } else {
+      alerts.clear()
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (auth.user) alerts.refresh(auth.user.id)
+  },
+)
+
+// "9+" so a big number doesn't stretch the badge
+function badgeText(n) {
+  if (n > 9) return '9+'
+  return n
+}
 
 // Ask first, then log out and leave the app for the landing page
 async function logOut() {
@@ -42,10 +78,22 @@ async function logOut() {
             <RouterLink class="nav-link" :to="{ name: 'dashboard' }">Hangouts</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link" :to="{ name: 'friends' }">Friends</RouterLink>
+            <RouterLink class="nav-link" :to="{ name: 'friends' }">
+              Friends
+              <span v-if="alerts.friendRequests > 0" class="badge rounded-pill bg-danger ms-1">
+                {{ badgeText(alerts.friendRequests) }}
+                <span class="visually-hidden">new</span>
+              </span>
+            </RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link" :to="{ name: 'chats' }">Chats</RouterLink>
+            <RouterLink class="nav-link" :to="{ name: 'chats' }">
+              Chats
+              <span v-if="alerts.unreadTotal > 0" class="badge rounded-pill bg-danger ms-1">
+                {{ badgeText(alerts.unreadTotal) }}
+                <span class="visually-hidden">new</span>
+              </span>
+            </RouterLink>
           </li>
           <li class="nav-item dropdown">
             <button
@@ -109,6 +157,10 @@ async function logOut() {
         <path d="M16.5 14.5A4.5 4.5 0 0 1 21 19" />
       </svg>
       Friends
+      <span v-if="alerts.friendRequests > 0" class="badge rounded-pill bg-danger tab-badge">
+        {{ badgeText(alerts.friendRequests) }}
+        <span class="visually-hidden">new</span>
+      </span>
     </RouterLink>
     <RouterLink class="tab plus" :to="{ name: 'create-hangout' }" aria-label="Start planning">
       <svg
@@ -141,6 +193,10 @@ async function logOut() {
         />
       </svg>
       Chats
+      <span v-if="alerts.unreadTotal > 0" class="badge rounded-pill bg-danger tab-badge">
+        {{ badgeText(alerts.unreadTotal) }}
+        <span class="visually-hidden">new</span>
+      </span>
     </RouterLink>
     <div class="dropdown dropup tab-wrap">
       <button type="button" class="tab" data-bs-toggle="dropdown" aria-expanded="false">
@@ -210,6 +266,7 @@ async function logOut() {
 }
 
 .tab {
+  position: relative; /* Ryan: for .tab-badge */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -226,6 +283,14 @@ async function logOut() {
 
 .tab.router-link-active {
   color: var(--fp-primary);
+}
+
+/* Ryan: the badge sits on the top right corner of the tab's icon */
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 4px);
+  font-size: 0.6rem;
 }
 
 .tab.plus {
