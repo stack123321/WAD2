@@ -16,7 +16,8 @@ const props = defineProps({
   hostMode: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['select'])
+// open-chat → "Open chat" was clicked after a reminder (the page opens its chat panel)
+const emit = defineEmits(['select', 'open-chat'])
 
 function hasStart(member) {
   return member.start_lat != null && member.start_lng != null
@@ -45,6 +46,8 @@ const inviteLink = computed(
 const remindedId = ref(null) // user_id of the member who was just reminded
 const remindLabel = ref('') // "Sent!" or "Copied!"
 const remindError = ref('')
+// Says where the reminder went (the prof asked "How is reminder sent?"), same wording as 07
+const remindNote = ref('') // 'sent' | 'copied' | ''
 
 // Remind everyone: one message that tags everyone who hasn't added a starting point yet
 const remindAllLabel = ref('') // "Sent!" or "Copied!" for 2 seconds
@@ -71,9 +74,11 @@ async function remindEveryone() {
     if (props.hangout.id === 'demo') {
       await navigator.clipboard.writeText(`${text} ${inviteLink.value}`)
       remindAllLabel.value = 'Copied!'
+      remindNote.value = 'copied'
     } else {
       await sendMessage(props.hangout.id, text)
       remindAllLabel.value = 'Sent!'
+      remindNote.value = 'sent'
     }
     setTimeout(() => {
       remindAllLabel.value = ''
@@ -92,9 +97,11 @@ async function remind(member) {
     if (props.hangout.id === 'demo') {
       await navigator.clipboard.writeText(`${text} ${inviteLink.value}`)
       remindLabel.value = 'Copied!'
+      remindNote.value = 'copied'
     } else {
       await sendMessage(props.hangout.id, text)
       remindLabel.value = 'Sent!'
+      remindNote.value = 'sent'
     }
     remindedId.value = member.user_id
     setTimeout(() => {
@@ -169,6 +176,16 @@ async function remind(member) {
         </button>
       </li>
     </ul>
+    <!-- After a Remind: where it went -->
+    <p v-if="remindNote === 'sent'" class="small remind-note mt-2 mb-0" role="status">
+      Posted in the group chat ·
+      <button type="button" class="btn btn-link btn-sm open-chat" @click="emit('open-chat')">
+        Open chat →
+      </button>
+    </p>
+    <p v-else-if="remindNote === 'copied'" class="small remind-note mt-2 mb-0" role="status">
+      Copied the reminder. Paste it to them (the sample hangout has no group chat).
+    </p>
     <p v-if="remindError" class="small text-danger mt-2 mb-0" role="alert">{{ remindError }}</p>
   </div>
 </template>
@@ -205,6 +222,19 @@ async function remind(member) {
   flex-shrink: 0;
   color: var(--fp-primary);
   font-size: 1.1rem;
+}
+
+.remind-note {
+  color: var(--fp-primary);
+  font-weight: 600;
+}
+
+.open-chat {
+  min-height: 44px;
+  padding: 0;
+  font-weight: 600;
+  vertical-align: baseline;
+  text-decoration: none;
 }
 
 .remind-all {

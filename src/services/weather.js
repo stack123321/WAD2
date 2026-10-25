@@ -94,6 +94,39 @@ export async function getTodayForecast() {
   }
 }
 
+// Part (c2) Further ahead (Open-Meteo): NEA's outlook only goes 4 days ahead
+/**
+ * Day-by-day forecast for Singapore (its centre) for the next `days` days (Open-Meteo goes up to
+ * 16), in the same shape as getDayForecast(), so the weather card can mix the two.
+ * @returns {Promise<Array<{ date: string, forecast: string, rain: boolean, low: number, high: number }>>}
+ */
+export async function getWeekForecast(days = 7) {
+  const response = await axios.get(OPEN_METEO_URL, {
+    params: {
+      latitude: 1.3521,
+      longitude: 103.8198,
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      timezone: 'Asia/Singapore',
+      forecast_days: days,
+    },
+  })
+  const daily = response.data.daily
+
+  // One list per measurement again: day i is position i in every list
+  const result = []
+  for (let i = 0; i < daily.time.length; i++) {
+    const forecast = wmoText(daily.weather_code[i])
+    result.push({
+      date: daily.time[i], // "2026-10-25"
+      forecast: forecast,
+      rain: isRain(forecast),
+      low: Math.round(daily.temperature_2m_min[i]),
+      high: Math.round(daily.temperature_2m_max[i]),
+    })
+  }
+  return result
+}
+
 // Part (d) Hourly forecast (Open-Meteo)
 /**
  * Hourly forecast at a point, from today up to 16 days ahead.

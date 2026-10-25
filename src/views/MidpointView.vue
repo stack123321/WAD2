@@ -67,25 +67,60 @@ function showTimes(station) {
   })
 }
 
-// The 3 best stations apart from the current one
+// (Surya) Up to 3 other stations, each with why it's offered (the tab's tag):
+// 1. the fairest one that isn't the midpoint
+// 2. then the quickest station for each person, if it's quicker for them than the midpoint
+//    (the prof: "all the alternatives end up longer for everyone")
+// 3. then the next fairest ones, to fill up to 3
 const otherOptions = computed(() => {
+  if (!midpoint.value) return []
   const result = []
-  for (const r of ranked.value) {
-    if (midpoint.value && r.name !== midpoint.value.name && result.length < 3) {
-      result.push(r)
+  const others = ranked.value.filter((r) => r.name !== midpoint.value.name)
+
+  // Part (a) the fairest other station
+  if (others.length > 0) {
+    result.push({ ...others[0], tag: isFairest.value ? 'next fairest' : 'fairest' })
+  }
+
+  // Part (b) each person's quickest station
+  rankedFor.value.forEach((m, i) => {
+    if (result.length >= 3) return
+    let best = null
+    for (const r of others) {
+      if (best === null || r.travelMins[i] < best.travelMins[i]) {
+        best = r
+      }
+    }
+    if (!best) return
+    if (current.value && best.travelMins[i] >= current.value.travelMins[i]) return // no quicker
+    if (result.some((o) => o.name === best.name)) return // already offered
+    result.push({ ...best, tag: `quickest for ${m.display_name}` })
+  })
+
+  // Part (c) fill up with the next fairest
+  for (const r of others) {
+    if (result.length >= 3) break
+    if (!result.some((o) => o.name === r.name)) {
+      result.push({ ...r, tag: '' })
     }
   }
   return result
 })
 
-// "Longest trip 49 min (4 min longer) · trips up to 30 min apart (less fair)", compared with the
-// current midpoint, in plain words
+// "Ryan 12 min shorter · Nicole 8 min longer · Surya same. Trips up to 30 min apart (less fair)",
+// compared with the current midpoint, in plain words
 function compareLine(option) {
-  const spread = `trips up to ${option.gap} min apart`
+  const spread = `Trips up to ${option.gap} min apart`
   if (!current.value) {
     return `Longest trip ${option.longest} min · ${spread}`
   }
-  return `Longest trip ${option.longest} min (${longerText(option.longest - current.value.longest)}) · ${spread} (${fairerText(option.gap - current.value.gap)})`
+  const people = []
+  rankedFor.value.forEach((m, i) => {
+    people.push(
+      `${m.display_name} ${longerText(option.travelMins[i] - current.value.travelMins[i])}`,
+    )
+  })
+  return `${people.join(' · ')}. ${spread} (${fairerText(option.gap - current.value.gap)}).`
 }
 
 // 4 → "4 min longer", -19 → "19 min shorter", 0 → "same"
@@ -147,12 +182,23 @@ const stationTabs = computed(() => {
       lat: o.lat,
       lng: o.lng,
       chosen: false,
+      tag: o.tag,
       compareText: compareLine(o),
       station: o,
     })
   }
   return tabs
 })
+
+// (Surya) The station tab being previewed: CrowdHeatmap moves there and shows a light pin
+const previewStation = ref(null)
+const spotsCard = ref(null) // MidpointSpots, so "Back to midpoint" can put its tabs back
+
+function backToMidpoint() {
+  if (spotsCard.value && midpoint.value) {
+    spotsCard.value.selectTab(midpoint.value.name) // also clears the preview
+  }
+}
 
 // "Make ___ our midpoint": make another station the midpoint, for everyone
 
@@ -270,11 +316,13 @@ async function onMidpointMoved(position) {
       <template v-if="midpoint">
         <!-- (Surya) What you can do near the midpoint, before choosing spots -->
         <MidpointSpots
+          ref="spotsCard"
           :stations="stationTabs"
           :vibes="store.hangout.vibe || []"
           :hangout-id="route.params.id"
           :busy="moving"
           @choose="chooseStation"
+          @preview="previewStation = $event"
         />
 
         <!-- the map, with the midpoint, everyone's travel times and the weather beside it -->
@@ -285,7 +333,9 @@ async function onMidpointMoved(position) {
               :midpoint="midpoint"
               :draggable="true"
               :members="store.members"
+              :preview="previewStation"
               @move="onMidpointMoved"
+              @recenter="backToMidpoint"
             />
           </div>
 
@@ -334,12 +384,16 @@ async function onMidpointMoved(position) {
             />
           </div>
         </div>
+        <!-- (Surya) the next step, full width at the bottom so it's clear what to do next -->
         <router-link
           :to="{ name: 'explore', params: { id: route.params.id } }"
-          class="btn btn-primary mt-3 see-spots-btn"
+          class="btn btn-primary btn-lg w-100 mt-4 see-spots-btn"
         >
-          See nearby spots
+          Next: see nearby spots →
         </router-link>
+        <p class="small text-secondary text-center mt-2 mb-0">
+          Pick places near {{ midpoint.name }} for the group to vote on.
+        </p>
       </template>
 
       <!-- reached from the step bar before page 07 has found the midpoint -->
@@ -361,9 +415,11 @@ async function onMidpointMoved(position) {
 <style scoped>
 /* big enough to tap with a finger */
 .see-spots-btn {
-  min-height: 44px;
-  display: inline-flex;
+  min-height: 48px;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  font-weight: 700;
 }
 
 /* (Surya) "Your trip: 27 min by MRT · $2.20" */
