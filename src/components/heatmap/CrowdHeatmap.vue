@@ -6,6 +6,7 @@ import L from 'leaflet' // the map library
 import { createOneMap } from '@/components/map/oneMap' // sets up the shared onemap map of singapore
 import { getCrowdLevels } from '@/services/crowd'
 import { avatarColor } from '@/utils/avatarColor'
+import { escapeHtml } from '@/utils/escapeHtml' // names go inside the pins' html
 
 const props = defineProps({
   // the group's midpoint as { name, lat, lng }, or null when there isn't one (the /crowds page)
@@ -146,16 +147,6 @@ function drawMembers() {
       .bindTooltip(`${escapeHtml(m.display_name)} · ${escapeHtml(m.start_label)}`) // name and origin on hover
       .addTo(memberPins) // into the group, so clearLayers can remove all the pins at once
   }
-}
-
-// names go inside html, so turn < > & " ' into safe text first
-function escapeHtml(text) {
-  return String(text ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
 }
 
 // where the map first looks: all the points together, or just the midpoint, or the whole island on /crowds

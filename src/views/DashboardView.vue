@@ -176,7 +176,7 @@ function isHost(hangout) {
 }
 
 // logged in, in the hangout, but not the host
-function isMember(hangout) {
+function canLeave(hangout) {
   return auth.user !== null && !isHost(hangout)
 }
 
@@ -304,9 +304,7 @@ onMounted(async () => {
     for (let h of hangouts.value) {
       h.pinned = false
       for (let m of h.members) {
-        if (auth.user !== null && m.user_id === auth.user.id && m.pinned) {
-          h.pinned = true
-        }
+        if (m.user_id === myId.value && m.pinned) h.pinned = true
       }
     }
   } catch (err) {
@@ -423,7 +421,7 @@ onMounted(async () => {
               :hours="hours"
               :crowd="crowds[h.id] ?? null"
               :can-delete="isHost(h)"
-              :can-leave="isMember(h)"
+              :can-leave="canLeave(h)"
               @delete="askDelete"
               @leave="askLeave"
               @toggle-pin="onTogglePin"
