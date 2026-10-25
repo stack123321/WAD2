@@ -7,6 +7,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
 import { useAuthStore } from '@/stores/auth'
+import { useAlertsStore } from '@/stores/alerts'
+import { markChatRead } from '@/services/unread'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const props = defineProps({
@@ -44,7 +46,21 @@ const isDemo = room.value.id === 'demo' || room.value.id.startsWith('demo-direct
 // Part (a) Load the messages, then listen for new ones
 let stopListening = () => {}
 
+// (Ryan) Unread badges: while this chat is on screen it never counts as unread, and the
+// database remembers I've read it up to now, so the badge stays clear after I leave
+const alerts = useAlertsStore()
+
+async function markRead() {
+  try {
+    await markChatRead(room.value.id)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 onMounted(async () => {
+  alerts.openChat(room.value.id)
+  markRead()
   try {
     messages.value = await getMessages(room.value.id, kind)
   } catch (err) {
@@ -56,7 +72,10 @@ onMounted(async () => {
   stopListening = subscribeToMessages(room.value.id, addMessage, kind)
 })
 
-onUnmounted(() => stopListening())
+onUnmounted(() => {
+  stopListening()
+  alerts.closeChat(room.value.id)
+})
 
 // A message arrived (live, or our own after sending). Skip it if we already have it.
 function addMessage(message) {
@@ -66,6 +85,10 @@ function addMessage(message) {
   }
   messages.value.push(message)
   scrollToBottom()
+  // someone else's message arrived while I'm looking at the chat, so I've read it
+  if (message.user_id !== me.value) {
+    markRead()
+  }
 }
 
 // Keep the newest message in view

@@ -4,6 +4,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAlertsStore } from '@/stores/alerts'
+import { getMyHangouts, addMember } from '@/services/hangouts'
 import {
   searchPeople,
   getFriendships,
@@ -13,8 +15,10 @@ import {
   removeFriend,
 } from '@/services/friends'
 import { getOrCreateDirectChat } from '@/services/directChats'
+import AddToHangout from '@/components/friends/AddToHangout.vue'
 
 const auth = useAuthStore()
+const alerts = useAlertsStore()
 const router = useRouter()
 const myId = computed(() => (auth.user ? auth.user.id : null))
 
@@ -25,6 +29,7 @@ const requests = ref([]) // they asked you
 const loading = ref(false)
 const error = ref('')
 const actionError = ref('')
+const actionDone = ref('') // "Friend request sent to Mei." after something worked
 
 async function loadFriendships() {
   try {
@@ -38,7 +43,25 @@ async function loadFriendships() {
   }
 }
 
+// upcoming hangouts I host that are still collecting starting points: the ones I can add friends to
+const openHangouts = ref([])
+
+async function loadOpenHangouts() {
+  try {
+    const hangouts = await getMyHangouts()
+    const now = new Date()
+    openHangouts.value = hangouts.filter(
+      (h) => h.host_id === myId.value && h.status === 'collecting' && new Date(h.starts_at) > now,
+    )
+  } catch (err) {
+    // only the shortcut is lost: "Add to hangout" still starts a new hangout with them
+    console.log(err)
+  }
+}
+
 onMounted(async () => {
+  // not awaited: the friend list shows straight away, the hangout menu fills in when ready
+  loadOpenHangouts()
   loading.value = true
   await loadFriendships()
   loading.value = false
@@ -69,6 +92,13 @@ async function search() {
   searching.value = false
 }
 
+// empty the search box and hide the results, after adding or accepting someone from them
+function clearSearch() {
+  query.value = ''
+  results.value = []
+  searched.value = false
+}
+
 // where a search result stands with you: 'friend', 'pending', 'request' or 'none'
 function statusOf(userId) {
   if (friends.value.find((f) => f.user_id === userId)) return 'friend'
@@ -77,11 +107,21 @@ function statusOf(userId) {
   return 'none'
 }
 
+// friends first, since with a long list most searches are to find a friend to invite
+const sortedResults = computed(() => {
+  const mine = results.value.filter((p) => statusOf(p.user_id) === 'friend')
+  const others = results.value.filter((p) => statusOf(p.user_id) !== 'friend')
+  return mine.concat(others)
+})
+
 async function addFriend(person) {
   actionError.value = ''
+  actionDone.value = ''
   try {
     await sendFriendRequest(myId.value, person.user_id)
     await loadFriendships()
+    clearSearch()
+    actionDone.value = `Friend request sent to ${person.display_name}.`
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't send a friend request to ${person.display_name}.`
@@ -90,9 +130,14 @@ async function addFriend(person) {
 
 async function accept(person) {
   actionError.value = ''
+  actionDone.value = ''
   try {
     await acceptFriendRequest(myId.value, person.user_id)
     await loadFriendships()
+    alerts.refresh(myId.value)
+    // accepted from the search results: clear them, like after adding
+    if (results.value.some((r) => r.user_id === person.user_id)) clearSearch()
+    actionDone.value = `You and ${person.display_name} are now friends.`
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't accept ${person.display_name}'s request.`
@@ -101,9 +146,11 @@ async function accept(person) {
 
 async function decline(person) {
   actionError.value = ''
+  actionDone.value = ''
   try {
     await declineFriendRequest(myId.value, person.user_id)
     await loadFriendships()
+    alerts.refresh(myId.value)
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't decline ${person.display_name}'s request.`
@@ -119,6 +166,21 @@ async function openChat(person) {
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't open a chat with ${person.display_name}.`
+  }
+}
+
+// adds a friend to one of my hangouts from the "Add to hangout" menu
+async function addToHangout(person, hangout) {
+  actionError.value = ''
+  actionDone.value = ''
+  try {
+    await addMember(hangout.id, person.user_id)
+    // so the menu stops offering this hangout for them
+    hangout.members.push({ user_id: person.user_id })
+    actionDone.value = `Added ${person.display_name} to ${hangout.name}.`
+  } catch (err) {
+    console.log(err)
+    actionError.value = `Couldn't add ${person.display_name} to ${hangout.name}.`
   }
 }
 
@@ -143,23 +205,37 @@ async function remove(person) {
     <h1 class="h3 mt-2 mb-3">Friends</h1>
 
     <!-- search -->
-    <form class="mb-2" role="search" @submit.prevent="search">
+    <form class="mb-3" role="search" @submit.prevent="search">
       <label for="friend-search" class="visually-hidden">Search by name or email</label>
-      <input
-        id="friend-search"
-        v-model="query"
-        type="search"
-        class="form-control"
-        placeholder="Search by name or email, then press Enter"
-      />
+      <div class="input-group search-box">
+        <input
+          id="friend-search"
+          v-model="query"
+          type="search"
+          class="form-control"
+          placeholder="Search by name or email"
+        />
+        <button type="submit" class="btn btn-primary" :disabled="searching">Search</button>
+      </div>
     </form>
     <p v-if="searchError" class="text-danger small mb-2">{{ searchError }}</p>
 
     <section v-if="searched" id="search-results" class="box mb-4">
       <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
-      <div v-for="p in results" :key="p.user_id" class="person">
+      <div v-for="p in sortedResults" :key="p.user_id" class="person">
         <span class="name">{{ p.display_name }}</span>
-        <span v-if="statusOf(p.user_id) === 'friend'" class="tag">Friends</span>
+        <template v-if="statusOf(p.user_id) === 'friend'">
+          <span class="tag">Friends ✓</span>
+          <AddToHangout :friend="p" :hangouts="openHangouts" @add="addToHangout" />
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            :aria-label="`Chat with ${p.display_name}`"
+            @click="openChat(p)"
+          >
+            Chat
+          </button>
+        </template>
         <span v-else-if="statusOf(p.user_id) === 'pending'" class="tag">Requested</span>
         <button
           v-else-if="statusOf(p.user_id) === 'request'"
@@ -172,7 +248,7 @@ async function remove(person) {
         <button
           v-else
           type="button"
-          class="btn btn-primary btn-sm ms-auto"
+          class="btn btn-outline-primary btn-sm ms-auto"
           :aria-label="`Add ${p.display_name} as a friend`"
           @click="addFriend(p)"
         >
@@ -182,6 +258,7 @@ async function remove(person) {
     </section>
 
     <p v-if="actionError" class="text-danger small" role="alert">{{ actionError }}</p>
+    <p v-if="actionDone" class="done small" role="status">✓ {{ actionDone }}</p>
 
     <p v-if="loading" class="text-muted">Loading your friends…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
@@ -230,13 +307,12 @@ async function remove(person) {
             </button>
           </template>
           <template v-else>
-            <router-link
-              :to="{ name: 'create-hangout', query: { with: f.user_id } }"
-              class="btn btn-primary btn-sm ms-auto text-nowrap"
-              :aria-label="`Add ${f.display_name} to hangout`"
-            >
-              Add to hangout
-            </router-link>
+            <AddToHangout
+              class="ms-auto"
+              :friend="f"
+              :hangouts="openHangouts"
+              @add="addToHangout"
+            />
             <button
               type="button"
               class="btn btn-outline-primary btn-sm"
@@ -245,14 +321,30 @@ async function remove(person) {
             >
               Chat
             </button>
-            <button
-              type="button"
-              class="btn btn-outline-danger btn-sm"
-              :aria-label="`Remove ${f.display_name} as a friend`"
-              @click="confirmingId = f.user_id"
-            >
-              Remove
-            </button>
+            <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
+            <div class="dropdown">
+              <button
+                type="button"
+                class="btn btn-link text-muted menu-btn"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                :aria-label="`More options for ${f.display_name}`"
+              >
+                ···
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <button
+                    type="button"
+                    class="dropdown-item text-danger"
+                    :aria-label="`Remove ${f.display_name} as a friend`"
+                    @click="confirmingId = f.user_id"
+                  >
+                    Remove friend
+                  </button>
+                </li>
+              </ul>
+            </div>
           </template>
         </div>
       </section>
@@ -291,6 +383,26 @@ async function remove(person) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+/* white with a darker edge, so the search box stands out from the page */
+.search-box .form-control {
+  background: var(--fp-surface);
+  border-color: var(--fp-muted);
+}
+
+/* the ⋯ button: wide enough to tap easily, as tall as the small buttons beside it */
+.menu-btn {
+  width: 44px;
+  height: 32px;
+  padding: 0;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* teal, not Bootstrap's green, which is too light on the page background */
+.done {
+  color: var(--fp-primary);
 }
 
 .tag {

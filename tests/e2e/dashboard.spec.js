@@ -72,7 +72,7 @@ test('My Friends in the navbar opens the friends page', async ({ page }) => {
   await page.getByLabel('Email').fill('ryan@example.com')
   await page.getByLabel('Password', { exact: true }).fill('password123')
   await page.getByRole('button', { name: 'Log in', exact: true }).last().click()
-  await page.getByRole('navigation').getByRole('link', { name: 'Friends', exact: true }).click()
+  await page.getByRole('navigation').getByRole('link', { name: /^Friends/ }).click()
   await expect(page).toHaveURL('/friends')
 })
 
