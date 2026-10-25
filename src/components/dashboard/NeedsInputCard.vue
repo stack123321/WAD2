@@ -10,7 +10,8 @@ const props = defineProps({
   myId: { type: String, default: null },
 })
 
-const MAX = 3
+const MAX = 3 // show at most 3, then "and 2 more"
+// pair each hangout with its status, then keep the ones waiting on me
 const items = computed(() =>
   props.hangouts
     .map((h) => ({ hangout: h, status: getStatus(h, props.myId) }))
@@ -28,6 +29,7 @@ function whenOf(h) {
     <h2 class="head">
       Needs your input <span class="count">{{ items.length }}</span>
     </h2>
+    <!-- the first 3, each with its own button from getStatus -->
     <div v-for="x in items.slice(0, MAX)" :key="x.hangout.id" class="item">
       <div class="text">
         <p class="name">{{ x.hangout.name }}</p>

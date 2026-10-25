@@ -114,20 +114,22 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL), // normal addresses like /dashboard, no # in them
   routes,
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: () => ({ top: 0 }), // every new page starts at the top
 })
 
 // login guard for pages with meta.requiresAuth: logged-out users go to /login and come back afterwards, only when supabase is connected (mock mode and e2e tests leave every page open)
+// beforeEach runs before every page change: returning nothing lets the page open, returning a route sends the user there instead
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth || !hasSupabase) {
-    return
+    return // a public page, or the demo: let it open
   }
 
   const auth = useAuthStore()
 
   // wait for supabase to restore the session after a refresh, otherwise a logged-in user gets sent to login by mistake
+  // the promise only finishes (resolve) once auth.ready turns true, and stop() ends the watch so it doesn't keep running.
   if (!auth.ready) {
     await new Promise((resolve) => {
       const stop = watch(
@@ -143,6 +145,7 @@ router.beforeEach(async (to) => {
   }
 
   if (!auth.isLoggedIn) {
+    // to login, remembering this page so login can send them back after
     return { name: 'auth', query: { redirect: to.fullPath } }
   }
 })

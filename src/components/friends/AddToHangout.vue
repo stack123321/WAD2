@@ -14,6 +14,7 @@ const props = defineProps({
 const emit = defineEmits(['add'])
 
 // the hangouts they aren't in yet
+// some() is true if any member is this friend, and ! flips it to keep only the hangouts without them.
 const choices = computed(() =>
   props.hangouts.filter((h) => !h.members.some((m) => m.user_id === props.friend.user_id)),
 )
@@ -30,6 +31,7 @@ const choices = computed(() =>
     Add to hangout
   </router-link>
 
+  <!-- some to choose from: a menu of them, plus a new hangout at the bottom -->
   <div v-else class="dropdown">
     <button
       type="button"
@@ -42,6 +44,7 @@ const choices = computed(() =>
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
       <li v-for="h in choices" :key="h.id">
+        <!-- sends the friend and the hangout up to the friends page, which saves it -->
         <button type="button" class="dropdown-item" @click="emit('add', friend, h)">
           {{ h.name }}
           <span class="text-secondary small">· {{ shortDate(new Date(h.starts_at)) }}</span>

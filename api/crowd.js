@@ -5,13 +5,15 @@ import axios from 'axios'
 import { sampleCrowd } from './_mocks/crowd.js'
 import { STATIONS } from './_data/stations.js'
 
-const LTA = 'https://datamall2.mytransport.sg/ltaodataservice'
-const TRAIN_LINES = ['NSL', 'EWL', 'NEL', 'CCL', 'DTL', 'TEL', 'CEL', 'CGL', 'BPL', 'SLRT', 'PLRT']
-const RANK = { l: 1, m: 2, h: 3 }
-const HALF_HOUR = 30 * 60 * 1000
+// this runs on the server, not in the browser, because the lta key must stay secret and a browser would show it to anyone.
+const LTA = 'https://datamall2.mytransport.sg/ltaodataservice' // lta's base address
+const TRAIN_LINES = ['NSL', 'EWL', 'NEL', 'CCL', 'DTL', 'TEL', 'CEL', 'CGL', 'BPL', 'SLRT', 'PLRT'] // lta asks for one line at a time
+const RANK = { l: 1, m: 2, h: 3 } // levels as numbers, so two can be compared
+const HALF_HOUR = 30 * 60 * 1000 // in milliseconds
 const TEN_MINUTES = 10 * 60 * 1000
 
 // lta rate-limits calls and only updates every 10 minutes, so cache answers per line: { savedAt, value }
+// the caches live outside the handler, so they survive between requests while the server stays warm.
 const realTimeCache = {} // real-time levels, reused for 10 minutes
 const forecastCache = {} // today's forecast, reused for half an hour
 

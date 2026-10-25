@@ -12,6 +12,7 @@ import { shortDate, countdownLabel } from '@/utils/dates'
 import { getStatus, getProgress } from '@/utils/hangoutStatus'
 import { useMediaQuery } from '@/utils/useMediaQuery'
 
+// everything the card shows comes in from the dashboard, so the card never loads data itself
 const props = defineProps({
   hangout: { type: Object, required: true }, // same shape as src/mocks/hangout.json
   canDelete: { type: Boolean, default: false }, // true for the host => Delete in the menu
@@ -23,9 +24,10 @@ const props = defineProps({
   showDate: { type: Boolean, default: false }, // put the date in the details line, for cards with no day heading above them
 })
 
+// the card can't change the dashboard's list itself, so it sends these up and the dashboard acts on them
 const emit = defineEmits(['delete', 'leave', 'toggle-pin'])
 
-const startsAt = computed(() => new Date(props.hangout.starts_at))
+const startsAt = computed(() => new Date(props.hangout.starts_at)) // the start time as a date, used below
 
 // "7:00 pm"
 const time = computed(() =>
@@ -40,7 +42,7 @@ const time = computed(() =>
 const location = computed(() => {
   const h = props.hangout
   if ((h.status === 'confirmed' || h.status === 'done') && h.final_shortlist_id) {
-    const spot = (h.shortlist ?? []).find((s) => s.id === h.final_shortlist_id)
+    const spot = (h.shortlist ?? []).find((s) => s.id === h.final_shortlist_id) // the spot that won the vote
     if (spot) return spot.name
   }
   return h.midpoint_name ? `Midpoint: ${h.midpoint_name}` : 'Midpoint not found yet'
@@ -53,7 +55,7 @@ const details = computed(() => {
 })
 
 // what the status line says, the button and where the card goes
-const status = computed(() => getStatus(props.hangout, props.myId))
+const status = computed(() => getStatus(props.hangout, props.myId)) // all decided in utils/hangoutStatus.js
 
 // the step shown, from the stored status (steps 2 to 4 aren't stored, so collecting stays on step 1)
 const STAGES = {
@@ -67,26 +69,27 @@ const stage = computed(() => STAGES[props.hangout.status] ?? null)
 const progress = computed(() => getProgress(props.hangout))
 
 // the chip at the top of the UP NEXT card
-const countdown = computed(() => (props.hangout.starts_at ? countdownLabel(startsAt.value) : ''))
+const countdown = computed(() => (props.hangout.starts_at ? countdownLabel(startsAt.value) : '')) // empty when there's no date
 
 // up to 4 avatars, the rest in a "+2" menu
-const shownMembers = computed(() => props.hangout.members.slice(0, 4))
-const extraMembers = computed(() => props.hangout.members.length - 4)
+const shownMembers = computed(() => props.hangout.members.slice(0, 4)) // the first 4
+const extraMembers = computed(() => props.hangout.members.length - 4) // how many didn't fit, 0 or less means none
 
 // the forecast hour of this hangout's start, null when there is none (done, no date, or too far ahead)
 const hour = computed(() => {
   const h = props.hangout
   if (h.status === 'done' || !h.starts_at) return null
-  return props.hours.find((x) => x.time === sgHourKey(h.starts_at)) ?? null
+  return props.hours.find((x) => x.time === sgHourKey(h.starts_at)) ?? null // the forecast row for that hour
 })
 
 // the weather line: advice only when the weather changes the plan
 const weatherLine = computed(() => {
-  if (!hour.value) return null
-  const { rainChance, condition, kind } = hour.value
-  const rainy = rainChance >= 50 || isRain(condition)
+  if (!hour.value) return null // no forecast, no line
+  const { rainChance, condition, kind } = hour.value // pull the three fields out of the forecast hour
+  const rainy = rainChance >= 50 || isRain(condition) // likely rain, or it's already raining
   // the chance is always shown, so every card reads the same
   let text = `${kind === 'thunder' ? 'Thunderstorms' : condition} · ${rainChance}% rain`
+  // storms get stronger advice than rain
   if (kind === 'thunder') text += ', go indoors'
   else if (rainy) text += ', bring an umbrella'
   // a sun or cloud icon beside "80% rain" reads wrong, so use the rain icon unless it's thundery
@@ -94,10 +97,10 @@ const weatherLine = computed(() => {
 })
 
 // the crowd at the midpoint station, only when we have a live reading
-const CROWD_WORDS = { l: 'Quiet', m: 'Moderate', h: 'Busy' }
+const CROWD_WORDS = { l: 'Quiet', m: 'Moderate', h: 'Busy' } // lta's letters as words
 const crowdText = computed(() => {
   if (!props.crowd || !props.hangout.midpoint_name) return ''
-  return `${CROWD_WORDS[props.crowd]} crowd at ${props.hangout.midpoint_name}`
+  return `${CROWD_WORDS[props.crowd]} crowd at ${props.hangout.midpoint_name}` // "Busy crowd at Bishan"
 })
 
 // the coloured left edge and the status text colour, by tone
@@ -106,29 +109,31 @@ const TONES = {
   grey: { edge: 'edge-grey', text: 'text-secondary-emphasis' },
   green: { edge: 'edge-green', text: 'text-success-emphasis' },
 }
-const tone = computed(() => TONES[status.value.tone])
+const tone = computed(() => TONES[status.value.tone]) // the two class names for this card's tone
 
 // the map needs a screen wide enough (576px and up) and somewhere to point at
+// useMediaQuery keeps the map from being made at all on phones, which css alone can't do (css can only hide it after it's made).
 const wide = useMediaQuery('(min-width: 576px)')
 const midpoint = computed(() => {
   const h = props.hangout
+  // != null catches both null and undefined, and lets a real 0 through
   return h.midpoint_lat != null && h.midpoint_lng != null
     ? { lat: h.midpoint_lat, lng: h.midpoint_lng }
     : null
 })
-const hasStart = computed(() => props.hangout.members.some((m) => m.start_lat != null))
-const showMap = computed(() => props.featured && wide.value && (midpoint.value || hasStart.value))
+const hasStart = computed(() => props.hangout.members.some((m) => m.start_lat != null)) // anyone placed on the map
+const showMap = computed(() => props.featured && wide.value && (midpoint.value || hasStart.value)) // up next, wide enough, and something to show
 
 // copy the invite link, like the hangout bar does, then say so for 2 seconds
 const inviteCopied = ref(false)
 
 async function copyInvite() {
-  const link = `${window.location.origin}/login?invite=${props.hangout.invite_code}`
+  const link = `${window.location.origin}/login?invite=${props.hangout.invite_code}` // e.g. https://fairpoint.app/login?invite=abc123
   try {
     await navigator.clipboard.writeText(link)
-    inviteCopied.value = true
+    inviteCopied.value = true // shows "Link copied"
     setTimeout(() => {
-      inviteCopied.value = false
+      inviteCopied.value = false // and hides it again after 2 seconds
     }, 2000)
   } catch (err) {
     console.error(err)
@@ -138,7 +143,9 @@ async function copyInvite() {
 </script>
 
 <template>
+  <!-- the tone class colours the left edge, featured makes it the big up next card -->
   <article class="card hangout" :class="[tone.edge, { featured }]">
+    <!-- with a map: map and content side by side (map on the right from 768px), without: just the content -->
     <div :class="showMap ? 'd-flex flex-column flex-md-row-reverse' : ''">
       <UpNextMap
         v-if="showMap"
@@ -149,9 +156,11 @@ async function copyInvite() {
       />
 
       <div class="body">
+        <!-- countdown, title, details, weather and crowd -->
         <div class="main">
           <span v-if="featured && countdown" class="countdown">{{ countdown }}</span>
           <h3 class="title">
+            <!-- stretched-link makes this link cover the whole card, so a tap anywhere opens the hangout -->
             <router-link
               class="stretched-link text-reset text-decoration-none"
               :to="{ name: status.page, params: { id: hangout.id } }"
@@ -161,6 +170,7 @@ async function copyInvite() {
             <PinIcon v-if="hangout.pinned" filled :size="14" class="text-success ms-1" />
           </h3>
           <p class="meta">{{ details }}</p>
+          <!-- amber text when rain is likely -->
           <p v-if="weatherLine || crowdText" class="wx" :class="{ 'wx-warn': weatherLine?.warn }">
             <template v-if="weatherLine">
               <WeatherLineIcon :kind="weatherLine.kind" />
@@ -170,19 +180,23 @@ async function copyInvite() {
           </p>
         </div>
 
+        <!-- "step 1 of 6" and its bar, only on compact rows (hidden by css until 992px) -->
         <div v-if="!featured" class="stage">
           <template v-if="stage">
             <span class="stage-label">Step {{ stage.n }} of 6</span>
             <span class="stage-name"> · {{ stage.name }}</span>
             <div class="stage-track" aria-hidden="true">
+              <!-- the green fill, e.g. step 1 of 6 fills about 17% -->
               <div class="stage-fill" :style="{ width: (stage.n / 6) * 100 + '%' }"></div>
             </div>
           </template>
         </div>
 
+        <!-- avatars and status on the left, the main button on the right -->
         <div class="foot">
           <div class="people">
             <div class="avatars d-flex align-items-center">
+              <!-- people still to act get the is-waiting class, which greys them out -->
               <MemberAvatar
                 v-for="m in shownMembers"
                 :key="m.user_id"
@@ -191,6 +205,7 @@ async function copyInvite() {
                 :size="featured ? 32 : 28"
                 :class="{ 'is-waiting': progress?.waitingIds.includes(m.user_id) }"
               />
+              <!-- "+2" opens a list of every member -->
               <div v-if="extraMembers > 0" class="dropdown">
                 <button
                   type="button"
@@ -208,6 +223,7 @@ async function copyInvite() {
                 </ul>
               </div>
             </div>
+            <!-- "Your turn", "Waiting on Mei" or "Confirmed" with a tick -->
             <span class="status" :class="tone.text">
               <svg
                 v-if="status.check"
@@ -225,11 +241,13 @@ async function copyInvite() {
               </svg>
               {{ status.text }}
             </span>
+            <!-- "3 of 4 voted", only while someone is still to act -->
             <span v-if="progress?.waitingIds.length" class="progress-text">{{
               progress.text
             }}</span>
           </div>
 
+          <!-- solid green when it's my turn (fill), a quiet outline otherwise -->
           <div class="act">
             <router-link
               :to="{ name: status.page, params: { id: hangout.id } }"
@@ -241,6 +259,7 @@ async function copyInvite() {
           </div>
         </div>
 
+        <!-- the ⋯ menu in the top right corner -->
         <div class="more dropdown">
           <span v-if="inviteCopied" class="small text-success me-1" role="status">Link copied</span>
           <button
@@ -254,6 +273,7 @@ async function copyInvite() {
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
+              <!-- tells the dashboard to pin or unpin, it saves the change -->
               <button type="button" class="dropdown-item" @click="emit('toggle-pin', hangout)">
                 <PinIcon :filled="!!hangout.pinned" :size="14" class="me-2" />{{
                   hangout.pinned ? 'Unpin' : 'Pin to top'
@@ -265,7 +285,9 @@ async function copyInvite() {
                 Copy invite link
               </button>
             </li>
+            <!-- a divider only when there's a red option below it -->
             <li v-if="canDelete || canLeave"><hr class="dropdown-divider" /></li>
+            <!-- the host can delete, everyone else can leave: data-bs-target opens the dashboard's confirm dialog -->
             <li v-if="canDelete">
               <button
                 type="button"
@@ -311,10 +333,10 @@ async function copyInvite() {
 }
 
 .body {
-  position: relative;
-  min-width: 0;
+  position: relative; /* the ⋯ menu is placed inside this box */
+  min-width: 0; /* lets long text shrink instead of pushing the card wider */
   flex: 1 1 auto;
-  padding: 0.875rem 3.25rem 0.875rem 1rem;
+  padding: 0.875rem 3.25rem 0.875rem 1rem; /* extra space on the right for the ⋯ menu */
 }
 .main {
   min-width: 0;
@@ -325,6 +347,7 @@ async function copyInvite() {
   font-weight: 600;
   line-height: 1.3;
 }
+/* the details line stays on one line and ends in … if it's too long */
 .meta {
   margin: 0.125rem 0 0;
   color: var(--bs-secondary-color);
@@ -332,9 +355,10 @@ async function copyInvite() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* the weather and crowd line */
 .wx {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* crowd moves to a new line if there's no room */
   align-items: center;
   gap: 0.125rem 0.5rem;
   margin: 0.125rem 0 0;
@@ -342,13 +366,14 @@ async function copyInvite() {
   font-size: 0.78rem;
 }
 .wx svg {
-  flex: none;
+  flex: none; /* the icon never shrinks */
 }
 .wx-warn {
-  color: var(--bs-warning-text-emphasis);
+  color: var(--bs-warning-text-emphasis); /* amber when rain is likely */
   font-weight: 500;
 }
 
+/* avatars and status on the left, button on the right */
 .foot {
   display: flex;
   align-items: center;
@@ -356,6 +381,7 @@ async function copyInvite() {
   gap: 0.75rem;
   margin-top: 0.75rem;
 }
+/* phones: avatars, status and progress stacked */
 .people {
   display: flex;
   flex-direction: column;
@@ -366,15 +392,16 @@ async function copyInvite() {
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.25rem; /* space between the tick and the text */
   font-size: 0.85rem;
   font-weight: 600;
 }
+/* :deep reaches into MemberAvatar, which scoped css can't style otherwise */
 .avatars :deep(.avatar) {
-  margin-left: -8px;
+  margin-left: -8px; /* avatars overlap a little */
 }
 .avatars :deep(.avatar:first-child) {
-  margin-left: 0;
+  margin-left: 0; /* except the first */
 }
 .members-more::after {
   content: '';
@@ -403,6 +430,7 @@ async function copyInvite() {
   color: var(--bs-emphasis-color);
   border-color: var(--bs-gray-600);
 }
+/* the ⋯ menu pinned to the top right corner */
 .more {
   position: absolute;
   top: 0.25rem;
@@ -414,12 +442,13 @@ async function copyInvite() {
   width: 44px;
   padding: 0;
   text-decoration: none;
-  letter-spacing: 2px;
+  letter-spacing: 2px; /* spreads the three dots */
   font-size: 1.25rem;
   line-height: 1;
 }
 
 /* UP NEXT */
+/* the green "in 2 days" chip */
 .countdown {
   display: inline-flex;
   align-items: center;
@@ -432,6 +461,7 @@ async function copyInvite() {
   font-size: 0.78rem;
   font-weight: 700;
 }
+/* the featured card is roomier, with a bigger title */
 .featured .body {
   padding: 1rem 3.5rem 1rem 1rem;
 }
@@ -445,6 +475,7 @@ async function copyInvite() {
   top: 0.5rem;
   right: 0.5rem;
 }
+/* a line above the avatars and button */
 .featured .foot {
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -453,13 +484,13 @@ async function copyInvite() {
   border-top: 1px solid var(--bs-border-color);
 }
 .featured .people {
-  flex-direction: row;
+  flex-direction: row; /* avatars and status side by side even on phones */
   align-items: center;
   flex-wrap: wrap;
   gap: 0.625rem;
 }
 .featured .act {
-  width: 100%;
+  width: 100%; /* phones: a full-width button on its own line */
 }
 .featured .btn-quiet {
   display: inline-flex; /* the UP NEXT card keeps its button on phones too */
@@ -469,12 +500,14 @@ async function copyInvite() {
 .featured .act .btn {
   width: 100%;
 }
+/* phones: the map is a 140px strip on top with rounded top corners */
 .map-panel {
   border-radius: var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius) 0 0;
   height: 140px;
 }
 
 /* the step and its bar: only in the wide row (lg), where there is a column for it */
+/* people still to act: faded and grey */
 .avatars :deep(.avatar.is-waiting) {
   opacity: 0.4;
   filter: grayscale(1);
@@ -484,7 +517,7 @@ async function copyInvite() {
   color: var(--fp-muted);
 }
 .stage {
-  display: none;
+  display: none; /* shown from 992px, below */
 }
 .stage-label {
   font-size: 0.8125rem;
@@ -494,6 +527,7 @@ async function copyInvite() {
   font-size: 0.8125rem;
   color: var(--fp-muted);
 }
+/* the grey track the green fill sits in */
 .stage-track {
   height: 6px;
   margin-top: 0.375rem;
@@ -522,7 +556,7 @@ async function copyInvite() {
   }
   .featured .act {
     width: auto;
-    margin-left: auto;
+    margin-left: auto; /* pushes the button to the right */
   }
   .featured .act .btn {
     width: auto;
@@ -532,23 +566,24 @@ async function copyInvite() {
 /* md 768: the map sits beside the content */
 @media (min-width: 768px) {
   .map-panel {
-    flex: 0 0 41.6667%;
+    flex: 0 0 41.6667%; /* 5 of bootstrap's 12 columns */
     height: auto;
     min-height: 200px;
-    border-radius: 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius) 0;
+    border-radius: 0 var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius) 0; /* rounded on the right now */
   }
 }
 
 /* lg 992: a row becomes a five column grid: content | step | avatars + status | button | ⋯ */
 @media (min-width: 992px) {
   .map-panel {
-    flex-basis: 33.3333%;
+    flex-basis: 33.3333%; /* 4 of 12 columns */
   }
   .featured .title {
     font-size: 1.5rem;
   }
   .hangout:not(.featured) .body {
     display: grid;
+    /* fixed widths so every row's columns line up */
     grid-template-columns: minmax(0, 1fr) 190px 200px 170px 32px;
     align-items: center;
     column-gap: 1.5rem;
@@ -557,6 +592,7 @@ async function copyInvite() {
   .hangout:not(.featured) .stage {
     display: block;
   }
+  /* contents removes the foot's own box, so its children become grid columns */
   .hangout:not(.featured) .foot {
     display: contents;
   }
@@ -575,6 +611,7 @@ async function copyInvite() {
     min-width: 150px;
     min-height: 38px;
   }
+  /* the ⋯ menu becomes the last grid column instead of floating in the corner */
   .hangout:not(.featured) .more {
     position: static;
   }
