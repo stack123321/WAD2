@@ -95,9 +95,6 @@ function saveFriendsAddStart() {
   }
 }
 
-// "More options" (the starting-point switch) is folded away unless it's been switched off
-const showMoreOptions = ref(!loadFriendsAddStart())
-
 // "Plan something" on the dashboard opens this page with ?date=2026-10-26
 const queryDate = /^\d{4}-\d{2}-\d{2}$/.test(route.query.date ?? '') ? route.query.date : ''
 
@@ -141,7 +138,8 @@ async function loadFriends() {
       }
     }
     // The people you hang out with most come first (like "suggested" contacts)
-    all.sort((a, b) => b.together - a.together)
+    // A to Z by name, so you can find someone quickly (prof's feedback)
+    all.sort((a, b) => a.display_name.localeCompare(b.display_name))
 
     // "Add to hangout" on the Friends page opens this page with ?with=<friend's id>: tick them.
     // The debrief's "Plan another with this group" passes several (?with=a&with=b).
@@ -181,6 +179,19 @@ const withFriend = computed(() => {
 
 // Search: type a name to filter your friends
 const friendSearch = ref('')
+
+// With lots of friends, show the first 8 (A to Z), then "Show all". Searching shows every match.
+const FIRST_FRIENDS = 8
+const showAllFriends = ref(false)
+
+const visibleFriends = computed(() => {
+  if (showAllFriends.value || friendSearch.value.trim() !== '') {
+    return shownFriends.value
+  }
+  return shownFriends.value.slice(0, FIRST_FRIENDS)
+})
+
+const hiddenCount = computed(() => shownFriends.value.length - visibleFriends.value.length)
 
 const shownFriends = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
@@ -483,36 +494,16 @@ async function submit() {
           </div>
         </div>
 
-        <fieldset class="field">
-          <legend class="form-label">What’s the vibe?</legend>
-          <p class="field-hint">We use this to suggest spots near your meeting point.</p>
-          <div class="chips">
-            <button
-              v-for="v in vibes"
-              :key="v.value"
-              type="button"
-              class="chip vibe-chip"
-              :class="{ 'is-on': form.vibe.includes(v.value) }"
-              :style="{ '--vibe': v.color }"
-              :aria-pressed="form.vibe.includes(v.value)"
-              @click="toggleVibe(v.value)"
-            >
-              <span aria-hidden="true">{{ v.emoji }}</span> {{ v.label }}
-            </button>
-          </div>
-        </fieldset>
+        <!-- Weather this week, right under the dates: tap a day to pick it -->
+        <WeekForecast
+          class="field"
+          pickable
+          :selected-date="form.date"
+          @pick="form.date = $event"
+        />
 
-        <!-- More options: folded away, most people never change this -->
-        <button
-          type="button"
-          class="btn btn-link more-toggle"
-          :aria-expanded="showMoreOptions"
-          aria-controls="more-options"
-          @click="showMoreOptions = !showMoreOptions"
-        >
-          {{ showMoreOptions ? 'Hide options ▴' : 'More options ▾' }}
-        </button>
-        <div v-if="showMoreOptions" id="more-options" class="switch-row">
+        <!-- Shown (not folded away): it decides who adds the starting points -->
+        <div class="switch-row field">
           <div>
             <label for="hangout-self-start" class="switch-row__label">
               Let friends add where they’re coming from
@@ -533,24 +524,37 @@ async function submit() {
           </div>
         </div>
 
-        <!-- Weather this week: helps pick a dry day (sits at the bottom of the card) -->
-        <WeekForecast class="details__weather" />
+        <fieldset class="field">
+          <legend class="form-label">What’s the vibe?</legend>
+          <p class="field-hint">We use this to suggest spots near your meeting point.</p>
+          <div class="chips">
+            <button
+              v-for="v in vibes"
+              :key="v.value"
+              type="button"
+              class="chip vibe-chip"
+              :class="{ 'is-on': form.vibe.includes(v.value) }"
+              :style="{ '--vibe': v.color }"
+              :aria-pressed="form.vibe.includes(v.value)"
+              @click="toggleVibe(v.value)"
+            >
+              <span aria-hidden="true">{{ v.emoji }}</span> {{ v.label }}
+            </button>
+          </div>
+        </fieldset>
       </section>
 
       <div class="side">
         <!-- Who's coming? Ticked friends are added when the hangout is created -->
         <section class="panel">
-          <h2 class="panel__title mb-1">Who’s coming?</h2>
-          <p class="panel__sub">
-            Tick your friends and they’re added straight away. Anyone else can join with the Invite
-            link on the next page.
-          </p>
+          <div class="d-flex justify-content-between align-items-baseline gap-2">
+            <h2 class="panel__title mb-1">Who’s coming?</h2>
+            <span v-if="selectedPeople.length > 0" class="small text-secondary"
+              >{{ selectedPeople.length }} picked</span
+            >
+          </div>
 
-          <p v-if="withFriend" class="with-friend mb-2">
-            Hanging out with <strong>{{ withFriend.display_name }}</strong> (ticked below)
-          </p>
-
-          <!-- Picked friends as chips: you can see who's coming even while searching -->
+          <!-- Picked friends first, as chips (✕ to remove), then the list to pick from -->
           <ul v-if="selectedPeople.length > 0" class="picked" aria-label="Picked friends">
             <li v-for="p in selectedPeople" :key="p.user_id" class="picked__chip">
               <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="24" />
@@ -565,6 +569,15 @@ async function submit() {
               </button>
             </li>
           </ul>
+
+          <p class="panel__sub">
+            Tick your friends and they’re added straight away. Anyone else can join with the Invite
+            link on the next page.
+          </p>
+
+          <p v-if="withFriend" class="with-friend mb-2">
+            Hanging out with <strong>{{ withFriend.display_name }}</strong> (ticked below)
+          </p>
 
           <label for="friend-search" class="visually-hidden">Search by name</label>
           <input
@@ -586,7 +599,7 @@ async function submit() {
             No friends called “{{ friendSearch.trim() }}”.
           </p>
           <ul v-else class="people">
-            <li v-for="f in shownFriends" :key="f.user_id">
+            <li v-for="f in visibleFriends" :key="f.user_id">
               <label class="person">
                 <input
                   v-model="selectedFriends"
@@ -600,6 +613,15 @@ async function submit() {
               </label>
             </li>
           </ul>
+          <!-- More than 8 friends: the rest are one tap away -->
+          <button
+            v-if="hiddenCount > 0 || (showAllFriends && shownFriends.length > FIRST_FRIENDS)"
+            type="button"
+            class="btn btn-link show-all"
+            @click="showAllFriends = !showAllFriends"
+          >
+            {{ showAllFriends ? 'Show fewer ▴' : `Show all (${hiddenCount} more) ▾` }}
+          </button>
 
           <!-- Search everyone on Fairpoint (shown while you're searching) -->
           <button
@@ -893,10 +915,6 @@ legend.form-label {
   flex-direction: column;
 }
 
-.details__weather {
-  margin-top: auto;
-}
-
 .details .switch-row {
   margin-bottom: 1.25rem;
 }
@@ -911,17 +929,6 @@ legend.form-label {
   background: color-mix(in srgb, var(--vibe) 16%, var(--fp-surface));
   color: var(--fp-ink);
   font-weight: 600;
-}
-
-/* More options */
-.more-toggle {
-  align-self: flex-start; /* stay on the left inside the column */
-  min-height: 44px;
-  padding: 0;
-  color: var(--fp-muted);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
 }
 
 /* Picked friends chips */
@@ -1005,8 +1012,15 @@ legend.form-label {
   }
 }
 
+.show-all {
+  min-height: 44px;
+  padding: 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .people {
-  max-height: 280px;
+  max-height: 420px;
   padding: 0;
   margin: 0.5rem 0 0;
   overflow-y: auto;

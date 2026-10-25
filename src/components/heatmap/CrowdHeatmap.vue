@@ -15,14 +15,18 @@ const props = defineProps({
   draggable: { type: Boolean, default: false },
   // everyone's starting points, [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
   members: { type: Array, default: () => [] },
+  // (surya) a station being previewed on 08's station tabs, { name, lat, lng }, or null: the map
+  // moves there and shows a light pin
+  preview: { type: Object, default: null },
 })
 
-// tells the parent where the midpoint pin was dropped
-const emit = defineEmits(['move'])
+// tells the parent where the midpoint pin was dropped, and (surya) when "back to midpoint" is pressed
+const emit = defineEmits(['move', 'recenter'])
 
 // leaflet objects are plain variables, not refs, because leaflet owns them and vue doesn't need to watch them
 let map = null
 let midpointMarker = null
+let previewMarker = null // (surya) the light pin for a previewed station
 let memberPins = null // a group holding everyone's starting-point pins
 let stopMap = null // removes the map when leaving the page
 
@@ -126,6 +130,46 @@ function drawMidpoint() {
   })
 }
 
+// (surya) the previewed station: a light pin with its name, and the map moves there.
+// no preview: remove the pin and go back to the midpoint
+function drawPreview() {
+  if (previewMarker) {
+    previewMarker.remove()
+    previewMarker = null
+  }
+  if (!props.preview) {
+    recenter()
+    return
+  }
+  previewMarker = L.marker([props.preview.lat, props.preview.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: '<span class="preview-pin"></span>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 24], // the tip sits on the station
+    }),
+  })
+    .bindTooltip(`Preview: ${escapeHtml(props.preview.name)}`, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -24],
+    })
+    .addTo(map)
+  map.setView([props.preview.lat, props.preview.lng], 14)
+}
+
+// (surya) "back to midpoint": the prof scrolled the map away and couldn't get back
+function recenter() {
+  if (map && props.midpoint) {
+    map.setView([props.midpoint.lat, props.midpoint.lng], 14)
+  }
+}
+
+function backToMidpoint() {
+  recenter()
+  emit('recenter') // the page puts the station tabs back on the midpoint
+}
+
 // everyone's starting point: round pin in their colour with their initial (like 06), hover or tap for name and origin
 function drawMembers() {
   memberPins.clearLayers() // remove the old pins first
@@ -193,6 +237,14 @@ onBeforeUnmount(() => {
   }
 })
 
+// (surya) a station tab was tapped (or put back), so show it on the map
+watch(
+  () => props.preview,
+  () => {
+    if (map) drawPreview()
+  },
+)
+
 // the midpoint changed, e.g. after a drag snaps it to a station, so redraw the pin and pan to it
 watch(
   () => props.midpoint,
@@ -217,7 +269,13 @@ watch(() => props.members, drawMembers, { deep: true })
       <h2 class="h5">Crowd levels at MRT stations</h2>
 
       <!-- an empty box, leaflet draws the map into it in onMounted, its height is in the css -->
-      <div id="crowd-map"></div>
+      <div class="map-box">
+        <div id="crowd-map"></div>
+        <!-- (surya) back to the midpoint after moving the map around -->
+        <button v-if="midpoint" type="button" class="recenter-btn" @click="backToMidpoint">
+          ⌖ Back to midpoint
+        </button>
+      </div>
 
       <label for="crowd-time" class="form-label mt-3">
         Time today: <strong>{{ timeLabel }}</strong>
@@ -254,6 +312,38 @@ watch(() => props.members, drawMembers, { deep: true })
 </template>
 
 <style scoped>
+/* (surya) the map box, so the "back to midpoint" button can sit on top of the map */
+.map-box {
+  position: relative;
+}
+
+.recenter-btn {
+  position: absolute;
+  top: 10px; /* top left: the zoom buttons are top right, the map credits along the bottom */
+  left: 10px;
+  z-index: 500; /* above the map tiles */
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--fp-border);
+  border-radius: 999px;
+  background: var(--fp-surface);
+  color: var(--fp-ink);
+  box-shadow: var(--fp-shadow);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* (surya) the previewed station's pin: a lighter, dashed version of the midpoint pin */
+:deep(.preview-pin) {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border: 3px dashed var(--fp-primary);
+  border-radius: 50% 50% 50% 0;
+  background: color-mix(in srgb, var(--fp-primary) 25%, var(--fp-surface));
+  transform: rotate(-45deg);
+}
+
 #crowd-map {
   height: 360px;
   border-radius: var(--fp-radius-sm);
