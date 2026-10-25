@@ -9,8 +9,10 @@
 // right here. Each station's spots are loaded only when its tab is opened, and remembered.
 // Usage: <MidpointSpots :stations="tabs" :vibes="hangout.vibe" :hangout-id="hangout.id"
 //          @choose="chooseStation" />
-//   stations = [{ name, lat, lng, chosen, compareText, station }], the chosen midpoint first
+//   stations = [{ name, lat, lng, chosen, tag, compareText, station }], the chosen midpoint first
 //   choose → the ranked station to make the midpoint
+//   preview → { name, lat, lng } of the station being previewed (the map moves there), or null
+//   The page can call selectTab(name) (through a template ref) to go back to the midpoint's tab.
 import { computed, onMounted, ref, watch } from 'vue'
 import { googlePlacesEnabled, searchNearby } from '@/services/places'
 import { CATEGORY_EMOJI, categoriesForVibes } from '@/utils/vibes'
@@ -23,7 +25,7 @@ const props = defineProps({
   busy: { type: Boolean, default: false }, // the page is saving a new midpoint
 })
 
-const emit = defineEmits(['choose'])
+const emit = defineEmits(['choose', 'preview'])
 
 // Which tab is open (a station name). Starts on the chosen midpoint.
 const selectedName = ref('')
@@ -39,12 +41,21 @@ const station = computed(() => {
 // When the midpoint changes (chosen here, or the pin was dragged), go back to its tab
 const chosenName = computed(() => (props.stations[0] ? props.stations[0].name : ''))
 watch(chosenName, () => {
-  selectedName.value = chosenName.value
+  selectTab(chosenName.value)
 })
 
+// Open a tab, and tell the page which station to show on the map (null = the midpoint)
 function selectTab(name) {
   selectedName.value = name
+  const found = props.stations.find((s) => s.name === name)
+  if (found && !found.chosen) {
+    emit('preview', { name: found.name, lat: found.lat, lng: found.lng })
+  } else {
+    emit('preview', null)
+  }
 }
+
+defineExpose({ selectTab })
 
 // Spots already loaded for each station, so switching back to a tab doesn't call Google again
 // (key: station name)
@@ -144,12 +155,16 @@ function priceLabel(spot) {
         >
           <span v-if="t.chosen" aria-hidden="true">📍</span> {{ t.name }}
           <span v-if="t.chosen" class="tab-note">your midpoint</span>
+          <span v-else-if="t.tag" class="tab-note">{{ t.tag }}</span>
         </button>
       </div>
 
       <!-- Previewing another station: the trade-off, and the button to switch -->
       <div v-if="!station.chosen" class="preview-bar">
-        <span class="small">{{ station.compareText }}</span>
+        <span class="small"
+          >{{ station.compareText }}
+          <span class="text-secondary">(shown on the map below)</span></span
+        >
         <button
           type="button"
           class="btn btn-primary btn-sm make-btn"

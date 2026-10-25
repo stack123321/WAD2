@@ -19,25 +19,32 @@ function hasVoted(h, m) {
   return (h.votes ?? []).some((v) => v.user_id === m.user_id)
 }
 
+// who still has their part to do: a vote while voting, a starting point while collecting
+// (the status line, the "2 of 5" text and the grey avatars all use this one rule)
+function waitingOn(h) {
+  if (h.status === 'voting') return h.members.filter((m) => !hasVoted(h, m))
+  return h.members.filter((m) => !m.start_label)
+}
+
 // who has done their part, null once there is nothing left to wait for
-// { text: '2 of 5 added a location', waitingIds: ['u3', 'u4', 'u5'] }
+// { text: '2 of 5 added a starting point', waitingIds: ['u3', 'u4', 'u5'] }
 export function getProgress(h) {
+  if (h.status !== 'voting' && h.status !== 'collecting') return null
   const members = h.members
-  if (h.status === 'voting') {
-    const waiting = members.filter((m) => !hasVoted(h, m))
-    return {
-      text: `${members.length - waiting.length} of ${members.length} voted`,
-      waitingIds: waiting.map((m) => m.user_id),
-    }
+  const waiting = waitingOn(h)
+  const done = h.status === 'voting' ? 'voted' : 'added a starting point'
+  return {
+    text: `${members.length - waiting.length} of ${members.length} ${done}`,
+    waitingIds: waiting.map((m) => m.user_id),
   }
-  if (h.status === 'collecting') {
-    const waiting = members.filter((m) => !m.start_label)
-    return {
-      text: `${members.length - waiting.length} of ${members.length} added a starting point`,
-      waitingIds: waiting.map((m) => m.user_id),
-    }
-  }
-  return null
+}
+
+// the planning step I'm up to: add my starting point, then pick how I'm travelling and find the
+// midpoint (both on Transport), then shortlist spots near it
+function myStep(h, me) {
+  if (!me || !me.start_label) return 'starting-points'
+  if (!me.mode || !h.midpoint_name) return 'transport'
+  return 'explore'
 }
 
 // the status line, the button and where the card goes, for one hangout
@@ -80,7 +87,7 @@ export function getStatus(h, myId) {
         page: 'vote',
       }
     }
-    const waiting = members.filter((m) => !hasVoted(h, m))
+    const waiting = waitingOn(h)
     return {
       tone: 'grey',
       text: waiting.length > 0 ? `Waiting on ${names(waiting)}` : "Everyone's voted",
@@ -112,13 +119,14 @@ export function getStatus(h, myId) {
       page: 'starting-points',
     }
   }
-  const waiting = members.filter((m) => !m.start_label && m.user_id !== myId)
+  // you're never in this list: you either added your point already or aren't in the hangout
+  const waiting = waitingOn(h)
   return {
     tone: 'grey',
     text: waiting.length > 0 ? `Waiting on ${names(waiting)}` : "Everyone's added",
     button: 'View',
     fill: false,
     needsYou: false,
-    page: 'starting-points',
+    page: myStep(h, me),
   }
 }

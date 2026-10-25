@@ -6,6 +6,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
 import { createOneMap } from '@/components/map/oneMap'
 import { avatarColor } from '@/utils/avatarColor'
+import { escapeHtml } from '@/utils/escapeHtml'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_lat, start_lng }], the ones with no start point are skipped
@@ -22,16 +23,6 @@ let layers = null // a group holding the markers and lines, so we can clear and 
 let stopMap = null // removes the map when the card goes away
 const justYou = ref(false) // shows "Add friends to find a fair midpoint"
 let points = [] // everything on the map, so it can be fitted again when the map changes size
-
-// names go inside html, so turn < > & " ' into safe text first
-function escapeHtml(text) {
-  return String(text ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
 
 function draw() {
   if (!map) return

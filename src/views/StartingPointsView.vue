@@ -12,6 +12,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useAlertsStore } from '@/stores/alerts'
 import { reverseGeocode } from '@/services/onemap'
 import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
@@ -24,6 +25,7 @@ import { centroid } from '@/utils/midpoint'
 const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const alerts = useAlertsStore()
 
 // The demo hangout has sample people, so there you're Surya (starting from Holland Village),
 // even when logged in. In a real hangout you're the logged-in user.
@@ -148,9 +150,29 @@ const hostMode = computed(() => {
     return false
   }
   const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
-  const turnedOn = route.query.entry === 'host' || store.hangout.host_enters_starts === true
+  const turnedOn =
+    route.query.entry === 'host' || store.hangout.host_enters_starts === true || hostFill.value
   return isHost && turnedOn
 })
+
+// (Surya) "Fill in for friends": the host can stop waiting and enter everyone's starting points
+// right here (the prof asked "What if I give up waiting and set the starting point for everyone?")
+const hostFill = ref(false)
+
+const canFillIn = computed(() => {
+  if (!store.hangout || !me.value) {
+    return false
+  }
+  const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
+  return isHost && waitingNames.value.length > 0
+})
+
+function toggleFillIn() {
+  hostFill.value = !hostFill.value
+  if (!hostFill.value) {
+    startEditing(me.value) // done filling in: back to your own starting point
+  }
+}
 
 // The logged-in host of a real (saved) hangout: can add friends from past hangouts
 const isRealHost = computed(() => {
@@ -368,6 +390,25 @@ const roughMiddle = computed(() => {
 })
 
 // Part (k) Personal status line, e.g. "You're set. Waiting for Ryan and Nicole."
+// Names of people who haven't added a starting point yet
+const waitingNames = computed(() => {
+  const names = []
+  for (const m of store.members) {
+    if (!hasStart(m)) {
+      names.push(m.display_name)
+    }
+  }
+  return names
+})
+
+// "Ryan", "Ryan and Nicole", "Ryan, Nicole and Hugo"
+function joinNames(names) {
+  if (names.length <= 1) {
+    return names.join('')
+  }
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
 const statusLine = computed(() => {
   if (!me.value) {
     return ''
@@ -375,21 +416,26 @@ const statusLine = computed(() => {
   if (!hasStart(me.value)) {
     return 'Add where you’re coming from to continue.'
   }
-  const waiting = []
-  for (const m of store.members) {
-    if (!hasStart(m)) {
-      waiting.push(m.display_name)
-    }
-  }
-  if (waiting.length === 0) {
+  if (waitingNames.value.length === 0) {
     return 'Everyone’s in. Choose your transport next.'
   }
-  if (waiting.length === 1) {
-    return `You’re set. Waiting for ${waiting[0]}.`
-  }
-  const last = waiting[waiting.length - 1]
-  return `You’re set. Waiting for ${waiting.slice(0, -1).join(', ')} and ${last}.`
+  return `You’re set. Waiting for ${joinNames(waitingNames.value)}.`
 })
+
+// (Surya) The green "saved" box at the top, with the Next button, once your start is in (the prof
+// asked "Err… what's next? Am I supposed to wait?"). Not while the host is filling in for friends.
+const showSavedBox = computed(() => me.value && hasStart(me.value) && !hostMode.value)
+
+const savedText = computed(() => {
+  if (waitingNames.value.length === 0) {
+    return 'Everyone’s in.'
+  }
+  const n = waitingNames.value.length
+  return `${joinNames(waitingNames.value)} ${n === 1 ? 'is' : 'are'} still adding theirs. You don’t need to wait for them.`
+})
+
+// (Surya) New messages in this hangout's chat (Ryan's unread counts), shown on the chat button
+const unreadChat = computed(() => alerts.unreadIn(route.params.id))
 </script>
 
 <template>
@@ -411,22 +457,36 @@ const statusLine = computed(() => {
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
         <div class="d-flex justify-content-between align-items-start gap-3">
           <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
-          <!-- Group chat opens in a side panel -->
+          <!-- Group chat opens in a side panel; the red number = new messages -->
           <button
             v-if="me"
             type="button"
-            class="chat-icon"
-            aria-label="Open group chat"
-            title="Group chat"
+            class="chat-btn"
+            :aria-label="unreadChat > 0 ? `Open group chat, ${unreadChat} new` : 'Open group chat'"
             :aria-expanded="showChat"
             aria-controls="chat-panel"
             @click="openChat"
           >
-            💬
+            <span aria-hidden="true">💬</span>
+            <span class="chat-btn__label">Group chat</span>
+            <span v-if="unreadChat > 0" class="chat-badge" aria-hidden="true">{{
+              unreadChat > 9 ? '9+' : unreadChat
+            }}</span>
           </button>
         </div>
         <!-- Personal status: what you need to do, or who you're waiting for -->
-        <p v-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
+        <!-- Saved: a clear next step at the top. Otherwise: what you need to do -->
+        <div v-if="showSavedBox" class="saved-box" role="status">
+          <div class="fw-bold">✓ Hi {{ me.display_name }}, your starting point is saved</div>
+          <p class="small mb-2">{{ savedText }}</p>
+          <RouterLink
+            class="btn btn-primary w-100 next-btn"
+            :to="{ name: 'transport', params: { id: route.params.id } }"
+          >
+            Next: choose transport →
+          </RouterLink>
+        </div>
+        <p v-else-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
         <p class="text-secondary mb-2">
           Search an address, MRT station or postal code. We use everyone’s starting point to find a
           spot that’s fair for all.
@@ -497,28 +557,37 @@ const statusLine = computed(() => {
           :editing-id="editingId"
           :host-mode="hostMode"
           @select="startEditing"
+          @open-chat="openChat"
         />
 
-        <!-- Next comes straight after the group: you only need YOUR starting point to continue -->
+        <!-- Host only: stop waiting and fill in friends' starting points yourself -->
+        <button
+          v-if="canFillIn || hostFill"
+          type="button"
+          class="btn btn-outline-primary w-100 mb-3 fill-btn"
+          :aria-pressed="hostFill"
+          @click="toggleFillIn"
+        >
+          {{ hostFill ? '✓ Done filling in' : '✏️ Fill in for friends' }}
+        </button>
+
+        <!-- Next: in the green box at the top once your start is saved; here while filling in for
+             friends, or greyed out (with the reason) before you've added yours -->
         <RouterLink
-          v-if="me && hasStart(me)"
+          v-if="me && hasStart(me) && !showSavedBox"
           class="btn btn-primary btn-lg w-100"
           :to="{ name: 'transport', params: { id: route.params.id } }"
         >
           Next: choose transport →
         </RouterLink>
-        <template v-else>
+        <template v-else-if="!showSavedBox">
           <button class="btn btn-primary btn-lg w-100" type="button" disabled>
             Next: choose transport →
           </button>
+          <p class="small text-secondary text-center mt-2 mb-4">
+            Add your starting point to continue. Friends can add theirs later.
+          </p>
         </template>
-        <!-- say what's needed, and that nobody has to wait for friends -->
-        <p class="small text-secondary text-center mt-2 mb-4">
-          <template v-if="me && hasStart(me)">Your friends can add theirs later.</template>
-          <template v-else
-            >Add your starting point to continue. Friends can add theirs later.</template
-          >
-        </p>
 
         <!-- Host only: add more people, folded away (most are added when creating the hangout) -->
         <div v-if="isRealHost">
@@ -590,21 +659,62 @@ const statusLine = computed(() => {
 }
 
 /* 💬 round chat button next to the heading */
-.chat-icon {
+.chat-btn {
+  position: relative;
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
   border: 1px solid var(--fp-border);
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--fp-surface);
-  font-size: 1.3rem;
+  font-weight: 600;
   box-shadow: var(--fp-shadow);
+  white-space: nowrap;
 }
 
-.chat-icon:hover {
+.chat-btn:hover {
   border-color: var(--fp-primary);
+}
+
+/* red count of new messages */
+.chat-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #d93025;
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 22px;
+  text-align: center;
+}
+
+/* green "saved" box with the Next button */
+.saved-box {
+  margin: 0.25rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--fp-primary);
+  border-radius: var(--fp-radius-sm);
+  background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
+}
+
+.next-btn,
+.fill-btn {
+  min-height: 44px;
+  font-weight: 600;
+}
+
+/* phones: just the icon, so the heading has room */
+@media (max-width: 400px) {
+  .chat-btn__label {
+    display: none;
+  }
 }
 
 /* "📍 Use Holland Village MRT again" */
