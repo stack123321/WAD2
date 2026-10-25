@@ -162,19 +162,22 @@ async function logOut() {
         <span class="visually-hidden">new</span>
       </span>
     </RouterLink>
-    <RouterLink class="tab plus" :to="{ name: 'create-hangout' }" aria-label="Start planning">
-      <svg
-        width="26"
-        height="26"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.4"
-        stroke-linecap="round"
-        aria-hidden="true"
-      >
-        <path d="M12 5v14M5 12h14" />
-      </svg>
+    <RouterLink class="tab plus" :to="{ name: 'create-hangout' }">
+      <span class="plus-icon">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </span>
+      Plan
     </RouterLink>
     <RouterLink class="tab" :to="{ name: 'chats' }">
       <svg
@@ -293,14 +296,22 @@ async function logOut() {
   font-size: 0.6rem;
 }
 
+/* Ryan: a column of button + label. Fixed 52px so the bar stays the same height, and the
+   button grows upward past the top edge */
 .tab.plus {
-  align-self: center;
-  justify-self: center;
-  width: 52px;
   height: 52px;
-  min-height: 52px;
-  margin-top: -14px;
-  border-radius: 16px;
+  justify-content: flex-end;
+  padding-bottom: 0.35rem; /* puts "Plan" on the same line as the other labels */
+}
+
+.plus-icon {
+  flex-shrink: 0; /* otherwise the 52px column squashes the button */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   background: var(--fp-primary);
   color: var(--fp-surface);
   box-shadow: var(--fp-shadow);
