@@ -1,6 +1,7 @@
 // Owner: Ryan
 // dates in Singapore time, shared by the dashboard and the hangout card
 const SG = 'Asia/Singapore'
+const DAY = 24 * 60 * 60 * 1000 // one day in milliseconds (singapore has no daylight saving)
 
 // "2026-10-16", so two dates can be compared as text
 export function sgDate(date) {
@@ -15,11 +16,16 @@ export function shortDate(date) {
   return `${weekday} ${day} ${month}`
 }
 
+// true when date falls on the day after now, in singapore time
+function isTomorrow(date, now) {
+  return sgDate(date) === sgDate(new Date(now.getTime() + DAY))
+}
+
 // the heading above a day's hangouts: { main: 'Tomorrow', sub: 'Thu 22 Oct' } or { main: 'Fri 23 Oct', sub: '' }
 export function dayHeading(date, now = new Date()) {
   const key = sgDate(date)
   if (key === sgDate(now)) return { main: 'Today', sub: shortDate(date) }
-  if (key === sgDate(new Date(now.getTime() + 24 * 60 * 60 * 1000))) {
+  if (isTomorrow(date, now)) {
     return { main: 'Tomorrow', sub: shortDate(date) }
   }
   return { main: shortDate(date), sub: '' }
@@ -39,7 +45,7 @@ export function countdownLabel(date, now = new Date()) {
     const hours = Math.round(minutes / 60)
     return `Today · in ${hours} ${hours === 1 ? 'hour' : 'hours'}`
   }
-  if (key === sgDate(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return `Tomorrow · ${time}`
-  const days = Math.round((new Date(key).getTime() - new Date(sgDate(now)).getTime()) / 86400000)
+  if (isTomorrow(date, now)) return `Tomorrow · ${time}`
+  const days = Math.round((new Date(key).getTime() - new Date(sgDate(now)).getTime()) / DAY)
   return `In ${days} days`
 }

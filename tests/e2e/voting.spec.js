@@ -11,6 +11,7 @@
 // The browser clock is fixed before the demo deadline (15 Oct 2026, 9 pm SGT) so voting is open,
 // except where a test moves it later.
 import { test, expect } from '@playwright/test'
+import { signUp, skipOnboarding } from './helpers/onboarding.js'
 
 const cafe = 'Mock Cafe (sample data)'
 const boardGames = 'Mock Board Game Cafe (sample data)'
@@ -232,12 +233,8 @@ test.describe('Starting the vote', () => {
 
   test('someone who isn’t in the hangout is told they can’t vote', async ({ page }) => {
     await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
-    await page.goto('/login?mode=signup')
-    await page.getByLabel('Name').fill('Test User')
-    await page.getByLabel('Email').fill('test.user@example.test')
-    await page.getByLabel('Password', { exact: true }).fill('testpass123')
-    await page.getByRole('button', { name: 'Create account' }).click()
-    await page.getByRole('link', { name: 'Skip for now' }).click()
+    await signUp(page)
+    await skipOnboarding(page)
 
     await page
       .locator('.card', { hasText: 'Friday dinner after class' })

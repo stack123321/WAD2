@@ -53,6 +53,10 @@
           {{ filter.label }}
         </button>
       </div>
+      <label class="match-filter">
+        <input v-model="hideZeroMatches" type="checkbox" />
+        <span>Hide 0% matches</span>
+      </label>
     </div>
     <div class="sort-control">
       <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
@@ -257,7 +261,7 @@ const scoredSpots = computed(() =>
       vibes: hangout.hangout?.vibe,
       startAt: hangout.hangout?.starts_at,
       raining: raining.value,
-      midpoint: hasMidpoint.value
+    midpoint: hasMidpoint.value
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
     }),
@@ -320,6 +324,7 @@ const filters = [
   { label: 'Outdoors', value: 'outdoor' },
 ]
 const activeFilter = ref('all')
+const hideZeroMatches = ref(false)
 
 const radiusKm = ref(1)
 
@@ -339,6 +344,7 @@ const filteredSpots = computed(() =>
   scoredSpots.value.filter(
     (s) =>
       (activeFilter.value === 'all' || s.category === activeFilter.value) &&
+      (!hideZeroMatches.value || s.matchPct > 0) &&
       (!hasMidpoint.value || distanceFromMidpointKm(s) <= radiusKm.value),
   ),
 )
@@ -444,6 +450,19 @@ async function selectSpot(id) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.match-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.match-filter input {
+  margin: 0;
 }
 
 .sort-select {

@@ -4,6 +4,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAlertsStore } from '@/stores/alerts'
 import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
 import { planningLinks } from '@/utils/planningLinks'
@@ -11,6 +12,7 @@ import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
+const alerts = useAlertsStore() // unread counts, kept fresh by the navbar
 
 // (Nicole) Came here from a hangout's chat (?hangout=<id>, and ?from= the planning page before
 // that): a banner offers the way back into planning, so nobody gets stuck in the chats
@@ -63,13 +65,16 @@ onMounted(async () => {
   loading.value = false
 })
 
-// chats whose name or any member's name contains the search text, all of them when it is empty
+// chats whose name or any member's name contains the search text, all of them when it is empty,
+// newest message first like a messaging app. Chats with no messages keep their old order at the
+// bottom (sort keeps the order of equal items), and filter makes a new list so chats isn't reordered
 const shown = computed(() => {
   const text = query.value.trim().toLowerCase()
-  return chats.value.filter((c) => {
+  const matching = chats.value.filter((c) => {
     if (c.name.toLowerCase().includes(text)) return true
     return c.members.some((m) => m.display_name.toLowerCase().includes(text))
   })
+  return matching.sort((a, b) => alerts.lastMessageAt(b.key) - alerts.lastMessageAt(a.key))
 })
 </script>
 
@@ -103,7 +108,7 @@ const shown = computed(() => {
         id="chat-search"
         v-model="query"
         type="search"
-        class="form-control"
+        class="form-control search-box"
         placeholder="Search by hangout or person"
       />
     </form>
@@ -114,7 +119,11 @@ const shown = computed(() => {
     <section v-else id="chat-list" class="box">
       <p v-if="shown.length === 0" class="text-muted small mb-0">No chats found.</p>
       <router-link v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
-        <span class="name">{{ c.name }}</span>
+        <span class="name" :class="{ unread: alerts.unreadIn(c.key) > 0 }">{{ c.name }}</span>
+        <span v-if="alerts.unreadIn(c.key) > 0" class="badge rounded-pill bg-danger">
+          {{ alerts.unreadIn(c.key) }}
+          <span class="visually-hidden">new</span>
+        </span>
         <span class="avatars">
           <MemberAvatar
             v-for="m in c.members"
@@ -190,6 +199,18 @@ const shown = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+/* a chat with new messages: darker and bolder, like an unread email */
+.name.unread {
+  font-weight: 800;
+  color: var(--fp-ink);
+}
+
+/* white with a darker edge, so the search box stands out from the page */
+.form-control.search-box {
+  background: var(--fp-surface);
+  border-color: var(--fp-muted);
 }
 
 .avatars {

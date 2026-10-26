@@ -81,6 +81,7 @@ Everyone can build their page before the database and APIs are ready. There are 
 | Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) | `api/route.js` |
 | Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) | `api/crowd.js` |
 | Nearby places | Google Places (`GOOGLE_PLACES_API_KEY`) | None; the API reports an error if the key is missing | `api/places.js` |
+| Ask box on 09 ("prata for dinner") | Gemini (`GEMINI_API_KEY`) reads the request, then Google Places finds the spots | `api/_mocks/assistant.js` ("Sample spot 1–3", sample hangouts only) | `api/assistant.js` |
 
 Pages call the service functions and never know which one they got. The nearby-spots API returns real results around the midpoint stored on the hangout. Other keyed APIs keep answering with samples when their key is missing from `.env.local`, so teammates without those keys can still work.
 
