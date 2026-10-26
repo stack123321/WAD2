@@ -55,6 +55,13 @@ function minsUntilClose(ranges, weekMin) {
   return null
 }
 
+/** Whether a place's most specific Google type fits at least one hangout vibe. */
+export function matchesHangoutVibe(place, vibes = []) {
+  const types = place.types ?? []
+  const primaryType = place.primaryType ?? types[0] ?? place.category ?? null
+  return vibes.some((vibe) => (vibeTypes[vibe] ?? []).includes(primaryType))
+}
+
 /** Whether a place is open for the whole [startAt, endAt] window, sampled every 15 minutes. */
 function isOpenThroughout(openingHours, startAt, endAt) {
   const periods = openingHours?.periods
@@ -125,7 +132,7 @@ function evaluate(place, profiles = [], context = {}) {
 
   // ── 2. Base component score ──
   // A. Hangout vibe match (34%)
-  const vibeMatch = vibes.some((v) => (vibeTypes[v] ?? []).includes(primaryType))
+  const vibeMatch = matchesHangoutVibe(place, vibes)
   const scoreA = vibeMatch ? 34 : 0
 
   // B. User preference overlap (17%)

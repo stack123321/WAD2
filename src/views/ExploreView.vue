@@ -212,7 +212,7 @@ import {
 } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
-import { matchScore } from '@/utils/matchScore'
+import { matchScore, matchesHangoutVibe } from '@/utils/matchScore'
 import { willRainAt } from '@/services/weather'
 
 const route = useRoute()
@@ -261,6 +261,7 @@ const scoredSpots = computed(() =>
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
     }),
+    vibeMatch: matchesHangoutVibe(spot, hangout.hangout?.vibe ?? []),
   })),
 )
 let spotRequestId = 0
@@ -352,14 +353,24 @@ const sortOptions = [
 ]
 const sortBy = ref('match')
 
-// Crowd level sorts quietest first
+// Every sort keeps vibe-compatible spots first, then applies its selected criterion.
+// Crowd level sorts quietest first.
+function prioritiseVibeMatch(comparator) {
+  return (a, b) => {
+    if (a.vibeMatch !== b.vibeMatch) return a.vibeMatch ? -1 : 1
+    return comparator(a, b)
+  }
+}
+
 const comparators = {
-  match: (a, b) => b.matchPct - a.matchPct,
-  rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
-  'price-asc': (a, b) => (a.priceLevel ?? 0) - (b.priceLevel ?? 0),
-  'price-desc': (a, b) => (b.priceLevel ?? 0) - (a.priceLevel ?? 0),
-  distance: (a, b) => (a.stationDistanceM ?? Infinity) - (b.stationDistanceM ?? Infinity),
-  crowd: (a, b) => a.crowdLevel - b.crowdLevel,
+  match: prioritiseVibeMatch((a, b) => b.matchPct - a.matchPct),
+  rating: prioritiseVibeMatch((a, b) => (b.rating ?? 0) - (a.rating ?? 0)),
+  'price-asc': prioritiseVibeMatch((a, b) => (a.priceLevel ?? 0) - (b.priceLevel ?? 0)),
+  'price-desc': prioritiseVibeMatch((a, b) => (b.priceLevel ?? 0) - (a.priceLevel ?? 0)),
+  distance: prioritiseVibeMatch(
+    (a, b) => (a.stationDistanceM ?? Infinity) - (b.stationDistanceM ?? Infinity),
+  ),
+  crowd: prioritiseVibeMatch((a, b) => a.crowdLevel - b.crowdLevel),
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
 
