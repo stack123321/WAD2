@@ -32,6 +32,14 @@ The demo hangout and most services have sample data (see [Sample data](#sample-d
 
 `npm run dev` also runs the serverless functions in `api/` (via `scripts/dev-api.js`), so `/api/route`, `/api/crowd` and `/api/places` work locally with no extra setup. On Vercel the same files run as real serverless functions.
 
+## Live demo and test accounts
+
+Live demo: [Open Fairpoint](https://fairpoint-wad2.vercel.app)
+
+Email confirmation is enabled in Supabase for this demo. Users must register with a real email address and click the confirmation link before logging in.
+
+Testers may create their own account using an accessible email address.
+
 ## Who owns what
 
 One file = one owner. If you need to change someone else's file, ask them first or say so in your PR.

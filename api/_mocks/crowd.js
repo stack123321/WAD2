@@ -31,15 +31,18 @@ const STATIONS = [
 export function sampleCrowd(at) {
   // singapore time in hours (18.5 = 6:30 pm), vercel runs in utc so add 8
   const sg = new Date(at.getTime() + 8 * 60 * 60 * 1000)
-  const hour = sg.getUTCHours() + sg.getUTCMinutes() / 60
-  const peak = (hour >= 7 && hour < 9.5) || (hour >= 17 && hour < 20)
+  const hour = sg.getUTCHours() + sg.getUTCMinutes() / 60 // read back as utc, which is now singapore time
+  const peak = (hour >= 7 && hour < 9.5) || (hour >= 17 && hour < 20) // morning and evening rush
   const daytime = hour >= 9.5 && hour < 17
 
+  // a made-up but believable rule: interchanges are busiest, rush hour is busier than daytime, night is quiet.
   let result = []
   for (let s of STATIONS) {
-    let level = 'l'
+    let level = 'l' // quiet unless a rule below says otherwise
+    // interchange at rush hour is busy, other rush hour stations and daytime interchanges are moderate
     if (peak && s.interchange) level = 'h'
     else if (peak || (daytime && s.interchange)) level = 'm'
+    // "(sample)" in the name lets the page tell sample data from real data
     result.push({ station: `${s.name} (sample)`, lat: s.lat, lng: s.lng, level: level })
   }
   return result

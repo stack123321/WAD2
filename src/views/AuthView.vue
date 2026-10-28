@@ -118,10 +118,13 @@ async function finish() {
 }
 
 // Someone opening an invite link while already logged in joins straight away.
+// (Surya) Same for someone back from the sign-up confirmation email (they land on ?mode=signup,
+// now logged in): go on to Preferences like a sign-up without confirmation does. Not while the
+// form is still submitting, because submit() moves on by itself.
 watch(
   () => auth.ready && auth.isLoggedIn,
   (loggedIn) => {
-    if (loggedIn && inviteCode) finish()
+    if (loggedIn && (inviteCode || (isSignup.value && !busy.value))) finish()
   },
   { immediate: true },
 )

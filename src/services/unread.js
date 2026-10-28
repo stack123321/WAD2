@@ -36,8 +36,9 @@ export function subscribeToAlerts(myId, onChange) {
   if (!hasSupabase) {
     return () => {}
   }
+  // a channel is a live connection: supabase pushes each new row to the browser the moment it is saved, so there's no need to keep asking.
   const channel = supabase
-    .channel(`alerts:${myId}`)
+    .channel(`alerts:${myId}`) // a name for this connection, one per user
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, onChange)
     .on(
       'postgres_changes',
@@ -50,10 +51,10 @@ export function subscribeToAlerts(myId, onChange) {
         event: 'INSERT',
         schema: 'public',
         table: 'friendships',
-        filter: `addressee_id=eq.${myId}`,
+        filter: `addressee_id=eq.${myId}`, // only requests sent to me
       },
       onChange,
     )
-    .subscribe()
-  return () => supabase.removeChannel(channel)
+    .subscribe() // start listening
+  return () => supabase.removeChannel(channel) // the caller keeps this and runs it to stop listening
 }

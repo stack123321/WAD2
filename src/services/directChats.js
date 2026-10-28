@@ -6,8 +6,9 @@ import { supabase, hasSupabase } from './supabase'
 const demoChats = []
 
 // one chat as the pages use it: the other person, and both people as members for the chat box
+// the database stores the two people as user_a and user_b in no particular order, so this works out which one is me and which is my friend.
 function shape(row, myId) {
-  const iAmA = row.user_a === myId
+  const iAmA = row.user_a === myId // true if i'm user_a, so my friend is user_b
   const friend = {
     user_id: iAmA ? row.user_b : row.user_a,
     display_name: (iAmA ? row.b : row.a).display_name,
@@ -21,6 +22,7 @@ function shape(row, myId) {
   return { id: row.id, friend, members: [me, friend] }
 }
 
+// the columns to fetch: the chat and both people's names and colours (a and b), written once because two functions use it
 const CHAT_COLUMNS =
   'id, user_a, user_b, ' +
   'a:profiles!direct_chats_user_a_fkey(display_name, avatar_color), ' +
@@ -29,8 +31,9 @@ const CHAT_COLUMNS =
 // the chat with this friend, made the first time. friend is { user_id, display_name, avatar_color }
 export async function getOrCreateDirectChat(friend) {
   if (!hasSupabase) {
-    let chat = demoChats.find((c) => c.friend.user_id === friend.user_id)
+    let chat = demoChats.find((c) => c.friend.user_id === friend.user_id) // already chatting with them?
     if (!chat) {
+      // no: make one
       chat = { id: `demo-direct-${friend.user_id}`, friend }
       demoChats.push(chat)
     }
@@ -41,20 +44,20 @@ export async function getOrCreateDirectChat(friend) {
   if (error) {
     throw error
   }
-  return { id: data, friend }
+  return { id: data, friend } // the database gives back just the chat's id
 }
 
 // all my one to one chats, as [{ id, friend, members }]
 export async function getMyDirectChats(myId) {
   if (!hasSupabase) {
-    return demoChats.map((c) => ({ ...c, members: [c.friend] }))
+    return demoChats.map((c) => ({ ...c, members: [c.friend] })) // ...c copies the chat's fields, then members is added
   }
   // the security rules only return chats you are in
   const { data, error } = await supabase.from('direct_chats').select(CHAT_COLUMNS)
   if (error) {
     throw error
   }
-  return data.map((row) => shape(row, myId))
+  return data.map((row) => shape(row, myId)) // each row as { id, friend, members }
 }
 
 // one chat by id, or null if it isn't yours
@@ -71,5 +74,5 @@ export async function getDirectChat(chatId, myId) {
   if (error) {
     throw error
   }
-  return data ? shape(data, myId) : null
+  return data ? shape(data, myId) : null // null when it isn't my chat or doesn't exist
 }

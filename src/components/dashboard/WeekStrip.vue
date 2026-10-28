@@ -14,18 +14,21 @@ const props = defineProps({
 const DAY = 24 * 60 * 60 * 1000 // Singapore has no daylight saving, so +24 hours is always the next day
 const SG = 'Asia/Singapore'
 
+// which dot a hangout gets, the name is also its css class
 function dotOf(h) {
-  if (h.status === 'confirmed') return 'confirmed'
-  return getStatus(h, props.myId).needsYou ? 'needs' : 'planning'
+  if (h.status === 'confirmed') return 'confirmed' // filled circle
+  return getStatus(h, props.myId).needsYou ? 'needs' : 'planning' // diamond if it needs me, hollow circle if not
 }
 
 // [{ key, date, weekday: 'THU', number: '22', today, dots: ['confirmed', 'needs'], count }]
 const days = computed(() => {
   const now = Date.now()
   const result = []
+  // one entry per day, today first
   for (let i = 0; i < 7; i++) {
-    const date = new Date(now + i * DAY)
-    const key = sgDate(date)
+    const date = new Date(now + i * DAY) // i days from now
+    const key = sgDate(date) // "2026-10-22"
+    // the hangouts on this day
     const onThisDay = props.hangouts.filter(
       (h) => h.starts_at && sgDate(new Date(h.starts_at)) === key,
     )
@@ -34,9 +37,9 @@ const days = computed(() => {
       date,
       weekday: date.toLocaleDateString('en-SG', { weekday: 'short', timeZone: SG }).toUpperCase(),
       number: date.toLocaleDateString('en-SG', { day: 'numeric', timeZone: SG }),
-      today: i === 0,
-      dots: onThisDay.slice(0, 3).map(dotOf),
-      count: onThisDay.length,
+      today: i === 0, // the first day is today
+      dots: onThisDay.slice(0, 3).map(dotOf), // at most 3 dots, so the column never overflows
+      count: onThisDay.length, // the real number, for screen readers
     })
   }
   return result
@@ -44,6 +47,7 @@ const days = computed(() => {
 
 // "22 Oct – 28 Oct"
 const range = computed(() => {
+  // a small function that turns one day into "22 Oct"
   const label = (d) =>
     `${d.number} ${d.date.toLocaleDateString('en-SG', { month: 'short', timeZone: SG })}`
   return `${label(days.value[0])} – ${label(days.value[6])}`
@@ -52,6 +56,7 @@ const range = computed(() => {
 // the first day from tomorrow with nothing on
 const freeDay = computed(() => days.value.slice(1).find((d) => d.count === 0) ?? null)
 
+// read out by screen readers instead of the dots, e.g. "2 hangouts"
 function summary(count) {
   if (count === 0) return 'nothing on'
   return count === 1 ? '1 hangout' : `${count} hangouts`
@@ -64,6 +69,7 @@ function summary(count) {
       <span>Next 7 days</span>
       <span class="range">{{ range }}</span>
     </h2>
+    <!-- seven columns, today in green and the first free day with a dashed border -->
     <ol class="days">
       <li
         v-for="d in days"
@@ -84,6 +90,7 @@ function summary(count) {
       <span><i class="needs"></i>Needs you</span>
       <span><i class="planning"></i>Planning</span>
     </p>
+    <!-- the link opens a new hangout with that date already filled in -->
     <p v-if="freeDay" class="free">
       <span>
         Next free day: <strong>{{ shortDate(freeDay.date) }}</strong>
@@ -109,6 +116,7 @@ function summary(count) {
   font-weight: 400;
   color: var(--fp-muted);
 }
+/* 7 equal columns, one per day */
 .days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -161,6 +169,7 @@ function summary(count) {
 .confirmed {
   background: var(--fp-primary);
 }
+/* a small square turned 45 degrees, so it looks like a diamond */
 .needs {
   background: #a16207;
   border-radius: 1px;
