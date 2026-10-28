@@ -368,7 +368,7 @@ watch(() => props.members, drawMembers, { deep: true })
   height: 28px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: var(--fp-primary);
+  background: var(--fp-midpoint); /* blue, stands out from the green circles */
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
   cursor: grab;
@@ -395,6 +395,16 @@ watch(() => props.members, drawMembers, { deep: true })
   box-shadow: var(--fp-shadow);
   border-radius: var(--fp-radius-sm);
   overflow: hidden;
+}
+
+/* bigger zoom buttons on phones, so they're easy to tap */
+@media (max-width: 767px) {
+  :deep(.leaflet-control-zoom a) {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
+  }
 }
 
 /* the station circles, drawCircles gives each one the class .crowd and .crowd-l, .crowd-m or .crowd-h */

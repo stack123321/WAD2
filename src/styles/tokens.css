@@ -10,6 +10,7 @@
   --fp-primary: #0e7c6b; /* teal */
   --fp-primary-dark: #0a5f52; /* hover/pressed. Hugo: confirm against Figma */
   --fp-accent: #f2684a; /* coral */
+  --fp-midpoint: #1d4ed8; /* blue, the midpoint pin on the 08 map (stands out from the green crowd circles) */
   --fp-bg: #f6f4ef; /* page background */
   --fp-surface: #ffffff; /* cards */
 

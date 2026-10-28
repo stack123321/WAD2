@@ -403,7 +403,7 @@ async function onMidpointMoved(position) {
         </p>
         <router-link
           :to="{ name: 'transport', params: { id: route.params.id } }"
-          class="btn btn-primary btn-sm"
+          class="btn btn-primary btn-sm go-btn"
         >
           Go to transport →
         </router-link>
@@ -413,6 +413,13 @@ async function onMidpointMoved(position) {
 </template>
 
 <style scoped>
+/* the Go to transport button, 44px tall so it is easy to tap */
+.go-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
 /* big enough to tap with a finger */
 .see-spots-btn {
   min-height: 48px;

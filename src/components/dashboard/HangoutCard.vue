@@ -584,7 +584,7 @@ async function copyInvite() {
   .hangout:not(.featured) .body {
     display: grid;
     /* fixed widths so every row's columns line up */
-    grid-template-columns: minmax(0, 1fr) 190px 200px 170px 32px;
+    grid-template-columns: minmax(0, 1fr) 190px 200px 170px 44px;
     align-items: center;
     column-gap: 1.5rem;
     padding: 0.875rem 1rem;
@@ -609,15 +609,15 @@ async function copyInvite() {
   }
   .hangout:not(.featured) .act .btn {
     min-width: 150px;
-    min-height: 38px;
+    min-height: 44px;
   }
   /* the ⋯ menu becomes the last grid column instead of floating in the corner */
   .hangout:not(.featured) .more {
     position: static;
   }
   .hangout:not(.featured) .menu-btn {
-    width: 32px;
-    min-height: 32px;
+    width: 44px;
+    min-height: 44px;
   }
 }
 </style>

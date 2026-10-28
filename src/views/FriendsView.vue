@@ -400,10 +400,23 @@ async function remove(person) {
   border-color: var(--fp-muted);
 }
 
-/* the ⋯ button: wide enough to tap easily, as tall as the small buttons beside it */
+/* every button is at least 44px tall so it's easy to tap on a phone */
+.person .btn,
+.search-box .btn {
+  min-height: 44px;
+  display: inline-flex; /* so the label stays in the middle of the taller button */
+  align-items: center;
+  justify-content: center;
+}
+
+.search-box .form-control {
+  min-height: 44px; /* as tall as the Search button beside it */
+}
+
+/* the ⋯ button: a 44px square, easy to tap */
 .menu-btn {
   width: 44px;
-  height: 32px;
+  height: 44px;
   padding: 0;
   font-weight: 700;
   text-decoration: none;
