@@ -215,6 +215,7 @@ const shown = computed(() => {
 .form-control.search-box {
   background: var(--fp-surface);
   border-color: var(--fp-muted);
+  min-height: 44px; /* easy to tap on a phone */
 }
 
 .avatars {

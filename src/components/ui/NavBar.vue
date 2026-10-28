@@ -117,7 +117,9 @@ async function logOut() {
           </li>
         </ul>
       </template>
-      <RouterLink v-else class="btn btn-primary btn-sm" :to="{ name: 'auth' }">Log in</RouterLink>
+      <RouterLink v-else class="btn btn-primary btn-sm login-btn" :to="{ name: 'auth' }"
+        >Log in</RouterLink
+      >
     </div>
   </nav>
 
@@ -234,6 +236,13 @@ async function logOut() {
 .nav-link.router-link-active {
   color: var(--fp-primary);
   font-weight: 700;
+}
+
+/* the Log in button, 44px tall so it's easy to tap on a phone */
+.login-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .initial {

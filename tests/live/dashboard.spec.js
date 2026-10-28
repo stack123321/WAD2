@@ -26,13 +26,14 @@ test('a new hangout shows on the dashboard and can be deleted', async ({ page })
   await page.locator('button[type="submit"]').click()
   await expect(page).toHaveURL(/\/start$/)
 
-  // back on the dashboard, its card (with its delete button) should be there
+  // back on the dashboard, its card (with its ⋯ menu) should be there
   await page.goto('/dashboard')
-  const deleteButton = page.locator(`button[aria-label="Delete ${name}"]`)
-  await expect(deleteButton).toBeVisible()
+  const menuButton = page.locator(`button[aria-label="More options for ${name}"]`)
+  await expect(menuButton).toBeVisible()
 
-  // delete it, so the shared database doesn't fill up with test hangouts
-  page.once('dialog', (dialog) => dialog.accept())
-  await deleteButton.click()
-  await expect(deleteButton).toHaveCount(0)
+  // delete it through the ⋯ menu and the confirm dialog, so the shared database doesn't fill up with test hangouts
+  await menuButton.click()
+  await page.locator('.dropdown-menu.show').getByRole('button', { name: 'Delete hangout' }).click()
+  await page.locator('#confirm-modal').getByRole('button', { name: 'Delete hangout' }).click()
+  await expect(menuButton).toHaveCount(0)
 })

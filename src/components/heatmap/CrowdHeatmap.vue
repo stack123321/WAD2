@@ -397,6 +397,16 @@ watch(() => props.members, drawMembers, { deep: true })
   overflow: hidden;
 }
 
+/* bigger zoom buttons on phones, so they're easy to tap */
+@media (max-width: 767px) {
+  :deep(.leaflet-control-zoom a) {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
+  }
+}
+
 /* the station circles, drawCircles gives each one the class .crowd and .crowd-l, .crowd-m or .crowd-h */
 :deep(.crowd) {
   stroke: var(--fp-surface);

@@ -62,3 +62,20 @@ const choices = computed(() =>
     </ul>
   </div>
 </template>
+
+<style scoped>
+/* 44px tall like the Chat button beside it, with the label in the middle */
+.btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* from 576px the plain link and the dropdown with its caret are the same width (on phones there is no room) */
+@media (min-width: 576px) {
+  .btn {
+    min-width: 9rem;
+  }
+}
+</style>
