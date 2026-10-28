@@ -10,7 +10,7 @@ import WeatherLineIcon from '@/components/dashboard/WeatherLineIcon.vue'
 import { isRain, sgHourKey } from '@/services/weather'
 import { shortDate, countdownLabel } from '@/utils/dates'
 import { getStatus, getProgress } from '@/utils/hangoutStatus'
-import { useMediaQuery } from '@/utils/useMediaQuery'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 
 // everything the card shows comes in from the dashboard, so the card never loads data itself
 const props = defineProps({
