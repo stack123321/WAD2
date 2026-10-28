@@ -24,8 +24,9 @@ export async function getHangout(id) {
     .select(
       // "!hangout_id" tells Supabase which link to use, because hangouts.final_shortlist_id also points at shortlist
       // Preference columns (activities, budget, ...) are read here so Matrix's matchScore() can
-      // score each spot against every member, not just whoever is looking at the page.
-      '*, members:hangout_members(*, profile:profiles(display_name, avatar_color, activities, budget, indoor_if_rain, step_free, vote_history)), shortlist!hangout_id(*), votes(*)',
+      // score each spot against every member, not just whoever is looking at the page. dietary is
+      // for the Ask box on 09 (a halal member means a halal search).
+      '*, members:hangout_members(*, profile:profiles(display_name, avatar_color, activities, dietary, budget, indoor_if_rain, step_free, vote_history)), shortlist!hangout_id(*), votes(*)',
     )
     .eq('id', id)
     .single()

@@ -1,4 +1,4 @@
-// Google Places API (New) helpers for api/places.js. Not an endpoint (files starting with _ are skipped).
+// Google Places API (New) helpers for api/places.js and api/assistant.js. Not an endpoint (files starting with _ are skipped).
 import { STATIONS } from './_data/stations.js'
 import { distanceKm } from './_mocks/geo.js'
 
@@ -143,6 +143,32 @@ export async function nearbyPlaces(key, centre, radiusM, categories) {
   return results
     .flat()
     .filter((p) => !seen.has(p.source_place_id) && seen.add(p.source_place_id))
+    .sort((a, b) => a.distance_m - b.distance_m)
+}
+
+/**
+ * Places matching a free-text search (e.g. "halal prata") within radiusM of the centre, nearest
+ * first. Text Search can only lean towards a circle, so it's asked for the nearest matches and
+ * any outside the circle are dropped here.
+ */
+export async function textSearch(key, centre, radiusM, query) {
+  const data = await google('/places:searchText', key, {
+    fields: FIELDS.map((f) => `places.${f}`).join(','),
+    body: {
+      textQuery: query,
+      pageSize: 20,
+      rankPreference: 'DISTANCE',
+      locationBias: {
+        circle: {
+          center: { latitude: centre.lat, longitude: centre.lng },
+          radius: Math.min(radiusM, 50000),
+        },
+      },
+    },
+  })
+  return (data.places ?? [])
+    .map((p) => toPlace(p, centre))
+    .filter((p) => p.distance_m <= radiusM)
     .sort((a, b) => a.distance_m - b.distance_m)
 }
 

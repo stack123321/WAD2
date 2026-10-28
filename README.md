@@ -32,6 +32,14 @@ The demo hangout and most services have sample data (see [Sample data](#sample-d
 
 `npm run dev` also runs the serverless functions in `api/` (via `scripts/dev-api.js`), so `/api/route`, `/api/crowd` and `/api/places` work locally with no extra setup. On Vercel the same files run as real serverless functions.
 
+## Live demo and test accounts
+
+Live demo: [Open Fairpoint](https://fairpoint-wad2.vercel.app)
+
+Email confirmation is enabled in Supabase for this demo. Users must register with a real email address and click the confirmation link before logging in.
+
+Testers may create their own account using an accessible email address.
+
 ## Who owns what
 
 One file = one owner. If you need to change someone else's file, ask them first or say so in your PR.
@@ -81,6 +89,7 @@ Everyone can build their page before the database and APIs are ready. There are 
 | Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) | `api/route.js` |
 | Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) | `api/crowd.js` |
 | Nearby places | Google Places (`GOOGLE_PLACES_API_KEY`) | None; the API reports an error if the key is missing | `api/places.js` |
+| Ask box on 09 ("prata for dinner") | Gemini (`GEMINI_API_KEY`) reads the request, then Google Places finds the spots | `api/_mocks/assistant.js` ("Sample spot 1–3", sample hangouts only) | `api/assistant.js` |
 
 Pages call the service functions and never know which one they got. The nearby-spots API returns real results around the midpoint stored on the hangout. Other keyed APIs keep answering with samples when their key is missing from `.env.local`, so teammates without those keys can still work.
 
