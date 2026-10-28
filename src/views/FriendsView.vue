@@ -31,9 +31,10 @@ const error = ref('')
 const actionError = ref('')
 const actionDone = ref('') // "Friend request sent to Mei." after something worked
 
+// one call fills all three lists, and it runs again after every change so the page always matches the database
 async function loadFriendships() {
   try {
-    const lists = await getFriendships(myId.value)
+    const lists = await getFriendships(myId.value) // { friends, pending, requests }
     friends.value = lists.friends
     pending.value = lists.pending
     requests.value = lists.requests
@@ -50,6 +51,7 @@ async function loadOpenHangouts() {
   try {
     const hangouts = await getMyHangouts()
     const now = new Date()
+    // i host it, people are still adding starting points, and it hasn't started
     openHangouts.value = hangouts.filter(
       (h) => h.host_id === myId.value && h.status === 'collecting' && new Date(h.starts_at) > now,
     )
@@ -62,28 +64,29 @@ async function loadOpenHangouts() {
 onMounted(async () => {
   // not awaited: the friend list shows straight away, the hangout menu fills in when ready
   loadOpenHangouts()
-  loading.value = true
+  loading.value = true // shows "Loading your friends…"
   await loadFriendships()
   loading.value = false
 })
 
 // search
-const query = ref('')
-const results = ref([])
+const query = ref('') // what's typed in the search box
+const results = ref([]) // people found, [{ user_id, display_name, avatar_color }]
 const searched = ref(false) // true after the first search, so "no one found" only shows then
 const searching = ref(false)
 const searchError = ref('')
 
 async function search() {
-  if (searching.value) return
+  if (searching.value) return // already searching, so ignore a second press
   searchError.value = ''
+  // 1 letter would match almost everyone, so ask for at least 2
   if (query.value.trim().length < 2) {
     searchError.value = 'Type at least 2 letters of a name, or a full email.'
     return
   }
-  searching.value = true
+  searching.value = true // also disables the search button
   try {
-    results.value = await searchPeople(query.value.trim())
+    results.value = await searchPeople(query.value.trim()) // trim() drops spaces at either end
     searched.value = true
   } catch (err) {
     console.log(err)
@@ -100,26 +103,28 @@ function clearSearch() {
 }
 
 // where a search result stands with you: 'friend', 'pending', 'request' or 'none'
+// find() gives back the person or undefined, and undefined counts as false in an if
 function statusOf(userId) {
-  if (friends.value.find((f) => f.user_id === userId)) return 'friend'
-  if (pending.value.find((f) => f.user_id === userId)) return 'pending'
-  if (requests.value.find((f) => f.user_id === userId)) return 'request'
-  return 'none'
+  if (friends.value.find((f) => f.user_id === userId)) return 'friend' // already friends
+  if (pending.value.find((f) => f.user_id === userId)) return 'pending' // i asked them
+  if (requests.value.find((f) => f.user_id === userId)) return 'request' // they asked me
+  return 'none' // a stranger
 }
 
 // friends first, since with a long list most searches are to find a friend to invite
 const sortedResults = computed(() => {
   const mine = results.value.filter((p) => statusOf(p.user_id) === 'friend')
   const others = results.value.filter((p) => statusOf(p.user_id) !== 'friend')
-  return mine.concat(others)
+  return mine.concat(others) // friends, then everyone else
 })
 
+// each action below clears the old messages, saves the change, reloads the lists, then says what happened.
 async function addFriend(person) {
   actionError.value = ''
   actionDone.value = ''
   try {
     await sendFriendRequest(myId.value, person.user_id)
-    await loadFriendships()
+    await loadFriendships() // they now show under pending
     clearSearch()
     actionDone.value = `Friend request sent to ${person.display_name}.`
   } catch (err) {
@@ -134,7 +139,7 @@ async function accept(person) {
   try {
     await acceptFriendRequest(myId.value, person.user_id)
     await loadFriendships()
-    alerts.refresh(myId.value)
+    alerts.refresh(myId.value) // one request fewer, so update the badge on friends
     // accepted from the search results: clear them, like after adding
     if (results.value.some((r) => r.user_id === person.user_id)) clearSearch()
     actionDone.value = `You and ${person.display_name} are now friends.`
@@ -148,9 +153,9 @@ async function decline(person) {
   actionError.value = ''
   actionDone.value = ''
   try {
-    await declineFriendRequest(myId.value, person.user_id)
+    await declineFriendRequest(myId.value, person.user_id) // deletes their request
     await loadFriendships()
-    alerts.refresh(myId.value)
+    alerts.refresh(myId.value) // update the badge here too
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't decline ${person.display_name}'s request.`
@@ -161,8 +166,8 @@ async function decline(person) {
 async function openChat(person) {
   actionError.value = ''
   try {
-    const chat = await getOrCreateDirectChat(person)
-    router.push({ name: 'direct-chat', params: { chatId: chat.id } })
+    const chat = await getOrCreateDirectChat(person) // the existing chat, or a new one the first time
+    router.push({ name: 'direct-chat', params: { chatId: chat.id } }) // go to it
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't open a chat with ${person.display_name}.`
@@ -190,8 +195,8 @@ async function remove(person) {
   actionError.value = ''
   try {
     await removeFriend(myId.value, person.user_id)
-    confirmingId.value = null
-    await loadFriendships()
+    confirmingId.value = null // close the "are you sure?"
+    await loadFriendships() // they disappear from my friends
   } catch (err) {
     console.log(err)
     actionError.value = `Couldn't remove ${person.display_name}.`
@@ -220,10 +225,12 @@ async function remove(person) {
     </form>
     <p v-if="searchError" class="text-danger small mb-2">{{ searchError }}</p>
 
+    <!-- search results, only after a search: each row shows what i can do with that person -->
     <section v-if="searched" id="search-results" class="box mb-4">
       <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
       <div v-for="p in sortedResults" :key="p.user_id" class="person">
         <span class="name">{{ p.display_name }}</span>
+        <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
         <template v-if="statusOf(p.user_id) === 'friend'">
           <span class="tag">Friends ✓</span>
           <AddToHangout :friend="p" :hangouts="openHangouts" @add="addToHangout" />
@@ -257,6 +264,7 @@ async function remove(person) {
       </div>
     </section>
 
+    <!-- what the last action did: red if it failed, green tick if it worked -->
     <p v-if="actionError" class="text-danger small" role="alert">{{ actionError }}</p>
     <p v-if="actionDone" class="done small" role="status">✓ {{ actionDone }}</p>
 
@@ -293,6 +301,7 @@ async function remove(person) {
         </p>
         <div v-for="f in friends" :key="f.user_id" class="person">
           <span class="name">{{ f.display_name }}</span>
+          <!-- after "remove friend" in the ⋯ menu, this row asks to confirm instead of showing its buttons -->
           <template v-if="confirmingId === f.user_id">
             <span class="ms-auto small">Are you sure?</span>
             <button type="button" class="btn btn-danger btn-sm text-nowrap" @click="remove(f)">

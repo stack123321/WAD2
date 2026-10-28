@@ -5,6 +5,7 @@ import { addMember } from './hangouts'
 import mockHangout from '@/mocks/hangout.json'
 import mockHangout2 from '@/mocks/hangout-2.json'
 
+// every function below has two halves: the demo (no supabase) works on lists kept in memory, the real app asks the database.
 // in the demo (no supabase) you're surya, like on 06 and 07
 const DEMO_ME = 'u-surya'
 
@@ -33,8 +34,9 @@ async function getMemberRows() {
     .from('hangout_members')
     .select('user_id, hangout_id, joined_at, profile:profiles(display_name, avatar_color)')
   if (error) {
-    throw error
+    throw error // the page's try/catch shows the message
   }
+  // flatten each row, so the name and colour sit beside the ids instead of inside profile
   return data.map((r) => ({
     user_id: r.user_id,
     hangout_id: r.hangout_id,
@@ -51,6 +53,7 @@ export async function getFriend(userId) {
     return rows.find((r) => r.user_id === userId) || null
   }
 
+  // maybeSingle gives one row or null, instead of an error when nobody matches
   const { data, error } = await supabase
     .from('profiles')
     .select('id, display_name, avatar_color')
@@ -103,6 +106,7 @@ async function demoPeople() {
   const rows = await getMemberRows()
   let people = []
   for (let r of rows) {
+    // someone in both sample hangouts has two rows, so only add them the first time
     if (!people.find((p) => p.user_id === r.user_id)) {
       people.push({
         user_id: r.user_id,
@@ -123,6 +127,7 @@ export async function searchPeople(text) {
     )
   }
 
+  // rpc runs a function inside the database (see schema.sql), so emails are matched there and never sent to the browser
   const { data, error } = await supabase.rpc('search_people', { q: text })
   if (error) {
     throw error
@@ -136,8 +141,8 @@ export async function searchPeople(text) {
 
 // your friendships split three ways: friends (accepted), pending (you asked), requests (they asked you)
 export async function getFriendships(myId) {
-  const me = hasSupabase ? myId : DEMO_ME
-  let rows = []
+  const me = hasSupabase ? myId : DEMO_ME // who "i" am
+  let rows = [] // every friendship i'm part of, filled by the demo or the database below
 
   if (!hasSupabase) {
     const people = await demoPeople()
@@ -153,6 +158,7 @@ export async function getFriendships(myId) {
     }
   } else {
     // the security rules only return friendships you're part of
+    // a friendship row has two people, so both profiles are joined in, named requester and addressee.
     const { data, error } = await supabase
       .from('friendships')
       .select(
@@ -166,9 +172,10 @@ export async function getFriendships(myId) {
     rows = data
   }
 
+  // sort each friendship into one of the three lists, by its status and who asked whom
   let lists = { friends: [], pending: [], requests: [] }
   for (let r of rows) {
-    const iAsked = r.requester_id === me
+    const iAsked = r.requester_id === me // true if i sent the request
     // the other person in this friendship
     const otherId = iAsked ? r.addressee_id : r.requester_id
     const otherProfile = iAsked ? r.addressee : r.requester
@@ -179,11 +186,11 @@ export async function getFriendships(myId) {
       since: r.accepted_at ? new Date(r.accepted_at).getTime() : 0, // when you became friends
     }
     if (r.status === 'accepted') {
-      lists.friends.push(other)
+      lists.friends.push(other) // accepted: friends, whoever asked
     } else if (iAsked) {
-      lists.pending.push(other)
+      lists.pending.push(other) // waiting on them
     } else {
-      lists.requests.push(other)
+      lists.requests.push(other) // waiting on me
     }
   }
   return lists
@@ -195,6 +202,7 @@ export async function sendFriendRequest(myId, userId) {
     demoFriendships.push({ requester_id: DEMO_ME, addressee_id: userId, status: 'pending' })
     return
   }
+  // a new row, its status starts as 'pending' (the database default)
   const { error } = await supabase
     .from('friendships')
     .insert({ requester_id: myId, addressee_id: userId })
@@ -213,6 +221,7 @@ export async function acceptFriendRequest(myId, userId) {
     }
     return
   }
+  // their request to me: they are the requester, i am the addressee
   const { error } = await supabase
     .from('friendships')
     .update({ status: 'accepted', accepted_at: new Date().toISOString() })

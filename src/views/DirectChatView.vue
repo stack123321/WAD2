@@ -15,15 +15,16 @@ const error = ref('')
 
 onMounted(async () => {
   try {
-    chat.value = await getDirectChat(route.params.chatId, auth.user?.id)
+    chat.value = await getDirectChat(route.params.chatId, auth.user?.id) // the id from the address
     if (!chat.value) {
+      // null: not my chat, or it doesn't exist
       error.value = 'Could not find this chat.'
     }
   } catch (err) {
     console.log(err)
     error.value = 'Could not load this chat.'
   }
-  loading.value = false
+  loading.value = false // runs after both success and failure
 })
 </script>
 
@@ -35,6 +36,7 @@ onMounted(async () => {
     <p v-else-if="error" class="text-danger mt-3">{{ error }}</p>
     <template v-else>
       <h1 class="h3 mt-2 mb-3">{{ chat.friend.display_name }}</h1>
+      <!-- the same chat box as hangouts, given :direct instead of :hangout -->
       <HangoutChat :direct="chat" :height="420" title="Chat" />
     </template>
   </main>

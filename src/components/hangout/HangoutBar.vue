@@ -38,6 +38,10 @@ const currentIndex = computed(() => {
   return STEPS.findIndex((step) => step.route === current)
 })
 
+// The steps either side of this one, for the ‹ › arrows (null at the first and last step)
+const prevStep = computed(() => STEPS[currentIndex.value - 1] ?? null)
+const nextStep = computed(() => STEPS[currentIndex.value + 1] ?? null)
+
 // "Fri 16 Oct · 7 PM"
 const startsAt = computed(() => {
   if (!props.hangout.starts_at) {
@@ -84,7 +88,7 @@ async function copyInvite() {
 
 <template>
   <header class="hangout-bar px-3 px-lg-5">
-    <div class="d-flex align-items-center gap-2 min-w-0">
+    <div class="name-group d-flex align-items-center gap-2 min-w-0">
       <span class="fw-bold text-truncate">{{ hangout.name }}</span>
       <span class="date-chip">{{ startsAt }}</span>
     </div>
@@ -105,20 +109,39 @@ async function copyInvite() {
       </template>
     </ol>
 
-    <!-- Phones and tablets: the 6 steps don't fit, so just say which step this is -->
-    <RouterLink
-      v-if="currentIndex !== -1"
-      class="step-compact d-xl-none"
-      :to="{ name: STEPS[currentIndex].route, params: { id: hangout.id } }"
-      aria-current="step"
-    >
-      <span class="step-num">{{ currentIndex + 1 }}</span>
-      <span
-        >Step {{ currentIndex + 1 }} of {{ STEPS.length }} · {{ STEPS[currentIndex].label }}</span
+    <!-- Phones and tablets: the 6 steps don't fit, so say which step this is, with arrows to the steps either side -->
+    <div v-if="currentIndex !== -1" class="step-nav d-flex d-xl-none align-items-center">
+      <RouterLink
+        v-if="prevStep"
+        class="step-arrow"
+        :to="{ name: prevStep.route, params: { id: hangout.id } }"
+        :aria-label="`Previous step: ${prevStep.label}`"
+        >‹</RouterLink
       >
-    </RouterLink>
+      <span v-else class="step-arrow disabled" aria-hidden="true">‹</span>
 
-    <div class="d-flex align-items-center gap-2">
+      <RouterLink
+        class="step-compact"
+        :to="{ name: STEPS[currentIndex].route, params: { id: hangout.id } }"
+        aria-current="step"
+      >
+        <span class="step-num">{{ currentIndex + 1 }}</span>
+        <span
+          >Step {{ currentIndex + 1 }} of {{ STEPS.length }} · {{ STEPS[currentIndex].label }}</span
+        >
+      </RouterLink>
+
+      <RouterLink
+        v-if="nextStep"
+        class="step-arrow"
+        :to="{ name: nextStep.route, params: { id: hangout.id } }"
+        :aria-label="`Next step: ${nextStep.label}`"
+        >›</RouterLink
+      >
+      <span v-else class="step-arrow disabled" aria-hidden="true">›</span>
+    </div>
+
+    <div class="invite-group d-flex align-items-center gap-2">
       <div class="avatar-stack d-none d-md-flex" :aria-label="`${members.length} members`">
         <MemberAvatar
           v-for="m in members"
@@ -266,6 +289,51 @@ async function copyInvite() {
   background: var(--fp-ink);
   border-color: var(--fp-ink);
   color: var(--fp-surface);
+}
+
+.step-nav {
+  gap: 0.25rem;
+}
+
+/* ‹ and › either side of "Step 3 of 6", big enough to tap */
+.step-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--fp-ink);
+  font-size: 1.4rem;
+  line-height: 1;
+  text-decoration: none;
+}
+
+a.step-arrow:hover {
+  background: var(--fp-bg);
+}
+
+.step-arrow.disabled {
+  color: var(--fp-border); /* no step that way, but it keeps the label from shifting */
+}
+
+/* On phones the arrows make the step label too wide to sit beside Invite, so it gets its own line:
+   name and Invite on top, then ‹ step › across the full width */
+@media (max-width: 767.98px) {
+  .name-group {
+    order: 1;
+    flex: 1 1 0; /* takes the space Invite leaves, and the name is cut with … if it is too long */
+  }
+
+  .invite-group {
+    order: 2;
+  }
+
+  .step-nav {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
 }
 
 .avatar-stack > * + * {

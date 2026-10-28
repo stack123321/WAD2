@@ -17,21 +17,23 @@ const props = defineProps({
   label: { type: String, default: '' },
 })
 
-const mapEl = ref(null)
+const mapEl = ref(null) // the div the map is drawn into, filled by ref="mapEl" in the template
+// leaflet objects are plain variables, not refs, because vue doesn't need to watch them
 let map = null
 let layers = null // a group holding the markers and lines, so we can clear and redraw them
 let stopMap = null // removes the map when the card goes away
 const justYou = ref(false) // shows "Add friends to find a fair midpoint"
 let points = [] // everything on the map, so it can be fitted again when the map changes size
 
+// clears everything and draws it again from the props, simpler than working out what changed
 function draw() {
-  if (!map) return
-  layers.clearLayers()
+  if (!map) return // not made yet
+  layers.clearLayers() // remove the old lines and markers
 
-  const placed = props.members.filter((m) => m.start_lat != null && m.start_lng != null)
-  points = placed.map((m) => [m.start_lat, m.start_lng])
+  const placed = props.members.filter((m) => m.start_lat != null && m.start_lng != null) // only people with a starting point
+  points = placed.map((m) => [m.start_lat, m.start_lng]) // as [lat, lng] pairs for fitting the view
   if (props.midpoint) points.push([props.midpoint.lat, props.midpoint.lng])
-  justYou.value = placed.length === 1 && !props.midpoint
+  justYou.value = placed.length === 1 && !props.midpoint // only me on the map, so show the "add friends" caption
 
   // thin dashed lines from each member to the midpoint, under the markers
   if (props.midpoint) {
@@ -97,8 +99,9 @@ function fit() {
   }
 }
 
+// leaflet needs the div to be on the page, so the map is made in onMounted and removed in onBeforeUnmount.
 onMounted(() => {
-  const created = createOneMap(mapEl.value)
+  const created = createOneMap(mapEl.value) // the shared singapore map, drawn into my div
   stopMap = created.stop
   map = created.map
 
@@ -120,9 +123,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  if (stopMap) stopMap()
+  if (stopMap) stopMap() // remove the map when the card goes away
 })
 
+// redraw when any of the three props change, deep so a change inside a member also counts
 watch(() => [props.members, props.midpoint, props.label], draw, { deep: true })
 </script>
 

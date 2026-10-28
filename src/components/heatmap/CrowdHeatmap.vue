@@ -42,10 +42,10 @@ let circles = null // a group holding all station circles, so we can clear them 
 
 // the slot as text, e.g. slot 37 is "6:30 pm"
 const timeLabel = computed(() => {
-  const hour = Math.floor(slot.value / 2)
-  const minutes = slot.value % 2 === 0 ? '00' : '30'
+  const hour = Math.floor(slot.value / 2) // 2 slots per hour, so slot 37 is hour 18
+  const minutes = slot.value % 2 === 0 ? '00' : '30' // even slots are on the hour, odd ones half past
   const suffix = hour < 12 ? 'am' : 'pm'
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12 // 0 and 12 both show as 12, 18 shows as 6
   return `${hour12}:${minutes} ${suffix}`
 })
 
@@ -68,6 +68,7 @@ function slotToDate(s) {
 }
 
 // asks the server for the crowd at the slider's time, then draws the circles
+// it runs when the slider is let go (@change), not on every small move, so dragging doesn't send dozens of requests.
 async function loadCrowd() {
   loading.value = true
   error.value = ''
@@ -213,6 +214,8 @@ function fitToGroup() {
   }
 }
 
+// leaflet draws into a real div on the page, so the map can only be made once vue has put that div on screen.
+// it also has to be removed when the page closes, otherwise coming back would try to draw a second map into the same spot.
 // runs once the page has the #crowd-map div, which is when leaflet can draw into it
 onMounted(() => {
   // the shared onemap map of singapore (same as 06), zoom buttons top right
@@ -237,6 +240,7 @@ onBeforeUnmount(() => {
   }
 })
 
+// leaflet doesn't know about vue, so when the props change these watchers redraw the map by hand.
 // (surya) a station tab was tapped (or put back), so show it on the map
 watch(
   () => props.preview,

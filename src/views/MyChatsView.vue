@@ -37,11 +37,12 @@ const error = ref('')
 const query = ref('')
 
 onMounted(async () => {
-  loadPlanning()
+  loadPlanning() // not awaited, the banner appears when ready
   loading.value = true
+  // hangout chats and one to one chats come from different tables, so both are loaded and turned into the same row shape for one list.
   try {
     const hangouts = await getMyHangouts()
-    const directs = await getMyDirectChats(auth.user?.id)
+    const directs = await getMyDirectChats(auth.user?.id) // ?. gives undefined instead of an error if nobody is logged in
     for (let h of hangouts) {
       chats.value.push({
         key: h.id,
@@ -54,7 +55,7 @@ onMounted(async () => {
       chats.value.push({
         key: d.id,
         name: d.friend.display_name,
-        members: [d.friend],
+        members: [d.friend], // just the friend's avatar
         to: { name: 'direct-chat', params: { chatId: d.id } },
       })
     }
@@ -69,11 +70,12 @@ onMounted(async () => {
 // newest message first like a messaging app. Chats with no messages keep their old order at the
 // bottom (sort keeps the order of equal items), and filter makes a new list so chats isn't reordered
 const shown = computed(() => {
-  const text = query.value.trim().toLowerCase()
+  const text = query.value.trim().toLowerCase() // lowercase both sides, so "mei" finds "Mei"
   const matching = chats.value.filter((c) => {
-    if (c.name.toLowerCase().includes(text)) return true
-    return c.members.some((m) => m.display_name.toLowerCase().includes(text))
+    if (c.name.toLowerCase().includes(text)) return true // the chat's name matches
+    return c.members.some((m) => m.display_name.toLowerCase().includes(text)) // or someone in it
   })
+  // b minus a puts the bigger (newer) time first
   return matching.sort((a, b) => alerts.lastMessageAt(b.key) - alerts.lastMessageAt(a.key))
 })
 </script>
@@ -102,6 +104,7 @@ const shown = computed(() => {
       </span>
     </div>
 
+    <!-- filters as you type (v-model), @submit.prevent stops enter from reloading the page -->
     <form class="mb-3" role="search" @submit.prevent>
       <label for="chat-search" class="visually-hidden">Search by hangout or person</label>
       <input
@@ -118,6 +121,7 @@ const shown = computed(() => {
 
     <section v-else id="chat-list" class="box">
       <p v-if="shown.length === 0" class="text-muted small mb-0">No chats found.</p>
+      <!-- each row: name in bold if unread, a red count, and everyone's avatars -->
       <router-link v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
         <span class="name" :class="{ unread: alerts.unreadIn(c.key) > 0 }">{{ c.name }}</span>
         <span v-if="alerts.unreadIn(c.key) > 0" class="badge rounded-pill bg-danger">
