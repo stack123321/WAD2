@@ -49,3 +49,6 @@ playwright-report/
 
 # The team uses npm (package-lock.json). A pnpm lockfile makes Vercel try pnpm and fail.
 pnpm-lock.yaml
+
+# local Claude Code files
+.claude/
