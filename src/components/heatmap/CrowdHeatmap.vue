@@ -368,7 +368,7 @@ watch(() => props.members, drawMembers, { deep: true })
   height: 28px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: var(--fp-primary);
+  background: #1d4ed8; /* blue, so it stands out from the green circles and the member pins */
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
   cursor: grab;
