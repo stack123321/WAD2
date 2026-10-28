@@ -79,6 +79,7 @@
         :nearest-station-name="spot.nearestStationName"
         :price-level="spot.priceLevel"
         :match-pct="spot.matchPct"
+        :veto-reason="spot.vetoReason"
         :tags="spot.tags"
         :added="addedIds.has(spot.id)"
         :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
@@ -216,7 +217,7 @@ import {
 } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
-import { matchScore, matchesHangoutVibe } from '@/utils/matchScore'
+import { hardVetoReason, matchScore, matchesHangoutVibe } from '@/utils/matchScore'
 import { willRainAt } from '@/services/weather'
 
 const route = useRoute()
@@ -261,7 +262,15 @@ const scoredSpots = computed(() =>
       vibes: hangout.hangout?.vibe,
       startAt: hangout.hangout?.starts_at,
       raining: raining.value,
-    midpoint: hasMidpoint.value
+      midpoint: hasMidpoint.value
+        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
+        : null,
+    }),
+    vetoReason: hardVetoReason(spot, hangout.members, {
+      vibes: hangout.hangout?.vibe,
+      startAt: hangout.hangout?.starts_at,
+      raining: raining.value,
+      midpoint: hasMidpoint.value
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
     }),

@@ -17,6 +17,8 @@ const props = defineProps({
   priceLevel: { type: Number, default: null },
   // 0-100 group match %, from src/utils/matchScore.js
   matchPct: { type: Number, default: null },
+  // Explanation shown when a hard veto forces the match to 0%
+  vetoReason: { type: String, default: null },
   tags: { type: Array, default: () => [] },
   added: { type: Boolean, default: false },
   // Route location for the spot details page; image and name link to it when set
@@ -78,6 +80,11 @@ const matchTone = computed(() => {
       >
         {{ matchPct }}% match
       </span>
+      <span v-if="matchPct === 0 && vetoReason"
+          class="spot-card__match spot-card__tag--veto"
+          :title="vetoReason"
+        >
+          {{ vetoReason }}</span>
 
       <p class="spot-card__meta mb-0">
         <span v-if="distance">
@@ -89,6 +96,7 @@ const matchTone = computed(() => {
 
       <ul class="spot-card__tags">
         <li v-for="tag in tags" :key="tag" class="spot-card__tag">{{ tag }}</li>
+        
       </ul>
 
       <button
@@ -231,5 +239,11 @@ const matchTone = computed(() => {
   border: 1px solid var(--fp-border);
   font-size: 0.75rem;
   white-space: nowrap;
+}
+
+.spot-card__tag--veto {
+  color: #b42318;
+  background: #fbe4e4;
+  border-color: #f3b4b4;
 }
 </style>

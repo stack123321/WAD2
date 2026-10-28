@@ -113,7 +113,7 @@ function evaluate(place, profiles = [], context = {}) {
 
   // ── 1. Hard vetoes ──
   if (startAt && endAt && !isOpenThroughout(place.openingHours, startAt, endAt)) {
-    return { score: 0, vetoReason: "It's closed for part of your hangout's time" }
+    return { score: 0, vetoReason: "Closed during your hangout's time" }
   }
   if (profiles.some((p) => p.step_free) && place.wheelchairAccessible === false) {
     return {
@@ -202,6 +202,11 @@ function evaluate(place, profiles = [], context = {}) {
  */
 export function matchScore(place, profiles = [], context = {}) {
   return evaluate(place, profiles, context).score
+}
+
+/** The hard-veto explanation, or null when a zero score came from normal scoring. */
+export function hardVetoReason(place, profiles = [], context = {}) {
+  return evaluate(place, profiles, context).vetoReason
 }
 
 /**
