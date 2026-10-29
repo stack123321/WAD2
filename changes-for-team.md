@@ -92,3 +92,25 @@ Layout check done at 375px, 768px and 1366px on 11 Vote, 12 Final plan and the "
 ### For others
 
 - **Surya (`MembersMap.vue`, used on 12):** thanks for the 44px zoom buttons on phones. On tablets and laptops they're still 30px. The map also cuts off pins at its edges at every width (on the demo, Woodlands at the top and Punggol under the zoom buttons). It looks like `fitBounds` runs before the column has its final size; calling `map.invalidateSize()` and then `fitBounds` again once it's on screen should fix it.
+
+## Eashvar (tests)
+
+Branch: `test/ci-and-coverage`
+
+### What changed
+
+| File | Change |
+|---|---|
+| `.github/workflows/tests.yml` (new) | **Tests now run on every PR into `main`** (and every push to it): lint, build, then all of `tests/e2e`. The PR gets a **Tests** check. No keys needed. If it's red, open the check and download `playwright-report` (screenshots of what broke). |
+| `playwright.config.js` | The tests start their own dev server on port 5198, always without the Supabase keys, so they never reuse your own server (5173) and give the same results on every laptop and on GitHub. Browser set to Singapore time. |
+| `tests/e2e/smoke.spec.js` | The main journey test (new hangout to final plan) works again: its fake spot now sits at whatever midpoint the page searches (it was fixed at Bishan, and 09's 1 km filter hid it once the midpoint became Marymount), and it answers 10's "one spot by id" request. |
+| New page tests | `landing`, `auth` (log in, sign up, forgot password), `preferences` (incl. the 4-step setup), `createHangout` (05), `startingPoints` (06), `explore` (09 filters, sort, Hide 0%, distance, shortlist, 3 per person, phone cards), `spotDetails` (10), `crowds`. Every page now has tests. |
+| `tests/e2e/layout.spec.js` (new) | Every page at 375, 768 and 1366px: fails if anything scrolls sideways (none do). Buttons under 44px are listed in the report without failing. |
+| `tests/live/account.spec.js`, `together.spec.js` (new) | Real accounts: wrong password, log out, preferences kept after reload, starting point saved; and two people: not a member until invited, invite link, the host sees the friend join live, a whole vote with live tally and both see the final plan. Run with `npm run test:live`; needs `E2E_EMAIL_2` / `E2E_PASSWORD_2` for the two-person test. |
+| `tests/e2e/assistant.spec.js` | The Ask box page tests skip themselves until the box is back on 09 (`fix/restore-ask-box`), then run again by themselves. |
+
+### For others
+
+- **Hugo (09):** `Go Vote!` and `Add to vote` are 31px tall on phones. The phone test in `explore.spec.js` is marked as a known failure; when they're 44px, Playwright reports it as "unexpectedly passed", so delete the `test.fail(...)` line. On 10, `Back to exploring`, `Open Google Maps` and `Add to Vote` are 31px.
+- **Matrix (02, 03):** on log in / sign up, `Show password`, `Forgot password?` and the switch link are 20–22px; on Preferences the choice chips are 37px.
+- **Everyone:** if your PR's Tests check is red because you changed what a page says or does on purpose, update the test that checks it (or ask me).

@@ -10,30 +10,42 @@ test.beforeEach(async ({ page }) => {
   await stubNearbySpots(page)
 })
 
+// One cafe right at the midpoint the page searches around. The new hangout's midpoint depends on
+// the sample starting points (Marymount at the moment, not Bishan), so the cafe follows the
+// search instead of sitting at a fixed place that 09's "Within 1 km" filter could hide.
+// 10 Spot details asks for the one spot by id (?id=), and for Google's summary (&summary=1).
 async function stubNearbySpots(page) {
-  await page.route('**/api/places**', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          source: 'google',
-          source_place_id: 'test-cafe',
-          name: 'Test Cafe',
-          category: 'cafe',
-          lat: 1.3508,
-          lng: 103.8485,
-          rating: 4.5,
-          review_count: 20,
-          price_level: 2,
-          image_url: null,
-          distance_m: 250,
-          nearest_station_name: 'Bishan',
-          station_distance_m: 300,
-          tags: [],
-        },
-      ]),
-    }),
-  )
+  let lat = 1.3508
+  let lng = 103.8485
+  await page.route('**/api/places**', (route) => {
+    const url = new URL(route.request().url())
+    if (url.searchParams.get('summary')) return route.fulfill({ json: null })
+    if (!url.searchParams.get('id')) {
+      lat = Number(url.searchParams.get('lat')) || lat
+      lng = Number(url.searchParams.get('lng')) || lng
+    }
+    const cafe = testCafe(lat, lng)
+    return route.fulfill({ json: url.searchParams.get('id') ? cafe : [cafe] })
+  })
+}
+
+function testCafe(lat, lng) {
+  return {
+    source: 'google',
+    source_place_id: 'test-cafe',
+    name: 'Test Cafe',
+    category: 'cafe',
+    lat,
+    lng,
+    rating: 4.5,
+    review_count: 20,
+    price_level: 2,
+    image_url: null,
+    distance_m: 250,
+    nearest_station_name: 'Bishan',
+    station_distance_m: 300,
+    tags: [],
+  }
 }
 
 const pages = [
@@ -67,7 +79,9 @@ test('Google Places calls stay off until enabled', async ({ page }) => {
   await page.goto('/hangouts/demo/explore')
   const toggle = page.getByRole('switch', { name: 'Google Places calls' })
   await expect(toggle).not.toBeChecked()
-  await expect(page.getByText('Google Places is off. Turn it on to find nearby spots.')).toBeVisible()
+  await expect(
+    page.getByText('Google Places is off. Turn it on to find nearby spots.'),
+  ).toBeVisible()
   expect(placesRequests).toBe(0)
 
   await toggle.check()
@@ -75,7 +89,9 @@ test('Google Places calls stay off until enabled', async ({ page }) => {
   expect(placesRequests).toBe(1)
 
   await toggle.uncheck()
-  await expect(page.getByText('Google Places is off. Turn it on to find nearby spots.')).toBeVisible()
+  await expect(
+    page.getByText('Google Places is off. Turn it on to find nearby spots.'),
+  ).toBeVisible()
   expect(placesRequests).toBe(1)
 })
 

@@ -27,8 +27,11 @@ The demo hangout and most services have sample data (see [Sample data](#sample-d
 | `npm run format` | Tidy formatting with Prettier |
 | `npm run build` | Production build into `dist/` |
 | `npx playwright install chromium` | One-time: download the test browser |
-| `npm run test:e2e` | Run the end-to-end tests in `tests/e2e/` |
+| `npm run test:e2e` | Run the end-to-end tests in `tests/e2e/` (they start their own keyless server on port 5198) |
 | `npx playwright test --ui` | Same, but watch the tests run |
+| `npm run test:live` | Run the live tests in `tests/live/` against the real Supabase project, with the test accounts in `.env.local` (`E2E_EMAIL`, `E2E_PASSWORD`, and `E2E_EMAIL_2`, `E2E_PASSWORD_2` for the two-person tests) |
+
+The end-to-end tests also run automatically on GitHub for every pull request into `main` (`.github/workflows/tests.yml`), with lint and the build. The PR shows a **Tests** check; if it fails, open it and download `playwright-report` to see what broke.
 
 `npm run dev` also runs the serverless functions in `api/` (via `scripts/dev-api.js`), so `/api/route`, `/api/crowd` and `/api/places` work locally with no extra setup. On Vercel the same files run as real serverless functions.
 
