@@ -3,7 +3,7 @@
 // with the current one highlighted, everyone's avatars, and an Invite button that copies the
 // hangout's invite link (for people who aren't your friends yet). Each step links to its page.
 // (Surya) A 💬 Chat button opens the group chat from any step, with the count of new messages.
-// Not on 06, which has its own Group chat button beside the heading.
+// On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
@@ -70,10 +70,17 @@ const startsAt = computed(() => {
   return `${day} · ${hour}${minutes} ${amPm}`
 })
 
-// (Surya) Group chat: opens the chat page, which then offers "← Back to <this step>"
+// (Surya) Group chat: opens the chat page, which then offers "← Back to <this step>". On 06 it
+// adds ?chat=1 to 06's own address instead, and 06 opens its chat panel
 const alerts = useAlertsStore()
-const showChat = computed(() => props.current !== 'starting-points')
 const unreadChat = computed(() => alerts.unreadIn(props.hangout.id))
+
+const chatLink = computed(() => {
+  if (props.current === 'starting-points') {
+    return { name: 'starting-points', params: { id: props.hangout.id }, query: { chat: '1' } }
+  }
+  return { name: 'chat', params: { hangoutId: props.hangout.id }, query: { from: chatFrom.value } }
+})
 
 // The chat page only has a back button for steps, so 10 Spot details goes back as Spots
 const chatFrom = computed(() => {
@@ -169,9 +176,8 @@ async function copyInvite() {
       </div>
       <!-- (Surya) the group chat, from any step; red number = new messages -->
       <RouterLink
-        v-if="showChat"
         class="chat-link"
-        :to="{ name: 'chat', params: { hangoutId: hangout.id }, query: { from: chatFrom } }"
+        :to="chatLink"
         :aria-label="unreadChat > 0 ? `Group chat, ${unreadChat} new` : 'Group chat'"
       >
         <span aria-hidden="true">💬</span>
@@ -194,7 +200,8 @@ async function copyInvite() {
 </template>
 
 <style scoped>
-/* (Surya) 💬 Chat: coral like 06's Group chat button, so it's the same thing everywhere */
+/* (Surya) 💬 Chat: filled coral so it stands out; square with slightly rounded corners, like the
+   app's other buttons */
 .chat-link {
   position: relative;
   display: inline-flex;
@@ -202,7 +209,7 @@ async function copyInvite() {
   gap: 0.3rem;
   min-height: 36px;
   padding: 0 0.75rem;
-  border-radius: 999px;
+  border-radius: var(--fp-radius-sm);
   background: var(--fp-accent);
   color: var(--fp-ink);
   font-size: 0.875rem;
