@@ -153,10 +153,9 @@ const noRestrictions = computed(() => prefs.dietary.length === 0)
 
 const setupStep = ref(0)
 const setupTotal = 4
-const setupStepLabel = computed(() => {
-  if (setupStep.value === 0) return 'Let’s get started'
-  return `Step ${setupStep.value} of ${setupTotal}`
-})
+// (Surya) what each setup step asks about, shown beside "Step 2 of 4"
+const setupStepNames = ['What you enjoy', 'Food', 'Budget', 'Travel & comfort']
+const setupStepLabel = computed(() => `Step ${setupStep.value} of ${setupTotal}`)
 
 async function nextSetupStep() {
   if (setupStep.value === 1) {
@@ -240,13 +239,32 @@ async function save() {
           }}
         </p>
       </div>
-      <div v-if="isSetup" class="progress-step">
-        <span>{{ setupStepLabel }}</span>
-        <div class="progress-step__bar">
-          <span :style="{ width: `${(setupStep / setupTotal) * 100}%` }"></span>
-        </div>
-      </div>
     </header>
+
+    <!-- (Surya) setup progress: 4 segments, one per step, filled as you go. Hidden on the
+         intro screen, where there's no progress yet and the empty line looked like a divider -->
+    <div
+      v-if="isSetup && setupStep > 0"
+      class="progress-step"
+      role="progressbar"
+      aria-label="Setup progress"
+      aria-valuemin="1"
+      :aria-valuemax="setupTotal"
+      :aria-valuenow="setupStep"
+    >
+      <div class="progress-step__text">
+        <span class="progress-step__label">{{ setupStepLabel }}</span>
+        <span class="progress-step__name">{{ setupStepNames[setupStep - 1] }}</span>
+      </div>
+      <div class="progress-step__segs" aria-hidden="true">
+        <span
+          v-for="n in setupTotal"
+          :key="n"
+          class="progress-step__seg"
+          :class="{ 'progress-step__seg--done': n <= setupStep }"
+        ></span>
+      </div>
+    </div>
 
     <div v-if="!userId && auth.ready" class="panel text-center">
       <p class="mb-3">Log in to set your preferences.</p>
@@ -265,7 +283,7 @@ async function save() {
 
     <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
       <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
-        <h2 class="panel__title">Tell us what you like</h2>
+        <h2 class="panel__title">4 quick questions</h2>
         <p class="panel__sub">
           Your answers help Fairpoint suggest places that work for you and your group.
         </p>
@@ -486,26 +504,51 @@ async function save() {
   color: var(--fp-muted);
 }
 
+/* (Surya) setup progress: full width, in line with the title on the left and the buttons on the right */
 .progress-step {
-  width: 190px;
-  color: var(--fp-muted);
-  font-size: 0.8rem;
-  text-align: right;
+  margin-bottom: 1rem;
 }
 
-.progress-step__bar {
-  height: 4px;
-  margin-top: 0.6rem;
+.progress-step__text {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.progress-step__label {
+  font-weight: 700;
+  color: var(--fp-ink);
+}
+
+.progress-step__name {
+  color: var(--fp-muted);
+}
+
+/* one segment per step */
+.progress-step__segs {
+  display: flex;
+  gap: 6px;
+}
+
+.progress-step__seg {
+  flex: 1;
+  height: 8px;
   border-radius: 999px;
   background: var(--fp-border);
-  overflow: hidden;
+  transition: background 0.2s;
 }
 
-.progress-step__bar span {
-  display: block;
-  width: 100%;
-  height: 100%;
+.progress-step__seg--done {
   background: var(--fp-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-step__seg {
+    transition: none;
+  }
 }
 
 .prefs__grid {
@@ -517,8 +560,6 @@ async function save() {
 
 .prefs__grid--setup {
   grid-template-columns: minmax(0, 1fr);
-  max-width: 680px;
-  margin-inline: auto;
 }
 
 .prefs__grid--setup .prefs__col {
@@ -531,8 +572,6 @@ async function save() {
 }
 
 .setup-intro {
-  max-width: 680px;
-  margin-inline: auto;
   text-align: center;
 }
 
@@ -801,10 +840,6 @@ async function save() {
 @media (max-width: 767.98px) {
   .prefs__grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .prefs__grid--setup {
-    max-width: none;
   }
 
   .dietary-panel {
