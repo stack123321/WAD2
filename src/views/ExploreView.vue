@@ -848,7 +848,7 @@ async function selectSpot(id) {
     height: 44px;
     padding: 0 1rem;
     border: 0;
-    border-radius: 50%;
+    border-radius: 999px;
     background: rgb(0 0 0 / 45%);
     color: #fff;
     font-size: 0.875rem;
@@ -939,6 +939,14 @@ async function selectSpot(id) {
     position: absolute;
     inset: 0;
     aspect-ratio: auto;
+  }
+
+  :deep(.spot-card__image::after) {
+    content: '';
+    position: absolute;
+    inset: 35% 0 0;
+    background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 72%));
+    pointer-events: none;
   }
 
   :deep(.spot-card__image img) {

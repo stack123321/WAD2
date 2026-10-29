@@ -32,10 +32,13 @@ const spot = ref(null)
 const spotError = ref('')
 const summary = ref(null)
 const summaryLoading = ref(false)
+const activeImage = ref(0)
+const imageCarousel = ref(null)
 watch(
   () => [route.params.spotId, googlePlacesEnabled.value],
   async ([id, enabled], _, onCleanup) => {
     spot.value = null
+    activeImage.value = 0
     summary.value = null
     summaryLoading.value = false
     spotError.value = ''
@@ -47,7 +50,9 @@ watch(
     const controller = new AbortController()
     onCleanup(() => controller.abort())
     try {
-      spot.value = await loadSpot(String(id), { signal: controller.signal })
+      // Explore caches the first thumbnail for each spot. Refresh here so the details
+      // view automatically receives the complete photo gallery without a manual reload.
+      spot.value = await loadSpot(String(id), { signal: controller.signal, force: true })
     } catch (error) {
       if (!controller.signal.aborted) {
         spotError.value = `Could not load this spot: ${error.message}`
@@ -72,6 +77,29 @@ const price = computed(() => {
   if (level === undefined || level === null) return null
   return level === 0 ? 'Free' : '$'.repeat(level)
 })
+
+const imageUrls = computed(() => spot.value?.imageUrls ?? [])
+
+function showPreviousImage() {
+  scrollToImage((activeImage.value - 1 + imageUrls.value.length) % imageUrls.value.length)
+}
+
+function showNextImage() {
+  scrollToImage((activeImage.value + 1) % imageUrls.value.length)
+}
+
+function scrollToImage(index) {
+  activeImage.value = index
+  imageCarousel.value?.scrollTo({
+    left: imageCarousel.value.clientWidth * index,
+    behavior: 'smooth',
+  })
+}
+
+function updateActiveImage(event) {
+  const carousel = event.currentTarget
+  activeImage.value = Math.round(carousel.scrollLeft / carousel.clientWidth)
+}
 
 const distance = computed(() => {
   const m = spot.value?.stationDistanceM
@@ -158,8 +186,52 @@ const reasons = computed(() =>
     <p v-if="spotError" class="spot__error text-secondary" role="status">{{ spotError }}</p>
 
     <section class="spot__preview card-box">
-      <div v-if="googlePlacesEnabled && spot?.imageUrl" class="preview-image">
-        <img :src="spot.imageUrl" :alt="spot.name" />
+      <div
+        v-if="googlePlacesEnabled && imageUrls.length"
+        class="preview-image"
+        ref="imageCarousel"
+        @scroll.passive="updateActiveImage"
+      >
+        <div class="preview-image__track">
+          <img
+            v-for="(imageUrl, index) in imageUrls"
+            :key="imageUrl"
+            :src="imageUrl"
+            :alt="`${spot.name} photo ${index + 1}`"
+            class="preview-image__slide"
+            draggable="false"
+          />
+        </div>
+        <template v-if="imageUrls.length > 1 && activeImage > 0">
+          <button
+            type="button"
+            class="preview-image__control preview-image__control--previous"
+            aria-label="Previous photo"
+            @click="showPreviousImage"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            class="preview-image__control preview-image__control--next"
+            aria-label="Next photo"
+            @click="showNextImage"
+          >
+            ›
+          </button>
+          <div class="preview-image__indicators" aria-label="Photo selection">
+            <button
+              v-for="(_, index) in imageUrls"
+              :key="index"
+              type="button"
+              class="preview-image__indicator"
+              :class="{ 'is-active': index === activeImage }"
+              :aria-label="`Show photo ${index + 1}`"
+              :aria-current="index === activeImage ? 'true' : undefined"
+              @click="scrollToImage(index)"
+            />
+          </div>
+        </template>
       </div>
       <BaseMap
         v-else-if="spot"
@@ -286,8 +358,8 @@ const reasons = computed(() =>
   grid-template-columns: repeat(2, 1fr);
   grid-template-areas:
     'nav nav'
-    'preview preview'
     'info info'
+    'preview preview'
     'about traveltime'
     'criteria weather';
   gap: 1rem;
@@ -400,7 +472,78 @@ const reasons = computed(() =>
   width: 100%;
   max-height: 360px;
   object-fit: cover;
+}
+
+.preview-image {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-radius: var(--fp-radius-sm);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.preview-image::-webkit-scrollbar {
+  display: none;
+}
+
+.preview-image__track {
+  display: flex;
+  width: 100%;
+}
+
+.preview-image__slide {
+  flex: 0 0 100%;
+  min-width: 100%;
+  scroll-snap-align: start;
+}
+
+.preview-image__control {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.preview-image__control--previous {
+  left: 0.75rem;
+}
+
+.preview-image__control--next {
+  right: 0.75rem;
+}
+
+.preview-image__indicators {
+  position: absolute;
+  right: 0;
+  bottom: 0.75rem;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.preview-image__indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 40%);
+}
+
+.preview-image__indicator.is-active {
+  background: #fff;
 }
 
 .preview-map {
@@ -421,8 +564,8 @@ const reasons = computed(() =>
     grid-template-columns: 1fr;
     grid-template-areas:
       'nav'
-      'preview'
       'info'
+      'preview'
       'criteria'
       'crowd'
       'traveltime'

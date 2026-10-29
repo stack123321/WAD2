@@ -86,6 +86,9 @@ function toPlace(p, centre, fallbackCategory) {
   const lat = p.location.latitude
   const lng = p.location.longitude
   const station = nearestStation({ lat, lng })
+  const imageUrls = (p.photos ?? [])
+    .slice(0, 6)
+    .map((photo) => `/api/place-photo?name=${encodeURIComponent(photo.name)}`)
   return {
     source: 'google',
     source_place_id: p.id,
@@ -98,7 +101,8 @@ function toPlace(p, centre, fallbackCategory) {
     rating: p.rating ?? null,
     review_count: p.userRatingCount ?? 0,
     price_level: PRICE_LEVELS[p.priceLevel] ?? null,
-    image_url: p.photos?.[0] ? `/api/place-photo?name=${encodeURIComponent(p.photos[0].name)}` : null,
+    image_url: imageUrls[0] ?? null,
+    image_urls: imageUrls,
     distance_m: centre ? Math.round(distanceKm(centre, { lat, lng }) * 1000) : null,
     address: p.formattedAddress ?? null,
     google_maps_uri: p.googleMapsUri ?? null,
