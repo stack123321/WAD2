@@ -88,6 +88,25 @@ export async function createHangout(input) {
 }
 
 /**
+ * (Surya) Change a hangout's name, date and vibe after it's made ("Details" in the step bar,
+ * 05 in edit mode). Only the host can (the "hangouts: host edits" rule); .select() turns a
+ * non-host's update, which the rule skips without an error, into one.
+ * @param {string} id hangout uuid ("demo" is not saved)
+ * @param {{ name: string, starts_at: string, vibe: string[] }} fields
+ */
+export async function updateHangoutDetails(id, fields) {
+  if (id.startsWith('demo') || !hasSupabase) return
+
+  const { data, error } = await supabase
+    .from('hangouts')
+    .update({ name: fields.name, starts_at: fields.starts_at, vibe: fields.vibe })
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (data.length === 0) throw new Error('Only the host can change the hangout’s details.')
+}
+
+/**
  * Save one member's starting point. Used by 06 Starting points (Surya).
  * You can save your own; in host mode the host can save anyone's. The security rules in
  * supabase/schema.sql ("members: edit own row") enforce that, not this function.

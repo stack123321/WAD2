@@ -7,9 +7,18 @@
 // (Surya, improve/user-friendly-customised: friends list with search, quick dates, optional name
 // with a suggestion, short "why" notes, a remembered switch, a summary, and a hint saying what's
 // missing when Create is greyed out. "Voting closes" moved to 11 Vote, where the host starts it.)
+// (Surya) Also opens in edit mode at /hangouts/:id/edit ("Details" in the step bar): the host
+// changes the name, date, time or vibe after the hangout is made. People are managed on 06.
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { createHangout, getHangout, getPastFriends, makeInviteCode } from '@/services/hangouts'
+import {
+  createHangout,
+  getHangout,
+  getPastFriends,
+  makeInviteCode,
+  updateHangoutDetails,
+} from '@/services/hangouts'
+import { useHangoutStore } from '@/stores/hangout'
 import { finalSpot, repeatHangout } from '@/services/goAgain'
 import { isMockHangout } from '@/services/votes'
 import {
@@ -116,6 +125,9 @@ const friendsLoading = ref(true)
 const friendsError = ref('')
 
 async function loadFriends() {
+  if (isEdit) {
+    return // edit mode doesn't pick people (that's on 06)
+  }
   friendsLoading.value = true
   friendsError.value = ''
   try {
@@ -165,6 +177,92 @@ async function loadFriends() {
 }
 
 onMounted(loadFriends)
+
+// (Surya) Edit mode: "Details" in the step bar opens /hangouts/:id/edit, filled in with the
+// hangout's name, date, time and vibe. Only the host can save (the database checks it too).
+const isEdit = route.name === 'edit-hangout'
+const editId = isEdit ? route.params.id : ''
+const store = useHangoutStore()
+const editLoaded = ref(false)
+
+const canEdit = computed(() => {
+  if (!store.hangout) {
+    return false
+  }
+  if (isMockHangout(editId)) {
+    return true // the demo: anyone can try it (nothing is saved)
+  }
+  return Boolean(auth.user) && store.hangout.host_id === auth.user.id
+})
+
+// Where Back, Cancel and Save go: the step you came from (?from=), or 06 Starting points
+const STEP_PAGES = ['starting-points', 'transport', 'midpoint', 'explore', 'vote', 'final-plan']
+const backTo = computed(() => {
+  let page = 'starting-points'
+  if (STEP_PAGES.includes(route.query.from)) {
+    page = route.query.from
+  }
+  return { name: page, params: { id: editId } }
+})
+
+// "2026-10-16T11:00:00Z" → "2026-10-16" and "19:00", in Singapore time
+function sgParts(iso) {
+  const date = new Date(iso)
+  const day = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' }) // YYYY-MM-DD
+  const time = date.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Singapore',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return { day: day, time: time }
+}
+
+async function loadEdit() {
+  if (!isEdit) {
+    return
+  }
+  await store.load(editId)
+  if (store.hangout) {
+    form.name = store.hangout.name
+    form.vibe = [...(store.hangout.vibe ?? [])]
+    if (store.hangout.starts_at) {
+      const parts = sgParts(store.hangout.starts_at)
+      form.date = parts.day
+      form.time = parts.time
+    }
+  }
+  editLoaded.value = true
+}
+
+onMounted(loadEdit)
+
+// Everyone in the hangout, for the summary in edit mode
+const memberNames = computed(() => {
+  if (!isEdit || !store.hangout) {
+    return []
+  }
+  const names = []
+  for (const m of store.members) {
+    names.push(m.display_name)
+  }
+  return names
+})
+
+async function saveEdit(name) {
+  busy.value = true
+  try {
+    const fields = { name: name, starts_at: startsAt.value.toISOString(), vibe: [...form.vibe] }
+    await updateHangoutDetails(editId, fields)
+    // the step bar shows the new name and date straight away
+    store.hangout.name = fields.name
+    store.hangout.starts_at = fields.starts_at
+    store.hangout.vibe = fields.vibe
+    router.push(backTo.value)
+  } catch (e) {
+    error.value = e.message || 'Couldn’t save the changes. Please try again.'
+  }
+  busy.value = false
+}
 
 // (Surya) "Go again" on a past hangout opens this page with ?again=<its id> (and ?with= for the
 // group): same group, same place and starting points, so you only pick a new date and go
@@ -437,6 +535,12 @@ async function submit() {
     name = nameIdea.value
   }
 
+  // (Surya) edit mode: save the changes instead of making a new hangout
+  if (isEdit) {
+    await saveEdit(name)
+    return
+  }
+
   busy.value = true
 
   // (Surya) Go again: copy the group, place and trips, then open the final plan.
@@ -506,11 +610,15 @@ async function submit() {
 
 <template>
   <main class="container create">
-    <RouterLink class="back" :to="{ name: 'dashboard' }">&larr; My hangouts</RouterLink>
+    <RouterLink v-if="isEdit" class="back" :to="backTo">&larr; Back</RouterLink>
+    <RouterLink v-else class="back" :to="{ name: 'dashboard' }">&larr; My hangouts</RouterLink>
 
     <header class="create__header">
-      <h1 class="create__title">New hangout</h1>
-      <p class="create__sub">Pick a day and your friends. That’s it.</p>
+      <h1 class="create__title">{{ isEdit ? 'Hangout details' : 'New hangout' }}</h1>
+      <p v-if="isEdit" class="create__sub">
+        Change the name, date or vibe. Everyone in the hangout sees the change.
+      </p>
+      <p v-else class="create__sub">Pick a day and your friends. That’s it.</p>
     </header>
 
     <!-- (Surya) Go again: what's copied from last time, so you only need a date -->
@@ -533,7 +641,14 @@ async function submit() {
       </RouterLink>
     </div>
 
-    <form id="create-hangout" class="create__grid" novalidate @submit.prevent="submit">
+    <!-- (Surya) edit mode: wait for the hangout, and only the host can change it -->
+    <p v-if="isEdit && !editLoaded" class="text-secondary">Loading the hangout…</p>
+    <div v-else-if="isEdit && !canEdit" class="again-box" role="alert">
+      <p class="mb-2">Only the host can change the hangout’s details.</p>
+      <RouterLink class="btn btn-primary" :to="backTo">&larr; Back</RouterLink>
+    </div>
+
+    <form v-else id="create-hangout" class="create__grid" novalidate @submit.prevent="submit">
       <!-- Hangout details -->
       <section class="panel details">
         <h2 class="panel__title">Hangout details</h2>
@@ -604,7 +719,7 @@ async function submit() {
         />
 
         <!-- Shown (not folded away): it decides who adds the starting points -->
-        <div class="switch-row field">
+        <div v-if="!isEdit" class="switch-row field">
           <div>
             <label for="hangout-self-start" class="switch-row__label">
               Let friends add where they’re coming from
@@ -646,8 +761,17 @@ async function submit() {
       </section>
 
       <div class="side">
+        <!-- (Surya) edit mode: people are added and removed on 06 -->
+        <section v-if="isEdit" class="panel">
+          <h2 class="panel__title mb-1">Who’s coming</h2>
+          <p class="mb-2">{{ memberNames.join(', ') }}</p>
+          <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
+            Add or remove people on Starting points →
+          </RouterLink>
+        </section>
+
         <!-- Who's coming? Ticked friends are added when the hangout is created -->
-        <section class="panel">
+        <section v-else class="panel">
           <div class="d-flex justify-content-between align-items-baseline gap-2">
             <h2 class="panel__title mb-1">Who’s coming?</h2>
             <span v-if="selectedPeople.length > 0" class="small text-secondary"
@@ -776,7 +900,8 @@ async function submit() {
             <dt>Vibe</dt>
             <dd>{{ vibeSummary }}</dd>
             <dt>Who</dt>
-            <dd>
+            <dd v-if="isEdit">{{ memberNames.join(', ') }}</dd>
+            <dd v-else>
               You<template v-if="selectedNames.length > 0"
                 >, {{ selectedNames.join(', ') }}</template
               >
@@ -795,14 +920,18 @@ async function submit() {
               class="spinner-border spinner-border-sm me-2"
               aria-hidden="true"
             ></span>
-            Create &amp; add starting points &rarr;
+            <template v-if="isEdit">Save changes</template>
+            <template v-else>Create &amp; add starting points &rarr;</template>
           </button>
           <!-- Why the Create button is greyed out -->
           <p v-if="missingHint && !busy" id="create-hint" class="missing-hint">{{ missingHint }}</p>
           <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">
             {{ error }}
           </p>
-          <RouterLink class="btn btn-link btn-cancel w-100" :to="{ name: 'dashboard' }">
+          <RouterLink
+            class="btn btn-link btn-cancel w-100"
+            :to="isEdit ? backTo : { name: 'dashboard' }"
+          >
             Cancel
           </RouterLink>
         </section>

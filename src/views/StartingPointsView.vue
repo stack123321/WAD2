@@ -8,11 +8,10 @@
 // Reads: hangout_members · Writes: start_label, start_lat, start_lng (mine, or anyone's in host mode)
 // The pieces live in components: PlaceSearch, GroupList, MembersMap. The step bar on top
 // (HangoutBar) is added for every hangout page in App.vue.
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
-import { useAlertsStore } from '@/stores/alerts'
 import { reverseGeocode } from '@/services/onemap'
 import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
@@ -26,7 +25,6 @@ import { centroid } from '@/utils/midpoint'
 const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
-const alerts = useAlertsStore()
 
 // The demo hangout has sample people, so there you're Surya (starting from Holland Village),
 // even when logged in. In a real hangout you're the logged-in user.
@@ -63,6 +61,7 @@ onMounted(async () => {
   }
 
   loadLastPlace()
+  openChatFromBar() // came here from the step bar's Chat on another step
 
   // the page is on screen now, so we can measure how much height is left for it
   await nextTick()
@@ -127,7 +126,8 @@ const showLastPlace = computed(() => {
   return me.value.start_label !== lastPlace.value.label
 })
 
-// Part (g) Group chat opens from the 💬 button instead of taking up space on the page
+// Part (g) Group chat opens in a side panel (so the map stays in view): from the step bar's 💬 Chat
+// (it adds ?chat=1), "Reply" on the newest message, or "Open chat" after a reminder
 const showChat = ref(false)
 const chatCloseBtn = ref(null) // the ✕ button, so we can move the keyboard focus into the panel
 
@@ -138,6 +138,21 @@ async function openChat() {
     chatCloseBtn.value.focus()
   }
 }
+
+// The step bar's Chat: open the panel, then take ?chat=1 out of the address again
+const router = useRouter()
+
+function openChatFromBar() {
+  if (route.query.chat !== '1' || !me.value) {
+    return
+  }
+  openChat()
+  const query = { ...route.query }
+  delete query.chat
+  router.replace({ query })
+}
+
+watch(() => route.query.chat, openChatFromBar)
 
 // Part (h) "Add friends" starts folded away (most people add friends when creating the hangout)
 const showAddFriends = ref(false)
@@ -434,9 +449,6 @@ const savedText = computed(() => {
   const n = waitingNames.value.length
   return `${joinNames(waitingNames.value)} ${n === 1 ? 'is' : 'are'} still adding theirs. You don’t need to wait for them.`
 })
-
-// (Surya) New messages in this hangout's chat (Ryan's unread counts), shown on the chat button
-const unreadChat = computed(() => alerts.unreadIn(route.params.id))
 </script>
 
 <template>
@@ -456,25 +468,8 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
     <div ref="pageRow" class="row g-0 fill-row" :style="{ '--fill-height': fillHeight }">
       <!-- Left panel: search + group -->
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
-        <div class="d-flex justify-content-between align-items-start gap-3">
-          <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
-          <!-- Group chat opens in a side panel; the red number = new messages -->
-          <button
-            v-if="me"
-            type="button"
-            class="chat-btn"
-            :aria-label="unreadChat > 0 ? `Open group chat, ${unreadChat} new` : 'Open group chat'"
-            :aria-expanded="showChat"
-            aria-controls="chat-panel"
-            @click="openChat"
-          >
-            <span aria-hidden="true">💬</span>
-            <span class="chat-btn__label">Group chat</span>
-            <span v-if="unreadChat > 0" class="chat-badge" aria-hidden="true">{{
-              unreadChat > 9 ? '9+' : unreadChat
-            }}</span>
-          </button>
-        </div>
+        <!-- (Surya) the group chat is the 💬 Chat button in the step bar, like on every step -->
+        <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
         <!-- Personal status: what you need to do, or who you're waiting for -->
         <!-- Saved: a clear next step at the top. Otherwise: what you need to do -->
         <div v-if="showSavedBox" class="saved-box" role="status">
@@ -660,46 +655,6 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
   font-weight: 600;
 }
 
-/* 💬 round chat button next to the heading. (Surya) Filled coral (the accent colour) so it
-   stands out from the green buttons; dark text, because white on coral is too faint to read */
-.chat-btn {
-  position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 44px;
-  padding: 0 0.9rem;
-  border: 1px solid var(--fp-accent);
-  border-radius: 999px;
-  background: var(--fp-accent);
-  color: var(--fp-ink);
-  font-weight: 700;
-  box-shadow: var(--fp-shadow);
-  white-space: nowrap;
-}
-
-.chat-btn:hover {
-  background: color-mix(in srgb, var(--fp-accent) 85%, #000);
-}
-
-/* red count of new messages */
-.chat-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  border: 2px solid var(--fp-surface); /* separates the red badge from the coral button */
-  background: #d93025;
-  color: #fff;
-  font-size: 0.75rem;
-  line-height: 18px; /* 22px minus the 2px border top and bottom */
-  text-align: center;
-}
-
 /* green "saved" box with the Next button */
 .saved-box {
   margin: 0.25rem 0 1rem;
@@ -713,13 +668,6 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
 .fill-btn {
   min-height: 44px;
   font-weight: 600;
-}
-
-/* phones: just the icon, so the heading has room */
-@media (max-width: 400px) {
-  .chat-btn__label {
-    display: none;
-  }
 }
 
 /* "📍 Use Holland Village MRT again" */
