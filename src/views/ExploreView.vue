@@ -15,7 +15,7 @@
     </div>
   </main>
 
-  <div v-else class="nearby-page">
+  <div v-else class="nearby-page px-3 py-4">
     <div class="content">
     <div class="main-col">
     <section class="head">
