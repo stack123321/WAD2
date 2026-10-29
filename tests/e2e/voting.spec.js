@@ -5,8 +5,9 @@
 // "Mark as done" only works once the hangout has started. Starting the vote: on the second sample
 // hangout (still collecting) the host starts it and voting opens, the button is blocked once the
 // hangout's start time has passed, and someone who isn't in a hangout is told they can't vote.
-// Tie-break: a tie after the deadline is settled by spinning the wheel. On a phone (375px) the
-// pages fit and every button is at least 44px tall. In the first mock, Ryan (the host, and "me" in
+// Tie-break: a tie after the deadline is settled by spinning the wheel. On a phone, a tablet and
+// a laptop (375, 768 and 1366px), 11, 12 and the debrief fit the screen in every state and every
+// button is at least 44px tall. In the first mock, Ryan (the host, and "me" in
 // demo mode) and Hugo voted for Mock Cafe, Nicole for the Board Game Cafe, and Surya hasn't voted.
 // The browser clock is fixed before the demo deadline (15 Oct 2026, 9 pm SGT) so voting is open,
 // except where a test moves it later.
@@ -275,27 +276,71 @@ test.describe('Tie-break wheel', () => {
   })
 })
 
-test.describe('On a phone', () => {
-  for (const path of ['/hangouts/demo/vote', '/hangouts/demo-2/vote', '/hangouts/demo/plan']) {
-    test(`${path} fits the screen and its buttons are easy to tap`, async ({ page }) => {
-      await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
-      await page.setViewportSize({ width: 375, height: 812 })
-      await page.goto(path)
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+// Each page and state the layout check covers, and how to reach it on the demo hangout
+const layoutStates = {
+  'voting open (/vote)': async (page) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+  },
+  'host starting the vote (/vote)': async (page) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo-2/vote')
+  },
+  'the tie-break wheel (/vote)': async (page) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.clock.install({ time: new Date('2026-10-14T22:00:00+08:00') })
+    await page.goto('/hangouts/demo/vote')
+    await voteButton(page, hawker).click()
+    await page.clock.fastForward('24:00:00')
+    await expect(page.getByRole('button', { name: 'Spin the wheel' })).toBeVisible()
+  },
+  'the leader, not confirmed (/plan)': async (page) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+    await page.goto('/hangouts/demo/plan')
+  },
+  'confirmed and done (/plan)': async (page) => {
+    await page.clock.setFixedTime(new Date('2026-10-16T21:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+    await page.getByRole('button', { name: 'Close vote' }).click()
+    await page.getByRole('button', { name: 'Mark as done' }).click()
+    await expect(page.getByText('✓ Done')).toBeVisible()
+  },
+  'how it went (/debrief)': async (page) => {
+    await page.clock.setFixedTime(new Date('2026-10-16T21:00:00+08:00'))
+    await page.goto('/hangouts/demo/vote')
+    await page.getByRole('button', { name: 'Close vote' }).click()
+    await page.getByRole('button', { name: 'Mark as done' }).click()
+    await page.getByRole('link', { name: 'See how it went' }).click()
+  },
+}
 
-      const layout = await page.evaluate(() => ({
-        pageWidth: document.documentElement.scrollWidth,
-        tooSmall: [...document.querySelectorAll('main button, main .btn, main select')]
-          .filter((el) => el.offsetParent !== null)
-          .map((el) => ({
-            control: el.getAttribute('aria-label') || el.textContent.trim(),
-            height: Math.round(el.getBoundingClientRect().height),
-          }))
-          .filter((c) => c.height < 44),
-      }))
+for (const [device, width, height] of [
+  ['a phone', 375, 812],
+  ['a tablet', 768, 1024],
+  ['a laptop', 1366, 768],
+]) {
+  test.describe(`On ${device} (${width}px)`, () => {
+    for (const [state, open] of Object.entries(layoutStates)) {
+      test(`${state} fits the screen and its buttons are easy to tap`, async ({ page }) => {
+        await page.setViewportSize({ width, height })
+        await open(page)
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
-      expect(layout.pageWidth).toBeLessThanOrEqual(375)
-      expect(layout.tooSmall).toEqual([])
-    })
-  }
-})
+        // Surya's map (Leaflet) has its own zoom buttons and pins, so it's left out here
+        const layout = await page.evaluate(() => ({
+          pageWidth: document.documentElement.scrollWidth,
+          tooSmall: [...document.querySelectorAll('main button, main .btn, main select')]
+            .filter((el) => el.offsetParent !== null && !el.closest('.leaflet-container'))
+            .map((el) => ({
+              control: el.getAttribute('aria-label') || el.textContent.trim(),
+              height: Math.round(el.getBoundingClientRect().height),
+            }))
+            .filter((c) => c.height < 44),
+        }))
+
+        expect(layout.pageWidth).toBeLessThanOrEqual(width)
+        expect(layout.tooSmall).toEqual([])
+      })
+    }
+  })
+}
