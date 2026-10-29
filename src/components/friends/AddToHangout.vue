@@ -78,4 +78,12 @@ const choices = computed(() =>
     min-width: 9rem;
   }
 }
+
+/* each menu row is 44px tall too, so it's easy to tap */
+.dropdown-item {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem; /* the space between the hangout name and its date */
+}
 </style>

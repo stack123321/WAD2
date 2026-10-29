@@ -9,6 +9,7 @@ const CATEGORY_TYPES = {
   food: ['restaurant', 'meal_takeaway', 'food_court'],
   activity: ['amusement_center', 'bowling_alley', 'movie_theater', 'museum', 'karaoke', 'gym'],
   outdoor: ['park'],
+  shopping: ['shopping_mall', 'department_store', 'clothing_store', 'book_store'],
 }
 const ALL_CATEGORIES = Object.keys(CATEGORY_TYPES)
 

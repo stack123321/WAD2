@@ -2,10 +2,13 @@
 // Owner: Surya. The bar under the navbar on pages 06–12 (Figma): hangout name, date, the 6 steps
 // with the current one highlighted, everyone's avatars, and an Invite button that copies the
 // hangout's invite link (for people who aren't your friends yet). Each step links to its page.
+// (Surya) A 💬 Chat button opens the group chat from any step, with the count of new messages.
+// Not on 06, which has its own Group chat button beside the heading.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import { useAlertsStore } from '@/stores/alerts'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs id, name, starts_at, invite_code
@@ -65,6 +68,19 @@ const startsAt = computed(() => {
     amPm = 'AM'
   }
   return `${day} · ${hour}${minutes} ${amPm}`
+})
+
+// (Surya) Group chat: opens the chat page, which then offers "← Back to <this step>"
+const alerts = useAlertsStore()
+const showChat = computed(() => props.current !== 'starting-points')
+const unreadChat = computed(() => alerts.unreadIn(props.hangout.id))
+
+// The chat page only has a back button for steps, so 10 Spot details goes back as Spots
+const chatFrom = computed(() => {
+  if (props.current === 'spot-details') {
+    return 'explore'
+  }
+  return props.current
 })
 
 // Invite: copy the hangout's link. Friends who open it log in and join this hangout.
@@ -151,6 +167,19 @@ async function copyInvite() {
           :size="30"
         />
       </div>
+      <!-- (Surya) the group chat, from any step; red number = new messages -->
+      <RouterLink
+        v-if="showChat"
+        class="chat-link"
+        :to="{ name: 'chat', params: { hangoutId: hangout.id }, query: { from: chatFrom } }"
+        :aria-label="unreadChat > 0 ? `Group chat, ${unreadChat} new` : 'Group chat'"
+      >
+        <span aria-hidden="true">💬</span>
+        <span class="chat-link__label">Chat</span>
+        <span v-if="unreadChat > 0" class="chat-badge" aria-hidden="true">{{
+          unreadChat > 9 ? '9+' : unreadChat
+        }}</span>
+      </RouterLink>
       <button
         v-if="hangout.id !== 'demo'"
         type="button"
@@ -165,6 +194,45 @@ async function copyInvite() {
 </template>
 
 <style scoped>
+/* (Surya) 💬 Chat: coral like 06's Group chat button, so it's the same thing everywhere */
+.chat-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: var(--fp-accent);
+  color: var(--fp-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chat-link:hover {
+  background: color-mix(in srgb, var(--fp-accent) 85%, #000);
+  color: var(--fp-ink);
+}
+
+/* red count of new messages */
+.chat-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid var(--fp-surface);
+  border-radius: 999px;
+  background: #d93025;
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 16px;
+  text-align: center;
+}
+
 .invite-btn {
   min-height: 36px;
   white-space: nowrap;
@@ -315,6 +383,13 @@ a.step-arrow:hover {
 
 .step-arrow.disabled {
   color: var(--fp-border); /* no step that way, but it keeps the label from shifting */
+}
+
+/* (Surya) phones and tablets: big enough to tap with a finger */
+@media (max-width: 991.98px) {
+  .chat-link {
+    min-height: 44px;
+  }
 }
 
 /* On phones the arrows make the step label too wide to sit beside Invite, so it gets its own line:

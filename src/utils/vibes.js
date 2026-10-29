@@ -9,7 +9,13 @@ export const VIBE_CATEGORIES = {
   active: ['outdoor', 'activity'],
 }
 
-export const CATEGORY_EMOJI = { cafe: '☕', food: '🍜', activity: '🎳', outdoor: '🌳' }
+export const CATEGORY_EMOJI = {
+  cafe: '☕',
+  food: '🍜',
+  activity: '🎳',
+  outdoor: '🌳',
+  shopping: '🛍️',
+}
 
 /** The categories for a hangout's vibes, each once (cafe, food and activity if no vibe was picked). */
 export function categoriesForVibes(vibes) {

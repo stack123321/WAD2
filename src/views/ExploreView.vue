@@ -1,6 +1,21 @@
 ﻿<template>
-  
-  <div class="nearby-page">
+  <!-- reached from the step bar before a midpoint has been picked: no filters, map or shortlist to show yet -->
+  <main v-if="noMidpoint" class="container py-4">
+    <h1 class="h3 mb-3">Spots near the midpoint</h1>
+    <div class="alert alert-info" role="status">
+      <p class="mb-2">
+        No midpoint yet. Pick one first, then Fairpoint finds cafes, activities and restaurants near it.
+      </p>
+      <router-link
+        :to="{ name: 'midpoint', params: { id: route.params.id } }"
+        class="btn btn-primary btn-sm"
+      >
+        Go to midpoint →
+      </router-link>
+    </div>
+  </main>
+
+  <div v-else class="nearby-page px-3 py-4">
     <div class="content">
     <div class="main-col">
     <section class="head">
@@ -24,6 +39,15 @@
         </router-link>
       </div>
     </section>
+    <button
+      type="button"
+      class="mobile-filter-toggle"
+      :aria-expanded="showMobileFilters"
+      aria-controls="explore-filters"
+      @click="showMobileFilters = !showMobileFilters"
+    >
+      Filters
+    </button>
 
     <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
     <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
@@ -40,7 +64,7 @@
     <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div class="filters">
+    <div id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
       <div class="filter-buttons">
         <button
           v-for="filter in filters"
@@ -58,7 +82,7 @@
         <span>Hide 0% matches</span>
       </label>
     </div>
-    <div class="sort-control">
+    <div class="sort-control" :class="{ 'is-mobile-visible': showMobileFilters }">
       <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
         <option v-for="option in sortOptions" :key="option.value" :value="option.value">
           {{ option.label }}
@@ -233,6 +257,11 @@ const hasMidpoint = computed(
     hangout.hangout?.midpoint_lng != null,
 )
 
+// The hangout has loaded but nobody has picked a midpoint yet, so there is nothing to search around
+const noMidpoint = computed(
+  () => hangout.hangout !== null && !hangout.loading && !hasMidpoint.value,
+)
+
 // Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.
 // One call covers every spot (they're all close to the midpoint), refreshed when the hangout's
 // time or place changes.
@@ -328,12 +357,31 @@ function refreshSpots() {
 const filters = [
   { label: 'All', value: 'all' },
   { label: 'Cafes', value: 'cafe' },
-  { label: 'Activities', value: 'activity' },
   { label: 'Restaurants', value: 'food' },
-  { label: 'Outdoors', value: 'outdoor' },
+  { label: 'Parks & nature', value: 'outdoor' },
+  { label: 'Activities', value: 'activity' },
+  { label: 'Entertainment', value: 'entertainment' },
+  { label: 'Museums & culture', value: 'culture' },
+  { label: 'Fitness', value: 'fitness' },
+  { label: 'Shopping', value: 'shopping' },
 ]
 const activeFilter = ref('all')
 const hideZeroMatches = ref(false)
+const showMobileFilters = ref(false)
+
+const filterTypes = {
+  entertainment: ['amusement_center', 'bowling_alley', 'movie_theater', 'karaoke'],
+  culture: ['museum'],
+  fitness: ['gym'],
+}
+
+function matchesFilter(spot) {
+  if (activeFilter.value === 'all') return true
+  if (filterTypes[activeFilter.value]) {
+    return spot.types.some((type) => filterTypes[activeFilter.value].includes(type))
+  }
+  return spot.category === activeFilter.value
+}
 
 const radiusKm = ref(1)
 
@@ -352,7 +400,7 @@ function distanceFromMidpointKm(spot) {
 const filteredSpots = computed(() =>
   scoredSpots.value.filter(
     (s) =>
-      (activeFilter.value === 'all' || s.category === activeFilter.value) &&
+      matchesFilter(s) &&
       (!hideZeroMatches.value || s.matchPct > 0) &&
       (!hasMidpoint.value || distanceFromMidpointKm(s) <= radiusKm.value),
   ),
@@ -498,6 +546,10 @@ async function selectSpot(id) {
 }
 
 .mobile-vote-action {
+  display: none;
+}
+
+.mobile-filter-toggle {
   display: none;
 }
 
@@ -732,150 +784,217 @@ async function selectSpot(id) {
 }
 
 @media (max-width: 767px) {
-  .head {
-    padding-right: 0;
+  .nearby-page {
+    /*
+     * Explore is rendered after the 57px navbar and the two-row 108px
+     * hangout bar. The authenticated mobile tab bar is outside the page
+     * flow and needs its own deduction below.
+     */
+    height: calc(100dvh - 57px - 108px);
+    min-height: 0;
+    padding: 0 !important;
+    overflow: hidden;
   }
 
-  .shortlist-panel {
-    position: static;
-    width: auto;
-    min-width: 0;
-    padding: 0;
-    background: transparent;
-  }
-
-  .filters {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .sort-select {
-    width: 100%;
-  }
-}
-
-@media (max-width: 576px) {
   .content {
-    display: flex;
-    flex-direction: column;
+    display: block;
+    height: 100%;
   }
 
   .main-col {
-    display: contents;
+    display: block;
+    height: 100%;
+  }
+
+  .head {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    left: 0;
+    right: 0;
+    align-items: flex-end;
+    padding: 1rem 1rem 0;
+    pointer-events: none;
+  }
+
+  .cards-title {
+    max-width: calc(100% - 5rem);
+    color: #fff;
+    font-size: 1.25rem;
+    text-align: right;
+    text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
   }
 
   .head-actions {
-    justify-content: space-between;
+    pointer-events: auto;
+  }
+
+  .head-actions > :first-child {
+    display: none;
   }
 
   .mobile-vote-action {
     display: inline-flex;
   }
 
+  .mobile-filter-toggle {
+    position: absolute;
+    z-index: 4;
+    top: 1rem;
+    left: 1rem;
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 45%);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .filters,
+  .sort-control {
+    position: absolute;
+    z-index: 5;
+    left: 1rem;
+    right: 1rem;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: rgb(0 0 0 / 78%);
+    color: #fff;
+  }
+
   .filters {
-    order: 2;
+    top: 4.5rem;
   }
 
   .sort-control {
-    order: 2;
-    margin: 0 0 8px;
+    top: 18rem;
+    margin: 0;
+  }
+
+  .filters.is-mobile-visible,
+  .sort-control.is-mobile-visible {
+    display: flex;
+  }
+
+  .filter-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 10rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .match-filter {
+    order: -1;
+    padding: 0 0 0.75rem;
+  }
+
+  .sort-select {
+    width: 100%;
   }
 
   .cards {
-    order: 3;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cards > * {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 100%;
+    height: 100%;
+    scroll-snap-align: start;
+  }
+
+  :deep(.spot-card) {
+    position: relative;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: #111;
+  }
+
+  :deep(.spot-card__image) {
+    position: absolute;
+    inset: 0;
+    aspect-ratio: auto;
+  }
+
+  :deep(.spot-card__image img) {
+    aspect-ratio: auto;
+  }
+
+  :deep(.spot-card__body) {
+    position: absolute;
+    z-index: 1;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    padding: 1.25rem 1rem 1.5rem;
+    background: transparent;
+    color: #fff;
+    text-shadow: 0 1px 4px rgb(0 0 0 / 85%);
+  }
+
+  :deep(.spot-card__link),
+  :deep(.spot-card__rating),
+  :deep(.spot-card__meta),
+  :deep(.spot-card__price) {
+    color: #fff;
+  }
+
+  :deep(.spot-card__match) {
+    text-shadow: none;
+  }
+
+  :deep(.spot-card__tags) {
+    scrollbar-width: none;
+  }
+
+  :deep(.spot-card__tags::-webkit-scrollbar) {
+    display: none;
+  }
+
+  :deep(.spot-card__tag) {
+    border-color: rgb(255 255 255 / 70%);
+    background: transparent;
+    color: #fff;
+    text-shadow: none;
+  }
+
+  :deep(.spot-card .btn) {
+    align-self: flex-start;
+    text-shadow: none;
   }
 
   .map-shortlist-row {
-    order: 4;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .shortlist-vote-action {
     display: none;
   }
 
-  .map-section {
-    min-width: 0;
-    margin-bottom: 0;
-    overflow: hidden;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .mobile-collapse-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    min-height: 40px;
-    padding: 8px 10px;
-    border: 0;
-    background: #fff;
-    color: inherit;
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-align: left;
-  }
-
-  .map-content {
-    padding: 0 6px 6px;
-  }
-
-  .map-content.is-collapsed {
-    display: none;
-  }
-
-  .shortlist-panel {
-    padding: 0;
-    background: transparent;
-  }
-
-  .shortlist {
-    padding: 0;
-  }
-
-  .shortlist-toggle {
-    min-height: 40px;
-    padding: 8px 10px;
-    background: #fff;
-    border-radius: 8px 8px 0 0;
-    font-size: 0.875rem;
-  }
-
-  .shortlist-content {
-    padding: 0 8px 8px;
-    background: #fff;
-  }
-
-  .shortlist-actions {
-    margin-top: 0;
-    padding: 8px;
-    background: #fff;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .shortlist-item {
-    gap: 5px;
-  }
-
-  .shortlist-thumb {
-    width: 30px;
-    height: 30px;
-  }
-
-  .shortlist-name {
-    overflow-wrap: anywhere;
-  }
-
-  .map {
-    height: 180px;
+  :global(body.has-tabbar) .nearby-page {
+    height: calc(100dvh - 57px - 108px - 76px - env(safe-area-inset-bottom, 0px));
   }
 }
 </style>

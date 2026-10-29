@@ -9,7 +9,9 @@
 // missing when Create is greyed out. "Voting closes" moved to 11 Vote, where the host starts it.)
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { createHangout, getPastFriends, makeInviteCode } from '@/services/hangouts'
+import { createHangout, getHangout, getPastFriends, makeInviteCode } from '@/services/hangouts'
+import { finalSpot, repeatHangout } from '@/services/goAgain'
+import { isMockHangout } from '@/services/votes'
 import {
   addFriendToHangout,
   getFriend,
@@ -163,6 +165,52 @@ async function loadFriends() {
 }
 
 onMounted(loadFriends)
+
+// (Surya) "Go again" on a past hangout opens this page with ?again=<its id> (and ?with= for the
+// group): same group, same place and starting points, so you only pick a new date and go
+// straight to the final plan
+const againId = typeof route.query.again === 'string' ? route.query.again : ''
+const againHangout = ref(null)
+const againLoaded = ref(false)
+const againNotAdded = ref([]) // names Go again couldn't add, shown after creating
+const againDone = ref(null) // the new hangout's id, once created with someone missing
+
+const againSpot = computed(() => finalSpot(againHangout.value))
+
+async function loadAgain() {
+  if (againId === '') {
+    return
+  }
+  try {
+    againHangout.value = await getHangout(againId)
+    if (againSpot.value) {
+      form.name = `${againHangout.value.name} (again)`
+      form.vibe = [...(againHangout.value.vibe ?? [])]
+    }
+  } catch (err) {
+    console.error(err) // the page still works as a normal new hangout
+  }
+  againLoaded.value = true
+}
+
+onMounted(loadAgain)
+
+// "Ryan, Nicole and Hugo" for the banner
+const againNames = computed(() => {
+  if (!againHangout.value) {
+    return ''
+  }
+  const names = []
+  for (const m of againHangout.value.members) {
+    if (!auth.user || m.user_id !== auth.user.id) {
+      names.push(m.display_name)
+    }
+  }
+  if (names.length <= 1) {
+    return names.join('')
+  }
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+})
 
 // The friend you came from on the Friends page or dashboard (?with=), or null (also when several
 // people were passed: they're simply ticked in the list)
@@ -390,6 +438,39 @@ async function submit() {
   }
 
   busy.value = true
+
+  // (Surya) Go again: copy the group, place and trips, then open the final plan.
+  // The sample hangouts (and no keys) have no database, so just show the sample plan
+  if (againSpot.value && isMockHangout(againId)) {
+    busy.value = false
+    router.push({ name: 'final-plan', params: { id: againId } })
+    return
+  }
+  if (againSpot.value) {
+    try {
+      const result = await repeatHangout(againHangout.value, {
+        name: name,
+        startsAt: startsAt.value,
+        inviteCode: inviteCode,
+        myId: auth.user ? auth.user.id : null,
+        friendIds: selectedFriends.value,
+      })
+      if (!result.complete) {
+        // the hangout exists, but something wasn't copied: finish it the normal way
+        router.push({ name: 'starting-points', params: { id: result.id } })
+      } else if (result.notAdded.length > 0) {
+        againNotAdded.value = result.notAdded // say who's missing before moving on
+        againDone.value = result.id
+      } else {
+        router.push({ name: 'final-plan', params: { id: result.id } })
+      }
+    } catch (e) {
+      error.value = e.message || 'Could not create the hangout. Please try again.'
+    }
+    busy.value = false
+    return
+  }
+
   try {
     // vote_deadline: null = the host sets when voting closes on 11 Vote, when they start the vote
     const hangout = await createHangout({
@@ -431,6 +512,26 @@ async function submit() {
       <h1 class="create__title">New hangout</h1>
       <p class="create__sub">Pick a day and your friends. That’s it.</p>
     </header>
+
+    <!-- (Surya) Go again: what's copied from last time, so you only need a date -->
+    <div v-if="againSpot && !againDone" class="again-box" role="status">
+      <strong>↻ Going again to {{ againSpot.name }}</strong
+      ><template v-if="againNames"> with {{ againNames }}</template
+      >. Pick a date, then Create. Everyone's starting point and transport are copied from last
+      time, so you go straight to the plan.
+    </div>
+    <div v-else-if="againId && againLoaded && !againSpot" class="again-box" role="status">
+      That hangout was never decided, so this is a normal new hangout with the same people.
+    </div>
+    <div v-if="againDone" class="again-box" role="alert">
+      <p class="mb-2">
+        Created. Couldn’t add {{ againNotAdded.join(', ') }} (they may have left), so send them the
+        invite link from the plan.
+      </p>
+      <RouterLink class="btn btn-primary" :to="{ name: 'final-plan', params: { id: againDone } }">
+        Open the plan →
+      </RouterLink>
+    </div>
 
     <form id="create-hangout" class="create__grid" novalidate @submit.prevent="submit">
       <!-- Hangout details -->
@@ -744,6 +845,19 @@ async function submit() {
 .create__sub {
   margin: 0;
   color: var(--fp-muted);
+}
+
+/* (Surya) "↻ Going again to Tiong Bahru Bakery…" */
+.again-box {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--fp-primary);
+  border-radius: var(--fp-radius-sm);
+  background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
+}
+
+.again-box .btn {
+  min-height: 44px;
 }
 
 .create__grid {

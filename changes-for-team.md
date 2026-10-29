@@ -46,6 +46,29 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
   ```
 - **Matrix (05):** on "Who's coming?", the "Often with you" badges are clipped at the right edge, and the tick boxes look under 44px.
 
+## Surya (06 starting points, Preferences setup)
+
+Branches: `fix/members-map-zoom-buttons`, `fix/preferences-progress` (also has the 06 Next button and chat colour)
+
+### What changed
+
+| File | Change |
+|---|---|
+| `src/components/map/MembersMap.vue` | The + / − zoom buttons on the 06 map are 44x44px on phones (under 768px), using Ryan's fix from `CrowdHeatmap.vue`. Tablets and laptops are unchanged. |
+| `src/views/StartingPointsView.vue` | Once your starting point is saved, **Next: choose transport →** sits right under the search and "Use my current location" (it was inside the green box at the top, which now just says it's saved and who's still adding theirs). The **💬 Group chat** button is filled coral (`--fp-accent`) with dark text, so it stands out from the green buttons; the red unread badge has a white ring so it shows on coral. Still exactly one Next link on the page. |
+| `src/components/hangout/HangoutBar.vue`, `src/utils/planningLinks.js` (Nicole's) | **💬 Chat button in the step bar** on every step except 06 (which has its own), coral like 06's, with the red unread count (`alerts.unreadIn`). It opens the chat page with `?from=<step>`, so the chat offers "← Back to Midpoint" etc. I added Midpoint, Spots, Final plan and Debrief to `BACK_LABELS` in `planningLinks.js` for that. 44px on phones and tablets. |
+| `src/components/start/LatestMessage.vue` (new), `StartingPointsView.vue` | **Newest chat message on 06**, under the saved box: "💬 Nicole: I'm leaving from Tampines · Reply". Tapping it opens the chat panel. Hidden when the chat is empty (and in the demo, which has no chat). It reloads when Ryan's alerts store sees a new message, so there's no second live listener on the same chat. |
+| `StartingPointsView.vue`, `tests/e2e/dashboard.spec.js` (Ryan's test) | Removed the 🔒 "Only people in this hangout can see your starting point…" note on 06, to keep the page short. **Ryan:** I deleted your test "the starting points page says who sees a starting point", since the note is gone on purpose. |
+| New `src/services/goAgain.js`; `CreateHangoutView.vue` (Matrix's), `DebriefView.vue` (Eashvar's), `HangoutCard.vue` + `DashboardView.vue` (Ryan's) | **↻ Go again** on a decided past hangout (Past card and Debrief): 05 opens with `?again=<id>`, the name, vibe and group filled in and a banner saying where you're going. Create makes the new hangout with the same group, place, midpoint and everyone's starting point and transport copied, already confirmed, and opens 12 Final plan. Untick someone on 05 to leave them out. Uses the existing `createHangout`, `addMember`, `saveMidpoint`, `addToShortlist` and `closeVote`, no new SQL. **Matrix:** the Go again path is a separate branch at the top of `submit()`. **Ryan:** new `past` prop on HangoutCard. |
+| New `supabase/migrations/2026-10-30-hangout-photos.sql` (also in `schema.sql`), `src/services/photos.js`, `src/components/debrief/HangoutPhotos.vue` | **Photos on past hangouts.** A Photos panel on Debrief: anyone in the hangout adds photos (shrunk to 1600px JPEG on the phone first), taps one to see it big, and removes their own (the host can remove any). Past cards show up to 3 thumbnails and "+N", opening Debrief at the photos. Private Storage bucket `hangout-photos` with signed links, and members-only rules. **Needs the SQL run once in Supabase.** **Ryan:** new `photos` prop on HangoutCard, and `loadPhotos()` on the dashboard (one request for all past hangouts). On the **Past** tab, a hangout with a place chosen now opens Debrief ("See how it went") even if it's only confirmed, not marked done, so the photos are always one tap away (the plan is linked from Debrief). **Eashvar:** the Photos panel is at the bottom of Debrief, and "Go again" is first in What next. Also, your trip table on Debrief is 6px too wide at 320px. |
+| `src/views/PreferencesView.vue` (Matrix's page) | Setup after sign-up (`/preferences?setup=1`): the thin progress line is now **4 segments**, one per step, filled as you go, with "Step 2 of 4" and the step's topic ("Food"). The bar and the setup cards now span the page width, in line with the title on the left and the Next button on the right (they were a 680px column in the middle). It's hidden on the intro screen, where the empty line looked like a divider (tester's screenshot on a phone). The intro card heading is now "4 quick questions", so the page title isn't repeated. Steps, saving and "Skip for now" are unchanged. |
+
+06 map checked at 320px, 375px, 768px and 1366px. 06 Next button and chat colour checked at 320px, 375px, 768px, 1366px and 1920px. Preferences checked at 320px, 375px, 768px, 1366px and 1920px, through all 4 steps. Nothing scrolls sideways.
+
+### Still open
+
+- The "Invite" button on 06 is 36px (Ryan's note above). Not fixed yet.
+
 ## Eashvar (11 Vote, 12 Final plan)
 
 Branch: `feat/vote-layout`
@@ -66,4 +89,4 @@ Layout check done at 375px, 768px and 1366px on 11 Vote, 12 Final plan and the "
 
 ### For others
 
-- **Surya (`MembersMap.vue`, used on 12):** the zoom buttons are 30px. The phone fix in Ryan's section above works here too. The map also cuts off pins at its edges at every width (on the demo, Woodlands at the top and Punggol under the zoom buttons). It looks like `fitBounds` runs before the column has its final size; calling `map.invalidateSize()` and then `fitBounds` again once it's on screen should fix it.
+- **Surya (`MembersMap.vue`, used on 12):** thanks for the 44px zoom buttons on phones. On tablets and laptops they're still 30px. The map also cuts off pins at its edges at every width (on the demo, Woodlands at the top and Punggol under the zoom buttons). It looks like `fitBounds` runs before the column has its final size; calling `map.invalidateSize()` and then `fitBounds` again once it's on screen should fix it.
