@@ -45,3 +45,19 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
   }
   ```
 - **Matrix (05):** on "Who's coming?", the "Often with you" badges are clipped at the right edge, and the tick boxes look under 44px.
+
+## Surya (06 starting points)
+
+Branch: `fix/members-map-zoom-buttons`
+
+### What changed
+
+| File | Change |
+|---|---|
+| `src/components/map/MembersMap.vue` | The + / − zoom buttons on the 06 map are 44x44px on phones (under 768px), using Ryan's fix from `CrowdHeatmap.vue`. Tablets and laptops are unchanged. |
+
+Checked at 320px, 375px, 768px and 1366px. Nothing scrolls sideways.
+
+### Still open
+
+- The "Invite" button on 06 is 36px (Ryan's note above). Not fixed yet.
