@@ -55,3 +55,12 @@ test('a hangout that was never decided has no Go again', async ({ page }) => {
   await page.goto('/hangouts/new?again=demo')
   await expect(page.getByText('That hangout was never decided')).toBeVisible()
 })
+
+// Photos (the sample hangout has no database, so it explains instead of uploading)
+test('Debrief has a Photos panel that says photos work in real hangouts', async ({ page }) => {
+  await useDecidedSample(page)
+  await page.goto('/hangouts/demo/debrief')
+  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible()
+  await expect(page.getByText('Photos work in real hangouts.')).toBeVisible()
+  await expect(page.getByRole('button', { name: '+ Add photos' })).toHaveCount(0)
+})

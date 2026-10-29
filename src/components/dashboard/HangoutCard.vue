@@ -23,6 +23,7 @@ const props = defineProps({
   featured: { type: Boolean, default: false }, // the big UP NEXT card
   showDate: { type: Boolean, default: false }, // put the date in the details line, for cards with no day heading above them
   past: { type: Boolean, default: false }, // (surya) on the Past tab: shows "Go again" for decided hangouts
+  photos: { type: Array, default: () => [] }, // (surya) this hangout's photos, newest first, from getPhotos()
 })
 
 // (surya) "Go again": same group, place and starting points, you only pick a new date on 05
@@ -34,6 +35,10 @@ const goAgainLink = computed(() => {
   const others = h.members.map((m) => m.user_id).filter((id) => id !== props.myId)
   return { name: 'create-hangout', query: { again: h.id, with: others } }
 })
+
+// (surya) the first 3 photos on the card, and "+4" for the rest, opening the photos on debrief
+const shownPhotos = computed(() => props.photos.slice(0, 3))
+const morePhotos = computed(() => props.photos.length - 3)
 
 // the card can't change the dashboard's list itself, so it sends these up and the dashboard acts on them
 const emit = defineEmits(['delete', 'leave', 'toggle-pin'])
@@ -182,6 +187,16 @@ async function copyInvite() {
           </h3>
           <p class="meta">{{ details }}</p>
           <!-- amber text when rain is likely -->
+          <!-- (surya) photos from the day, tap to see them all on debrief -->
+          <router-link
+            v-if="shownPhotos.length > 0"
+            class="photo-strip"
+            :to="{ name: 'debrief', params: { id: hangout.id }, hash: '#photos' }"
+            :aria-label="`See ${photos.length} photos from ${hangout.name}`"
+          >
+            <img v-for="p in shownPhotos" :key="p.id" :src="p.url" alt="" loading="lazy" />
+            <span v-if="morePhotos > 0" class="photo-more">+{{ morePhotos }}</span>
+          </router-link>
           <p v-if="weatherLine || crowdText" class="wx" :class="{ 'wx-warn': weatherLine?.warn }">
             <template v-if="weatherLine">
               <WeatherLineIcon :kind="weatherLine.kind" />
@@ -434,6 +449,34 @@ async function copyInvite() {
   background: var(--bs-tertiary-bg);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+/* (surya) up to 3 photo thumbnails on a past card, above the stretched link so they open the photos */
+.photo-strip {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.5rem;
+  text-decoration: none;
+}
+.photo-strip img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.photo-more {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-emphasis-color);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 /* (surya) past card with "Go again": the two buttons side by side, or stacked in the narrow column */

@@ -14,6 +14,7 @@ import { isMockHangout } from '@/services/votes'
 import TripTable from '@/components/voting/TripTable.vue'
 import VoteResults from '@/components/voting/VoteResults.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import HangoutPhotos from '@/components/debrief/HangoutPhotos.vue'
 import {
   countableVotes,
   countVotes,
@@ -64,6 +65,9 @@ const planAgainLink = computed(() => ({
   name: 'create-hangout',
   query: { with: store.members.map((m) => m.user_id).filter((id) => id !== myId.value) },
 }))
+
+// (Surya) the host can remove anyone's photos
+const isHost = computed(() => Boolean(myId.value) && hangout.value?.host_id === myId.value)
 
 // (Surya) Same group, same place, same starting points: you only pick a new date on 05
 const goAgainLink = computed(() => ({
@@ -169,6 +173,9 @@ onMounted(() => store.load(hangoutId))
           </section>
         </div>
       </div>
+
+      <!-- (Surya) everyone's photos from the day -->
+      <HangoutPhotos class="mt-4" :hangout-id="hangoutId" :my-id="myId" :is-host="isHost" />
 
       <nav class="mt-4" aria-label="Back">
         <RouterLink class="btn btn-link px-0" :to="{ name: 'dashboard' }">
