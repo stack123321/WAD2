@@ -484,13 +484,9 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
         <p v-else-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
         <!-- (Surya) the chat's newest message, tap to reply -->
         <LatestMessage v-if="me" :hangout="store.hangout" :my-id="myId" @open-chat="openChat" />
-        <p class="text-secondary mb-2">
+        <p class="text-secondary mb-4">
           Search an address, MRT station or postal code. We use everyone’s starting point to find a
           spot that’s fair for all.
-        </p>
-        <p class="text-secondary small mb-4">
-          🔒 Only people in this hangout can see your starting point. It’s a place you pick, not
-          live tracking, and it’s removed if you leave the hangout.
         </p>
 
         <div v-if="!me" class="alert alert-warning small" role="alert">
