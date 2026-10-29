@@ -443,8 +443,8 @@ onUnmounted(() => {
             :saving="changingDeadline"
             @change="onChangeDeadline"
           />
-          <ActivityFeed :items="feedItems" />
-          <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
+          <!-- Host controls first, so on phones and tablets (one column) closing the vote isn't
+               below the activity feed and chat -->
           <ClosePanel
             v-if="isHost && status === 'voting' && !needsSpin"
             :shortlist="store.shortlist"
@@ -455,6 +455,8 @@ onUnmounted(() => {
             @select="pickedWinnerId = $event"
             @close="onClose"
           />
+          <ActivityFeed :items="feedItems" />
+          <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
         </div>
       </div>
     </div>
