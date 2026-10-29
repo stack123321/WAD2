@@ -149,7 +149,8 @@ async function copyInvite() {
           title="Change the hangout's name, date or vibe"
           aria-label="Step 0: hangout details"
         >
-          <span class="step-num" aria-hidden="true">0</span>
+          <!-- a ✓ once you've moved on to the steps, like the other done steps -->
+          <span class="step-num" aria-hidden="true">{{ onDetails ? '0' : '✓' }}</span>
           Details
         </RouterLink>
       </li>
