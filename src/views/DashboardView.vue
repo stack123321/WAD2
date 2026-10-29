@@ -9,6 +9,7 @@ import WeekStrip from '@/components/dashboard/WeekStrip.vue'
 import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
 import { getHaze, getHourlyForecast } from '@/services/weather'
 import { getStationCrowd } from '@/services/crowd'
+import { getPhotos } from '@/services/photos'
 import { sgDate, dayHeading } from '@/utils/dates'
 import { getStatus } from '@/utils/hangoutStatus'
 
@@ -317,6 +318,23 @@ async function loadCrowds() {
   }
 }
 
+// (surya) photos on past hangouts, { hangoutId: [photo, ...] }, loaded in one request for all of them
+const photos = ref({})
+
+async function loadPhotos() {
+  const ids = past.value.map((h) => h.id)
+  if (ids.length === 0) return
+  try {
+    const result = {}
+    for (let p of await getPhotos(ids)) {
+      result[p.hangout_id] = [...(result[p.hangout_id] ?? []), p]
+    }
+    photos.value = result
+  } catch (err) {
+    console.log(err) // photos are extra, so the cards just show none
+  }
+}
+
 // runs once when the page opens
 onMounted(async () => {
   loadWeather() // not awaited, so the hangouts don't wait for the weather
@@ -337,6 +355,7 @@ onMounted(async () => {
   }
   loading.value = false
   loadCrowds() // not awaited, the chips appear when the levels arrive
+  loadPhotos() // not awaited either
 })
 </script>
 
@@ -456,6 +475,8 @@ onMounted(async () => {
               :crowd="crowds[h.id] ?? null"
               :can-delete="isHost(h)"
               :can-leave="canLeave(h)"
+              :past="tab === 'past'"
+              :photos="photos[h.id] ?? []"
               @delete="askDelete"
               @leave="askLeave"
               @toggle-pin="onTogglePin"
