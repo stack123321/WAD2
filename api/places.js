@@ -1,5 +1,5 @@
 // Vercel serverless function:
-//   GET /api/places?lat=&lng=&radius=3000&categories=cafe,food,activity,outdoor
+//   GET /api/places?lat=&lng=&radius=3000&categories=cafe,food,activity,outdoor,shopping
 //   GET /api/places?id=<google place id>
 //   GET /api/places?id=<google place id>&summary=1  -> { text, disclosure } or null (AI summary)
 // Uses Google Places API (New) with GOOGLE_PLACES_API_KEY.

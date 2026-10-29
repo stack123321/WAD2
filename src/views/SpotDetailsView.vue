@@ -25,6 +25,7 @@ const categoryLabels = {
   activity: 'Activity',
   food: 'Restaurant',
   outdoor: 'Outdoors',
+  shopping: 'Shopping',
 }
 
 const spot = ref(null)
