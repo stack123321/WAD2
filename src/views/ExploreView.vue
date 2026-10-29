@@ -39,15 +39,46 @@
         </router-link>
       </div>
     </section>
-    <button
-      type="button"
-      class="mobile-filter-toggle"
-      :aria-expanded="showMobileFilters"
-      aria-controls="explore-filters"
-      @click="showMobileFilters = !showMobileFilters"
-    >
-      Filters
-    </button>
+    <!-- On phones the Filters and Ask buttons float over the cards and open their panels -->
+    <div class="mobile-toggles">
+      <button
+        v-if="!askedSpots"
+        type="button"
+        class="mobile-filter-toggle"
+        :aria-expanded="showMobileFilters"
+        aria-controls="explore-filters"
+        @click="toggleMobilePanel('filters')"
+      >
+        Filters
+      </button>
+      <button
+        v-if="hasMidpoint"
+        type="button"
+        class="mobile-ask-toggle"
+        :aria-expanded="showMobileAsk"
+        aria-controls="explore-ask"
+        :aria-label="
+          askedSpots
+            ? `Ask for something specific, ${askedSpots.length} found`
+            : 'Ask for something specific'
+        "
+        @click="toggleMobilePanel('ask')"
+      >
+        {{ askedSpots ? `Ask · ${askedSpots.length}` : 'Ask' }}
+      </button>
+    </div>
+
+    <!-- Eashvar: Ask box. Its results replace the cards below until "Show all spots". On phones
+         it opens from the Ask button above, as a panel over the cards -->
+    <AskSpots
+      v-if="hasMidpoint"
+      id="explore-ask"
+      class="ask-panel"
+      :class="{ 'is-mobile-visible': showMobileAsk }"
+      :hangout="hangout.hangout"
+      :members="hangout.members"
+      @found="onAskFound"
+    />
 
     <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
     <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
@@ -58,13 +89,13 @@
     </p>
     <p v-else-if="loadingSpots" class="text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
     <p v-if="loadError || shortlistError" class="text-danger">{{ loadError || shortlistError }}</p>
-    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
+    <p v-else-if="!askedSpots && googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
       No nearby spots were found. Try again later or choose another midpoint.
     </p>
-    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
+    <p v-else-if="!askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
+    <div v-if="!askedSpots" id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
       <div class="filter-buttons">
         <button
           v-for="filter in filters"
@@ -82,7 +113,7 @@
         <span>Hide 0% matches</span>
       </label>
     </div>
-    <div class="sort-control" :class="{ 'is-mobile-visible': showMobileFilters }">
+    <div v-if="!askedSpots" class="sort-control" :class="{ 'is-mobile-visible': showMobileFilters }">
       <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
         <option v-for="option in sortOptions" :key="option.value" :value="option.value">
           {{ option.label }}
@@ -91,7 +122,7 @@
     </div>
     <section class="cards">
       <SpotCard
-        v-for="spot in sortedSpots"
+        v-for="spot in shownSpots"
         :key="spot.id"
         :id="`spot-card-${spot.id}`"
         :class="{ 'is-selected': selectedId === spot.id }"
@@ -235,6 +266,7 @@ import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import AskSpots from '@/components/assistant/AskSpots.vue'
 import {
   googlePlacesEnabled,
   loadSpots,
@@ -283,9 +315,9 @@ watch(
   { immediate: true },
 )
 
-// Spots with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
-const scoredSpots = computed(() =>
-  spots.value.map((spot) => ({
+// A spot with its live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
+function scoreSpot(spot) {
+  return {
     ...spot,
     matchPct: matchScore(spot, hangout.members, {
       vibes: hangout.hangout?.vibe,
@@ -304,8 +336,9 @@ const scoredSpots = computed(() =>
         : null,
     }),
     vibeMatch: matchesHangoutVibe(spot, hangout.hangout?.vibe ?? []),
-  })),
-)
+  }
+}
+const scoredSpots = computed(() => spots.value.map(scoreSpot))
 let spotRequestId = 0
 const refreshCount = ref(0)
 let forceNextLoad = false
@@ -368,6 +401,14 @@ const filters = [
 const activeFilter = ref('all')
 const hideZeroMatches = ref(false)
 const showMobileFilters = ref(false)
+const showMobileAsk = ref(false)
+
+// Phones show one panel at a time over the cards: Filters or Ask
+function toggleMobilePanel(panel) {
+  const open = panel === 'ask' ? !showMobileAsk.value : !showMobileFilters.value
+  showMobileAsk.value = panel === 'ask' && open
+  showMobileFilters.value = panel === 'filters' && open
+}
 
 const filterTypes = {
   entertainment: ['amusement_center', 'bowling_alley', 'movie_theater', 'karaoke'],
@@ -437,6 +478,18 @@ const comparators = {
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
 
+// Spots found by the Ask box (in its own order), or null to show the usual list
+const askedSpots = ref(null)
+const shownSpots = computed(() =>
+  askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
+)
+
+// New Ask results: on phones the panel closes so the cards show (the Ask button reopens it)
+function onAskFound(found) {
+  askedSpots.value = found
+  if (found && window.matchMedia('(max-width: 767px)').matches) showMobileAsk.value = false
+}
+
 const {
   addedIds,
   error: shortlistError,
@@ -452,7 +505,12 @@ const shortlisted = computed(() => {
     imageUrl: savedSpot.image_url,
   }))
   const savedIds = new Set(savedSpots.map((spot) => spot.id))
-  const pendingSpots = spots.value.filter((spot) => addedIds.has(spot.id) && !savedIds.has(spot.id))
+  const pendingSpots = [...spots.value, ...(askedSpots.value ?? [])].filter(
+    (spot, i, all) =>
+      addedIds.has(spot.id) &&
+      !savedIds.has(spot.id) &&
+      all.findIndex((s) => s.id === spot.id) === i,
+  )
   return [...savedSpots, ...pendingSpots]
 })
 
@@ -462,7 +520,7 @@ const mapCenter = computed(() =>
     : null,
 )
 const mapMarkers = computed(() =>
-  sortedSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
+  shownSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
 )
 
 // Clicking a map marker scrolls the cards bar sideways to that spot's card
@@ -549,7 +607,7 @@ async function selectSpot(id) {
   display: none;
 }
 
-.mobile-filter-toggle {
+.mobile-toggles {
   display: none;
 }
 
@@ -700,11 +758,14 @@ async function selectSpot(id) {
     min-height: 480px;
   }
 
+  /* The whole column scrolls (not just the cards), so the cards keep their full height under the
+     Ask box. Eashvar */
   .main-col {
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+    overflow-y: auto;
   }
 
   .head {
@@ -722,10 +783,8 @@ async function selectSpot(id) {
        (and clip card text) below content size when this scroll area is shorter than its content. */
     grid-auto-rows: max-content;
     align-content: start;
-    flex: 1;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
+    flex: none;
+    overflow: visible;
     padding-bottom: 12px;
   }
 
@@ -837,11 +896,19 @@ async function selectSpot(id) {
     display: inline-flex;
   }
 
-  .mobile-filter-toggle {
+  .mobile-toggles {
     position: absolute;
     z-index: 4;
     top: 1rem;
     left: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .mobile-filter-toggle,
+  .mobile-ask-toggle {
     display: grid;
     place-items: center;
     min-width: 44px;
@@ -883,6 +950,23 @@ async function selectSpot(id) {
   .filters.is-mobile-visible,
   .sort-control.is-mobile-visible {
     display: flex;
+  }
+
+  .nearby-page .ask-panel {
+    position: absolute;
+    z-index: 5;
+    top: 7.5rem;
+    left: 1rem;
+    right: 1rem;
+    display: none;
+    max-height: calc(100% - 8.5rem);
+    margin: 0;
+    overflow-y: auto;
+    box-shadow: var(--fp-shadow);
+  }
+
+  .nearby-page .ask-panel.is-mobile-visible {
+    display: grid;
   }
 
   .filter-buttons {

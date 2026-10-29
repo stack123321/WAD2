@@ -217,14 +217,26 @@ test('with Google Places off, the Ask box is off too', async ({ page }) => {
   await expect(page.getByText('Turn on Google Places above to ask.')).toBeVisible()
 })
 
-test('on a phone the Ask box fits and its buttons are easy to tap', async ({ page }) => {
+test('on a phone the Ask box opens over the cards, fits, and is easy to tap', async ({ page }) => {
   await stubAssistant(page, PRATA)
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/hangouts/demo/explore')
+  const toggle = page.getByRole('button', { name: 'Ask for something specific' })
+
+  // the box stays out of the way of the cards until the Ask button opens it
+  await expect(askBox(page)).toBeHidden()
+  await toggle.click()
   await askBox(page).fill('prata for dinner')
   await askBox(page).press('Enter')
-  await expect(page.getByText(PRATA.reply)).toBeVisible()
 
+  // the answer closes it, so the matching cards show; the button says how many it found
+  await expect(askBox(page)).toBeHidden()
+  await expect(page.getByRole('link', { name: 'Test Prata House', exact: true })).toBeVisible()
+  await expect(toggle).toHaveText('Ask · 3')
+
+  // opening it again shows the reply, the follow-ups and "Show all spots"
+  await toggle.click()
+  await expect(page.getByText(PRATA.reply)).toBeVisible()
   const scrollsSideways = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   )
@@ -233,6 +245,11 @@ test('on a phone the Ask box fits and its buttons are easy to tap', async ({ pag
     const box = await page.getByRole('button', { name, exact: true }).boundingBox()
     expect(box.height).toBeGreaterThanOrEqual(44)
   }
+  expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44)
+
+  await page.getByRole('button', { name: 'Show all spots' }).click()
+  await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible()
 })
 
 test('/api/assistant only takes a POST with a message and a midpoint', async ({ request }) => {
