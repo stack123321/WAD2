@@ -4,8 +4,8 @@
 // hangout's invite link (for people who aren't your friends yet). Each step links to its page.
 // (Surya) A 💬 Chat button opens the group chat from any step, with the count of new messages.
 // On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
-// (Surya) The host also gets "✎ Details" before step 1 (‹ on step 1 on phones), which opens 05 in
-// edit mode to change the name, date, time or vibe.
+// (Surya) The host also gets step "0 Details" before step 1, in place of the "Get there" label
+// (‹ on step 1 on phones), which opens 05 in edit mode to change the name, date, time or vibe.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
@@ -47,7 +47,7 @@ const currentIndex = computed(() => {
 // The steps either side of this one, for the ‹ › arrows (null at the first and last step)
 const prevStep = computed(() => STEPS[currentIndex.value - 1] ?? null)
 
-// (Surya) "✎ Details": only the host can change them (the demo counts as yours, like on 06)
+// (Surya) step 0 "Details": only the host can change them (the demo counts as yours, like on 06)
 const auth = useAuthStore()
 const isHost = computed(() => {
   if (props.hangout.id.startsWith('demo')) {
@@ -139,21 +139,24 @@ async function copyInvite() {
     </div>
 
     <ol class="steps d-none d-xl-flex">
-      <!-- (Surya) host only: change the name, date, time or vibe -->
-      <li v-if="isHost" class="details-step" :class="{ current: onDetails }">
+      <!-- (Surya) host only: step 0, change the name, date, time or vibe. It takes the place of the
+           "Get there" label, so it joins step 1 with a line like the other steps -->
+      <li v-if="isHost" class="step" :class="{ current: onDetails, done: !onDetails }">
         <RouterLink
           :to="detailsLink"
           class="step-link"
           :aria-current="onDetails ? 'page' : null"
-          title="Hangout details: change the name, date or vibe"
-          aria-label="Hangout details"
+          title="Change the hangout's name, date or vibe"
+          aria-label="Step 0: hangout details"
         >
-          <span class="step-num" aria-hidden="true">✎</span>
-          <span class="details-label">Details</span>
+          <span class="step-num" aria-hidden="true">0</span>
+          Details
         </RouterLink>
       </li>
       <template v-for="(step, i) in STEPS" :key="step.route">
-        <li v-if="startsGroup(i)" class="step-group" aria-hidden="true">{{ step.group }}</li>
+        <li v-if="startsGroup(i) && !(i === 0 && isHost)" class="step-group" aria-hidden="true">
+          {{ step.group }}
+        </li>
         <li class="step" :class="{ current: i === currentIndex, done: i < currentIndex }">
           <RouterLink
             :to="{ name: step.route, params: { id: hangout.id } }"
@@ -168,12 +171,12 @@ async function copyInvite() {
     </ol>
 
     <!-- Phones and tablets: the 6 steps don't fit, so say which step this is, with arrows to the steps either side -->
-    <!-- (Surya) on Details itself: "✎ Details", with › to step 1 -->
+    <!-- (Surya) on Details itself: "Step 0 · Details", with › to step 1 -->
     <div v-if="onDetails" class="step-nav d-flex d-xl-none align-items-center">
       <span class="step-arrow disabled" aria-hidden="true">‹</span>
       <span class="step-compact" aria-current="page">
-        <span class="step-num" aria-hidden="true">✎</span>
-        <span>Hangout details</span>
+        <span class="step-num" aria-hidden="true">0</span>
+        <span>Step 0 · Details</span>
       </span>
       <RouterLink
         class="step-arrow"
@@ -407,32 +410,12 @@ async function copyInvite() {
   color: var(--fp-surface);
 }
 
-/* (Surya) "✎ Details" before the steps, like a step without a number. Below 1440px the step bar
-   only just fits on one line, so it's just the ✎ circle there (the link still says "Hangout
-   details" to screen readers, and on hover) */
-@media (max-width: 1439.98px) {
-  .details-label {
-    display: none;
-  }
-}
-
-/* (Surya) laptops 1200–1439px: the full step list shows, so the avatars make way for Chat and
-   Invite to stay on the same line (everyone is listed on each page anyway) */
-@media (min-width: 1200px) and (max-width: 1439.98px) {
+/* (Surya) small laptops 1200–1365px: the full step list shows, so the avatars make way for Chat
+   and Invite to stay on the same line (everyone is listed on each page anyway) */
+@media (min-width: 1200px) and (max-width: 1365.98px) {
   .avatar-stack {
     display: none !important; /* over Bootstrap's d-md-flex */
   }
-}
-
-.details-step.current .step-link {
-  color: var(--fp-ink);
-  font-weight: 600;
-}
-
-.details-step.current .step-num {
-  background: var(--fp-ink);
-  border-color: var(--fp-ink);
-  color: var(--fp-surface);
 }
 
 /* "Step 1 of 6 · Starting points" on phones and tablets */

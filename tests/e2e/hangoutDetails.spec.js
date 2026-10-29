@@ -6,7 +6,9 @@ import { test, expect } from '@playwright/test'
 test('Details in the step bar opens the hangout details, filled in', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/hangouts/demo/transport')
-  await page.getByRole('link', { name: 'Hangout details' }).click()
+  // wait until the step bar shows we're on Transport, so the link knows where to come back to
+  await expect(page.locator('.step.current')).toContainText('Transport')
+  await page.getByRole('link', { name: 'Step 0: hangout details' }).click()
   await expect(page).toHaveURL('/hangouts/demo/edit?from=transport')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hangout details')
   await expect(page.getByLabel(/Hangout name/)).toHaveValue('Friday dinner after class')
@@ -16,7 +18,9 @@ test('Details in the step bar opens the hangout details, filled in', async ({ pa
 test('saving new details updates the step bar and goes back to the step', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/hangouts/demo/transport')
-  await page.getByRole('link', { name: 'Hangout details' }).click()
+  // wait until the step bar shows we're on Transport, so the link knows where to come back to
+  await expect(page.locator('.step.current')).toContainText('Transport')
+  await page.getByRole('link', { name: 'Step 0: hangout details' }).click()
   await page.getByLabel(/Hangout name/).fill('Renamed dinner')
   await page.locator('input[type=date]').fill('2027-01-15')
   await page.getByRole('button', { name: 'Save changes' }).click()
