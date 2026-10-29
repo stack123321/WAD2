@@ -456,6 +456,7 @@ onMounted(async () => {
               :crowd="crowds[h.id] ?? null"
               :can-delete="isHost(h)"
               :can-leave="canLeave(h)"
+              :past="tab === 'past'"
               @delete="askDelete"
               @leave="askLeave"
               @toggle-pin="onTogglePin"

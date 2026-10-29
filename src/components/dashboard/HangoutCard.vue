@@ -22,6 +22,17 @@ const props = defineProps({
   crowd: { type: String, default: null }, // 'l', 'm' or 'h' at the midpoint station, from getStationCrowd()
   featured: { type: Boolean, default: false }, // the big UP NEXT card
   showDate: { type: Boolean, default: false }, // put the date in the details line, for cards with no day heading above them
+  past: { type: Boolean, default: false }, // (surya) on the Past tab: shows "Go again" for decided hangouts
+})
+
+// (surya) "Go again": same group, place and starting points, you only pick a new date on 05
+const goAgainLink = computed(() => {
+  const h = props.hangout
+  const decided =
+    h.final_shortlist_id && (h.shortlist ?? []).some((s) => s.id === h.final_shortlist_id)
+  if (!props.past || !decided) return null // nothing to go back to
+  const others = h.members.map((m) => m.user_id).filter((id) => id !== props.myId)
+  return { name: 'create-hangout', query: { again: h.id, with: others } }
 })
 
 // the card can't change the dashboard's list itself, so it sends these up and the dashboard acts on them
@@ -248,7 +259,15 @@ async function copyInvite() {
           </div>
 
           <!-- solid green when it's my turn (fill), a quiet outline otherwise -->
-          <div class="act">
+          <div class="act" :class="{ 'act--again': goAgainLink }">
+            <!-- (surya) past and decided: do it again with the same group and place -->
+            <router-link
+              v-if="goAgainLink"
+              :to="goAgainLink"
+              class="btn btn-outline-primary text-nowrap"
+            >
+              ↻ Go again
+            </router-link>
             <router-link
               :to="{ name: status.page, params: { id: hangout.id } }"
               class="btn text-nowrap"
@@ -415,6 +434,13 @@ async function copyInvite() {
   background: var(--bs-tertiary-bg);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+/* (surya) past card with "Go again": the two buttons side by side, or stacked in the narrow column */
+.act--again {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 /* buttons sit above the stretched link and are 44px tall on touch screens */
@@ -606,6 +632,9 @@ async function copyInvite() {
   }
   .hangout:not(.featured) .act {
     justify-self: center;
+  }
+  .hangout:not(.featured) .act--again {
+    flex-direction: column;
   }
   .hangout:not(.featured) .act .btn {
     min-width: 150px;

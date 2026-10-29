@@ -65,6 +65,12 @@ const planAgainLink = computed(() => ({
   query: { with: store.members.map((m) => m.user_id).filter((id) => id !== myId.value) },
 }))
 
+// (Surya) Same group, same place, same starting points: you only pick a new date on 05
+const goAgainLink = computed(() => ({
+  name: 'create-hangout',
+  query: { ...planAgainLink.value.query, again: hangoutId },
+}))
+
 onMounted(() => store.load(hangoutId))
 </script>
 
@@ -142,7 +148,15 @@ onMounted(() => store.load(hangoutId))
           <section class="panel" aria-labelledby="next-heading">
             <h2 id="next-heading" class="h6 mb-3">What next</h2>
             <div class="d-grid gap-2">
-              <RouterLink class="btn btn-primary" :to="planAgainLink">
+              <!-- (Surya) skips straight to the plan, with everything copied from this time -->
+              <RouterLink v-if="spot" class="btn btn-primary" :to="goAgainLink">
+                ↻ Go again to {{ spot.name }}
+              </RouterLink>
+              <RouterLink
+                class="btn"
+                :class="spot ? 'btn-outline-primary' : 'btn-primary'"
+                :to="planAgainLink"
+              >
                 Plan another with this group
               </RouterLink>
               <RouterLink
