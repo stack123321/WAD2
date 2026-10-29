@@ -478,13 +478,7 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
         <!-- Saved: a clear next step at the top. Otherwise: what you need to do -->
         <div v-if="showSavedBox" class="saved-box" role="status">
           <div class="fw-bold">✓ Hi {{ me.display_name }}, your starting point is saved</div>
-          <p class="small mb-2">{{ savedText }}</p>
-          <RouterLink
-            class="btn btn-primary w-100 next-btn"
-            :to="{ name: 'transport', params: { id: route.params.id } }"
-          >
-            Next: choose transport →
-          </RouterLink>
+          <p class="small mb-0">{{ savedText }}</p>
         </div>
         <p v-else-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
         <p class="text-secondary mb-2">
@@ -533,6 +527,15 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
               📍 Use {{ lastPlace.label }} again
             </button>
           </div>
+
+          <!-- (Surya) your start is saved: the next step, right under the search -->
+          <RouterLink
+            v-if="showSavedBox"
+            class="btn btn-primary btn-lg w-100 mb-4 next-btn"
+            :to="{ name: 'transport', params: { id: route.params.id } }"
+          >
+            Next: choose transport →
+          </RouterLink>
         </template>
 
         <!-- Saving to the database -->
@@ -571,8 +574,8 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
           {{ hostFill ? '✓ Done filling in' : '✏️ Fill in for friends' }}
         </button>
 
-        <!-- Next: in the green box at the top once your start is saved; here while filling in for
-             friends, or greyed out (with the reason) before you've added yours -->
+        <!-- Next: under the search once your start is saved; here while filling in for friends,
+             or greyed out (with the reason) before you've added yours -->
         <RouterLink
           v-if="me && hasStart(me) && !showSavedBox"
           class="btn btn-primary btn-lg w-100"
@@ -658,7 +661,8 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
   font-weight: 600;
 }
 
-/* 💬 round chat button next to the heading */
+/* 💬 round chat button next to the heading. (Surya) Filled coral (the accent colour) so it
+   stands out from the green buttons; dark text, because white on coral is too faint to read */
 .chat-btn {
   position: relative;
   flex-shrink: 0;
@@ -667,16 +671,17 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
   gap: 0.35rem;
   min-height: 44px;
   padding: 0 0.9rem;
-  border: 1px solid var(--fp-border);
+  border: 1px solid var(--fp-accent);
   border-radius: 999px;
-  background: var(--fp-surface);
-  font-weight: 600;
+  background: var(--fp-accent);
+  color: var(--fp-ink);
+  font-weight: 700;
   box-shadow: var(--fp-shadow);
   white-space: nowrap;
 }
 
 .chat-btn:hover {
-  border-color: var(--fp-primary);
+  background: color-mix(in srgb, var(--fp-accent) 85%, #000);
 }
 
 /* red count of new messages */
@@ -688,10 +693,11 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
+  border: 2px solid var(--fp-surface); /* separates the red badge from the coral button */
   background: #d93025;
   color: #fff;
   font-size: 0.75rem;
-  line-height: 22px;
+  line-height: 18px; /* 22px minus the 2px border top and bottom */
   text-align: center;
 }
 

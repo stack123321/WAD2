@@ -46,17 +46,19 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
   ```
 - **Matrix (05):** on "Who's coming?", the "Often with you" badges are clipped at the right edge, and the tick boxes look under 44px.
 
-## Surya (06 starting points)
+## Surya (06 starting points, Preferences setup)
 
-Branch: `fix/members-map-zoom-buttons`
+Branches: `fix/members-map-zoom-buttons`, `fix/preferences-progress` (also has the 06 Next button and chat colour)
 
 ### What changed
 
 | File | Change |
 |---|---|
 | `src/components/map/MembersMap.vue` | The + / − zoom buttons on the 06 map are 44x44px on phones (under 768px), using Ryan's fix from `CrowdHeatmap.vue`. Tablets and laptops are unchanged. |
+| `src/views/StartingPointsView.vue` | Once your starting point is saved, **Next: choose transport →** sits right under the search and "Use my current location" (it was inside the green box at the top, which now just says it's saved and who's still adding theirs). The **💬 Group chat** button is filled coral (`--fp-accent`) with dark text, so it stands out from the green buttons; the red unread badge has a white ring so it shows on coral. Still exactly one Next link on the page. |
+| `src/views/PreferencesView.vue` (Matrix's page) | Setup after sign-up (`/preferences?setup=1`): the thin progress line is now **4 segments**, one per step, filled as you go, with "Step 2 of 4" and the step's topic ("Food"). The bar and the setup cards now span the page width, in line with the title on the left and the Next button on the right (they were a 680px column in the middle). It's hidden on the intro screen, where the empty line looked like a divider (tester's screenshot on a phone). The intro card heading is now "4 quick questions", so the page title isn't repeated. Steps, saving and "Skip for now" are unchanged. |
 
-Checked at 320px, 375px, 768px and 1366px. Nothing scrolls sideways.
+06 map checked at 320px, 375px, 768px and 1366px. 06 Next button and chat colour checked at 320px, 375px, 768px, 1366px and 1920px. Preferences checked at 320px, 375px, 768px, 1366px and 1920px, through all 4 steps. Nothing scrolls sideways.
 
 ### Still open
 
