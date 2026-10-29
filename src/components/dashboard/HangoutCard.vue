@@ -26,12 +26,17 @@ const props = defineProps({
   photos: { type: Array, default: () => [] }, // (surya) this hangout's photos, newest first, from getPhotos()
 })
 
+// (surya) a past hangout where a place was chosen (confirmed or done)
+const pastAndDecided = computed(() => {
+  const h = props.hangout
+  if (!props.past || !h.final_shortlist_id) return false
+  return (h.shortlist ?? []).some((s) => s.id === h.final_shortlist_id)
+})
+
 // (surya) "Go again": same group, place and starting points, you only pick a new date on 05
 const goAgainLink = computed(() => {
   const h = props.hangout
-  const decided =
-    h.final_shortlist_id && (h.shortlist ?? []).some((s) => s.id === h.final_shortlist_id)
-  if (!props.past || !decided) return null // nothing to go back to
+  if (!pastAndDecided.value) return null // nothing to go back to
   const others = h.members.map((m) => m.user_id).filter((id) => id !== props.myId)
   return { name: 'create-hangout', query: { again: h.id, with: others } }
 })
@@ -71,7 +76,13 @@ const details = computed(() => {
 })
 
 // what the status line says, the button and where the card goes
-const status = computed(() => getStatus(props.hangout, props.myId)) // all decided in utils/hangoutStatus.js
+// (surya) on the Past tab, a decided hangout opens its debrief (photos, how it went) even if nobody
+// marked it done, so "View plan" becomes "See how it went"; the plan is one tap away from there
+const status = computed(() => {
+  const s = getStatus(props.hangout, props.myId) // all decided in utils/hangoutStatus.js
+  if (pastAndDecided.value) return { ...s, button: 'See how it went', page: 'debrief' }
+  return s
+})
 
 // the step shown, from the stored status (steps 2 to 4 aren't stored, so collecting stays on step 1)
 const STAGES = {

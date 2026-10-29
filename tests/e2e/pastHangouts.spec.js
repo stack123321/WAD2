@@ -64,3 +64,20 @@ test('Debrief has a Photos panel that says photos work in real hangouts', async 
   await expect(page.getByText('Photos work in real hangouts.')).toBeVisible()
   await expect(page.getByRole('button', { name: '+ Add photos' })).toHaveCount(0)
 })
+
+test('a past hangout that was confirmed but never marked done still opens how it went', async ({
+  page,
+}) => {
+  const confirmed = { ...sample, status: 'confirmed', final_shortlist_id: 'demo-spot-1' }
+  await page.route('**/src/mocks/hangout.json*', (route) =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      body: `export default ${JSON.stringify(confirmed)}`,
+    }),
+  )
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: 'Past' }).click()
+  await page.getByRole('link', { name: 'See how it went' }).click()
+  await expect(page).toHaveURL('/hangouts/demo/debrief')
+  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible()
+})
