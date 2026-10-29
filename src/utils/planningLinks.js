@@ -12,7 +12,12 @@ const STEPS = ['starting-points', 'transport', 'midpoint', 'explore', 'vote', 'f
 const BACK_LABELS = {
   'starting-points': 'Starting points',
   transport: 'Transport',
+  // (Surya) the step bar's Chat button can be pressed on any step
+  midpoint: 'Midpoint',
+  explore: 'Spots',
   vote: 'Vote',
+  'final-plan': 'Final plan',
+  debrief: 'Debrief',
 }
 
 /**

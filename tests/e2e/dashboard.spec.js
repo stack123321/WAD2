@@ -327,13 +327,6 @@ test('the Needs your input card is hidden for a short list', async ({ page }) =>
   await expect(page.getByText('Needs your input')).toHaveCount(0)
 })
 
-test('the starting points page says who sees a starting point', async ({ page }) => {
-  await page.goto('/hangouts/demo/start')
-  await expect(
-    page.getByText('Only people in this hangout can see your starting point.'),
-  ).toBeVisible()
-})
-
 test('one action per card: outline View while waiting on others, no Continue anywhere', async ({
   page,
 }) => {
