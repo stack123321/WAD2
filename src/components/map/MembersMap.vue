@@ -257,4 +257,14 @@ function escapeHtml(text) {
   overflow: hidden;
   margin: 1.5rem 1.5rem 0 0;
 }
+
+/* Phones: leaflet's + / − are only 30px, so make them 44px to be easy to tap (same as 08's map) */
+@media (max-width: 767px) {
+  .members-map :deep(.leaflet-control-zoom a) {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
+  }
+}
 </style>
