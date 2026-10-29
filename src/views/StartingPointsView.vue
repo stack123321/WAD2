@@ -19,6 +19,7 @@ import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
 import HangoutChat from '@/components/start/HangoutChat.vue'
+import LatestMessage from '@/components/start/LatestMessage.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
 
@@ -481,6 +482,8 @@ const unreadChat = computed(() => alerts.unreadIn(route.params.id))
           <p class="small mb-0">{{ savedText }}</p>
         </div>
         <p v-else-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
+        <!-- (Surya) the chat's newest message, tap to reply -->
+        <LatestMessage v-if="me" :hangout="store.hangout" :my-id="myId" @open-chat="openChat" />
         <p class="text-secondary mb-2">
           Search an address, MRT station or postal code. We use everyone’s starting point to find a
           spot that’s fair for all.
