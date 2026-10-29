@@ -4,11 +4,14 @@
 // hangout's invite link (for people who aren't your friends yet). Each step links to its page.
 // (Surya) A 💬 Chat button opens the group chat from any step, with the count of new messages.
 // On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
+// (Surya) The host also gets "✎ Details" before step 1 (‹ on step 1 on phones), which opens 05 in
+// edit mode to change the name, date, time or vibe.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import { useAlertsStore } from '@/stores/alerts'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs id, name, starts_at, invite_code
@@ -43,6 +46,25 @@ const currentIndex = computed(() => {
 
 // The steps either side of this one, for the ‹ › arrows (null at the first and last step)
 const prevStep = computed(() => STEPS[currentIndex.value - 1] ?? null)
+
+// (Surya) "✎ Details": only the host can change them (the demo counts as yours, like on 06)
+const auth = useAuthStore()
+const isHost = computed(() => {
+  if (props.hangout.id.startsWith('demo')) {
+    return true
+  }
+  return Boolean(auth.user) && props.hangout.host_id === auth.user.id
+})
+const onDetails = computed(() => props.current === 'edit-hangout')
+
+// Back to the step you were on after saving (05 reads ?from=)
+const detailsLink = computed(() => {
+  const query = {}
+  if (currentIndex.value !== -1) {
+    query.from = STEPS[currentIndex.value].route
+  }
+  return { name: 'edit-hangout', params: { id: props.hangout.id }, query: query }
+})
 const nextStep = computed(() => STEPS[currentIndex.value + 1] ?? null)
 
 // "Fri 16 Oct · 7 PM"
@@ -117,6 +139,19 @@ async function copyInvite() {
     </div>
 
     <ol class="steps d-none d-xl-flex">
+      <!-- (Surya) host only: change the name, date, time or vibe -->
+      <li v-if="isHost" class="details-step" :class="{ current: onDetails }">
+        <RouterLink
+          :to="detailsLink"
+          class="step-link"
+          :aria-current="onDetails ? 'page' : null"
+          title="Hangout details: change the name, date or vibe"
+          aria-label="Hangout details"
+        >
+          <span class="step-num" aria-hidden="true">✎</span>
+          <span class="details-label">Details</span>
+        </RouterLink>
+      </li>
       <template v-for="(step, i) in STEPS" :key="step.route">
         <li v-if="startsGroup(i)" class="step-group" aria-hidden="true">{{ step.group }}</li>
         <li class="step" :class="{ current: i === currentIndex, done: i < currentIndex }">
@@ -133,12 +168,35 @@ async function copyInvite() {
     </ol>
 
     <!-- Phones and tablets: the 6 steps don't fit, so say which step this is, with arrows to the steps either side -->
+    <!-- (Surya) on Details itself: "✎ Details", with › to step 1 -->
+    <div v-if="onDetails" class="step-nav d-flex d-xl-none align-items-center">
+      <span class="step-arrow disabled" aria-hidden="true">‹</span>
+      <span class="step-compact" aria-current="page">
+        <span class="step-num" aria-hidden="true">✎</span>
+        <span>Hangout details</span>
+      </span>
+      <RouterLink
+        class="step-arrow"
+        :to="{ name: STEPS[0].route, params: { id: hangout.id } }"
+        :aria-label="`Next step: ${STEPS[0].label}`"
+        >›</RouterLink
+      >
+    </div>
+
     <div v-if="currentIndex !== -1" class="step-nav d-flex d-xl-none align-items-center">
       <RouterLink
         v-if="prevStep"
         class="step-arrow"
         :to="{ name: prevStep.route, params: { id: hangout.id } }"
         :aria-label="`Previous step: ${prevStep.label}`"
+        >‹</RouterLink
+      >
+      <!-- (Surya) step 1: ‹ goes to Details, for the host -->
+      <RouterLink
+        v-else-if="isHost"
+        class="step-arrow"
+        :to="detailsLink"
+        aria-label="Previous: hangout details"
         >‹</RouterLink
       >
       <span v-else class="step-arrow disabled" aria-hidden="true">‹</span>
@@ -282,7 +340,7 @@ async function copyInvite() {
 .step + .step::before {
   content: '';
   display: inline-block;
-  width: 32px;
+  width: 24px; /* (Surya) was 32px, so the bar still fits on one line with Details */
   height: 1px;
   margin: 0 0.75rem;
   vertical-align: middle;
@@ -344,6 +402,34 @@ async function copyInvite() {
 }
 
 .step.current .step-num {
+  background: var(--fp-ink);
+  border-color: var(--fp-ink);
+  color: var(--fp-surface);
+}
+
+/* (Surya) "✎ Details" before the steps, like a step without a number. Below 1440px the step bar
+   only just fits on one line, so it's just the ✎ circle there (the link still says "Hangout
+   details" to screen readers, and on hover) */
+@media (max-width: 1439.98px) {
+  .details-label {
+    display: none;
+  }
+}
+
+/* (Surya) laptops 1200–1439px: the full step list shows, so the avatars make way for Chat and
+   Invite to stay on the same line (everyone is listed on each page anyway) */
+@media (min-width: 1200px) and (max-width: 1439.98px) {
+  .avatar-stack {
+    display: none !important; /* over Bootstrap's d-md-flex */
+  }
+}
+
+.details-step.current .step-link {
+  color: var(--fp-ink);
+  font-weight: 600;
+}
+
+.details-step.current .step-num {
   background: var(--fp-ink);
   border-color: var(--fp-ink);
   color: var(--fp-surface);

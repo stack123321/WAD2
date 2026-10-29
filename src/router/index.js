@@ -58,6 +58,12 @@ const routes = [
     component: () => import('@/views/CreateHangoutView.vue'),
     meta: { requiresAuth: true },
   }, // 05 Matrix
+  {
+    path: '/hangouts/:id/edit',
+    name: 'edit-hangout',
+    component: () => import('@/views/CreateHangoutView.vue'),
+    meta: { requiresAuth: true },
+  }, // 05 in edit mode: "Details" in the step bar (Surya)
 
   // inside one hangout (:id is the hangout's uuid, "demo" loads src/mocks/hangout.json)
   {
