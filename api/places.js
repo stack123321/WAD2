@@ -6,7 +6,7 @@
 //
 // Replies with shortlist-shaped places, nearest first:
 // [{ source, source_place_id, name, category, types, primary_type, lat, lng, rating, review_count,
-//    price_level, image_url, distance_m, address, google_maps_uri, open_now, opening_hours,
+//    price_level, image_url, image_urls, distance_m, address, google_maps_uri, open_now, opening_hours,
 //    wheelchair_accessible, description, tags, nearest_station_name, station_distance_m }]
 import { nearbyPlaces, placeById, placeSummary } from './_google.js'
 

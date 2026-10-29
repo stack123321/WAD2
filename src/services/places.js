@@ -18,7 +18,7 @@ export function setGooglePlacesEnabled(enabled) {
  * @param {{ radiusM?: number, categories?: string[], signal?: AbortSignal }} [options]
  * @returns {Promise<Array<{ source: 'google' | 'osm', source_place_id: string, name: string,
  *   category: string, lat: number, lng: number, rating: number | null, price_level: number | null,
- *   image_url: string | null, distance_m: number }>>} nearest first
+ *   image_url: string | null, image_urls: string[], distance_m: number }>>} nearest first
  */
 export async function searchNearby(centre, { radiusM = 3000, categories = [], signal } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
@@ -48,6 +48,7 @@ function toSpot(p) {
     types: p.types ?? [],
     primaryType: p.primary_type ?? null,
     imageUrl: p.image_url,
+    imageUrls: p.image_urls?.length ? p.image_urls : p.image_url ? [p.image_url] : [],
     lat: p.lat,
     lng: p.lng,
     rating: p.rating,
@@ -139,9 +140,9 @@ export async function loadSpotSummary(id, { signal } = {}) {
 }
 
 /** One spot by Google place id, from the cache when Explore already loaded it. */
-export async function loadSpot(id, { signal } = {}) {
+export async function loadSpot(id, { signal, force = false } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
-  if (spotCache.has(id)) return spotCache.get(id)
+  if (!force && spotCache.has(id)) return spotCache.get(id)
   const res = await fetch(`/api/places?id=${encodeURIComponent(id)}`, { signal })
   if (!res.ok) throw new Error(`place failed: ${res.status}`)
   const spot = toSpot(await res.json())
