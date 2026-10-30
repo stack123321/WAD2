@@ -373,8 +373,10 @@ onMounted(async () => {
   <main>
     <!-- (Eashvar) the greeting, the counts and Start planning under them, in the band -->
     <PageBand :title="heading" :lead="countsLine" size="flat">
-      <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
+      <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead.
+           Not shown with no hangouts yet: the first-hangout card has its own Start planning -->
       <router-link
+        v-if="!isNew"
         :to="{ name: 'create-hangout' }"
         class="btn btn-accent d-none d-md-inline-flex start-btn"
       >
