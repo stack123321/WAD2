@@ -17,6 +17,7 @@ import {
 import { getOrCreateDirectChat } from '@/services/directChats'
 import AddToHangout from '@/components/friends/AddToHangout.vue'
 import PageBand from '@/components/ui/PageBand.vue'
+import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -234,7 +235,10 @@ async function remove(person) {
       <section v-if="searched" id="search-results" class="box mb-4">
         <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
         <div v-for="p in sortedResults" :key="p.user_id" class="person">
-          <span class="name">{{ p.display_name }}</span>
+          <span class="who">
+            <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="40" />
+            <span class="name">{{ p.display_name }}</span>
+          </span>
           <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
           <template v-if="statusOf(p.user_id) === 'friend'">
             <span class="tag">Friends ✓</span>
@@ -281,7 +285,10 @@ async function remove(person) {
         <section v-if="requests.length > 0" id="friend-requests" class="box mb-4">
           <h2 class="h6 fw-bold mb-2">Friend requests</h2>
           <div v-for="p in requests" :key="p.user_id" class="person">
-            <span class="name">{{ p.display_name }}</span>
+            <span class="who">
+              <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="40" />
+              <span class="name">{{ p.display_name }}</span>
+            </span>
             <button type="button" class="btn btn-primary btn-sm ms-auto" @click="accept(p)">
               Accept
             </button>
@@ -295,7 +302,10 @@ async function remove(person) {
           <h2 class="h6 fw-bold mb-2">Pending</h2>
           <p v-if="pending.length === 0" class="text-muted small mb-0">No requests waiting.</p>
           <div v-for="p in pending" :key="p.user_id" class="person">
-            <span class="name">{{ p.display_name }}</span>
+            <span class="who">
+              <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="40" />
+              <span class="name">{{ p.display_name }}</span>
+            </span>
           </div>
         </section>
 
@@ -305,7 +315,10 @@ async function remove(person) {
             No friends yet. Search above to add some.
           </p>
           <div v-for="f in friends" :key="f.user_id" class="person">
-            <span class="name">{{ f.display_name }}</span>
+            <span class="who">
+              <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="40" />
+              <span class="name">{{ f.display_name }}</span>
+            </span>
             <!-- after "remove friend" in the ⋯ menu, this row asks to confirm instead of showing its buttons -->
             <template v-if="confirmingId === f.user_id">
               <span class="ms-auto small">Are you sure?</span>
@@ -368,6 +381,14 @@ async function remove(person) {
 </template>
 
 <style scoped>
+/* (Eashvar, design catalogue A1) each person's colour circle beside their name */
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
 .friends-page {
   max-width: 720px;
 }

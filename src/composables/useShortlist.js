@@ -87,5 +87,6 @@ export function useShortlist(getHangoutId) {
     }
   }
 
-  return { addedIds, error, isAdded, isMine, ownerProfile, addSpot, removeSpot }
+  // myCount: how many spots you've added (Eashvar: for "picks left" on 09)
+  return { addedIds, error, isAdded, isMine, myCount, ownerProfile, addSpot, removeSpot }
 }

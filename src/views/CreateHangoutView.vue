@@ -919,7 +919,7 @@ async function submit() {
             <!-- Create sits with the summary, like a checkout -->
             <button
               type="submit"
-              class="btn btn-primary btn-create w-100"
+              class="btn btn-accent btn-create w-100"
               :disabled="!canSubmit"
               aria-describedby="create-hint"
             >
@@ -1330,6 +1330,35 @@ legend.form-label {
   color: var(--fp-muted);
   font-size: 0.85rem;
   text-align: center;
+}
+
+/* (Eashvar, design catalogue A1) the summary as a ticket on deep teal, with the one coral button */
+.panel.summary {
+  background: var(--fp-deep);
+  border-color: var(--fp-deep);
+  color: #fff;
+}
+
+.summary .panel__title {
+  color: #fff;
+}
+
+.summary .summary__list {
+  padding: 1rem 0;
+  border-top: 1px dashed rgb(255 255 255 / 0.25);
+  border-bottom: 1px dashed rgb(255 255 255 / 0.25);
+}
+
+.summary .summary__list dt {
+  color: var(--fp-on-deep-muted);
+}
+
+.summary .missing-hint {
+  color: var(--fp-on-deep);
+}
+
+.summary .btn-cancel {
+  color: var(--fp-on-deep);
 }
 
 /* Create + Cancel inside the summary card */

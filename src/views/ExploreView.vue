@@ -199,6 +199,12 @@
             class="shortlist-content"
             :class="{ 'is-collapsed': isShortlistCollapsed }"
           >
+            <p class="picks-left" aria-live="polite">
+              <template v-if="picksLeft > 0">
+                You have {{ picksLeft }} {{ picksLeft === 1 ? 'pick' : 'picks' }} left
+              </template>
+              <template v-else>You’ve used all {{ MAX_SPOTS_PER_PERSON }} picks</template>
+            </p>
             <ul v-if="shortlisted.length" class="shortlist-list">
               <li v-for="spot in shortlisted" :key="spot.id" class="shortlist-item">
                 <img v-if="spot.imageUrl" :src="spot.imageUrl" :alt="spot.name" class="shortlist-thumb" />
@@ -268,7 +274,7 @@ import {
   loadSpots,
 } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
-import { useShortlist } from '@/composables/useShortlist'
+import { MAX_SPOTS_PER_PERSON, useShortlist } from '@/composables/useShortlist'
 import { hardVetoReason, matchScore, matchesHangoutVibe } from '@/utils/matchScore'
 import { willRainAt } from '@/services/weather'
 
@@ -509,10 +515,14 @@ const {
   addedIds,
   error: shortlistError,
   isMine,
+  myCount,
   ownerProfile,
   addSpot,
   removeSpot,
 } = useShortlist(() => route.params.id)
+
+// (Eashvar, design catalogue A1) "You have 2 picks left" above the shortlist
+const picksLeft = computed(() => Math.max(0, MAX_SPOTS_PER_PERSON - myCount.value))
 const shortlisted = computed(() => {
   const savedSpots = hangout.shortlist.map((savedSpot) => ({
     id: savedSpot.source_place_id,
@@ -548,6 +558,17 @@ async function selectSpot(id) {
 </script>
 
 <style scoped>
+.picks-left {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  background: var(--fp-accent-soft);
+  color: var(--fp-accent-ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
 .nearby-page {
   min-height: 100vh;
   font-family: system-ui, sans-serif;

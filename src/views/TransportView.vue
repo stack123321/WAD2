@@ -105,6 +105,12 @@ function isMe(m) {
   return m.user_id === myId.value
 }
 
+// (Eashvar, design catalogue A1) your own row first, since it's the only one you can change
+const membersMeFirst = computed(() => [
+  ...store.members.filter((m) => isMe(m)),
+  ...store.members.filter((m) => !isMe(m)),
+])
+
 // Pick your mode: show it straight away, save it so friends see it, then re-rank the stations
 const modeError = ref('')
 
@@ -253,7 +259,7 @@ watch(optimiseFor, scoreAreas)
         <!-- Left column: one row per person -->
         <div class="col-lg-8">
           <PersonModeRow
-            v-for="m in store.members"
+            v-for="m in membersMeFirst"
             :key="m.user_id"
             :member="m"
             :is-me="isMe(m)"

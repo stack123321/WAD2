@@ -20,6 +20,7 @@ const sampleTrips = [
   { initial: 'R', name: 'Ryan', mins: 34, color: 'var(--fp-primary)' },
   { initial: 'N', name: 'Nicole', mins: 36, color: 'var(--landing-pink)', longest: true },
   { initial: 'S', name: 'Surya', mins: 27, color: 'var(--landing-purple)' },
+  { initial: 'H', name: 'Hugo', mins: 27, color: 'var(--landing-amber)' },
 ]
 
 // Part (a) How it works (shown when logged out)
@@ -59,15 +60,6 @@ const features = [
     text: 'Shortlist cafes and activities near the midpoint, then vote as a group. No more endless chat threads.',
   },
 ]
-
-// The small "mini map" picture for the first feature (positions in a 300×200 box)
-const miniPins = [
-  { x: 40, y: 40, color: 'var(--landing-pink)' },
-  { x: 260, y: 55, color: 'var(--landing-blue)' },
-  { x: 70, y: 170, color: 'var(--landing-purple)' },
-  { x: 245, y: 160, color: 'var(--fp-accent)' },
-]
-const miniMidpoint = { x: 155, y: 105 }
 
 const votes = [
   { name: 'Brew & Board Café', votes: 3, share: 60, color: 'var(--fp-primary)' },
@@ -309,10 +301,10 @@ function continueRoute(hangout) {
         </div>
 
         <div v-else>
-          <h2 class="section-title text-center">How it works</h2>
+          <h2 class="section-title">How it works</h2>
           <ol class="steps">
             <li v-for="step in steps" :key="step.number" class="step">
-              <span class="step__number" aria-hidden="true">{{ step.number }}</span>
+              <span class="step__dot" aria-hidden="true"></span>
               <h3 class="step__title">{{ step.title }}</h3>
               <p class="step__text">{{ step.text }}</p>
             </li>
@@ -335,50 +327,68 @@ function continueRoute(hangout) {
         </div>
 
         <div class="feature-row__picture" aria-hidden="true">
-          <!-- Mini map: friends' routes meeting in the middle -->
-          <svg v-if="f.picture === 'map'" class="mini-map" viewBox="0 0 300 200">
-            <line
-              v-for="p in miniPins"
-              :key="`mini-route-${p.x}`"
-              :x1="p.x"
-              :y1="p.y"
-              :x2="miniMidpoint.x"
-              :y2="miniMidpoint.y"
-              :stroke="p.color"
-              class="map__route"
-            />
-            <circle :cx="miniMidpoint.x" :cy="miniMidpoint.y" r="22" class="map__halo" />
-            <circle :cx="miniMidpoint.x" :cy="miniMidpoint.y" r="8" class="map__mid" />
-            <g v-for="p in miniPins" :key="`mini-pin-${p.x}`" class="map__pin">
-              <circle :cx="p.x" :cy="p.y" r="11" :fill="p.color" />
-            </g>
-          </svg>
-
-          <!-- Weather card -->
-          <div v-else-if="f.picture === 'weather'" class="card-preview weather">
-            <svg width="34" height="28" viewBox="0 0 34 28">
-              <circle cx="12" cy="11" r="8" fill="var(--landing-amber)" />
-              <path
-                d="M10 25a6 6 0 0 1 1-12 8 8 0 0 1 15 2 5 5 0 0 1 1 10z"
-                fill="var(--landing-cloud)"
-              />
-            </svg>
-            <div>
-              <div class="weather__temp">29°C · Partly cloudy</div>
-              <div class="weather__meta">Bishan · Fri 7 PM · Haze: good</div>
+          <!-- (Eashvar, design catalogue A1) each feature shown with the real card from the app -->
+          <div v-if="f.picture === 'map'" class="stage stage--teal">
+            <div class="app-card">
+              <div class="app-card__head">
+                <span>Travel time to Bishan MRT</span><span class="app-chip">9 min gap</span>
+              </div>
+              <div v-for="t in sampleTrips" :key="t.name" class="fan__trip">
+                <span class="fan__dot" :style="{ background: t.color }">{{ t.initial }}</span>
+                <div>
+                  <b>{{ t.name }}</b>
+                  <div class="fan__track">
+                    <span
+                      :class="{ long: t.longest }"
+                      :style="{ width: `${Math.round((t.mins / 36) * 100)}%` }"
+                    ></span>
+                  </div>
+                </div>
+                <b>{{ t.mins }} min</b>
+              </div>
             </div>
           </div>
 
-          <!-- Group vote card -->
-          <div v-else class="card-preview vote">
-            <div class="vote__title">Group vote</div>
-            <div v-for="v in votes" :key="v.name" class="vote__row">
-              <div class="vote__line">
-                <span>{{ v.name }}</span>
-                <span class="vote__count" :style="{ color: v.color }">{{ v.votes }} votes</span>
+          <div v-else-if="f.picture === 'weather'" class="stage stage--coral">
+            <div class="app-card">
+              <div class="app-card__head">
+                <span>Weather at Bishan</span><span class="app-tag">Fri 7 PM</span>
               </div>
-              <div class="vote__bar">
-                <span :style="{ width: `${v.share}%`, background: v.color }"></span>
+              <div class="weather-now">
+                <span class="weather-now__temp">29°C</span>
+                <div>
+                  <b>Partly cloudy</b>
+                  <p class="app-card__muted">Rain 20% · Haze: good · UV low</p>
+                </div>
+              </div>
+              <div class="hours">
+                <div>5 PM<b>31°</b></div>
+                <div>6 PM<b>30°</b></div>
+                <div class="hours__now">7 PM<b>29°</b></div>
+                <div>8 PM<b>28°</b></div>
+                <div>9 PM<b>28°</b></div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="stage stage--deep">
+            <div class="app-card">
+              <div class="app-card__head">
+                <span>Group voting</span><span class="app-chip app-chip--coral">Closes in 2 h</span>
+              </div>
+              <div
+                v-for="(v, n) in votes"
+                :key="v.name"
+                class="fan__vote"
+                :class="{ 'fan__vote--lead': n === 0 }"
+              >
+                <div class="fan__vote-top">
+                  <span>{{ v.name }}</span
+                  ><span>{{ v.votes }} votes</span>
+                </div>
+                <div class="fan__track">
+                  <span :class="{ grey: n > 0 }" :style="{ width: `${v.share}%` }"></span>
+                </div>
               </div>
             </div>
           </div>
@@ -388,7 +398,7 @@ function continueRoute(hangout) {
 
     <!-- Part (d) FAQ: Bootstrap accordion, one answer open at a time -->
     <section class="container faq">
-      <h2 class="section-title text-center">Questions? We’ve got answers.</h2>
+      <h2 class="section-title">Questions? We’ve got answers.</h2>
       <div id="faq-list" class="accordion">
         <div v-for="(faq, i) in faqs" :key="faq.question" class="accordion-item">
           <h3 class="accordion-header">
@@ -412,13 +422,24 @@ function continueRoute(hangout) {
 
     <!-- Part (e) Final button -->
     <section class="band band--cta">
+      <DotIsland class="cta__island" />
       <div class="container text-center">
         <h2 class="section-title">Ready to stop arguing about where to meet?</h2>
-        <RouterLink class="btn btn-primary btn-lg cta" :to="{ name: 'create-hangout' }">
+        <RouterLink class="btn btn-accent btn-lg cta" :to="{ name: 'create-hangout' }">
           Start a hangout
         </RouterLink>
       </div>
     </section>
+
+    <footer class="landing-foot">
+      <div class="container">
+        <p class="landing-foot__name" aria-hidden="true">Fairpoint</p>
+        <div class="landing-foot__line">
+          <span>Made for friend groups in Singapore</span>
+          <span>Travel times: OneMap, LTA DataMall · Weather: NEA, Open-Meteo</span>
+        </div>
+      </div>
+    </footer>
   </main>
 </template>
 
@@ -467,8 +488,8 @@ function continueRoute(hangout) {
     180deg,
     var(--fp-deep) 0%,
     var(--fp-deep-2) 38%,
-    #0f7a68 68%,
-    #6fb3a5 86%,
+    var(--fp-fade-1) 68%,
+    var(--fp-fade-2) 86%,
     var(--fp-bg) 100%
   );
 }
@@ -745,18 +766,6 @@ function continueRoute(hangout) {
   text-align: center;
 }
 
-.step__number {
-  display: inline-grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--fp-primary);
-  color: var(--fp-surface);
-  font-size: 1.25rem;
-  font-weight: 800;
-}
-
 .step__title {
   margin: 1rem 0 0.5rem;
   font-size: 1.1rem;
@@ -832,77 +841,9 @@ function continueRoute(hangout) {
   background: color-mix(in srgb, var(--fp-primary) 7%, var(--fp-surface));
 }
 
-.mini-map {
-  width: 100%;
-  max-width: 320px;
-}
-
-.card-preview {
-  background: var(--fp-surface);
-  border-radius: var(--fp-radius-sm);
-  box-shadow: var(--fp-shadow);
-}
-
-.weather {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-}
-
-.weather__temp {
-  font-weight: 700;
-}
-
-.weather__meta {
-  color: var(--fp-muted);
-  font-size: 0.85rem;
-}
-
-.vote {
-  width: min(100%, 280px);
-  padding: 1.25rem;
-}
-
-.vote__title {
-  margin-bottom: 0.6rem;
-  font-weight: 700;
-}
-
-.vote__row + .vote__row {
-  margin-top: 0.7rem;
-}
-
-.vote__line {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-}
-
-.vote__count {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.vote__bar {
-  height: 6px;
-  margin-top: 0.4rem;
-  border-radius: 999px;
-  background: var(--fp-bg);
-  overflow: hidden;
-}
-
-.vote__bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
 /* FAQ */
 .faq .accordion {
-  max-width: 760px;
-  margin: 2rem auto 0;
+  margin: 0;
 }
 
 .faq .accordion-button {
@@ -922,6 +863,235 @@ function continueRoute(hangout) {
 .faq .accordion-body {
   color: var(--fp-muted);
   line-height: 1.6;
+}
+
+/* (Eashvar, design catalogue A1) the sections below the hero */
+.band {
+  background: transparent;
+}
+
+.section-title {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+/* how it works: three moments along one dotted path */
+.steps {
+  position: relative;
+  text-align: left;
+}
+
+.steps::before {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 22px;
+  border-top: 3px dotted var(--fp-on-deep-done);
+}
+
+.step {
+  position: relative;
+  text-align: left;
+}
+
+.step__dot {
+  display: block;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 1.25rem;
+  border-radius: 50%;
+  background: var(--fp-primary);
+  outline: 8px solid var(--fp-bg);
+}
+
+.step:nth-child(2) .step__dot {
+  background: var(--fp-accent);
+}
+
+.step:nth-child(3) .step__dot {
+  background: var(--fp-deep);
+}
+
+.step__title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.step__text {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 1.05rem;
+}
+
+/* feature pictures: the app's own cards on a field of colour */
+.feature-row__picture {
+  background: none;
+  padding: 0;
+}
+
+.stage {
+  width: 100%;
+  border-radius: 28px;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.stage--teal {
+  background: var(--fp-primary);
+}
+
+.stage--coral {
+  background: var(--fp-accent);
+}
+
+.stage--deep {
+  background: var(--fp-deep);
+}
+
+.app-card {
+  padding: 1.25rem;
+  border-radius: var(--fp-radius);
+  background: var(--fp-surface);
+  color: var(--fp-ink);
+  text-align: left;
+}
+
+.app-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.app-card__muted {
+  margin: 0;
+  color: var(--fp-muted);
+  font-size: 0.875rem;
+}
+
+.app-chip {
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--fp-primary);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-chip--coral {
+  background: var(--fp-accent);
+  color: var(--fp-deep);
+}
+
+.app-tag {
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--fp-bg);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.weather-now {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.weather-now__temp {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.hours {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 0.9rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.hours div {
+  padding: 0.5rem 0;
+  border-radius: 10px;
+  background: var(--fp-bg);
+}
+
+.hours b {
+  display: block;
+}
+
+.hours .hours__now {
+  background: var(--fp-primary);
+  color: #fff;
+}
+
+/* FAQ: the heading on the left, the questions on the right */
+.faq {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: clamp(1.75rem, 5vw, 5rem);
+  align-items: start;
+}
+
+/* the closing band, deep teal with the island */
+.band.band--cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(4rem, 8vw, 7.5rem);
+  background: linear-gradient(
+    180deg,
+    var(--fp-deep) 0%,
+    var(--fp-deep-2) 60%,
+    var(--fp-primary) 100%
+  );
+  color: #fff;
+}
+
+.cta__island {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(1200px, 140vw);
+  translate: -50% -50%;
+  z-index: -1;
+}
+
+.band--cta .section-title {
+  max-width: 18ch;
+  margin: 0 auto 1.75rem;
+}
+
+.landing-foot {
+  padding: 3.5rem 0 2rem;
+  background: var(--fp-deep);
+  color: var(--fp-on-deep-muted);
+}
+
+.landing-foot__name {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(3rem, 12vw, 10rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.landing-foot__line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-top: 1.75rem;
+  font-size: 0.875rem;
 }
 
 /* Responsive */
@@ -950,6 +1120,12 @@ function continueRoute(hangout) {
   }
 }
 
+@media (max-width: 991.98px) {
+  .faq {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 767.98px) {
   .landing > section {
     padding-block: 3rem;
@@ -957,6 +1133,26 @@ function continueRoute(hangout) {
 
   .steps {
     grid-template-columns: 1fr;
+  }
+
+  /* the dotted path runs down the left on phones */
+  .steps::before {
+    left: 21px;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    border-top: 0;
+    border-left: 3px dotted var(--fp-on-deep-done);
+  }
+
+  .step {
+    padding-left: 68px;
+  }
+
+  .step__dot {
+    position: absolute;
+    left: 0;
+    top: 0;
   }
 
   .next-card .cta {

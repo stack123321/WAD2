@@ -355,7 +355,7 @@ async function copyInvite() {
 
 .step.done + .step::before {
   height: 2px;
-  background: #8fd1c3;
+  background: var(--fp-on-deep-done);
 }
 
 /* "GET THERE", "CHOOSE", "DECIDE" before each group of steps */
@@ -396,8 +396,8 @@ async function copyInvite() {
 }
 
 .step.done .step-num {
-  background: #8fd1c3;
-  border-color: #8fd1c3;
+  background: var(--fp-on-deep-done);
+  border-color: var(--fp-on-deep-done);
   color: var(--fp-deep);
 }
 

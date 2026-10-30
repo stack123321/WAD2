@@ -13,9 +13,9 @@ const BOUNDS = [
   [1.494, 104.1],
 ]
 
-// OneMap's sea colour. Leaflet shows grey wherever there's no map picture (outside Singapore when
+// OneMap's sea colour (Grey style). Leaflet shows grey wherever there's no map picture (outside Singapore when
 // you zoom out on a big screen), so we paint that background like the sea instead.
-const SEA_COLOR = '#6da8e4'
+const SEA_COLOR = '#d1d1d1' // the Grey style's sea (was #6da8e4 for Default)
 
 // OneMap's terms of use require this credit on the map
 const ATTRIBUTION =
@@ -50,7 +50,9 @@ export function createOneMap(el, options = {}) {
   }
   map.getContainer().style.backgroundColor = SEA_COLOR
 
-  L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
+  // (Eashvar, design catalogue A1) OneMap's Grey style, so the coloured pins stand out and the
+  // maps sit quietly with the teal pages
+  L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Grey/{z}/{x}/{y}.png', {
     maxZoom: 19,
     detectRetina: true,
     attribution: ATTRIBUTION,

@@ -299,16 +299,11 @@ const reasons = computed(() =>
       </section>
 
       <section class="spot__criteria card-box">
-        <div class="d-flex align-items-center justify-content-between gap-2">
-          <h2 class="h6 mb-0">Criteria</h2>
-          <span
-            v-if="matchPct !== null"
-            class="criteria__score"
-            :class="`criteria__score--${matchTone}`"
-          >
-            {{ matchPct }}% match
-          </span>
-        </div>
+        <!-- (Eashvar, design catalogue A1) the match % as the big number, its reasons under it -->
+        <h2 class="h6 mb-0">Why it suits your group</h2>
+        <p v-if="matchPct !== null" class="criteria__big" :class="`criteria__big--${matchTone}`">
+          <span class="criteria__pct">{{ matchPct }}%</span> group match
+        </p>
         <p v-if="!spot" class="text-secondary mb-0">Why it fits the group.</p>
         <p v-else-if="!reasons.length" class="text-secondary mb-0">
           Add members with preferences to see why this spot fits (or doesn't).
@@ -369,8 +364,9 @@ const reasons = computed(() =>
      switch moves to the end */
   grid-template-areas:
     'preview preview'
-    'about traveltime'
-    'criteria weather'
+    'criteria traveltime'
+    'criteria about'
+    'weather weather'
     'nav nav';
   gap: 1rem;
 }
@@ -412,26 +408,30 @@ const reasons = computed(() =>
   padding: 1.25rem;
 }
 
-.criteria__score {
-  flex-shrink: 0;
-  padding: 0.125rem 0.625rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+.criteria__big {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  color: var(--fp-muted);
 }
 
-.criteria__score--good {
-  background: #e3f6ec;
-  color: #0e7c3f;
+.criteria__pct {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
 }
 
-.criteria__score--ok {
-  background: #fdf2d7;
+.criteria__big--good .criteria__pct {
+  color: var(--fp-primary);
+}
+
+.criteria__big--ok .criteria__pct {
   color: #a16207;
 }
 
-.criteria__score--poor {
-  background: #fbe4e4;
+.criteria__big--poor .criteria__pct {
   color: #b42318;
 }
 

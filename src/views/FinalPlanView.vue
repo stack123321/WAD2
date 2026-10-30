@@ -360,7 +360,7 @@ onUnmounted(() => clearInterval(timer))
 }
 
 .ticket__you {
-  color: #ffc2b2;
+  color: var(--fp-on-deep-accent);
 }
 
 .ticket__from {

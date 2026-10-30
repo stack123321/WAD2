@@ -23,6 +23,10 @@
   --fp-accent-ink: #b03f24; /* coral for text on white (white on coral is only 3:1) */
   --fp-on-deep: #dcebe7; /* body text on the band */
   --fp-on-deep-muted: #b9d3cd;
+  --fp-on-deep-accent: #ffc2b2; /* coral for text on the band */
+  --fp-on-deep-done: #8fd1c3; /* done steps and dotted paths on and near the band */
+  --fp-fade-1: #0f7a68; /* the landing hero's fade from teal into the page */
+  --fp-fade-2: #6fb3a5;
 
   /* Text. Hugo: confirm against Figma */
   --fp-ink: #1d2322;
