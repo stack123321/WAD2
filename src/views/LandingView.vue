@@ -6,12 +6,15 @@
 // Logged-in users see their next hangout instead of the "how it works" steps.
 // (Surya, improve/user-friendly-customised: one button, personal welcome card, feature rows, FAQ.)
 // (Eashvar, design catalogue A1) hero: the island of Singapore in dots on a teal field that fades
-// into the page, and three real cards from the app (fair trips, the plan, the vote) fanned over
-// the edge, in place of the drawn map, whose midpoint wasn't true for whoever was looking.
+// into the page, and three cards fanned over the edge (HeroCards): your own next or last hangout
+// when you're logged in, or, logged out or with no hangouts yet, MRT crowds and the weather in
+// Singapore right now. Nothing on them is made up.
 import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
 import DotIsland from '@/components/ui/DotIsland.vue'
+import HeroCards from '@/components/landing/HeroCards.vue'
+import { buildHeroCards, pickHeroHangout } from '@/utils/heroCards'
 
 const auth = useAuthStore()
 
@@ -121,6 +124,22 @@ async function loadData() {
 // (immediate: true also runs it straight away when the page opens)
 watch(() => auth.isLoggedIn, loadData, { immediate: true })
 
+// (Eashvar) the hero's cards: loading until we know who you are and have your hangouts, then
+// your next (or last) hangout, or the general "right now" version
+const heroPick = computed(() => pickHeroHangout(hangouts.value))
+const heroMode = computed(() => {
+  if (!auth.ready) return 'loading'
+  if (!auth.isLoggedIn) return 'general'
+  if (loading.value) return 'loading'
+  return heroPick.value && !errorMessage.value ? 'live' : 'general'
+})
+const heroCards = computed(() =>
+  heroMode.value === 'live'
+    ? buildHeroCards(heroPick.value.hangout, auth.user.id, heroPick.value.when)
+    : null,
+)
+const youInitial = computed(() => (name.value || auth.user?.email || 'You').charAt(0).toUpperCase())
+
 // The soonest hangout that isn't finished yet (best-so-far loop)
 const nextHangout = computed(() => {
   let next = null
@@ -211,53 +230,8 @@ function continueRoute(hangout) {
         </div>
       </div>
 
-      <!-- three real cards from the app, fanned over the hero's lower edge -->
-      <div
-        class="container fan"
-        role="img"
-        aria-label="Example: a fair trip for everyone, the confirmed plan, and the group vote"
-      >
-        <div class="fan__card fan__card--left" aria-hidden="true">
-          <p class="fan__title">Fair for everyone</p>
-          <div v-for="t in sampleTrips" :key="t.name" class="fan__trip">
-            <span class="fan__dot" :style="{ background: t.color }">{{ t.initial }}</span>
-            <div>
-              <b>{{ t.name }}</b>
-              <div class="fan__track">
-                <span
-                  :class="{ long: t.longest }"
-                  :style="{ width: `${Math.round((t.mins / 36) * 100)}%` }"
-                ></span>
-              </div>
-            </div>
-            <b>{{ t.mins }} min</b>
-          </div>
-          <p class="fan__note"><span class="fan__chip">9 min gap</span> longest to shortest</p>
-        </div>
-
-        <div class="fan__card fan__card--middle" aria-hidden="true">
-          <p class="fan__label">Confirmed spot</p>
-          <p class="fan__name">Brew &amp; Board Café</p>
-          <p class="fan__note">Board game cafe · rated 4.6 · Bishan</p>
-          <div class="fan__ticket">
-            <div><small>When</small><b>Fri 16 Oct, 7 pm</b></div>
-            <div><small>You leave by</small><b class="fan__you">6:26 pm</b></div>
-          </div>
-        </div>
-
-        <div class="fan__card fan__card--right" aria-hidden="true">
-          <p class="fan__title">Group voting</p>
-          <div class="fan__vote fan__vote--lead">
-            <div class="fan__vote-top"><span>Brew &amp; Board Café</span><span>3</span></div>
-            <div class="fan__track"><span style="width: 75%"></span></div>
-          </div>
-          <div class="fan__vote">
-            <div class="fan__vote-top"><span>Bishan Park cycling</span><span>1</span></div>
-            <div class="fan__track"><span class="grey" style="width: 25%"></span></div>
-          </div>
-          <p class="fan__note">Closes in 2 h · Hugo hasn’t voted</p>
-        </div>
-      </div>
+      <!-- (Eashvar) your hangout, or Singapore right now: see components/landing/HeroCards.vue -->
+      <HeroCards :mode="heroMode" :cards="heroCards" :you="youInitial" />
     </section>
 
     <!-- Part (b) Logged in: your next hangout. Logged out: how it works in 3 steps -->
@@ -547,8 +521,7 @@ function continueRoute(hangout) {
 
 .hero__title,
 .hero__lead,
-.hero__actions,
-.fan__card {
+.hero__actions {
   animation: rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
@@ -565,59 +538,6 @@ function continueRoute(hangout) {
     opacity: 0;
     translate: 0 24px;
   }
-}
-
-/* the fan of cards, hanging over the edge into the next section */
-.fan {
-  display: grid;
-  grid-template-columns: 1fr 1.15fr 1fr;
-  align-items: start;
-  max-width: 1120px;
-  margin-top: clamp(2.5rem, 4.5vw, 4rem);
-  margin-bottom: calc(-1 * clamp(90px, 11vw, 150px));
-  text-align: left;
-  color: var(--fp-ink);
-}
-
-.fan__card {
-  padding: 1.25rem;
-  border-radius: var(--fp-radius);
-  background: var(--fp-surface);
-  box-shadow: 0 24px 48px rgb(0 0 0 / 0.2);
-  animation-delay: 300ms;
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.fan__card--left {
-  transform: rotate(-5deg) translate(28px, 40px);
-}
-
-.fan__card--middle {
-  position: relative;
-  z-index: 1;
-  animation-delay: 380ms;
-}
-
-.fan__card--right {
-  transform: rotate(5deg) translate(-28px, 40px);
-  animation-delay: 460ms;
-}
-
-.fan__card--left:hover {
-  transform: rotate(-3deg) translate(28px, 26px);
-}
-
-.fan__card--right:hover {
-  transform: rotate(3deg) translate(-28px, 26px);
-}
-
-.fan p {
-  margin: 0;
-}
-
-.fan__title {
-  font-weight: 700;
-  margin-bottom: 0.5rem !important;
 }
 
 .fan__trip {
@@ -666,59 +586,6 @@ function continueRoute(hangout) {
   background: var(--fp-muted);
 }
 
-.fan__note {
-  margin-top: 0.5rem !important;
-  color: var(--fp-muted);
-  font-size: 0.875rem;
-}
-
-.fan__chip {
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: var(--fp-primary);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.8125rem;
-}
-
-.fan__label {
-  color: var(--fp-primary);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.fan__name {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.fan__ticket {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-top: 0.75rem;
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-bg);
-}
-
-.fan__ticket > div {
-  padding: 0.6rem 0.75rem;
-}
-
-.fan__ticket > div + div {
-  border-left: 1px dashed var(--fp-border);
-}
-
-.fan__ticket small {
-  display: block;
-  color: var(--fp-muted);
-  font-size: 0.8125rem;
-}
-
-.fan__you {
-  color: var(--fp-primary);
-}
-
 .fan__vote {
   padding: 0.6rem 0.75rem;
   border-radius: var(--fp-radius-sm);
@@ -747,8 +614,7 @@ function continueRoute(hangout) {
 @media (prefers-reduced-motion: reduce) {
   .hero__title,
   .hero__lead,
-  .hero__actions,
-  .fan__card {
+  .hero__actions {
     animation: none;
   }
 }
@@ -1095,19 +961,6 @@ function continueRoute(hangout) {
 }
 
 /* Responsive */
-@media (max-width: 860px) {
-  .fan {
-    grid-template-columns: 1fr;
-    max-width: 420px;
-    margin-bottom: -90px;
-  }
-
-  .fan__card--left,
-  .fan__card--right {
-    display: none;
-  }
-}
-
 @media (max-width: 991.98px) {
   .feature-row {
     grid-template-columns: 1fr;
