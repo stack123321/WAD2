@@ -5,20 +5,22 @@
 // full-width sections down the page (how it works, features, FAQ, a final button).
 // Logged-in users see their next hangout instead of the "how it works" steps.
 // (Surya, improve/user-friendly-customised: one button, personal welcome card, feature rows, FAQ.)
+// (Eashvar, design catalogue A1) hero: the island of Singapore in dots on a teal field that fades
+// into the page, and three real cards from the app (fair trips, the plan, the vote) fanned over
+// the edge, in place of the drawn map, whose midpoint wasn't true for whoever was looking.
 import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
+import DotIsland from '@/components/ui/DotIsland.vue'
 
 const auth = useAuthStore()
 
-// Friends shown on the hero map. x/y are positions in the SVG's 600×460 viewBox.
-const friends = [
-  { initial: 'N', x: 300, y: 105, color: 'var(--landing-pink)' },
-  { initial: 'H', x: 470, y: 95, color: 'var(--landing-blue)' },
-  { initial: 'S', x: 560, y: 260, color: 'var(--fp-accent)' },
-  { initial: 'R', x: 105, y: 325, color: 'var(--landing-purple)' },
+// The fanned cards in the hero: a sample group's trips (bar width = share of the longest trip)
+const sampleTrips = [
+  { initial: 'R', name: 'Ryan', mins: 34, color: 'var(--fp-primary)' },
+  { initial: 'N', name: 'Nicole', mins: 36, color: 'var(--landing-pink)', longest: true },
+  { initial: 'S', name: 'Surya', mins: 27, color: 'var(--landing-purple)' },
 ]
-const midpoint = { x: 318, y: 215 }
 
 // Part (a) How it works (shown when logged out)
 const steps = [
@@ -188,107 +190,81 @@ function continueRoute(hangout) {
 <template>
   <main class="landing">
     <!-- Part (a) Hero: what Fairpoint is, and one button -->
-    <section class="container hero">
-      <div class="hero__copy">
-        <span class="pill">
-          <span class="pill__dot" aria-hidden="true"></span>
-          Built for friend groups in Singapore
-        </span>
+    <section class="hero">
+      <div class="hero__bg" aria-hidden="true">
+        <DotIsland class="hero__island" />
+        <div class="hero__glow"></div>
+      </div>
 
+      <div class="container hero__copy">
         <h1 class="hero__title">Meet halfway.<br />Hang out better.</h1>
 
         <p class="hero__lead">
-          Add where everyone’s coming from. Fairpoint finds a fair meeting spot, checks the weather
-          and crowds, suggests cafes and activities nearby, and lets your group vote.
+          Add where everyone’s starting. Fairpoint finds the MRT stop where nobody’s trip is much
+          longer than anyone else’s, checks the weather and crowds there, and lets your group vote
+          on a place nearby.
         </p>
 
         <div class="hero__actions">
-          <RouterLink class="btn btn-primary btn-lg cta" :to="{ name: 'create-hangout' }">
+          <RouterLink class="btn btn-accent btn-lg cta" :to="{ name: 'create-hangout' }">
             Start a hangout
           </RouterLink>
-          <RouterLink v-if="auth.isLoggedIn" class="hero__link" :to="{ name: 'dashboard' }">
+          <RouterLink
+            v-if="auth.isLoggedIn"
+            class="btn btn-on-deep btn-lg cta"
+            :to="{ name: 'dashboard' }"
+          >
             Go to my hangouts →
           </RouterLink>
         </div>
       </div>
 
+      <!-- three real cards from the app, fanned over the hero's lower edge -->
       <div
-        class="hero__visual"
-        aria-label="Preview: four friends meeting at a fair midpoint in Bishan"
+        class="container fan"
         role="img"
+        aria-label="Example: a fair trip for everyone, the confirmed plan, and the group vote"
       >
-        <svg
-          class="map"
-          viewBox="0 0 600 460"
-          preserveAspectRatio="xMidYMid slice"
-          aria-hidden="true"
-        >
-          <defs>
-            <radialGradient id="heat-red">
-              <stop offset="0%" stop-color="var(--fp-accent)" stop-opacity="0.75" />
-              <stop offset="100%" stop-color="var(--fp-accent)" stop-opacity="0" />
-            </radialGradient>
-            <radialGradient id="heat-amber">
-              <stop offset="0%" stop-color="var(--landing-amber)" stop-opacity="0.7" />
-              <stop offset="100%" stop-color="var(--landing-amber)" stop-opacity="0" />
-            </radialGradient>
-          </defs>
+        <div class="fan__card fan__card--left" aria-hidden="true">
+          <p class="fan__title">Fair for everyone</p>
+          <div v-for="t in sampleTrips" :key="t.name" class="fan__trip">
+            <span class="fan__dot" :style="{ background: t.color }">{{ t.initial }}</span>
+            <div>
+              <b>{{ t.name }}</b>
+              <div class="fan__track">
+                <span
+                  :class="{ long: t.longest }"
+                  :style="{ width: `${Math.round((t.mins / 36) * 100)}%` }"
+                ></span>
+              </div>
+            </div>
+            <b>{{ t.mins }} min</b>
+          </div>
+          <p class="fan__note"><span class="fan__chip">9 min gap</span> longest to shortest</p>
+        </div>
 
-          <!-- Water and parks -->
-          <ellipse cx="420" cy="-10" rx="230" ry="60" class="map__water" />
-          <ellipse cx="300" cy="490" rx="420" ry="90" class="map__water" />
-          <rect x="35" y="100" width="95" height="65" rx="30" class="map__park" />
-          <rect x="490" y="120" width="80" height="80" rx="36" class="map__park" />
-          <rect x="80" y="270" width="80" height="70" rx="30" class="map__park" />
-          <rect x="350" y="285" width="80" height="60" rx="26" class="map__park" />
+        <div class="fan__card fan__card--middle" aria-hidden="true">
+          <p class="fan__label">Confirmed spot</p>
+          <p class="fan__name">Brew &amp; Board Café</p>
+          <p class="fan__note">Board game cafe · rated 4.6 · Bishan</p>
+          <div class="fan__ticket">
+            <div><small>When</small><b>Fri 16 Oct, 7 pm</b></div>
+            <div><small>You leave by</small><b class="fan__you">6:26 pm</b></div>
+          </div>
+        </div>
 
-          <!-- Minor roads -->
-          <g class="map__road">
-            <path d="M0 130 L600 110" />
-            <path d="M0 250 L600 205" />
-            <path d="M0 320 L600 290" />
-            <path d="M290 0 L300 460" />
-            <path d="M180 0 L155 460" />
-            <path d="M600 330 L470 360" />
-          </g>
-
-          <!-- Major roads -->
-          <g class="map__road map__road--major">
-            <path d="M80 0 C95 120 130 260 75 460" />
-            <path d="M500 0 C470 150 470 250 520 460" />
-            <path d="M0 210 C150 190 260 185 600 180" />
-          </g>
-
-          <!-- Crowd heat -->
-          <circle cx="305" cy="205" r="120" fill="url(#heat-red)" />
-          <circle cx="440" cy="160" r="70" fill="url(#heat-red)" />
-          <circle cx="165" cy="300" r="70" fill="url(#heat-amber)" />
-          <circle cx="350" cy="145" r="55" fill="url(#heat-amber)" />
-
-          <!-- Routes to the midpoint -->
-          <line
-            v-for="f in friends"
-            :key="`route-${f.initial}`"
-            :x1="f.x"
-            :y1="f.y"
-            :x2="midpoint.x"
-            :y2="midpoint.y"
-            :stroke="f.color"
-            class="map__route"
-          />
-
-          <!-- Midpoint -->
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="10" class="map__mid" />
-
-          <!-- Friends -->
-          <g v-for="f in friends" :key="`pin-${f.initial}`" class="map__pin">
-            <circle :cx="f.x" :cy="f.y" r="15" :fill="f.color" />
-            <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.initial }}</text>
-          </g>
-        </svg>
-
-        <div class="midpoint-label">Fair midpoint · Bishan</div>
+        <div class="fan__card fan__card--right" aria-hidden="true">
+          <p class="fan__title">Group voting</p>
+          <div class="fan__vote fan__vote--lead">
+            <div class="fan__vote-top"><span>Brew &amp; Board Café</span><span>3</span></div>
+            <div class="fan__track"><span style="width: 75%"></span></div>
+          </div>
+          <div class="fan__vote">
+            <div class="fan__vote-top"><span>Bishan Park cycling</span><span>1</span></div>
+            <div class="fan__track"><span class="grey" style="width: 25%"></span></div>
+          </div>
+          <p class="fan__note">Closes in 2 h · Hugo hasn’t voted</p>
+        </div>
       </div>
     </section>
 
@@ -480,142 +456,282 @@ function continueRoute(hangout) {
   font-weight: 600;
 }
 
-/* Hero */
+/* Hero (A1): the island in dots on a teal field that fades into the page */
 .hero {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 3rem;
-  align-items: center;
+  position: relative;
+  isolation: isolate;
+  color: #fff;
+  text-align: center;
+  padding-top: clamp(3rem, 6vw, 5.5rem);
+  background: linear-gradient(
+    180deg,
+    var(--fp-deep) 0%,
+    var(--fp-deep-2) 38%,
+    #0f7a68 68%,
+    #6fb3a5 86%,
+    var(--fp-bg) 100%
+  );
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--fp-primary) 12%, transparent);
-  color: var(--fp-primary-dark);
-  font-size: 0.85rem;
-  font-weight: 600;
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
 }
 
-.pill__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--fp-primary);
+.hero__island {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  width: min(1600px, 150vw);
+  translate: -50% 0;
+  /* fewer dots behind the words, so they stay clean */
+  mask-image: radial-gradient(38% 30% at 50% 42%, rgb(0 0 0 / 0.25), #000 100%);
+}
+
+.hero__glow {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: min(900px, 120vw);
+  height: 420px;
+  translate: -50% 0;
+  background: radial-gradient(closest-side, rgb(242 104 74 / 0.35), transparent);
 }
 
 .hero__title {
-  margin: 1.5rem 0 1.25rem;
-  font-size: clamp(2.5rem, 5.5vw, 4rem);
+  margin: 0;
+  font-size: clamp(2.6rem, 7.4vw, 6.6rem);
   font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.035em;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
 }
 
 .hero__lead {
-  max-width: 34rem;
-  color: var(--fp-muted);
-  font-size: 1.1rem;
-  line-height: 1.6;
+  margin: 1.6rem auto 0;
+  max-width: 36rem;
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  line-height: 1.55;
+  color: var(--fp-on-deep);
 }
 
 .hero__actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 1.25rem;
-  margin-top: 2rem;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1.9rem;
 }
 
-.hero__link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-weight: 600;
-  text-decoration: none;
+.hero__title,
+.hero__lead,
+.hero__actions,
+.fan__card {
+  animation: rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-/* Map preview */
-.hero__visual {
+.hero__lead {
+  animation-delay: 80ms;
+}
+
+.hero__actions {
+  animation-delay: 160ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+/* the fan of cards, hanging over the edge into the next section */
+.fan {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  align-items: start;
+  max-width: 1120px;
+  margin-top: clamp(2.5rem, 4.5vw, 4rem);
+  margin-bottom: calc(-1 * clamp(90px, 11vw, 150px));
+  text-align: left;
+  color: var(--fp-ink);
+}
+
+.fan__card {
+  padding: 1.25rem;
+  border-radius: var(--fp-radius);
+  background: var(--fp-surface);
+  box-shadow: 0 24px 48px rgb(0 0 0 / 0.2);
+  animation-delay: 300ms;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.fan__card--left {
+  transform: rotate(-5deg) translate(28px, 40px);
+}
+
+.fan__card--middle {
   position: relative;
-  aspect-ratio: 600 / 460;
-  border-radius: calc(var(--fp-radius) * 1.5);
+  z-index: 1;
+  animation-delay: 380ms;
+}
+
+.fan__card--right {
+  transform: rotate(5deg) translate(-28px, 40px);
+  animation-delay: 460ms;
+}
+
+.fan__card--left:hover {
+  transform: rotate(-3deg) translate(28px, 26px);
+}
+
+.fan__card--right:hover {
+  transform: rotate(3deg) translate(-28px, 26px);
+}
+
+.fan p {
+  margin: 0;
+}
+
+.fan__title {
+  font-weight: 700;
+  margin-bottom: 0.5rem !important;
+}
+
+.fan__trip {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+}
+
+.fan__trip + .fan__trip {
+  border-top: 1px solid var(--fp-border);
+}
+
+.fan__dot {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.fan__track {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 99px;
+  background: var(--fp-bg-2);
   overflow: hidden;
-  box-shadow: 0 20px 50px rgb(0 0 0 / 0.1);
-  background: #e9ece4;
 }
 
-.map {
+.fan__track span {
   display: block;
-  width: 100%;
   height: 100%;
+  border-radius: inherit;
+  background: var(--fp-primary);
 }
 
-.map__water {
-  fill: #cfdfe6;
+.fan__track .long {
+  background: var(--fp-accent);
 }
 
-.map__park {
-  fill: #cfe0c3;
-  opacity: 0.8;
+.fan__track .grey {
+  background: var(--fp-muted);
 }
 
-.map__road path {
-  fill: none;
-  stroke: var(--fp-surface);
-  stroke-width: 5;
+.fan__note {
+  margin-top: 0.5rem !important;
+  color: var(--fp-muted);
+  font-size: 0.875rem;
 }
 
-.map__road--major path {
-  stroke: #f2d48f;
-  stroke-width: 8;
+.fan__chip {
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--fp-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8125rem;
 }
 
-.map__route {
-  stroke-width: 2.5;
-  stroke-dasharray: 6 5;
-}
-
-.map__halo {
-  fill: rgb(0 0 0 / 0.12);
-}
-
-.map__mid {
-  fill: var(--fp-primary);
-  stroke: var(--fp-surface);
-  stroke-width: 4;
-}
-
-.map__pin circle {
-  stroke: var(--fp-surface);
-  stroke-width: 3;
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.2));
-}
-
-.map__pin text {
-  fill: var(--fp-surface);
-  font-size: 12px;
+.fan__label {
+  color: var(--fp-primary);
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
-.midpoint-label {
-  position: absolute;
-  top: 53%;
-  left: 53%;
-  transform: translateX(-50%);
-  padding: 0.35rem 0.65rem;
-  border-radius: 6px;
-  background: var(--fp-ink);
-  color: var(--fp-surface);
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
+.fan__name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-/* How it works */
+.fan__ticket {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 0.75rem;
+  border-radius: var(--fp-radius-sm);
+  background: var(--fp-bg);
+}
+
+.fan__ticket > div {
+  padding: 0.6rem 0.75rem;
+}
+
+.fan__ticket > div + div {
+  border-left: 1px dashed var(--fp-border);
+}
+
+.fan__ticket small {
+  display: block;
+  color: var(--fp-muted);
+  font-size: 0.8125rem;
+}
+
+.fan__you {
+  color: var(--fp-primary);
+}
+
+.fan__vote {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--fp-radius-sm);
+  background: var(--fp-bg);
+}
+
+.fan__vote + .fan__vote {
+  margin-top: 0.5rem;
+}
+
+.fan__vote--lead {
+  background: var(--fp-primary-soft);
+}
+
+.fan__vote-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+}
+
+/* the section after the hero clears the cards hanging over */
+.hero + .band {
+  padding-top: clamp(170px, 17vw, 250px) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__title,
+  .hero__lead,
+  .hero__actions,
+  .fan__card {
+    animation: none;
+  }
+}
+
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -809,8 +925,20 @@ function continueRoute(hangout) {
 }
 
 /* Responsive */
+@media (max-width: 860px) {
+  .fan {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin-bottom: -90px;
+  }
+
+  .fan__card--left,
+  .fan__card--right {
+    display: none;
+  }
+}
+
 @media (max-width: 991.98px) {
-  .hero,
   .feature-row {
     grid-template-columns: 1fr;
     gap: 2rem;

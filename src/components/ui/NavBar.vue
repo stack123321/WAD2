@@ -1,6 +1,7 @@
 <script setup>
 // Owner: Hugo (UI kit). Basic version so the app runs; restyle to match Figma.
 // Ryan: top links and a profile menu from 768px, a bottom tab bar with a centre "+" below that.
+// (Eashvar, design catalogue A1) deep teal, so it runs straight into each page's band; Crowds link.
 import { computed, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -68,7 +69,7 @@ async function logOut() {
 </script>
 
 <template>
-  <nav class="topbar bg-white border-bottom" aria-label="Main">
+  <nav class="topbar" aria-label="Main">
     <div class="container-fluid px-3 d-flex align-items-center gap-3 py-2">
       <RouterLink class="brand me-auto" :to="{ name: 'landing' }">Fairpoint</RouterLink>
 
@@ -95,6 +96,9 @@ async function logOut() {
               </span>
             </RouterLink>
           </li>
+          <li class="nav-item">
+            <RouterLink class="nav-link" :to="{ name: 'crowds' }">Crowds</RouterLink>
+          </li>
           <li class="nav-item dropdown">
             <button
               type="button"
@@ -117,7 +121,7 @@ async function logOut() {
           </li>
         </ul>
       </template>
-      <RouterLink v-else class="btn btn-primary btn-sm login-btn" :to="{ name: 'auth' }"
+      <RouterLink v-else class="btn btn-accent btn-sm login-btn" :to="{ name: 'auth' }"
         >Log in</RouterLink
       >
     </div>
@@ -220,10 +224,19 @@ async function logOut() {
 </template>
 
 <style scoped>
+.topbar {
+  background: var(--fp-deep);
+  color: #fff;
+}
+
+.topbar > div {
+  min-height: 64px;
+}
+
 .brand {
   font-weight: 800;
-  font-size: 1.2rem;
-  color: var(--fp-primary);
+  font-size: 1.3rem;
+  color: #fff;
   text-decoration: none;
 }
 
@@ -231,11 +244,19 @@ async function logOut() {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  color: var(--fp-on-deep);
+  font-weight: 500;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  color: #fff;
 }
 
 .nav-link.router-link-active {
-  color: var(--fp-primary);
+  color: #fff;
   font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--fp-accent);
 }
 
 /* the Log in button, 44px tall so it's easy to tap on a phone */
@@ -249,12 +270,12 @@ async function logOut() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--fp-primary);
-  color: var(--fp-surface);
-  font-weight: 700;
+  background: var(--fp-accent);
+  color: var(--fp-deep);
+  font-weight: 800;
 }
 
 .profile-btn {
@@ -273,8 +294,7 @@ async function logOut() {
   grid-template-columns: repeat(5, 1fr);
   align-items: end;
   padding: 0.375rem 0.25rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
-  background: var(--fp-surface);
-  border-top: 1px solid var(--fp-border);
+  background: var(--fp-deep);
 }
 
 .tab {
@@ -286,15 +306,17 @@ async function logOut() {
   gap: 2px;
   min-height: 52px;
   border: 0;
+  border-radius: 14px;
   background: transparent;
-  color: var(--fp-muted);
-  font-size: 0.7rem;
+  color: var(--fp-on-deep-muted);
+  font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
 }
 
 .tab.router-link-active {
-  color: var(--fp-primary);
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
 }
 
 /* Ryan: the badge sits on the top right corner of the tab's icon */
@@ -313,6 +335,10 @@ async function logOut() {
   padding-bottom: 0.35rem; /* puts "Plan" on the same line as the other labels */
 }
 
+.tab.plus.router-link-active {
+  background: transparent;
+}
+
 .plus-icon {
   flex-shrink: 0; /* otherwise the 52px column squashes the button */
   display: flex;
@@ -320,10 +346,9 @@ async function logOut() {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
-  background: var(--fp-primary);
-  color: var(--fp-surface);
-  box-shadow: var(--fp-shadow);
+  border-radius: 50%;
+  background: var(--fp-accent);
+  color: var(--fp-deep);
 }
 
 .tab-wrap {

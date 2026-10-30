@@ -44,7 +44,7 @@ test('switching hangouts shows only that group’s spots, people and votes', asy
   await expect(page.getByRole('button', { name: /^Vote for / })).toHaveCount(2)
   await expect(page.getByRole('heading', { name: 'Mock Study Cafe (sample data)' })).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Mock Public Library (sample data)' }),
+    page.getByRole('heading', { name: 'Mock Public Library (sample data)', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('Mock Hawker Centre (sample data)')).toBeHidden()
   await expect(page.getByText('0 of 3 voted')).toBeVisible()
@@ -68,7 +68,7 @@ test('each hangout’s final plan lists only its own members', async ({ page }) 
       .filter({ hasText: name })
 
   await expect(
-    page.getByRole('heading', { name: 'Mock Public Library (sample data)' }),
+    page.getByRole('heading', { name: 'Mock Public Library (sample data)', exact: true }),
   ).toBeVisible()
   for (const name of ['Eashvar', 'Matrix', 'Hugo']) {
     await expect(trip(name)).toBeVisible()

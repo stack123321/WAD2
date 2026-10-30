@@ -52,3 +52,6 @@ pnpm-lock.yaml
 
 # local Claude Code files
 .claude/
+
+# design skill working files (catalogue, mockups, screenshots)
+.taste-skill/

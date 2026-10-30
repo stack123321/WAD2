@@ -16,6 +16,7 @@ import {
 } from '@/services/friends'
 import { getOrCreateDirectChat } from '@/services/directChats'
 import AddToHangout from '@/components/friends/AddToHangout.vue'
+import PageBand from '@/components/ui/PageBand.vue'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -205,159 +206,164 @@ async function remove(person) {
 </script>
 
 <template>
-  <main class="container py-4 friends-page">
-    <router-link :to="{ name: 'dashboard' }" class="small">← My hangouts</router-link>
-    <h1 class="h3 mt-2 mb-3">Friends</h1>
+  <main>
+    <PageBand
+      title="Friends"
+      size="short"
+      :back="{ to: { name: 'dashboard' }, label: 'My hangouts' }"
+    />
 
-    <!-- search -->
-    <form class="mb-3" role="search" @submit.prevent="search">
-      <label for="friend-search" class="visually-hidden">Search by name or email</label>
-      <div class="input-group search-box">
-        <input
-          id="friend-search"
-          v-model="query"
-          type="search"
-          class="form-control"
-          placeholder="Search by name or email"
-        />
-        <button type="submit" class="btn btn-primary" :disabled="searching">Search</button>
-      </div>
-    </form>
-    <p v-if="searchError" class="text-danger small mb-2">{{ searchError }}</p>
-
-    <!-- search results, only after a search: each row shows what i can do with that person -->
-    <section v-if="searched" id="search-results" class="box mb-4">
-      <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
-      <div v-for="p in sortedResults" :key="p.user_id" class="person">
-        <span class="name">{{ p.display_name }}</span>
-        <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
-        <template v-if="statusOf(p.user_id) === 'friend'">
-          <span class="tag">Friends ✓</span>
-          <AddToHangout :friend="p" :hangouts="openHangouts" @add="addToHangout" />
-          <button
-            type="button"
-            class="btn btn-outline-primary btn-sm"
-            :aria-label="`Chat with ${p.display_name}`"
-            @click="openChat(p)"
-          >
-            Chat
-          </button>
-        </template>
-        <span v-else-if="statusOf(p.user_id) === 'pending'" class="tag">Requested</span>
-        <button
-          v-else-if="statusOf(p.user_id) === 'request'"
-          type="button"
-          class="btn btn-primary btn-sm ms-auto"
-          @click="accept(p)"
-        >
-          Accept
-        </button>
-        <button
-          v-else
-          type="button"
-          class="btn btn-outline-primary btn-sm ms-auto"
-          :aria-label="`Add ${p.display_name} as a friend`"
-          @click="addFriend(p)"
-        >
-          Add Friend
-        </button>
-      </div>
-    </section>
-
-    <!-- what the last action did: red if it failed, green tick if it worked -->
-    <p v-if="actionError" class="text-danger small" role="alert">{{ actionError }}</p>
-    <p v-if="actionDone" class="done small" role="status">✓ {{ actionDone }}</p>
-
-    <p v-if="loading" class="text-muted">Loading your friends…</p>
-    <p v-else-if="error" class="text-danger">{{ error }}</p>
-
-    <template v-else>
-      <!-- requests sent to you: only shows when there are some -->
-      <section v-if="requests.length > 0" id="friend-requests" class="box mb-4">
-        <h2 class="h6 fw-bold mb-2">Friend requests</h2>
-        <div v-for="p in requests" :key="p.user_id" class="person">
-          <span class="name">{{ p.display_name }}</span>
-          <button type="button" class="btn btn-primary btn-sm ms-auto" @click="accept(p)">
-            Accept
-          </button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" @click="decline(p)">
-            Decline
-          </button>
+    <div class="container fp-pull friends-page">
+      <!-- search -->
+      <form class="mb-3" role="search" @submit.prevent="search">
+        <label for="friend-search" class="visually-hidden">Search by name or email</label>
+        <div class="input-group search-box">
+          <input
+            id="friend-search"
+            v-model="query"
+            type="search"
+            class="form-control"
+            placeholder="Search by name or email"
+          />
+          <button type="submit" class="btn btn-primary" :disabled="searching">Search</button>
         </div>
-      </section>
+      </form>
+      <p v-if="searchError" class="text-danger small mb-2">{{ searchError }}</p>
 
-      <section id="pending" class="box mb-4">
-        <h2 class="h6 fw-bold mb-2">Pending</h2>
-        <p v-if="pending.length === 0" class="text-muted small mb-0">No requests waiting.</p>
-        <div v-for="p in pending" :key="p.user_id" class="person">
+      <!-- search results, only after a search: each row shows what i can do with that person -->
+      <section v-if="searched" id="search-results" class="box mb-4">
+        <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
+        <div v-for="p in sortedResults" :key="p.user_id" class="person">
           <span class="name">{{ p.display_name }}</span>
-        </div>
-      </section>
-
-      <section id="my-friends" class="box">
-        <h2 class="h6 fw-bold mb-2">My Friends</h2>
-        <p v-if="friends.length === 0" class="text-muted small mb-0">
-          No friends yet. Search above to add some.
-        </p>
-        <div v-for="f in friends" :key="f.user_id" class="person">
-          <span class="name">{{ f.display_name }}</span>
-          <!-- after "remove friend" in the ⋯ menu, this row asks to confirm instead of showing its buttons -->
-          <template v-if="confirmingId === f.user_id">
-            <span class="ms-auto small">Are you sure?</span>
-            <button type="button" class="btn btn-danger btn-sm text-nowrap" @click="remove(f)">
-              Yes, remove
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary btn-sm"
-              @click="confirmingId = null"
-            >
-              Cancel
-            </button>
-          </template>
-          <template v-else>
-            <AddToHangout
-              class="ms-auto"
-              :friend="f"
-              :hangouts="openHangouts"
-              @add="addToHangout"
-            />
+          <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
+          <template v-if="statusOf(p.user_id) === 'friend'">
+            <span class="tag">Friends ✓</span>
+            <AddToHangout :friend="p" :hangouts="openHangouts" @add="addToHangout" />
             <button
               type="button"
               class="btn btn-outline-primary btn-sm"
-              :aria-label="`Chat with ${f.display_name}`"
-              @click="openChat(f)"
+              :aria-label="`Chat with ${p.display_name}`"
+              @click="openChat(p)"
             >
               Chat
             </button>
-            <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
-            <div class="dropdown">
-              <button
-                type="button"
-                class="btn btn-link text-muted menu-btn"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                :aria-label="`More options for ${f.display_name}`"
-              >
-                ···
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                  <button
-                    type="button"
-                    class="dropdown-item text-danger"
-                    :aria-label="`Remove ${f.display_name} as a friend`"
-                    @click="confirmingId = f.user_id"
-                  >
-                    Remove friend
-                  </button>
-                </li>
-              </ul>
-            </div>
           </template>
+          <span v-else-if="statusOf(p.user_id) === 'pending'" class="tag">Requested</span>
+          <button
+            v-else-if="statusOf(p.user_id) === 'request'"
+            type="button"
+            class="btn btn-primary btn-sm ms-auto"
+            @click="accept(p)"
+          >
+            Accept
+          </button>
+          <button
+            v-else
+            type="button"
+            class="btn btn-outline-primary btn-sm ms-auto"
+            :aria-label="`Add ${p.display_name} as a friend`"
+            @click="addFriend(p)"
+          >
+            Add Friend
+          </button>
         </div>
       </section>
-    </template>
+
+      <!-- what the last action did: red if it failed, green tick if it worked -->
+      <p v-if="actionError" class="text-danger small" role="alert">{{ actionError }}</p>
+      <p v-if="actionDone" class="done small" role="status">✓ {{ actionDone }}</p>
+
+      <p v-if="loading" class="text-muted">Loading your friends…</p>
+      <p v-else-if="error" class="text-danger">{{ error }}</p>
+
+      <template v-else>
+        <!-- requests sent to you: only shows when there are some -->
+        <section v-if="requests.length > 0" id="friend-requests" class="box mb-4">
+          <h2 class="h6 fw-bold mb-2">Friend requests</h2>
+          <div v-for="p in requests" :key="p.user_id" class="person">
+            <span class="name">{{ p.display_name }}</span>
+            <button type="button" class="btn btn-primary btn-sm ms-auto" @click="accept(p)">
+              Accept
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @click="decline(p)">
+              Decline
+            </button>
+          </div>
+        </section>
+
+        <section id="pending" class="box mb-4">
+          <h2 class="h6 fw-bold mb-2">Pending</h2>
+          <p v-if="pending.length === 0" class="text-muted small mb-0">No requests waiting.</p>
+          <div v-for="p in pending" :key="p.user_id" class="person">
+            <span class="name">{{ p.display_name }}</span>
+          </div>
+        </section>
+
+        <section id="my-friends" class="box">
+          <h2 class="h6 fw-bold mb-2">My Friends</h2>
+          <p v-if="friends.length === 0" class="text-muted small mb-0">
+            No friends yet. Search above to add some.
+          </p>
+          <div v-for="f in friends" :key="f.user_id" class="person">
+            <span class="name">{{ f.display_name }}</span>
+            <!-- after "remove friend" in the ⋯ menu, this row asks to confirm instead of showing its buttons -->
+            <template v-if="confirmingId === f.user_id">
+              <span class="ms-auto small">Are you sure?</span>
+              <button type="button" class="btn btn-danger btn-sm text-nowrap" @click="remove(f)">
+                Yes, remove
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm"
+                @click="confirmingId = null"
+              >
+                Cancel
+              </button>
+            </template>
+            <template v-else>
+              <AddToHangout
+                class="ms-auto"
+                :friend="f"
+                :hangouts="openHangouts"
+                @add="addToHangout"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-primary btn-sm"
+                :aria-label="`Chat with ${f.display_name}`"
+                @click="openChat(f)"
+              >
+                Chat
+              </button>
+              <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
+              <div class="dropdown">
+                <button
+                  type="button"
+                  class="btn btn-link text-muted menu-btn"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  :aria-label="`More options for ${f.display_name}`"
+                >
+                  ···
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <button
+                      type="button"
+                      class="dropdown-item text-danger"
+                      :aria-label="`Remove ${f.display_name} as a friend`"
+                      @click="confirmingId = f.user_id"
+                    >
+                      Remove friend
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </template>
+          </div>
+        </section>
+      </template>
+    </div>
   </main>
 </template>
 

@@ -7,13 +7,15 @@
 // only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
 // current members' latest votes count. Surya's MembersMap shows everyone's starting point and
 // his WeatherCard the forecast at the spot for the hangout's time (until the hangout starts); a
-// line under the map holds space for Nicole's routes. On phones the cards reorder so the map
+// line under the map holds space for Nicole's routes. (Design catalogue A1) The band says the
+// answer ("You're going to …") with when, your leave-by time and the gap. On phones the cards reorder so the map
 // comes straight after the spot.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone } from '@/services/votes'
+import PageBand from '@/components/ui/PageBand.vue'
 import SpotHero from '@/components/voting/SpotHero.vue'
 import TripTable from '@/components/voting/TripTable.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
@@ -72,6 +74,13 @@ const myLeave = computed(() => {
   if (!me || me.travel_mins == null || !startsAt.value) return null
   return { at: formatTime(leaveBy(startsAt.value, me.travel_mins)), from: me.start_label ?? null }
 })
+
+// The band: the answer in words, then when / you leave by / the gap
+const bandTitle = computed(() => {
+  if (!spot.value) return 'Final plan & itinerary'
+  return isConfirmed.value ? `You're going to ${spot.value.name}` : `So far it's ${spot.value.name}`
+})
+const range = computed(() => tripRange(store.members))
 
 const weatherPlace = computed(() => {
   const lat = spot.value?.lat ?? hangout.value?.midpoint_lat
@@ -152,152 +161,226 @@ onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
-  <main class="container py-4">
-    <header class="mb-4">
-      <h1 class="h2 mb-0">Final plan & itinerary</h1>
-    </header>
-
-    <div v-if="store.loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading the plan…</span>
-      </div>
-    </div>
-
-    <div v-else-if="store.error" class="alert alert-danger" role="alert">
-      Couldn't load this hangout. {{ store.error.message }}
-    </div>
-
-    <div v-else-if="hangout && !spot" class="alert alert-info">
-      Nothing has been shortlisted yet, so there's no plan to show.
-    </div>
-
-    <template v-else-if="hangout">
-      <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
-
-      <div class="plan-layout">
-        <div class="plan-col">
-          <SpotHero
-            class="slot-hero"
-            :spot="spot"
-            :label="isConfirmed ? 'Confirmed spot' : 'Current leader'"
-            :area="hangout.midpoint_name"
-            :starts-at="startsAt"
-            :my-leave="myLeave"
-          >
-            <p v-if="!isConfirmed" class="not-confirmed small mt-3 mb-0">
-              Not confirmed yet. The host hasn't closed the vote, so this is the spot with the most
-              votes so far.
-            </p>
-            <p v-if="status === 'done'" class="done-row mt-3 mb-0">
-              <span class="badge done">✓ Done</span>
-              <RouterLink :to="{ name: 'debrief', params: { id: hangoutId } }">
-                See how it went →
-              </RouterLink>
-            </p>
-          </SpotHero>
-
-          <TripTable
-            class="slot-trips"
-            :members="store.members"
-            :starts-at="startsAt"
-            :my-id="myId"
-          />
-
-          <section class="panel backup slot-backup" aria-labelledby="backup-heading">
-            <div class="backup__thumb" aria-hidden="true">
-              {{ backup ? backup.name.trim().charAt(0).toUpperCase() : '–' }}
-            </div>
-            <div>
-              <h2 id="backup-heading" class="backup__label mb-0">Backup plan</h2>
-              <template v-if="backup">
-                <p class="fw-semibold mb-0">{{ backup.name }}</p>
-                <p class="small muted mb-0">
-                  The runner-up, in case {{ spot.name }} is full or closed.
-                </p>
-              </template>
-              <p v-else class="small muted mb-0">There was only one spot, so there's no backup.</p>
-            </div>
-          </section>
+  <main>
+    <PageBand :title="bandTitle">
+      <dl v-if="spot && (startsAt || myLeave || range)" class="ticket">
+        <div v-if="startsAt">
+          <dt>When</dt>
+          <dd>{{ formatDateTime(startsAt) }}</dd>
         </div>
+        <div v-if="myLeave">
+          <dt>You leave by</dt>
+          <dd class="ticket__you">
+            {{ myLeave.at }}
+            <span v-if="myLeave.from" class="ticket__from">from {{ myLeave.from }}</span>
+          </dd>
+        </div>
+        <div v-if="range">
+          <dt>Fair for everyone</dt>
+          <dd>{{ range.gap }} min gap</dd>
+        </div>
+      </dl>
+    </PageBand>
 
-        <div class="plan-col">
-          <section class="panel slot-map" aria-labelledby="map-heading">
-            <h2 id="map-heading" class="panel-title mb-2">Where everyone's coming from</h2>
-            <div class="map-frame">
-              <MembersMap :members="store.members" :highlight-id="myId" />
-            </div>
-            <p class="small muted mt-2 mb-0">Step-by-step routes for everyone are coming soon.</p>
-          </section>
+    <div class="container fp-pull">
+      <div v-if="store.loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading the plan…</span>
+        </div>
+      </div>
 
-          <WeatherCard
-            v-if="weatherPlace && !hasStarted"
-            class="slot-weather"
-            :lat="weatherPlace.lat"
-            :lng="weatherPlace.lng"
-            :place="weatherPlace.name"
-            :at="startsAt"
-          />
+      <div v-else-if="store.error" class="alert alert-danger" role="alert">
+        Couldn't load this hangout. {{ store.error.message }}
+      </div>
 
-          <section class="panel slot-share" aria-labelledby="actions-heading">
-            <h2 id="actions-heading" class="panel-title mb-3">Save and share</h2>
-            <div class="d-grid gap-2">
-              <a
-                v-if="calendarLink"
-                class="btn btn-primary"
-                :href="calendarLink"
-                target="_blank"
-                rel="noopener"
-              >
-                Add to Google Calendar
-              </a>
-              <button type="button" class="btn btn-outline-primary" @click="copyPlan">
-                Copy plan
-              </button>
-              <button
-                v-if="isHost && status === 'confirmed'"
-                type="button"
-                class="btn btn-outline-primary"
-                :disabled="markingDone || !hasStarted"
-                @click="markDone"
-              >
-                Mark as done
-              </button>
-            </div>
-            <p v-if="isHost && status === 'confirmed' && !hasStarted" class="small muted mt-2 mb-0">
-              You can mark it done once the hangout has started.
-            </p>
-            <div
-              v-if="copyMessage"
-              class="alert small mt-3 mb-0"
-              :class="copyFailed ? 'alert-warning' : 'alert-success'"
-              role="status"
+      <div v-else-if="hangout && !spot" class="alert alert-info">
+        Nothing has been shortlisted yet, so there's no plan to show.
+      </div>
+
+      <template v-else-if="hangout">
+        <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
+
+        <div class="plan-layout">
+          <div class="plan-col">
+            <SpotHero
+              class="slot-hero"
+              :spot="spot"
+              :label="isConfirmed ? 'Confirmed spot' : 'Current leader'"
+              :area="hangout.midpoint_name"
             >
-              {{ copyMessage }}
-            </div>
-            <template v-if="copyFailed && copyMessage">
-              <label for="plan-text" class="form-label small fw-semibold mt-3">Plan text</label>
-              <textarea
-                id="plan-text"
-                class="form-control small"
-                rows="8"
-                readonly
-                :value="summary"
-              ></textarea>
-            </template>
-          </section>
-        </div>
-      </div>
+              <p v-if="!isConfirmed" class="not-confirmed small mt-3 mb-0">
+                Not confirmed yet. The host hasn't closed the vote, so this is the spot with the
+                most votes so far.
+              </p>
+              <p v-if="status === 'done'" class="done-row mt-3 mb-0">
+                <span class="badge done">✓ Done</span>
+                <RouterLink :to="{ name: 'debrief', params: { id: hangoutId } }">
+                  See how it went →
+                </RouterLink>
+              </p>
+            </SpotHero>
 
-      <nav class="mt-4" aria-label="Next step">
-        <RouterLink class="btn btn-link px-0" :to="{ name: 'dashboard' }">
-          Back to my hangouts
-        </RouterLink>
-      </nav>
-    </template>
+            <TripTable
+              class="slot-trips"
+              :members="store.members"
+              :starts-at="startsAt"
+              :my-id="myId"
+            />
+
+            <section class="panel backup slot-backup" aria-labelledby="backup-heading">
+              <div class="backup__thumb" aria-hidden="true">
+                {{ backup ? backup.name.trim().charAt(0).toUpperCase() : '–' }}
+              </div>
+              <div>
+                <h2 id="backup-heading" class="backup__label mb-0">Backup plan</h2>
+                <template v-if="backup">
+                  <p class="fw-semibold mb-0">{{ backup.name }}</p>
+                  <p class="small muted mb-0">
+                    The runner-up, in case {{ spot.name }} is full or closed.
+                  </p>
+                </template>
+                <p v-else class="small muted mb-0">
+                  There was only one spot, so there's no backup.
+                </p>
+              </div>
+            </section>
+          </div>
+
+          <div class="plan-col">
+            <section class="panel slot-map" aria-labelledby="map-heading">
+              <h2 id="map-heading" class="panel-title mb-2">Where everyone's coming from</h2>
+              <div class="map-frame">
+                <MembersMap :members="store.members" :highlight-id="myId" />
+              </div>
+              <p class="small muted mt-2 mb-0">Step-by-step routes for everyone are coming soon.</p>
+            </section>
+
+            <WeatherCard
+              v-if="weatherPlace && !hasStarted"
+              class="slot-weather"
+              :lat="weatherPlace.lat"
+              :lng="weatherPlace.lng"
+              :place="weatherPlace.name"
+              :at="startsAt"
+            />
+
+            <section class="panel slot-share" aria-labelledby="actions-heading">
+              <h2 id="actions-heading" class="panel-title mb-3">Save and share</h2>
+              <div class="d-grid gap-2">
+                <a
+                  v-if="calendarLink"
+                  class="btn btn-primary"
+                  :href="calendarLink"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Add to Google Calendar
+                </a>
+                <button type="button" class="btn btn-outline-primary" @click="copyPlan">
+                  Copy plan
+                </button>
+                <button
+                  v-if="isHost && status === 'confirmed'"
+                  type="button"
+                  class="btn btn-outline-primary"
+                  :disabled="markingDone || !hasStarted"
+                  @click="markDone"
+                >
+                  Mark as done
+                </button>
+              </div>
+              <p
+                v-if="isHost && status === 'confirmed' && !hasStarted"
+                class="small muted mt-2 mb-0"
+              >
+                You can mark it done once the hangout has started.
+              </p>
+              <div
+                v-if="copyMessage"
+                class="alert small mt-3 mb-0"
+                :class="copyFailed ? 'alert-warning' : 'alert-success'"
+                role="status"
+              >
+                {{ copyMessage }}
+              </div>
+              <template v-if="copyFailed && copyMessage">
+                <label for="plan-text" class="form-label small fw-semibold mt-3">Plan text</label>
+                <textarea
+                  id="plan-text"
+                  class="form-control small"
+                  rows="8"
+                  readonly
+                  :value="summary"
+                ></textarea>
+              </template>
+            </section>
+          </div>
+        </div>
+
+        <nav class="mt-4" aria-label="Next step">
+          <RouterLink class="btn btn-link px-0" :to="{ name: 'dashboard' }">
+            Back to my hangouts
+          </RouterLink>
+        </nav>
+      </template>
+    </div>
   </main>
 </template>
 
 <style scoped>
+/* the ticket in the band: when, you leave by, the gap */
+.ticket {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.25rem 0 0;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.ticket > div {
+  padding: 0.75rem 1.25rem;
+}
+
+.ticket > div + div {
+  border-left: 1px dashed rgb(255 255 255 / 0.3);
+}
+
+.ticket dt {
+  color: var(--fp-on-deep-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ticket dd {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.ticket__you {
+  color: #ffc2b2;
+}
+
+.ticket__from {
+  color: var(--fp-on-deep);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@media (max-width: 575.98px) {
+  .ticket {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .ticket > div + div {
+    border-left: 0;
+    border-top: 1px dashed rgb(255 255 255 / 0.3);
+  }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

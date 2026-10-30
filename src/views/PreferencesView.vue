@@ -7,6 +7,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
+import PageBand from '@/components/ui/PageBand.vue'
 import { defaultPreferences, getProfile, saveProfile } from '@/services/profiles'
 
 const route = useRoute()
@@ -227,253 +228,252 @@ async function save() {
 </script>
 
 <template>
-  <main class="container prefs">
-    <header class="prefs__header">
-      <div>
-        <h1 class="prefs__title">Tell us what you like</h1>
-        <p class="prefs__sub">
-          {{
-            isSetup
-              ? 'Answer a few quick questions to personalise your recommendations.'
-              : 'Fairpoint uses this to rank cafes and activities for your group.'
-          }}
-        </p>
-      </div>
-    </header>
+  <main>
+    <PageBand
+      title="Tell us what you like"
+      :lead="
+        isSetup
+          ? 'Answer a few quick questions to personalise your recommendations.'
+          : 'Fairpoint uses this to rank cafes and activities for your group.'
+      "
+      size="short"
+    />
 
-    <!-- (Surya) setup progress: 4 segments, one per step, filled as you go. Hidden on the
+    <div class="container prefs fp-pull">
+      <!-- (Surya) setup progress: 4 segments, one per step, filled as you go. Hidden on the
          intro screen, where there's no progress yet and the empty line looked like a divider -->
-    <div
-      v-if="isSetup && setupStep > 0"
-      class="progress-step"
-      role="progressbar"
-      aria-label="Setup progress"
-      aria-valuemin="1"
-      :aria-valuemax="setupTotal"
-      :aria-valuenow="setupStep"
-    >
-      <div class="progress-step__text">
-        <span class="progress-step__label">{{ setupStepLabel }}</span>
-        <span class="progress-step__name">{{ setupStepNames[setupStep - 1] }}</span>
-      </div>
-      <div class="progress-step__segs" aria-hidden="true">
-        <span
-          v-for="n in setupTotal"
-          :key="n"
-          class="progress-step__seg"
-          :class="{ 'progress-step__seg--done': n <= setupStep }"
-        ></span>
-      </div>
-    </div>
-
-    <div v-if="!userId && auth.ready" class="panel text-center">
-      <p class="mb-3">Log in to set your preferences.</p>
-      <RouterLink
-        class="btn btn-primary"
-        :to="{ name: 'auth', query: { redirect: route.fullPath } }"
+      <div
+        v-if="isSetup && setupStep > 0"
+        class="progress-step"
+        role="progressbar"
+        aria-label="Setup progress"
+        aria-valuemin="1"
+        :aria-valuemax="setupTotal"
+        :aria-valuenow="setupStep"
       >
-        Log in
-      </RouterLink>
-    </div>
-
-    <div v-else-if="loading" class="text-center py-5 text-secondary">
-      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-      Loading your preferences…
-    </div>
-
-    <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
-      <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
-        <h2 class="panel__title">4 quick questions</h2>
-        <p class="panel__sub">
-          Your answers help Fairpoint suggest places that work for you and your group.
-        </p>
-        <button type="submit" class="btn btn-primary">Get started</button>
-      </section>
-
-      <div v-else class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
-        <div class="prefs__col">
-          <section
-            v-if="!isSetup || setupStep === 1"
-            ref="activitiesPanel"
-            class="panel"
-            :class="{ 'panel--invalid': shownActivitiesError }"
-          >
-            <h2 id="prefs-activities-title" class="panel__title">
-              What do you enjoy?
-              <span class="panel__count"
-                >{{ prefs.activities.length }}/{{ activityOptions.length }} selected</span
-              >
-            </h2>
-            <p class="panel__sub">Pick at least one, as many as you like</p>
-            <div
-              class="chips"
-              role="group"
-              aria-labelledby="prefs-activities-title"
-              aria-describedby="prefs-activities-error"
-            >
-              <button
-                v-for="o in activityOptions"
-                :key="o.value"
-                type="button"
-                class="chip"
-                :class="[`chip--${o.color}`, { 'is-on': prefs.activities.includes(o.value) }]"
-                :aria-pressed="prefs.activities.includes(o.value)"
-                @click="toggle(prefs.activities, o.value)"
-              >
-                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
-                {{ o.label }}
-              </button>
-            </div>
-            <p
-              v-if="shownActivitiesError"
-              id="prefs-activities-error"
-              class="field-error"
-              role="alert"
-            >
-              {{ shownActivitiesError }}
-            </p>
-          </section>
-
-          <section v-if="!isSetup || setupStep === 2" class="panel dietary-panel">
-            <h2 id="prefs-dietary-title" class="panel__title">
-              Dietary needs
-              <span class="panel__count"
-                >{{ prefs.dietary.length }}/{{ dietaryOptions.length }} selected</span
-              >
-            </h2>
-            <p class="panel__sub">We only suggest food spots that fit everyone</p>
-            <div class="chips" role="group" aria-labelledby="prefs-dietary-title">
-              <button
-                v-for="o in dietaryOptions"
-                :key="o.value"
-                type="button"
-                class="chip"
-                :class="[`chip--${o.color}`, { 'is-on': prefs.dietary.includes(o.value) }]"
-                :aria-pressed="prefs.dietary.includes(o.value)"
-                @click="toggle(prefs.dietary, o.value)"
-              >
-                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
-                {{ o.label }}
-              </button>
-              <button
-                type="button"
-                class="chip"
-                :class="['chip--orange', { 'is-on': noRestrictions }]"
-                :aria-pressed="noRestrictions"
-                @click="prefs.dietary = []"
-              >
-                <span class="chip__emoji" aria-hidden="true">✅</span>
-                No restrictions
-              </button>
-            </div>
-          </section>
+        <div class="progress-step__text">
+          <span class="progress-step__label">{{ setupStepLabel }}</span>
+          <span class="progress-step__name">{{ setupStepNames[setupStep - 1] }}</span>
         </div>
-
-        <div class="prefs__col">
-          <section v-if="!isSetup || setupStep === 3" class="panel">
-            <h2 class="panel__title">Budget per person</h2>
-            <p class="panel__sub">Used to filter spots by price level</p>
-            <div class="segmented" role="radiogroup" aria-label="Budget per person">
-              <button
-                v-for="o in budgetOptions"
-                :key="o.value"
-                type="button"
-                role="radio"
-                class="segmented__opt"
-                :class="{ 'is-on': prefs.budget === o.value }"
-                :aria-checked="prefs.budget === o.value"
-                @click="prefs.budget = o.value"
-              >
-                {{ o.symbol }} {{ o.label }}
-              </button>
-            </div>
-          </section>
-
-          <section v-if="!isSetup || setupStep === 4" class="panel">
-            <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
-
-            <div class="travel">
-              <label for="prefs-travel" class="travel__label">Max travel time</label>
-              <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
-            </div>
-            <input
-              id="prefs-travel"
-              v-model.number="prefs.max_travel_mins"
-              class="range"
-              type="range"
-              :min="travel.min"
-              :max="travel.max"
-              :step="travel.step"
-              :style="{ '--fill': travelFill }"
-            />
-
-            <ul class="toggles">
-              <li v-for="o in comfortOptions" :key="o.key" class="toggle-row">
-                <div>
-                  <label :for="`prefs-${o.key}`" class="toggle-row__label">{{ o.label }}</label>
-                  <p class="toggle-row__hint">{{ o.hint }}</p>
-                </div>
-                <div class="form-check form-switch mb-0">
-                  <input
-                    :id="`prefs-${o.key}`"
-                    v-model="prefs[o.key]"
-                    class="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                  />
-                </div>
-              </li>
-            </ul>
-          </section>
+        <div class="progress-step__segs" aria-hidden="true">
+          <span
+            v-for="n in setupTotal"
+            :key="n"
+            class="progress-step__seg"
+            :class="{ 'progress-step__seg--done': n <= setupStep }"
+          ></span>
         </div>
       </div>
 
-      <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
+      <div v-if="!userId && auth.ready" class="panel text-center">
+        <p class="mb-3">Log in to set your preferences.</p>
+        <RouterLink
+          class="btn btn-primary"
+          :to="{ name: 'auth', query: { redirect: route.fullPath } }"
+        >
+          Log in
+        </RouterLink>
+      </div>
 
-      <footer v-if="!isSetup || setupStep > 0" class="actions">
-        <div class="actions__buttons">
-          <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
-          <button
-            v-if="isSetup"
-            type="button"
-            class="btn btn-light btn-skip"
-            @click="skipSetupStep"
-          >
-            Skip for now
-          </button>
-          <button
-            v-if="!isSetup"
-            type="button"
-            class="btn btn-outline-primary btn-reset"
-            @click="resetPreferences"
-          >
-            Reset preferences
-          </button>
-          <button
-            v-if="isSetup && setupStep > 0"
-            type="button"
-            class="btn btn-outline-primary btn-back"
-            @click="previousSetupStep"
-          >
-            Back
-          </button>
-          <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
-            <span
-              v-if="saving"
-              class="spinner-border spinner-border-sm me-2"
-              aria-hidden="true"
-            ></span>
-            {{
-              isSetup
-                ? setupStep === setupTotal
-                  ? 'Save preferences'
-                  : 'Next'
-                : 'Save preferences'
-            }}
-          </button>
+      <div v-else-if="loading" class="text-center py-5 text-secondary">
+        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+        Loading your preferences…
+      </div>
+
+      <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
+        <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
+          <h2 class="panel__title">4 quick questions</h2>
+          <p class="panel__sub">
+            Your answers help Fairpoint suggest places that work for you and your group.
+          </p>
+          <button type="submit" class="btn btn-primary">Get started</button>
+        </section>
+
+        <div v-else class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
+          <div class="prefs__col">
+            <section
+              v-if="!isSetup || setupStep === 1"
+              ref="activitiesPanel"
+              class="panel"
+              :class="{ 'panel--invalid': shownActivitiesError }"
+            >
+              <h2 id="prefs-activities-title" class="panel__title">
+                What do you enjoy?
+                <span class="panel__count"
+                  >{{ prefs.activities.length }}/{{ activityOptions.length }} selected</span
+                >
+              </h2>
+              <p class="panel__sub">Pick at least one, as many as you like</p>
+              <div
+                class="chips"
+                role="group"
+                aria-labelledby="prefs-activities-title"
+                aria-describedby="prefs-activities-error"
+              >
+                <button
+                  v-for="o in activityOptions"
+                  :key="o.value"
+                  type="button"
+                  class="chip"
+                  :class="[`chip--${o.color}`, { 'is-on': prefs.activities.includes(o.value) }]"
+                  :aria-pressed="prefs.activities.includes(o.value)"
+                  @click="toggle(prefs.activities, o.value)"
+                >
+                  <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
+                  {{ o.label }}
+                </button>
+              </div>
+              <p
+                v-if="shownActivitiesError"
+                id="prefs-activities-error"
+                class="field-error"
+                role="alert"
+              >
+                {{ shownActivitiesError }}
+              </p>
+            </section>
+
+            <section v-if="!isSetup || setupStep === 2" class="panel dietary-panel">
+              <h2 id="prefs-dietary-title" class="panel__title">
+                Dietary needs
+                <span class="panel__count"
+                  >{{ prefs.dietary.length }}/{{ dietaryOptions.length }} selected</span
+                >
+              </h2>
+              <p class="panel__sub">We only suggest food spots that fit everyone</p>
+              <div class="chips" role="group" aria-labelledby="prefs-dietary-title">
+                <button
+                  v-for="o in dietaryOptions"
+                  :key="o.value"
+                  type="button"
+                  class="chip"
+                  :class="[`chip--${o.color}`, { 'is-on': prefs.dietary.includes(o.value) }]"
+                  :aria-pressed="prefs.dietary.includes(o.value)"
+                  @click="toggle(prefs.dietary, o.value)"
+                >
+                  <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
+                  {{ o.label }}
+                </button>
+                <button
+                  type="button"
+                  class="chip"
+                  :class="['chip--orange', { 'is-on': noRestrictions }]"
+                  :aria-pressed="noRestrictions"
+                  @click="prefs.dietary = []"
+                >
+                  <span class="chip__emoji" aria-hidden="true">✅</span>
+                  No restrictions
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="prefs__col">
+            <section v-if="!isSetup || setupStep === 3" class="panel">
+              <h2 class="panel__title">Budget per person</h2>
+              <p class="panel__sub">Used to filter spots by price level</p>
+              <div class="segmented" role="radiogroup" aria-label="Budget per person">
+                <button
+                  v-for="o in budgetOptions"
+                  :key="o.value"
+                  type="button"
+                  role="radio"
+                  class="segmented__opt"
+                  :class="{ 'is-on': prefs.budget === o.value }"
+                  :aria-checked="prefs.budget === o.value"
+                  @click="prefs.budget = o.value"
+                >
+                  {{ o.symbol }} {{ o.label }}
+                </button>
+              </div>
+            </section>
+
+            <section v-if="!isSetup || setupStep === 4" class="panel">
+              <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
+
+              <div class="travel">
+                <label for="prefs-travel" class="travel__label">Max travel time</label>
+                <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
+              </div>
+              <input
+                id="prefs-travel"
+                v-model.number="prefs.max_travel_mins"
+                class="range"
+                type="range"
+                :min="travel.min"
+                :max="travel.max"
+                :step="travel.step"
+                :style="{ '--fill': travelFill }"
+              />
+
+              <ul class="toggles">
+                <li v-for="o in comfortOptions" :key="o.key" class="toggle-row">
+                  <div>
+                    <label :for="`prefs-${o.key}`" class="toggle-row__label">{{ o.label }}</label>
+                    <p class="toggle-row__hint">{{ o.hint }}</p>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input
+                      :id="`prefs-${o.key}`"
+                      v-model="prefs[o.key]"
+                      class="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                    />
+                  </div>
+                </li>
+              </ul>
+            </section>
+          </div>
         </div>
-      </footer>
-    </form>
+
+        <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
+
+        <footer v-if="!isSetup || setupStep > 0" class="actions">
+          <div class="actions__buttons">
+            <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
+            <button
+              v-if="isSetup"
+              type="button"
+              class="btn btn-light btn-skip"
+              @click="skipSetupStep"
+            >
+              Skip for now
+            </button>
+            <button
+              v-if="!isSetup"
+              type="button"
+              class="btn btn-outline-primary btn-reset"
+              @click="resetPreferences"
+            >
+              Reset preferences
+            </button>
+            <button
+              v-if="isSetup && setupStep > 0"
+              type="button"
+              class="btn btn-outline-primary btn-back"
+              @click="previousSetupStep"
+            >
+              Back
+            </button>
+            <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
+              <span
+                v-if="saving"
+                class="spinner-border spinner-border-sm me-2"
+                aria-hidden="true"
+              ></span>
+              {{
+                isSetup
+                  ? setupStep === setupTotal
+                    ? 'Save preferences'
+                    : 'Next'
+                  : 'Save preferences'
+              }}
+            </button>
+          </div>
+        </footer>
+      </form>
+    </div>
   </main>
 </template>
 

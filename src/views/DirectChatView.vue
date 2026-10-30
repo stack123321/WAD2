@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getDirectChat } from '@/services/directChats'
 import HangoutChat from '@/components/start/HangoutChat.vue'
+import PageBand from '@/components/ui/PageBand.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -29,16 +30,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container py-4 chat-page">
-    <router-link :to="{ name: 'chats' }" class="small">← My Chats</router-link>
+  <main>
+    <PageBand
+      :title="chat ? chat.friend.display_name : 'Chat'"
+      size="short"
+      :back="{ to: { name: 'chats' }, label: 'My Chats' }"
+    />
 
-    <p v-if="loading" class="text-muted mt-3">Loading the chat…</p>
-    <p v-else-if="error" class="text-danger mt-3">{{ error }}</p>
-    <template v-else>
-      <h1 class="h3 mt-2 mb-3">{{ chat.friend.display_name }}</h1>
-      <!-- the same chat box as hangouts, given :direct instead of :hangout -->
-      <HangoutChat :direct="chat" :height="420" title="Chat" />
-    </template>
+    <div class="container fp-pull chat-page">
+      <p v-if="loading" class="text-muted mt-3">Loading the chat…</p>
+      <p v-else-if="error" class="text-danger mt-3">{{ error }}</p>
+      <template v-else>
+        <!-- the same chat box as hangouts, given :direct instead of :hangout -->
+        <HangoutChat :direct="chat" :height="420" title="Chat" />
+      </template>
+    </div>
   </main>
 </template>
 

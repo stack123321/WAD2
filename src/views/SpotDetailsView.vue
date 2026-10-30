@@ -12,13 +12,18 @@ import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
 import { matchScore, matchReasons } from '@/utils/matchScore'
 import { willRainAt } from '@/services/weather'
+import PageBand from '@/components/ui/PageBand.vue'
 
 const route = useRoute()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
-const { error: shortlistError, isAdded, isMine, addSpot, removeSpot } = useShortlist(
-  () => route.params.id,
-)
+const {
+  error: shortlistError,
+  isAdded,
+  isMine,
+  addSpot,
+  removeSpot,
+} = useShortlist(() => route.params.id)
 
 const categoryLabels = {
   cafe: 'Cafe',
@@ -110,11 +115,7 @@ const distance = computed(() => {
 // Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.
 const raining = ref(false)
 watch(
-  () => [
-    hangout.hangout?.midpoint_lat,
-    hangout.hangout?.midpoint_lng,
-    hangout.hangout?.starts_at,
-  ],
+  () => [hangout.hangout?.midpoint_lat, hangout.hangout?.midpoint_lng, hangout.hangout?.starts_at],
   async ([lat, lng, startsAt]) => {
     if (lat == null || lng == null || !startsAt) {
       raining.value = false
@@ -157,213 +158,221 @@ const reasons = computed(() =>
 </script>
 
 <template>
-  <main class="container spot">
-    <header class="spot__nav">
-      <RouterLink
-        class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
-        :to="{ name: 'explore', params: { id: route.params.id } }"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+  <main>
+    <PageBand
+      :title="spot?.name ?? 'Spot not found'"
+      :back="{
+        to: { name: 'explore', params: { id: route.params.id } },
+        label: 'Back to exploring',
+      }"
+    >
+      <div v-if="spot" class="spot-meta">
+        <span>{{ categoryLabels[spot.category] ?? spot.category }}</span>
+        <span v-if="spot.rating !== null"
+          >&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</span
         >
-          <line x1="19" y1="12" x2="5" y2="12" />
-          <polyline points="12 19 5 12 12 5" />
-        </svg>
-        Back to exploring
-      </RouterLink>
-      <GooglePlacesToggle />
-    </header>
-
-    <p v-if="spotError" class="spot__error text-secondary" role="status">{{ spotError }}</p>
-
-    <section class="spot__preview card-box">
-      <div
-        v-if="googlePlacesEnabled && imageUrls.length"
-        class="preview-image"
-        ref="imageCarousel"
-        @scroll.passive="updateActiveImage"
-      >
-        <div class="preview-image__track">
-          <img
-            v-for="(imageUrl, index) in imageUrls"
-            :key="imageUrl"
-            :src="imageUrl"
-            :alt="`${spot.name} photo ${index + 1}`"
-            class="preview-image__slide"
-            draggable="false"
-          />
-        </div>
-        <template v-if="imageUrls.length > 1 && activeImage > 0">
-          <button
-            type="button"
-            class="preview-image__control preview-image__control--previous"
-            aria-label="Previous photo"
-            @click="showPreviousImage"
+        <span v-if="price">{{ price }}</span>
+        <span v-if="distance">{{ distance }} from nearest MRT station</span>
+      </div>
+      <template #actions>
+        <div class="d-flex flex-wrap gap-2">
+          <a
+            v-if="spot?.googleMapsUri"
+            class="btn btn-on-deep"
+            :href="spot.googleMapsUri"
+            target="_blank"
+            rel="noopener"
           >
-            ‹
-          </button>
-          <button
-            type="button"
-            class="preview-image__control preview-image__control--next"
-            aria-label="Next photo"
-            @click="showNextImage"
-          >
-            ›
-          </button>
-          <div class="preview-image__indicators" aria-label="Photo selection">
+            Open Google Maps
+          </a>
+          <template v-if="spot">
             <button
-              v-for="(_, index) in imageUrls"
-              :key="index"
+              v-if="isAdded(spot.id) && isMine(spot.id)"
               type="button"
-              class="preview-image__indicator"
-              :class="{ 'is-active': index === activeImage }"
-              :aria-label="`Show photo ${index + 1}`"
-              :aria-current="index === activeImage ? 'true' : undefined"
-              @click="scrollToImage(index)"
+              class="btn btn-on-deep"
+              @click="removeSpot(spot)"
+            >
+              Remove from Vote
+            </button>
+            <button
+              v-else
+              type="button"
+              class="btn"
+              :class="isAdded(spot.id) ? 'btn-on-deep' : 'btn-accent'"
+              :disabled="isAdded(spot.id)"
+              @click="addSpot(spot)"
+            >
+              {{ isAdded(spot.id) ? 'Added to vote' : 'Add to Vote' }}
+            </button>
+          </template>
+        </div>
+      </template>
+    </PageBand>
+
+    <div class="container spot fp-pull">
+      <p v-if="spotError" class="spot__error text-secondary" role="status">{{ spotError }}</p>
+
+      <section class="spot__preview card-box">
+        <div
+          v-if="googlePlacesEnabled && imageUrls.length"
+          class="preview-image"
+          ref="imageCarousel"
+          @scroll.passive="updateActiveImage"
+        >
+          <div class="preview-image__track">
+            <img
+              v-for="(imageUrl, index) in imageUrls"
+              :key="imageUrl"
+              :src="imageUrl"
+              :alt="`${spot.name} photo ${index + 1}`"
+              class="preview-image__slide"
+              draggable="false"
             />
           </div>
-        </template>
-      </div>
-      <BaseMap
-        v-else-if="spot"
-        class="preview-map"
-        :center="[spot.lat, spot.lng]"
-        :markers="[{ id: spot.id, lat: spot.lat, lng: spot.lng, label: spot.name }]"
-      />
-      <div v-else class="preview-placeholder">Photo / map preview</div>
-    </section>
-
-    <section class="spot__info d-flex flex-wrap justify-content-between align-items-center gap-3">
-      <div>
-        <h1 class="h3 mb-1">{{ spot?.name ?? 'Spot not found' }}</h1>
-        <div v-if="spot" class="d-flex flex-wrap align-items-center column-gap-3">
-          <p class="text-secondary mb-0">{{ categoryLabels[spot.category] ?? spot.category }}</p>
-          <p v-if="spot.rating !== null" class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
-          <p v-if="price" class="text-secondary mb-0">{{ price }}</p>
-          <p v-if="distance" class="text-secondary mb-0">{{ distance }} from nearest MRT station</p>
+          <template v-if="imageUrls.length > 1 && activeImage > 0">
+            <button
+              type="button"
+              class="preview-image__control preview-image__control--previous"
+              aria-label="Previous photo"
+              @click="showPreviousImage"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              class="preview-image__control preview-image__control--next"
+              aria-label="Next photo"
+              @click="showNextImage"
+            >
+              ›
+            </button>
+            <div class="preview-image__indicators" aria-label="Photo selection">
+              <button
+                v-for="(_, index) in imageUrls"
+                :key="index"
+                type="button"
+                class="preview-image__indicator"
+                :class="{ 'is-active': index === activeImage }"
+                :aria-label="`Show photo ${index + 1}`"
+                :aria-current="index === activeImage ? 'true' : undefined"
+                @click="scrollToImage(index)"
+              />
+            </div>
+          </template>
         </div>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a
-          v-if="spot?.googleMapsUri"
-          class="btn btn-outline-primary btn-sm"
-          :href="spot.googleMapsUri"
-          target="_blank"
-          rel="noopener"
-        >
-          Open Google Maps
-        </a>
-        <template v-if="spot">
-          <button
-            v-if="isAdded(spot.id) && isMine(spot.id)"
-            type="button"
-            class="btn btn-outline-danger btn-sm"
-            @click="removeSpot(spot)"
-          >
-            Remove from Vote
-          </button>
-          <button
-            v-else
-            type="button"
-            class="btn btn-sm"
-            :class="isAdded(spot.id) ? 'btn-outline-primary' : 'btn-primary'"
-            :disabled="isAdded(spot.id)"
-            @click="addSpot(spot)"
-          >
-            {{ isAdded(spot.id) ? 'Added to vote' : 'Add to Vote' }}
-          </button>
+        <BaseMap
+          v-else-if="spot"
+          class="preview-map"
+          :center="[spot.lat, spot.lng]"
+          :markers="[{ id: spot.id, lat: spot.lat, lng: spot.lng, label: spot.name }]"
+        />
+        <div v-else class="preview-placeholder">Photo / map preview</div>
+      </section>
+
+      <p v-if="shortlistError" class="spot__error text-danger">{{ shortlistError }}</p>
+
+      <section class="spot__about card-box">
+        <h2 class="h6">About</h2>
+
+        <p v-if="spot?.description && !summary" class="text-secondary mb-2">
+          {{ spot.description }}
+        </p>
+        <p v-if="spot?.address || spot?.openNow != null" class="text-secondary mb-0">
+          <span v-if="spot.address" class="d-block">{{ spot.address }}</span>
+          <span v-if="spot.openNow !== null" class="d-block">{{
+            spot.openNow ? 'Open now' : 'Closed now'
+          }}</span>
+        </p>
+        <p v-if="summaryLoading" class="text-secondary mb-2" role="status">
+          Summarising this spot…
+        </p>
+        <template v-else-if="summary">
+          <p class="mb-1">{{ summary.text }}</p>
+          <p class="text-secondary small mb-2">{{ summary.disclosure }}</p>
         </template>
-      </div>
-    </section>
-    <p v-if="shortlistError" class="spot__error text-danger">{{ shortlistError }}</p>
+        <p v-if="!spot" class="text-secondary mb-0">Description and details.</p>
+      </section>
 
-    <section class="spot__about card-box">
-      <h2 class="h6">About</h2>
-      
-      <p v-if="spot?.description && !summary" class="text-secondary mb-2">{{ spot.description }}</p>
-      <p v-if="spot?.address || spot?.openNow != null" class="text-secondary mb-0">
-        <span v-if="spot.address" class="d-block">{{ spot.address }}</span>
-        <span v-if="spot.openNow !== null" class="d-block">{{ spot.openNow ? 'Open now' : 'Closed now' }}</span>
-      </p>
-      <p v-if="summaryLoading" class="text-secondary mb-2" role="status">Summarising this spot…</p>
-      <template v-else-if="summary">
-        <p class="mb-1">{{ summary.text }}</p>
-        <p class="text-secondary small mb-2">{{ summary.disclosure }}</p>
-      </template>
-      <p v-if="!spot" class="text-secondary mb-0">Description and details.</p>
-    </section>
+      <section class="spot__traveltime card-box">
+        <h2 class="h6">Travel time</h2>
+        <p class="text-secondary mb-0">Travel time per friend.</p>
+      </section>
 
+      <section class="spot__criteria card-box">
+        <div class="d-flex align-items-center justify-content-between gap-2">
+          <h2 class="h6 mb-0">Criteria</h2>
+          <span
+            v-if="matchPct !== null"
+            class="criteria__score"
+            :class="`criteria__score--${matchTone}`"
+          >
+            {{ matchPct }}% match
+          </span>
+        </div>
+        <p v-if="!spot" class="text-secondary mb-0">Why it fits the group.</p>
+        <p v-else-if="!reasons.length" class="text-secondary mb-0">
+          Add members with preferences to see why this spot fits (or doesn't).
+        </p>
+        <ul v-else class="criteria__list">
+          <li
+            v-for="(reason, i) in reasons"
+            :key="i"
+            class="criteria__item"
+            :class="`criteria__item--${reason.tone}`"
+          >
+            {{ reason.text }}
+          </li>
+        </ul>
+      </section>
 
-    <section class="spot__traveltime card-box">
-      <h2 class="h6">Travel time</h2>
-      <p class="text-secondary mb-0">Travel time per friend.</p>
-    </section>
+      <section class="spot__weather card-box">
+        <h2 class="h6">Weather</h2>
+        <WeatherCard
+          v-if="spot"
+          :lat="spot.lat"
+          :lng="spot.lng"
+          :place="spot.name"
+          :at="hangout.hangout?.starts_at ?? null"
+        />
+        <p v-else class="text-secondary mb-0">Forecast for the hangout time.</p>
+      </section>
 
-    
-    <section class="spot__criteria card-box">
-      <div class="d-flex align-items-center justify-content-between gap-2">
-        <h2 class="h6 mb-0">Criteria</h2>
-        <span
-          v-if="matchPct !== null"
-          class="criteria__score"
-          :class="`criteria__score--${matchTone}`"
-        >
-          {{ matchPct }}% match
-        </span>
-      </div>
-      <p v-if="!spot" class="text-secondary mb-0">Why it fits the group.</p>
-      <p v-else-if="!reasons.length" class="text-secondary mb-0">
-        Add members with preferences to see why this spot fits (or doesn't).
-      </p>
-      <ul v-else class="criteria__list">
-        <li
-          v-for="(reason, i) in reasons"
-          :key="i"
-          class="criteria__item"
-          :class="`criteria__item--${reason.tone}`"
-        >
-          {{ reason.text }}
-        </li>
-      </ul>
-    </section>
-
-    <section class="spot__weather card-box">
-      <h2 class="h6">Weather</h2>
-      <WeatherCard
-        v-if="spot"
-        :lat="spot.lat"
-        :lng="spot.lng"
-        :place="spot.name"
-        :at="hangout.hangout?.starts_at ?? null"
-      />
-      <p v-else class="text-secondary mb-0">Forecast for the hangout time.</p>
-    </section>
-
-    <div class="spot__space"></div>
+      <div class="spot__space"></div>
+      <footer class="spot__nav">
+        <GooglePlacesToggle />
+      </footer>
+    </div>
   </main>
 </template>
 
 <style scoped>
+/* (Eashvar, design catalogue A1) the spot's details as chips in the band */
+.spot-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.spot-meta span {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .spot {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  /* (Eashvar, design catalogue A1) the name and buttons are in the band now, and the Places
+     switch moves to the end */
   grid-template-areas:
-    'nav nav'
-    'info info'
     'preview preview'
     'about traveltime'
-    'criteria weather';
+    'criteria weather'
+    'nav nav';
   gap: 1rem;
-  padding-block: 1.5rem;
 }
 
 .spot__nav {
@@ -563,15 +572,14 @@ const reasons = computed(() =>
   .spot {
     grid-template-columns: 1fr;
     grid-template-areas:
-      'nav'
-      'info'
       'preview'
       'criteria'
       'crowd'
       'traveltime'
       'about'
       'weather'
-      'space';
+      'space'
+      'nav';
   }
 }
 </style>

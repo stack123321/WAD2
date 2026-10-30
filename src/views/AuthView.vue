@@ -10,6 +10,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
 import { joinByInviteCode } from '@/services/hangouts'
+import DotIsland from '@/components/ui/DotIsland.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -244,14 +245,6 @@ async function submitNewPassword() {
   }
 }
 
-// Map preview pins, in the SVG's 450×275 viewBox
-const friends = [
-  { initial: 'N', x: 183, y: 46, color: 'var(--auth-pink)' },
-  { initial: 'S', x: 385, y: 128, color: 'var(--fp-accent)' },
-  { initial: 'R', x: 64, y: 165, color: 'var(--auth-purple)' },
-]
-const midpoint = { x: 229, y: 128 }
-
 const avatars = [
   { initial: 'S', color: 'var(--fp-accent)' },
   { initial: 'N', color: 'var(--auth-pink)' },
@@ -275,68 +268,8 @@ const avatars = [
         </p>
       </div>
 
-      <svg
-        class="map"
-        viewBox="0 0 450 275"
-        role="img"
-        aria-label="Three friends meeting at a fair midpoint"
-      >
-        <defs>
-          <radialGradient id="auth-heat-red">
-            <stop offset="0%" stop-color="var(--fp-accent)" stop-opacity="0.75" />
-            <stop offset="100%" stop-color="var(--fp-accent)" stop-opacity="0" />
-          </radialGradient>
-          <radialGradient id="auth-heat-amber">
-            <stop offset="0%" stop-color="var(--auth-amber)" stop-opacity="0.75" />
-            <stop offset="100%" stop-color="var(--auth-amber)" stop-opacity="0" />
-          </radialGradient>
-        </defs>
-        <rect width="450" height="275" class="map__ground" />
-
-        <ellipse cx="270" cy="-5" rx="70" ry="25" class="map__water" />
-        <ellipse cx="225" cy="290" rx="300" ry="50" class="map__water" />
-        <rect x="25" y="60" width="70" height="40" rx="18" class="map__park" />
-        <rect x="370" y="70" width="65" height="45" rx="20" class="map__park" />
-        <rect x="80" y="175" width="55" height="35" rx="16" class="map__park" />
-        <rect x="270" y="170" width="65" height="35" rx="16" class="map__park" />
-
-        <g class="map__road">
-          <path d="M0 75 L450 80" />
-          <path d="M0 150 L450 140" />
-          <path d="M0 175 L450 195" />
-          <path d="M135 0 L120 275" />
-          <path d="M225 0 L235 275" />
-          <path d="M290 0 L315 275" />
-          <path d="M385 145 L450 130" />
-        </g>
-        <g class="map__road map__road--major">
-          <path d="M65 0 C80 70 100 150 50 275" />
-          <path d="M405 0 C370 90 360 180 410 275" />
-          <path d="M0 125 C120 110 300 120 450 115" />
-        </g>
-
-        <circle cx="230" cy="135" r="95" fill="url(#auth-heat-red)" />
-        <circle cx="110" cy="70" r="40" fill="url(#auth-heat-amber)" />
-
-        <line
-          v-for="f in friends"
-          :key="`route-${f.initial}`"
-          :x1="f.x"
-          :y1="f.y"
-          :x2="midpoint.x"
-          :y2="midpoint.y"
-          :stroke="f.color"
-          class="map__route"
-        />
-        <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
-        <circle :cx="midpoint.x" :cy="midpoint.y" r="22" class="map__halo" />
-        <circle :cx="midpoint.x" :cy="midpoint.y" r="8" class="map__mid" />
-
-        <g v-for="f in friends" :key="`pin-${f.initial}`" class="map__pin">
-          <circle :cx="f.x" :cy="f.y" r="14" :fill="f.color" />
-          <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.initial }}</text>
-        </g>
-      </svg>
+      <!-- (Eashvar, design catalogue A1) the island in dots, in place of the drawn map -->
+      <DotIsland class="brand-island" />
 
       <div class="social-proof">
         <span class="avatars" aria-hidden="true">
@@ -671,64 +604,6 @@ const avatars = [
   line-height: 1.55;
 }
 
-.map {
-  display: block;
-  width: 100%;
-  max-width: 460px;
-  height: auto;
-  border-radius: var(--fp-radius-sm);
-}
-
-.map__ground {
-  fill: #e9ece4;
-}
-
-.map__water {
-  fill: #cfdfe6;
-}
-
-.map__park {
-  fill: #cfe0c3;
-  opacity: 0.8;
-}
-
-.map__road path {
-  fill: none;
-  stroke: var(--fp-surface);
-  stroke-width: 4;
-}
-
-.map__road--major path {
-  stroke: #f2d48f;
-  stroke-width: 6;
-}
-
-.map__route {
-  stroke-width: 2;
-  stroke-dasharray: 5 4;
-}
-
-.map__halo {
-  fill: rgb(0 0 0 / 0.1);
-}
-
-.map__mid {
-  fill: var(--fp-primary);
-  stroke: var(--fp-surface);
-  stroke-width: 3;
-}
-
-.map__pin circle {
-  stroke: var(--fp-surface);
-  stroke-width: 2.5;
-}
-
-.map__pin text {
-  fill: var(--fp-surface);
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .social-proof {
   display: flex;
   align-items: center;
@@ -913,7 +788,7 @@ const avatars = [
     margin-top: 0;
   }
 
-  .map,
+  .brand-island,
   .social-proof {
     display: none;
   }
@@ -932,5 +807,24 @@ const avatars = [
   .auth-card {
     padding: 1.5rem;
   }
+}
+
+/* (Eashvar, design catalogue A1) the band's teal and the island in dots */
+.brand-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    var(--fp-deep) 0%,
+    var(--fp-deep-2) 60%,
+    var(--fp-primary) 100%
+  );
+}
+
+.brand-island {
+  width: 120%;
+  margin: 0 -10%;
+  align-self: center;
 }
 </style>

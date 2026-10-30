@@ -86,7 +86,9 @@ test.describe('11 Group voting', () => {
     await page.getByRole('button', { name: 'Close vote' }).click()
 
     await expect(page).toHaveURL(/\/hangouts\/demo\/plan$/)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Final plan & itinerary')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      `You're going to ${boardGames}`,
+    )
     await expect(page.getByRole('heading', { name: boardGames, exact: true })).toBeVisible()
     await expect(page.getByText('Confirmed spot')).toBeVisible()
     await expect(page.getByText('Not confirmed yet')).toBeHidden()

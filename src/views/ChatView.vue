@@ -4,6 +4,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import PageBand from '@/components/ui/PageBand.vue'
 import { getHangout } from '@/services/hangouts'
 import { isMockHangout } from '@/services/votes'
 import { planningLinks } from '@/utils/planningLinks'
@@ -38,39 +39,42 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container py-4 chat-page">
-    <!-- passes on where you came from, so My Chats can offer the way back too -->
-    <router-link
-      :to="{ name: 'chats', query: { from: route.query.from, hangout: route.params.hangoutId } }"
-      class="small"
-    >
-      ← My Chats
-    </router-link>
+  <main>
+    <!-- the back link passes on where you came from, so My Chats can offer the way back too -->
+    <PageBand
+      :title="hangout ? hangout.name : 'Chat'"
+      size="short"
+      :back="{
+        to: { name: 'chats', query: { from: route.query.from, hangout: route.params.hangoutId } },
+        label: 'My Chats',
+      }"
+    />
 
-    <p v-if="error" class="text-danger mt-3">{{ error }}</p>
-    <template v-else-if="hangout">
-      <h1 class="h3 mt-2 mb-3">{{ hangout.name }}</h1>
-      <!-- the chat box itself is surya's component, this page only checks i'm allowed to see it -->
-      <HangoutChat v-if="isMember" :hangout="hangout" :height="420" title="Chat" />
-      <p v-else class="text-muted">Only people in this hangout can see its chat.</p>
+    <div class="container fp-pull chat-page">
+      <p v-if="error" class="text-danger mt-3">{{ error }}</p>
+      <template v-else-if="hangout">
+        <!-- the chat box itself is surya's component, this page only checks i'm allowed to see it -->
+        <HangoutChat v-if="isMember" :hangout="hangout" :height="420" title="Chat" />
+        <p v-else class="text-muted">Only people in this hangout can see its chat.</p>
 
-      <div v-if="links.back || links.next" class="planning-links">
-        <router-link
-          v-if="links.back"
-          class="btn btn-outline-primary"
-          :to="{ name: links.back.page, params: { id: hangout.id } }"
-        >
-          ← Back to {{ links.back.label }}
-        </router-link>
-        <router-link
-          v-if="links.next"
-          class="btn btn-primary"
-          :to="{ name: links.next.page, params: { id: hangout.id } }"
-        >
-          Continue planning →
-        </router-link>
-      </div>
-    </template>
+        <div v-if="links.back || links.next" class="planning-links">
+          <router-link
+            v-if="links.back"
+            class="btn btn-outline-primary"
+            :to="{ name: links.back.page, params: { id: hangout.id } }"
+          >
+            ← Back to {{ links.back.label }}
+          </router-link>
+          <router-link
+            v-if="links.next"
+            class="btn btn-primary"
+            :to="{ name: links.next.page, params: { id: hangout.id } }"
+          >
+            Continue planning →
+          </router-link>
+        </div>
+      </template>
+    </div>
   </main>
 </template>
 

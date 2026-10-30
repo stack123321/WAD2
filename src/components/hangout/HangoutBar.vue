@@ -6,6 +6,8 @@
 // On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
 // (Surya) The host also gets step "0 Details" before step 1, in place of the "Get there" label
 // (‹ on step 1 on phones), which opens 05 in edit mode to change the name, date, time or vibe.
+// (Eashvar, design catalogue A1) deep teal like the navbar, so the bar, the navbar and the page's
+// band read as one block; the group names are in sentence case.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
@@ -251,7 +253,7 @@ async function copyInvite() {
       <button
         v-if="hangout.id !== 'demo'"
         type="button"
-        class="btn btn-outline-primary btn-sm invite-btn"
+        class="btn btn-on-deep btn-sm invite-btn"
         title="Copy the invite link for people who aren't your friends yet"
         @click="copyInvite"
       >
@@ -269,11 +271,11 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  min-height: 36px;
-  padding: 0 0.75rem;
-  border-radius: var(--fp-radius-sm);
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 999px;
   background: var(--fp-accent);
-  color: var(--fp-ink);
+  color: var(--fp-deep);
   font-size: 0.875rem;
   font-weight: 700;
   text-decoration: none;
@@ -282,7 +284,7 @@ async function copyInvite() {
 
 .chat-link:hover {
   background: color-mix(in srgb, var(--fp-accent) 85%, #000);
-  color: var(--fp-ink);
+  color: var(--fp-deep);
 }
 
 /* red count of new messages */
@@ -293,7 +295,7 @@ async function copyInvite() {
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  border: 2px solid var(--fp-surface);
+  border: 2px solid var(--fp-deep);
   border-radius: 999px;
   background: #d93025;
   color: #fff;
@@ -303,7 +305,7 @@ async function copyInvite() {
 }
 
 .invite-btn {
-  min-height: 36px;
+  min-height: 44px;
   white-space: nowrap;
 }
 
@@ -316,8 +318,8 @@ async function copyInvite() {
   min-height: 64px;
   padding-top: 0.6rem;
   padding-bottom: 0.6rem;
-  background: var(--fp-surface);
-  border-bottom: 1px solid var(--fp-border);
+  background: var(--fp-deep);
+  color: #fff;
 }
 
 .min-w-0 {
@@ -326,7 +328,7 @@ async function copyInvite() {
 
 .date-chip {
   flex-shrink: 0;
-  background: var(--fp-bg);
+  background: rgb(255 255 255 / 0.14);
   border-radius: 999px;
   padding: 0.25rem 0.75rem;
   font-size: 0.85rem;
@@ -348,22 +350,20 @@ async function copyInvite() {
   height: 1px;
   margin: 0 0.75rem;
   vertical-align: middle;
-  background: var(--fp-border);
+  background: rgb(255 255 255 / 0.25);
 }
 
 .step.done + .step::before {
   height: 2px;
-  background: var(--fp-primary);
+  background: #8fd1c3;
 }
 
 /* "GET THERE", "CHOOSE", "DECIDE" before each group of steps */
 .step-group {
   margin: 0 0.6rem 0 1.5rem;
-  color: var(--fp-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: var(--fp-on-deep-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .step-group:first-child {
@@ -374,7 +374,8 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--fp-muted);
+  min-height: 44px;
+  color: var(--fp-on-deep-muted);
   text-decoration: none;
   font-size: 0.9rem;
 }
@@ -386,34 +387,35 @@ async function copyInvite() {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 1px solid var(--fp-border);
+  border: 1px solid rgb(255 255 255 / 0.35);
   font-size: 0.75rem;
 }
 
 .step.done .step-link {
-  color: var(--fp-ink);
+  color: var(--fp-on-deep);
 }
 
 .step.done .step-num {
-  background: var(--fp-primary);
-  border-color: var(--fp-primary);
-  color: var(--fp-surface);
+  background: #8fd1c3;
+  border-color: #8fd1c3;
+  color: var(--fp-deep);
 }
 
 .step.current .step-link {
-  color: var(--fp-ink);
-  font-weight: 600;
+  color: #fff;
+  font-weight: 700;
 }
 
 .step.current .step-num {
-  background: var(--fp-ink);
-  border-color: var(--fp-ink);
-  color: var(--fp-surface);
+  background: var(--fp-accent);
+  border-color: var(--fp-accent);
+  color: var(--fp-deep);
+  font-weight: 800;
 }
 
 /* (Surya) small laptops 1200–1365px: the full step list shows, so the avatars make way for Chat
    and Invite to stay on the same line (everyone is listed on each page anyway) */
-@media (min-width: 1200px) and (max-width: 1365.98px) {
+@media (min-width: 1200px) and (max-width: 1599.98px) {
   .avatar-stack {
     display: none !important; /* over Bootstrap's d-md-flex */
   }
@@ -424,16 +426,16 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--fp-ink);
+  color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
 }
 
 .step-compact .step-num {
-  background: var(--fp-ink);
-  border-color: var(--fp-ink);
-  color: var(--fp-surface);
+  background: var(--fp-accent);
+  border-color: var(--fp-accent);
+  color: var(--fp-deep);
 }
 
 .step-nav {
@@ -445,21 +447,21 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  color: var(--fp-ink);
+  color: #fff;
   font-size: 1.4rem;
   line-height: 1;
   text-decoration: none;
 }
 
 a.step-arrow:hover {
-  background: var(--fp-bg);
+  background: rgb(255 255 255 / 0.12);
 }
 
 .step-arrow.disabled {
-  color: var(--fp-border); /* no step that way, but it keeps the label from shifting */
+  color: rgb(255 255 255 / 0.25); /* no step that way, but it keeps the label from shifting */
 }
 
 /* (Surya) phones and tablets: big enough to tap with a finger */

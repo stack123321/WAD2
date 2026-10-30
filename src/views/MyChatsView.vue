@@ -9,6 +9,7 @@ import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
 import { planningLinks } from '@/utils/planningLinks'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import PageBand from '@/components/ui/PageBand.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -81,64 +82,66 @@ const shown = computed(() => {
 </script>
 
 <template>
-  <main class="container py-4 chats-page">
-    <h1 class="h3 mt-2 mb-3">My Chats</h1>
+  <main>
+    <PageBand title="My Chats" size="short" />
 
-    <div v-if="planning" class="planning-banner mb-3" role="region" aria-label="Back to planning">
-      <span class="planning-text">Still planning “{{ planning.hangout.name }}”?</span>
-      <span class="planning-actions">
-        <router-link
-          v-if="planning.links.back"
-          class="btn btn-outline-primary"
-          :to="{ name: planning.links.back.page, params: { id: planning.hangout.id } }"
-        >
-          ← Back to {{ planning.links.back.label }}
+    <div class="container fp-pull chats-page">
+      <div v-if="planning" class="planning-banner mb-3" role="region" aria-label="Back to planning">
+        <span class="planning-text">Still planning “{{ planning.hangout.name }}”?</span>
+        <span class="planning-actions">
+          <router-link
+            v-if="planning.links.back"
+            class="btn btn-outline-primary"
+            :to="{ name: planning.links.back.page, params: { id: planning.hangout.id } }"
+          >
+            ← Back to {{ planning.links.back.label }}
+          </router-link>
+          <router-link
+            v-if="planning.links.next"
+            class="btn btn-primary"
+            :to="{ name: planning.links.next.page, params: { id: planning.hangout.id } }"
+          >
+            Continue planning →
+          </router-link>
+        </span>
+      </div>
+
+      <!-- filters as you type (v-model), @submit.prevent stops enter from reloading the page -->
+      <form class="mb-3" role="search" @submit.prevent>
+        <label for="chat-search" class="visually-hidden">Search by hangout or person</label>
+        <input
+          id="chat-search"
+          v-model="query"
+          type="search"
+          class="form-control search-box"
+          placeholder="Search by hangout or person"
+        />
+      </form>
+
+      <p v-if="loading" class="text-muted">Loading your chats…</p>
+      <p v-else-if="error" class="text-danger">{{ error }}</p>
+
+      <section v-else id="chat-list" class="box">
+        <p v-if="shown.length === 0" class="text-muted small mb-0">No chats found.</p>
+        <!-- each row: name in bold if unread, a red count, and everyone's avatars -->
+        <router-link v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
+          <span class="name" :class="{ unread: alerts.unreadIn(c.key) > 0 }">{{ c.name }}</span>
+          <span v-if="alerts.unreadIn(c.key) > 0" class="badge rounded-pill bg-danger">
+            {{ alerts.unreadIn(c.key) }}
+            <span class="visually-hidden">new</span>
+          </span>
+          <span class="avatars">
+            <MemberAvatar
+              v-for="m in c.members"
+              :key="m.user_id"
+              :name="m.display_name"
+              :color="m.avatar_color"
+              :size="32"
+            />
+          </span>
         </router-link>
-        <router-link
-          v-if="planning.links.next"
-          class="btn btn-primary"
-          :to="{ name: planning.links.next.page, params: { id: planning.hangout.id } }"
-        >
-          Continue planning →
-        </router-link>
-      </span>
+      </section>
     </div>
-
-    <!-- filters as you type (v-model), @submit.prevent stops enter from reloading the page -->
-    <form class="mb-3" role="search" @submit.prevent>
-      <label for="chat-search" class="visually-hidden">Search by hangout or person</label>
-      <input
-        id="chat-search"
-        v-model="query"
-        type="search"
-        class="form-control search-box"
-        placeholder="Search by hangout or person"
-      />
-    </form>
-
-    <p v-if="loading" class="text-muted">Loading your chats…</p>
-    <p v-else-if="error" class="text-danger">{{ error }}</p>
-
-    <section v-else id="chat-list" class="box">
-      <p v-if="shown.length === 0" class="text-muted small mb-0">No chats found.</p>
-      <!-- each row: name in bold if unread, a red count, and everyone's avatars -->
-      <router-link v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
-        <span class="name" :class="{ unread: alerts.unreadIn(c.key) > 0 }">{{ c.name }}</span>
-        <span v-if="alerts.unreadIn(c.key) > 0" class="badge rounded-pill bg-danger">
-          {{ alerts.unreadIn(c.key) }}
-          <span class="visually-hidden">new</span>
-        </span>
-        <span class="avatars">
-          <MemberAvatar
-            v-for="m in c.members"
-            :key="m.user_id"
-            :name="m.display_name"
-            :color="m.avatar_color"
-            :size="32"
-          />
-        </span>
-      </router-link>
-    </section>
   </main>
 </template>
 
