@@ -48,20 +48,26 @@
     >
       Filters
     </button>
+    <div
+      v-if="showMobileFilters"
+      class="mobile-filter-barrier"
+      aria-hidden="true"
+      @click="showMobileFilters = false"
+    />
 
-    <p v-if="hangout.loading" class="text-secondary" role="status">Loading hangout…</p>
-    <p v-else-if="!hasMidpoint" class="text-secondary" role="status">
+    <p v-if="hangout.loading" class="explore-status text-secondary" role="status">Loading hangout…</p>
+    <p v-else-if="!hasMidpoint" class="explore-status text-secondary" role="status">
       This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
     </p>
-    <p v-else-if="!googlePlacesEnabled" class="text-secondary" role="status">
+    <p v-else-if="!googlePlacesEnabled" class="explore-status text-secondary" role="status">
       Google Places is off. Turn it on to find nearby spots. This preference is saved on this device.
     </p>
-    <p v-else-if="loadingSpots" class="text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
-    <p v-if="loadError || shortlistError" class="text-danger">{{ loadError || shortlistError }}</p>
-    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="text-secondary" role="status">
+    <p v-else-if="loadingSpots" class="explore-status text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
+    <p v-if="loadError || shortlistError" class="explore-status text-danger">{{ loadError || shortlistError }}</p>
+    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="explore-status text-secondary" role="status">
       No nearby spots were found. Try again later or choose another midpoint.
     </p>
-    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="text-secondary" role="status">
+    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
       No spots match this filter.
     </p>
     <div id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
@@ -229,7 +235,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
@@ -368,6 +374,20 @@ const filters = [
 const activeFilter = ref('all')
 const hideZeroMatches = ref(false)
 const showMobileFilters = ref(false)
+
+function closeMobileFiltersOutside(event) {
+  if (!showMobileFilters.value) return
+  if (event.target.closest('.mobile-filter-toggle, .filters, .sort-control')) return
+  showMobileFilters.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeMobileFiltersOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeMobileFiltersOutside)
+})
 
 const filterTypes = {
   entertainment: ['amusement_center', 'bowling_alley', 'movie_theater', 'karaoke'],
@@ -806,6 +826,18 @@ async function selectSpot(id) {
     height: 100%;
   }
 
+  .explore-status {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    width: min(85%, 24rem);
+    margin: 0;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+
   .head {
     position: absolute;
     z-index: 3;
@@ -839,7 +871,7 @@ async function selectSpot(id) {
 
   .mobile-filter-toggle {
     position: absolute;
-    z-index: 4;
+    z-index: 6;
     top: 1rem;
     left: 1rem;
     display: grid;
@@ -856,10 +888,17 @@ async function selectSpot(id) {
     cursor: pointer;
   }
 
+  .mobile-filter-barrier {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    background: transparent;
+  }
+
   .filters,
   .sort-control {
     position: absolute;
-    z-index: 5;
+    z-index: 6;
     left: 1rem;
     right: 1rem;
     display: none;
