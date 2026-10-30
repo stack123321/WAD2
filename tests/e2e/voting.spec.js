@@ -101,7 +101,8 @@ test.describe('12 Final plan', () => {
     await expect(page.getByText("Everyone's trip is within 9 min of each other.")).toBeVisible()
   })
 
-  test('shows everyone on a map and the weather for the hangout', async ({ page }) => {
+  test('shows everyone on a map and, before it starts, the weather', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
     await page.goto('/hangouts/demo/plan')
     await expect(
       page.getByRole('region', { name: "Map of everyone's starting points" }),
