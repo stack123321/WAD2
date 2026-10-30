@@ -9,6 +9,9 @@ process.loadEnvFile('.env.local')
 export default defineConfig({
   testDir: './tests/live',
   timeout: 30 * 1000,
+  // one test at a time: they share real test accounts and the same database
+  workers: 1,
+  fullyParallel: false,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:5175',

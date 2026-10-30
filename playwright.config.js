@@ -25,16 +25,21 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /* Two at a time on GitHub's machines (they have 4 cores). */
+  workers: process.env.CI ? 2 : undefined,
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters
+     On GitHub, failures also show next to the code in the PR, and the HTML report is uploaded. */
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:5173',
+    baseURL: 'http://localhost:5198',
+
+    /* Same clock and language on every machine: Singapore time (GitHub's machines run on UTC). */
+    timezoneId: 'Asia/Singapore',
+    locale: 'en-US',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -84,15 +89,15 @@ export default defineConfig({
   /* Folder for test artifacts such as screenshots, videos, traces, etc. */
   // outputDir: 'test-results/',
 
-  /* Run your local dev server before starting the tests */
+  /* Eashvar: the tests start their own dev server on 5198 (never your own on 5173), always without
+     the Supabase keys, so they use the sample hangouts on every machine and on GitHub. The dev
+     server, not `npm run preview`, because only it runs the api/ functions (scripts/dev-api.js).
+     Other keys in .env.local (Google, OneMap) still load locally; tests stub those calls or skip
+     when a key is missing. */
   webServer: {
-    /**
-     * Use the dev server by default for faster feedback loop.
-     * Use the preview server on CI for more realistic testing.
-     * Playwright will re-use the local server if there is already a dev-server running.
-     */
-    command: process.env.CI ? 'npm run preview' : 'npm run dev',
-    port: process.env.CI ? 4173 : 5173,
-    reuseExistingServer: !process.env.CI,
+    command: 'npx vite --port 5198 --strictPort',
+    port: 5198,
+    reuseExistingServer: false,
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' },
   },
 })

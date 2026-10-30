@@ -46,6 +46,10 @@ test('/api/places gives shortlist-shaped places near the centre', async ({ reque
   const res = await request.get('/api/places', {
     params: { lat: bishan.lat, lng: bishan.lng, radius: 800, categories: 'cafe,food' },
   })
+  // Nearby places have no sample data, so without GOOGLE_PLACES_API_KEY (e.g. on GitHub) there's
+  // nothing to check
+  // eslint-disable-next-line playwright/no-skipped-test -- only when there's no Google key
+  test.skip(res.status() === 503, 'GOOGLE_PLACES_API_KEY is not set')
   expect(res.ok()).toBeTruthy()
   const places = await res.json()
   expect(places.length).toBeGreaterThan(0)

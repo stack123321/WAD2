@@ -3,12 +3,15 @@
 // with the current one highlighted, everyone's avatars, and an Invite button that copies the
 // hangout's invite link (for people who aren't your friends yet). Each step links to its page.
 // (Surya) A 💬 Chat button opens the group chat from any step, with the count of new messages.
-// Not on 06, which has its own Group chat button beside the heading.
+// On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
+// (Surya) The host also gets step "0 Details" before step 1, in place of the "Get there" label
+// (‹ on step 1 on phones), which opens 05 in edit mode to change the name, date, time or vibe.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import { useAlertsStore } from '@/stores/alerts'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs id, name, starts_at, invite_code
@@ -43,6 +46,25 @@ const currentIndex = computed(() => {
 
 // The steps either side of this one, for the ‹ › arrows (null at the first and last step)
 const prevStep = computed(() => STEPS[currentIndex.value - 1] ?? null)
+
+// (Surya) step 0 "Details": only the host can change them (the demo counts as yours, like on 06)
+const auth = useAuthStore()
+const isHost = computed(() => {
+  if (props.hangout.id.startsWith('demo')) {
+    return true
+  }
+  return Boolean(auth.user) && props.hangout.host_id === auth.user.id
+})
+const onDetails = computed(() => props.current === 'edit-hangout')
+
+// Back to the step you were on after saving (05 reads ?from=)
+const detailsLink = computed(() => {
+  const query = {}
+  if (currentIndex.value !== -1) {
+    query.from = STEPS[currentIndex.value].route
+  }
+  return { name: 'edit-hangout', params: { id: props.hangout.id }, query: query }
+})
 const nextStep = computed(() => STEPS[currentIndex.value + 1] ?? null)
 
 // "Fri 16 Oct · 7 PM"
@@ -70,10 +92,17 @@ const startsAt = computed(() => {
   return `${day} · ${hour}${minutes} ${amPm}`
 })
 
-// (Surya) Group chat: opens the chat page, which then offers "← Back to <this step>"
+// (Surya) Group chat: opens the chat page, which then offers "← Back to <this step>". On 06 it
+// adds ?chat=1 to 06's own address instead, and 06 opens its chat panel
 const alerts = useAlertsStore()
-const showChat = computed(() => props.current !== 'starting-points')
 const unreadChat = computed(() => alerts.unreadIn(props.hangout.id))
+
+const chatLink = computed(() => {
+  if (props.current === 'starting-points') {
+    return { name: 'starting-points', params: { id: props.hangout.id }, query: { chat: '1' } }
+  }
+  return { name: 'chat', params: { hangoutId: props.hangout.id }, query: { from: chatFrom.value } }
+})
 
 // The chat page only has a back button for steps, so 10 Spot details goes back as Spots
 const chatFrom = computed(() => {
@@ -110,8 +139,25 @@ async function copyInvite() {
     </div>
 
     <ol class="steps d-none d-xl-flex">
+      <!-- (Surya) host only: step 0, change the name, date, time or vibe. It takes the place of the
+           "Get there" label, so it joins step 1 with a line like the other steps -->
+      <li v-if="isHost" class="step" :class="{ current: onDetails, done: !onDetails }">
+        <RouterLink
+          :to="detailsLink"
+          class="step-link"
+          :aria-current="onDetails ? 'page' : null"
+          title="Change the hangout's name, date or vibe"
+          aria-label="Step 0: hangout details"
+        >
+          <!-- a ✓ once you've moved on to the steps, like the other done steps -->
+          <span class="step-num" aria-hidden="true">{{ onDetails ? '0' : '✓' }}</span>
+          Details
+        </RouterLink>
+      </li>
       <template v-for="(step, i) in STEPS" :key="step.route">
-        <li v-if="startsGroup(i)" class="step-group" aria-hidden="true">{{ step.group }}</li>
+        <li v-if="startsGroup(i) && !(i === 0 && isHost)" class="step-group" aria-hidden="true">
+          {{ step.group }}
+        </li>
         <li class="step" :class="{ current: i === currentIndex, done: i < currentIndex }">
           <RouterLink
             :to="{ name: step.route, params: { id: hangout.id } }"
@@ -126,12 +172,35 @@ async function copyInvite() {
     </ol>
 
     <!-- Phones and tablets: the 6 steps don't fit, so say which step this is, with arrows to the steps either side -->
+    <!-- (Surya) on Details itself: "Step 0 · Details", with › to step 1 -->
+    <div v-if="onDetails" class="step-nav d-flex d-xl-none align-items-center">
+      <span class="step-arrow disabled" aria-hidden="true">‹</span>
+      <span class="step-compact" aria-current="page">
+        <span class="step-num" aria-hidden="true">0</span>
+        <span>Step 0 · Details</span>
+      </span>
+      <RouterLink
+        class="step-arrow"
+        :to="{ name: STEPS[0].route, params: { id: hangout.id } }"
+        :aria-label="`Next step: ${STEPS[0].label}`"
+        >›</RouterLink
+      >
+    </div>
+
     <div v-if="currentIndex !== -1" class="step-nav d-flex d-xl-none align-items-center">
       <RouterLink
         v-if="prevStep"
         class="step-arrow"
         :to="{ name: prevStep.route, params: { id: hangout.id } }"
         :aria-label="`Previous step: ${prevStep.label}`"
+        >‹</RouterLink
+      >
+      <!-- (Surya) step 1: ‹ goes to Details, for the host -->
+      <RouterLink
+        v-else-if="isHost"
+        class="step-arrow"
+        :to="detailsLink"
+        aria-label="Previous: hangout details"
         >‹</RouterLink
       >
       <span v-else class="step-arrow disabled" aria-hidden="true">‹</span>
@@ -169,9 +238,8 @@ async function copyInvite() {
       </div>
       <!-- (Surya) the group chat, from any step; red number = new messages -->
       <RouterLink
-        v-if="showChat"
         class="chat-link"
-        :to="{ name: 'chat', params: { hangoutId: hangout.id }, query: { from: chatFrom } }"
+        :to="chatLink"
         :aria-label="unreadChat > 0 ? `Group chat, ${unreadChat} new` : 'Group chat'"
       >
         <span aria-hidden="true">💬</span>
@@ -194,7 +262,8 @@ async function copyInvite() {
 </template>
 
 <style scoped>
-/* (Surya) 💬 Chat: coral like 06's Group chat button, so it's the same thing everywhere */
+/* (Surya) 💬 Chat: filled coral so it stands out; square with slightly rounded corners, like the
+   app's other buttons */
 .chat-link {
   position: relative;
   display: inline-flex;
@@ -202,7 +271,7 @@ async function copyInvite() {
   gap: 0.3rem;
   min-height: 36px;
   padding: 0 0.75rem;
-  border-radius: 999px;
+  border-radius: var(--fp-radius-sm);
   background: var(--fp-accent);
   color: var(--fp-ink);
   font-size: 0.875rem;
@@ -275,7 +344,7 @@ async function copyInvite() {
 .step + .step::before {
   content: '';
   display: inline-block;
-  width: 32px;
+  width: 24px; /* (Surya) was 32px, so the bar still fits on one line with Details */
   height: 1px;
   margin: 0 0.75rem;
   vertical-align: middle;
@@ -340,6 +409,14 @@ async function copyInvite() {
   background: var(--fp-ink);
   border-color: var(--fp-ink);
   color: var(--fp-surface);
+}
+
+/* (Surya) small laptops 1200–1365px: the full step list shows, so the avatars make way for Chat
+   and Invite to stay on the same line (everyone is listed on each page anyway) */
+@media (min-width: 1200px) and (max-width: 1365.98px) {
+  .avatar-stack {
+    display: none !important; /* over Bootstrap's d-md-flex */
+  }
 }
 
 /* "Step 1 of 6 · Starting points" on phones and tablets */
