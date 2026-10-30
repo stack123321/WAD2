@@ -117,7 +117,9 @@ async function heroCardsFor(page, change, myId = 'u-ryan', now = NOW) {
 }
 
 test.describe('logged in: your own hangout', () => {
-  test('during the vote: everyone’s trips, the leader and who hasn’t voted', async ({ page }) => {
+  test('during the vote: everyone’s trips, the leader, and when everyone leaves', async ({
+    page,
+  }) => {
     const cards = await heroCardsFor(page, '')
 
     expect(cards.label).toBe('Up next')
@@ -125,6 +127,7 @@ test.describe('logged in: your own hangout', () => {
     expect(cards.link).toEqual({ name: 'vote', params: { id: 'demo' } })
     expect(cards.trips.kind).toBe('trips')
     expect(cards.trips.gap).toBe(9)
+    expect(cards.trips.soFar).toBeNull()
     expect(cards.trips.rows[0].name).toBe('You') // you come first
     expect(cards.trips.rows.find((r) => r.longest).name).toBe('Nicole')
     expect(cards.spot).toMatchObject({
@@ -133,8 +136,18 @@ test.describe('logged in: your own hangout', () => {
       name: 'Mock Cafe (sample data)',
       leave: '6:26 pm',
     })
-    expect(cards.vote.kind).toBe('tally')
-    expect(cards.vote.footer).toContain('waiting on Surya')
+    expect(cards.spot.status).toBe('3 of 4 voted · closes in 23h 0m')
+    // the 7 pm start minus each trip, earliest to leave first
+    expect(cards.times.kind).toBe('leave')
+    expect(cards.times.title).toBe('When everyone leaves')
+    expect(cards.times.rows.map((r) => [r.name, r.time])).toEqual([
+      ['Nicole', '6:24 pm'],
+      ['You', '6:26 pm'],
+      ['Surya', '6:33 pm'],
+      ['Hugo', '6:33 pm'],
+    ])
+    expect(cards.times.rows[0].detail).toBe('MRT · 36 min')
+    expect(cards.times.note).toBe('Everyone’s set')
     expect(cards.summary).toContain('Your next hangout, Friday dinner after class')
   })
 
@@ -155,9 +168,9 @@ test.describe('logged in: your own hangout', () => {
       name: 'Mock Cafe (sample data)',
       leave: null,
     })
-    expect(cards.vote.title).toBe('How you decided')
-    expect(cards.vote.rows[0].picked).toBe(true)
-    expect(cards.vote.footer).toBe('Runner-up: Mock Board Game Cafe (sample data)')
+    expect(cards.spot.status).toBeNull()
+    expect(cards.times.title).toBe('When everyone left')
+    expect(cards.times.note).toBeNull()
   })
 
   test('before anyone has a travel time: who still needs to add a start', async ({ page }) => {
@@ -179,22 +192,57 @@ test.describe('logged in: your own hangout', () => {
       midpoint: 'Finding the fair midpoint',
       leave: null,
     })
-    expect(cards.vote).toMatchObject({
-      kind: 'next',
-      count: 0,
-      next: 'Everyone adds where they’re starting',
-    })
+    // nobody has a travel time: where everyone is starting, and who hasn't added one
+    expect(cards.times.kind).toBe('starts')
+    expect(cards.times.rows.map((r) => [r.name, r.ready, r.detail])).toEqual([
+      ['You', true, 'Tampines MRT'],
+      ['Hugo', true, 'Punggol MRT'],
+      ['Nicole', false, 'Not added yet'],
+      ['Surya', false, 'Not added yet'],
+    ])
     expect(cards.link.name).toBe('starting-points')
   })
 
-  test('with a midpoint but no spots yet: what to add next', async ({ page }) => {
+  test('when only some have a travel time: their times first, then what the rest still need', async ({
+    page,
+  }) => {
+    // Hugo has added his start but not picked how he's travelling; Surya hasn't added a start
+    const cards = await heroCardsFor(
+      page,
+      'h.members[3].travel_mins = null; h.members[2].travel_mins = null; h.members[2].start_lat = null',
+    )
+
+    expect(cards.times.rows.map((r) => [r.name, r.ready, r.time, r.detail])).toEqual([
+      ['Nicole', true, '6:24 pm', 'MRT · 36 min'],
+      ['You', true, '6:26 pm', 'MRT · 34 min'],
+      ['Surya', false, null, 'No start added yet'],
+      ['Hugo', false, null, 'Picking transport'],
+    ])
+    expect(cards.times.note).toBe('2 of 4 ready · times update as people add theirs')
+    // the left card's gap says it's only between the trips worked out so far
+    expect(cards.trips.soFar).toBe('2 of 4 so far')
+    expect(cards.summary).toContain('2 of 4 have a travel time')
+  })
+
+  test('with no date yet: everyone’s trip instead of leave times', async ({ page }) => {
+    const cards = await heroCardsFor(page, 'h.starts_at = null')
+
+    expect(cards.times.title).toBe('Everyone’s trip')
+    expect(cards.times.rows[0]).toMatchObject({ name: 'Nicole', time: '36 min' }) // longest first
+    expect(cards.times.note).toBe('Leave-by times show once there’s a date')
+  })
+
+  test('with a midpoint but no spots yet: the plan so far, opening Spots', async ({ page }) => {
     const cards = await heroCardsFor(
       page,
       "h.status = 'collecting'; h.shortlist = []; h.votes = []",
     )
 
-    expect(cards.spot).toMatchObject({ kind: 'plan', midpoint: 'Meeting near Bishan' })
-    expect(cards.vote.next).toBe('Add up to 3 spots near Bishan')
+    expect(cards.spot).toMatchObject({
+      kind: 'plan',
+      midpoint: 'Meeting near Bishan',
+      leave: '6:26 pm',
+    })
     expect(cards.link.name).toBe('explore')
   })
 

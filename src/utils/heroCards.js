@@ -7,8 +7,8 @@ import {
   countVotes,
   formatTime,
   leaveBy,
+  modeLabel,
   pickLeader,
-  runnerUp,
   timeLeft,
   tripRange,
 } from '@/components/voting/voteHelpers'
@@ -77,7 +77,10 @@ function stepFor(h, when) {
  * Each card has a `kind` saying which version to draw:
  *   trips: 'trips' (everyone's trip and the gap) | 'starts' (who still needs to add a start)
  *   spot:  'spot' (confirmed, picked or leading) | 'plan' (no spot yet: name, date, midpoint)
- *   vote:  'tally' (the votes) | 'next' (no vote yet: the shortlist and what's next)
+ *   times: 'leave' (when each person leaves, or their trip if there's no date yet) |
+ *          'starts' (nobody has a travel time yet: where each person is starting from)
+ * Anyone not ready yet is listed after the others, saying what they still need to do, so a
+ * half-filled group never looks final.
  */
 export function buildHeroCards(h, myId, when, now = new Date()) {
   const members = h.members ?? []
@@ -108,6 +111,8 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
         longest: range.gap > 0 && m.travel_mins === range.longest,
       })),
       more: Math.max(0, ordered.length - MAX_TRIP_ROWS),
+      // the gap is only between the trips worked out so far
+      soFar: timed.length < members.length ? `${timed.length} of ${members.length} so far` : null,
     }
   } else {
     const missing = members.filter((m) => m.start_lat == null)
@@ -129,6 +134,15 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
   const myLeave =
     me?.travel_mins != null && h.starts_at ? formatTime(leaveBy(h.starts_at, me.travel_mins)) : null
 
+  // "2 of 4 voted · closes in 23h 0m", while the vote is open
+  let voteStatus = null
+  if (h.status === 'voting') {
+    const left = h.vote_deadline ? timeLeft(h.vote_deadline, now.getTime()) : null
+    voteStatus = [`${votes.length} of ${members.length} voted`, left ? `closes in ${left}` : null]
+      .filter(Boolean)
+      .join(' · ')
+  }
+
   let spot
   if (chosen) {
     let label = 'Leading, not confirmed'
@@ -148,6 +162,7 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
         .join(' · '),
       when: h.starts_at ? whenLabel(h.starts_at) : null,
       leave: when === 'past' ? null : myLeave,
+      status: voteStatus,
     }
   } else {
     spot = {
@@ -159,49 +174,75 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
     }
   }
 
-  // ---- right: the vote ----
-  let vote
-  const totalVotes = votes.length
-  if (shortlist.length > 0 && (h.status === 'voting' || confirmed)) {
-    const ranked = [...rows].sort((a, b) => b.count - a.count)
-    const voted = new Set(votes.map((v) => v.user_id))
-    const waiting = members.filter((m) => !voted.has(m.user_id)).map(nameOf)
-    let footer
-    if (h.status === 'voting') {
-      const left = h.vote_deadline ? timeLeft(h.vote_deadline, now.getTime()) : null
-      const parts = [left ? `Closes in ${left}` : null]
-      if (waiting.length) parts.push(`waiting on ${nameList(waiting)}`)
-      footer = parts.filter(Boolean).join(' · ') || `${totalVotes} of ${members.length} voted`
-    } else {
-      const second = runnerUp(rows, confirmed.id)
-      footer = second
-        ? `Runner-up: ${second.spot.name}`
-        : `${totalVotes} of ${members.length} voted`
-    }
-    vote = {
-      kind: 'tally',
-      title: h.status === 'voting' ? 'Group voting' : 'How you decided',
-      rows: ranked.slice(0, 2).map((r) => ({
-        id: r.spot.id,
-        name: r.spot.name,
-        count: r.count,
-        width: totalVotes ? Math.round((r.count / totalVotes) * 100) : 0,
-        picked: confirmed ? r.spot.id === confirmed.id : false,
-      })),
-      footer,
+  // ---- right: when everyone leaves ----
+  const ready = members.filter((m) => m.travel_mins != null)
+  const notReady = members.filter((m) => m.travel_mins == null)
+  // what someone who isn't ready still has to do
+  const pending = (m) => ({
+    ...person(m),
+    ready: false,
+    time: null,
+    detail: m.start_lat == null ? 'No start added yet' : 'Picking transport',
+  })
+
+  let times
+  if (ready.length > 0) {
+    const withTime = ready.map((m) => ({
+      ...person(m),
+      ready: true,
+      sortKey: h.starts_at
+        ? new Date(leaveBy(h.starts_at, m.travel_mins)).getTime()
+        : m.travel_mins,
+      // with a date: the time to leave; without one: just the trip
+      time: h.starts_at ? formatTime(leaveBy(h.starts_at, m.travel_mins)) : `${m.travel_mins} min`,
+      detail: `${modeLabel(m.mode)} · ${m.travel_mins} min`,
+    }))
+    // earliest to leave first (or longest trip first), then whoever isn't ready yet
+    withTime.sort((a, b) => (h.starts_at ? a.sortKey - b.sortKey : b.sortKey - a.sortKey))
+    const all = [...withTime, ...notReady.map(pending)]
+    let note
+    if (!h.starts_at) note = 'Leave-by times show once there’s a date'
+    else if (notReady.length) {
+      note = `${ready.length} of ${members.length} ready · times update as people add theirs`
+    } else note = when === 'past' ? null : 'Everyone’s set'
+    times = {
+      kind: 'leave',
+      title: !h.starts_at
+        ? 'Everyone’s trip'
+        : when === 'past'
+          ? 'When everyone left'
+          : 'When everyone leaves',
+      // sortKey was only for the order, so it's left off the rows
+      rows: all.slice(0, MAX_TRIP_ROWS).map(({ sortKey: _sortKey, ...row }) => row),
+      more: Math.max(0, all.length - MAX_TRIP_ROWS),
+      note,
     }
   } else {
-    let next
-    if (trips.kind === 'starts' && trips.missing.length)
-      next = 'Everyone adds where they’re starting'
-    else if (!h.midpoint_name) next = 'Pick how you’re travelling, then find the midpoint'
-    else if (shortlist.length === 0) next = `Add up to 3 spots near ${h.midpoint_name}`
-    else next = 'Start the vote when everyone’s added their spots'
-    vote = {
-      kind: 'next',
-      title: 'Shortlist',
-      count: shortlist.length,
-      next,
+    // nobody has a travel time yet: where everyone is coming from so far
+    const all = [
+      ...members
+        .filter((m) => m.start_lat != null)
+        .map((m) => ({
+          ...person(m),
+          ready: true,
+          time: null,
+          detail: m.start_label ?? 'Added',
+        })),
+      ...members
+        .filter((m) => m.start_lat == null)
+        .map((m) => ({
+          ...person(m),
+          ready: false,
+          time: null,
+          detail: 'Not added yet',
+        })),
+    ]
+    times = {
+      kind: 'starts',
+      title: 'Where everyone’s starting',
+      rows: all.slice(0, MAX_TRIP_ROWS),
+      more: Math.max(0, all.length - MAX_TRIP_ROWS),
+      note: 'Leave-by times show once everyone picks how they’re travelling',
     }
   }
 
@@ -210,8 +251,10 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
   if (trips.kind === 'trips') said.push(`everyone’s trip is within ${trips.gap} minutes`)
   else said.push(`${trips.added} of ${trips.total} starting points added`)
   if (spot.kind === 'spot') said.push(`${spot.label.toLowerCase()}: ${spot.name}`)
-  if (vote.kind === 'tally' && h.status === 'voting')
-    said.push(`${totalVotes} of ${members.length} have voted`)
+  if (voteStatus) said.push(voteStatus)
+  if (times.kind === 'leave' && notReady.length) {
+    said.push(`${ready.length} of ${members.length} have a travel time`)
+  }
 
   return {
     when,
@@ -221,7 +264,7 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
     link: { name: stepFor(h, when), params: { id: h.id } },
     trips,
     spot,
-    vote,
+    times,
     summary: said.join('; ') + '.',
   }
 }

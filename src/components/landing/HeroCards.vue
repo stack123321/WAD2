@@ -113,7 +113,8 @@ const generalSummary = computed(() => {
         </div>
         <p class="card__note">
           <span class="chip">{{ cards.trips.gap }} min gap</span>
-          <template v-if="cards.trips.more"> · +{{ cards.trips.more }} more</template>
+          <template v-if="cards.trips.soFar"> · {{ cards.trips.soFar }}</template>
+          <template v-else-if="cards.trips.more"> · +{{ cards.trips.more }} more</template>
           <template v-else> longest to shortest</template>
         </p>
       </template>
@@ -150,6 +151,7 @@ const generalSummary = computed(() => {
         <p v-if="cards.spot.details" class="card__note">{{ cards.spot.details }}</p>
       </template>
       <p v-else class="card__note card__note--plan">{{ cards.spot.midpoint }}</p>
+      <p v-if="cards.spot.status" class="card__note">{{ cards.spot.status }}</p>
       <div class="ticket">
         <div>
           <small>When</small><b>{{ cards.spot.when ?? 'No date yet' }}</b>
@@ -160,32 +162,32 @@ const generalSummary = computed(() => {
       </div>
     </div>
 
-    <!-- right: the vote, or what's next -->
+    <!-- right: when everyone leaves (anyone not ready yet comes last, greyed) -->
     <div class="card card--right" aria-hidden="true">
-      <p class="card__title">{{ cards.vote.title }}</p>
-      <template v-if="cards.vote.kind === 'tally'">
-        <div
-          v-for="(r, i) in cards.vote.rows"
-          :key="r.id"
-          class="vote"
-          :class="{ 'vote--lead': i === 0 }"
+      <p class="card__title">{{ cards.times.title }}</p>
+      <div
+        v-for="p in cards.times.rows"
+        :key="p.id"
+        class="person"
+        :class="{ 'person--waiting': !p.ready }"
+      >
+        <span
+          class="dot"
+          :class="{ 'dot--empty': !p.ready }"
+          :style="p.ready ? { background: p.color } : null"
+          >{{ p.initial }}</span
         >
-          <div class="vote__top">
-            <span>{{ r.name }}<span v-if="r.picked" class="picked">Picked</span></span>
-            <span>{{ r.count }}</span>
-          </div>
-          <div class="track">
-            <span :class="{ grey: i > 0 }" :style="{ width: `${r.width}%` }"></span>
-          </div>
+        <div class="person__text">
+          <b>{{ p.name }}</b>
+          <span class="card__note">{{ p.detail }}</span>
         </div>
-        <p class="card__note">{{ cards.vote.footer }}</p>
-      </template>
-      <template v-else>
-        <p class="big">
-          {{ cards.vote.count }}<span> {{ cards.vote.count === 1 ? 'spot' : 'spots' }} so far</span>
-        </p>
-        <p class="next">Next: {{ cards.vote.next }}</p>
-      </template>
+        <b v-if="p.time" class="person__time">{{ p.time }}</b>
+      </div>
+      <p v-if="cards.times.note || cards.times.more" class="card__note">
+        <template v-if="cards.times.more"
+          >+{{ cards.times.more }} more<template v-if="cards.times.note"> · </template></template
+        >{{ cards.times.note }}
+      </p>
     </div>
   </RouterLink>
 
@@ -520,31 +522,38 @@ const generalSummary = computed(() => {
   color: var(--fp-primary);
 }
 
-/* votes */
-.vote {
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-bg);
+/* when everyone leaves */
+.person {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
 }
 
-.vote--lead {
-  background: var(--fp-primary-soft);
+.person + .person {
+  border-top: 1px solid var(--fp-border);
 }
 
-.vote__top {
+.person__text {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-weight: 700;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
 }
 
-.picked {
-  margin-left: 0.4rem;
-  padding: 1px 7px;
-  border-radius: 99px;
-  background: var(--fp-primary);
-  color: #fff;
-  font-size: 0.75rem;
+.person__time {
+  white-space: nowrap;
+}
+
+.person--waiting b {
+  color: var(--fp-muted);
+}
+
+.dot.dot--empty {
+  border: 2px dashed var(--fp-border);
+  background: transparent;
+  color: var(--fp-muted);
 }
 
 /* general: crowds, weather, your group */
