@@ -7,7 +7,6 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
-import PageBand from '@/components/ui/PageBand.vue'
 import { defaultPreferences, getProfile, saveProfile } from '@/services/profiles'
 
 const route = useRoute()
@@ -18,24 +17,24 @@ const isSetup = computed(() => route.query.setup === '1')
 
 // Values are what gets stored in profiles.activities / profiles.dietary
 const activityOptions = [
-  { value: 'cafes', label: 'Cafes' },
-  { value: 'food', label: 'Food spots' },
-  { value: 'board_games', label: 'Board games' },
-  { value: 'outdoor', label: 'Outdoor & parks' },
-  { value: 'museums', label: 'Museums' },
-  { value: 'shopping', label: 'Shopping' },
-  { value: 'arcades', label: 'Arcades' },
-  { value: 'karaoke', label: 'Karaoke' },
-  { value: 'sports', label: 'Sports' },
-  { value: 'movies', label: 'Movies' },
-  { value: 'study', label: 'Study spots' },
+  { value: 'cafes', label: 'Cafes', emoji: '☕', color: 'teal' },
+  { value: 'food', label: 'Food spots', emoji: '🍜', color: 'orange' },
+  { value: 'board_games', label: 'Board games', emoji: '🎲', color: 'purple' },
+  { value: 'outdoor', label: 'Outdoor & parks', emoji: '🌳', color: 'green' },
+  { value: 'museums', label: 'Museums', emoji: '🏛️', color: 'blue' },
+  { value: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'pink' },
+  { value: 'arcades', label: 'Arcades', emoji: '🕹️', color: 'purple' },
+  { value: 'karaoke', label: 'Karaoke', emoji: '🎤', color: 'pink' },
+  { value: 'sports', label: 'Sports', emoji: '⚽', color: 'green' },
+  { value: 'movies', label: 'Movies', emoji: '🎬', color: 'blue' },
+  { value: 'study', label: 'Study spots', emoji: '📚', color: 'blue' },
 ]
 
 const dietaryOptions = [
-  { value: 'halal', label: 'Halal' },
-  { value: 'vegetarian', label: 'Vegetarian' },
-  { value: 'no_beef', label: 'No beef' },
-  { value: 'no_seafood', label: 'No seafood' },
+  { value: 'halal', label: 'Halal', emoji: '☪️', color: 'teal' },
+  { value: 'vegetarian', label: 'Vegetarian', emoji: '🥬', color: 'green' },
+  { value: 'no_beef', label: 'No beef', emoji: '🚫', color: 'orange' },
+  { value: 'no_seafood', label: 'No seafood', emoji: '🐟', color: 'blue' },
 ]
 
 const budgetOptions = [
@@ -228,249 +227,253 @@ async function save() {
 </script>
 
 <template>
-  <main>
-    <PageBand
-      title="Tell us what you like"
-      :lead="
-        isSetup
-          ? 'Answer a few quick questions to personalise your recommendations.'
-          : 'Fairpoint uses this to rank cafes and activities for your group.'
-      "
-      size="short"
-    />
+  <main class="container prefs">
+    <header class="prefs__header">
+      <div>
+        <h1 class="prefs__title">Tell us what you like</h1>
+        <p class="prefs__sub">
+          {{
+            isSetup
+              ? 'Answer a few quick questions to personalise your recommendations.'
+              : 'Fairpoint uses this to rank cafes and activities for your group.'
+          }}
+        </p>
+      </div>
+    </header>
 
-    <div class="container prefs fp-pull">
-      <!-- (Surya) setup progress: 4 segments, one per step, filled as you go. Hidden on the
+    <!-- (Surya) setup progress: 4 segments, one per step, filled as you go. Hidden on the
          intro screen, where there's no progress yet and the empty line looked like a divider -->
-      <div
-        v-if="isSetup && setupStep > 0"
-        class="progress-step"
-        role="progressbar"
-        aria-label="Setup progress"
-        aria-valuemin="1"
-        :aria-valuemax="setupTotal"
-        :aria-valuenow="setupStep"
-      >
-        <div class="progress-step__text">
-          <span class="progress-step__label">{{ setupStepLabel }}</span>
-          <span class="progress-step__name">{{ setupStepNames[setupStep - 1] }}</span>
-        </div>
-        <div class="progress-step__segs" aria-hidden="true">
-          <span
-            v-for="n in setupTotal"
-            :key="n"
-            class="progress-step__seg"
-            :class="{ 'progress-step__seg--done': n <= setupStep }"
-          ></span>
-        </div>
+    <div
+      v-if="isSetup && setupStep > 0"
+      class="progress-step"
+      role="progressbar"
+      aria-label="Setup progress"
+      aria-valuemin="1"
+      :aria-valuemax="setupTotal"
+      :aria-valuenow="setupStep"
+    >
+      <div class="progress-step__text">
+        <span class="progress-step__label">{{ setupStepLabel }}</span>
+        <span class="progress-step__name">{{ setupStepNames[setupStep - 1] }}</span>
       </div>
-
-      <div v-if="!userId && auth.ready" class="panel text-center">
-        <p class="mb-3">Log in to set your preferences.</p>
-        <RouterLink
-          class="btn btn-primary"
-          :to="{ name: 'auth', query: { redirect: route.fullPath } }"
-        >
-          Log in
-        </RouterLink>
+      <div class="progress-step__segs" aria-hidden="true">
+        <span
+          v-for="n in setupTotal"
+          :key="n"
+          class="progress-step__seg"
+          :class="{ 'progress-step__seg--done': n <= setupStep }"
+        ></span>
       </div>
-
-      <div v-else-if="loading" class="text-center py-5 text-secondary">
-        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-        Loading your preferences…
-      </div>
-
-      <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
-        <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
-          <h2 class="panel__title">4 quick questions</h2>
-          <p class="panel__sub">
-            Your answers help Fairpoint suggest places that work for you and your group.
-          </p>
-          <button type="submit" class="btn btn-primary">Get started</button>
-        </section>
-
-        <div v-else class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
-          <div class="prefs__col">
-            <section
-              v-if="!isSetup || setupStep === 1"
-              ref="activitiesPanel"
-              class="panel"
-              :class="{ 'panel--invalid': shownActivitiesError }"
-            >
-              <h2 id="prefs-activities-title" class="panel__title">
-                What do you enjoy?
-                <span class="panel__count"
-                  >{{ prefs.activities.length }}/{{ activityOptions.length }} selected</span
-                >
-              </h2>
-              <p class="panel__sub">Pick at least one, as many as you like</p>
-              <div
-                class="chips"
-                role="group"
-                aria-labelledby="prefs-activities-title"
-                aria-describedby="prefs-activities-error"
-              >
-                <button
-                  v-for="o in activityOptions"
-                  :key="o.value"
-                  type="button"
-                  class="chip"
-                  :class="{ 'is-on': prefs.activities.includes(o.value) }"
-                  :aria-pressed="prefs.activities.includes(o.value)"
-                  @click="toggle(prefs.activities, o.value)"
-                >
-                  {{ o.label }}
-                </button>
-              </div>
-              <p
-                v-if="shownActivitiesError"
-                id="prefs-activities-error"
-                class="field-error"
-                role="alert"
-              >
-                {{ shownActivitiesError }}
-              </p>
-            </section>
-
-            <section v-if="!isSetup || setupStep === 2" class="panel dietary-panel">
-              <h2 id="prefs-dietary-title" class="panel__title">
-                Dietary needs
-                <span class="panel__count"
-                  >{{ prefs.dietary.length }}/{{ dietaryOptions.length }} selected</span
-                >
-              </h2>
-              <p class="panel__sub">We only suggest food spots that fit everyone</p>
-              <div class="chips" role="group" aria-labelledby="prefs-dietary-title">
-                <button
-                  v-for="o in dietaryOptions"
-                  :key="o.value"
-                  type="button"
-                  class="chip"
-                  :class="{ 'is-on': prefs.dietary.includes(o.value) }"
-                  :aria-pressed="prefs.dietary.includes(o.value)"
-                  @click="toggle(prefs.dietary, o.value)"
-                >
-                  {{ o.label }}
-                </button>
-                <button
-                  type="button"
-                  class="chip"
-                  :class="{ 'is-on': noRestrictions }"
-                  :aria-pressed="noRestrictions"
-                  @click="prefs.dietary = []"
-                >
-                  No restrictions
-                </button>
-              </div>
-            </section>
-          </div>
-
-          <div class="prefs__col">
-            <section v-if="!isSetup || setupStep === 3" class="panel">
-              <h2 class="panel__title">Budget per person</h2>
-              <p class="panel__sub">Used to filter spots by price level</p>
-              <div class="segmented" role="radiogroup" aria-label="Budget per person">
-                <button
-                  v-for="o in budgetOptions"
-                  :key="o.value"
-                  type="button"
-                  role="radio"
-                  class="segmented__opt"
-                  :class="{ 'is-on': prefs.budget === o.value }"
-                  :aria-checked="prefs.budget === o.value"
-                  @click="prefs.budget = o.value"
-                >
-                  {{ o.symbol }} {{ o.label }}
-                </button>
-              </div>
-            </section>
-
-            <section v-if="!isSetup || setupStep === 4" class="panel">
-              <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
-
-              <div class="travel">
-                <label for="prefs-travel" class="travel__label">Max travel time</label>
-                <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
-              </div>
-              <input
-                id="prefs-travel"
-                v-model.number="prefs.max_travel_mins"
-                class="range"
-                type="range"
-                :min="travel.min"
-                :max="travel.max"
-                :step="travel.step"
-                :style="{ '--fill': travelFill }"
-              />
-
-              <ul class="toggles">
-                <li v-for="o in comfortOptions" :key="o.key" class="toggle-row">
-                  <div>
-                    <label :for="`prefs-${o.key}`" class="toggle-row__label">{{ o.label }}</label>
-                    <p class="toggle-row__hint">{{ o.hint }}</p>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input
-                      :id="`prefs-${o.key}`"
-                      v-model="prefs[o.key]"
-                      class="form-check-input"
-                      type="checkbox"
-                      role="switch"
-                    />
-                  </div>
-                </li>
-              </ul>
-            </section>
-          </div>
-        </div>
-
-        <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
-
-        <footer v-if="!isSetup || setupStep > 0" class="actions">
-          <div class="actions__buttons">
-            <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
-            <button
-              v-if="isSetup"
-              type="button"
-              class="btn btn-light btn-skip"
-              @click="skipSetupStep"
-            >
-              Skip for now
-            </button>
-            <button
-              v-if="!isSetup"
-              type="button"
-              class="btn btn-outline-primary btn-reset"
-              @click="resetPreferences"
-            >
-              Reset preferences
-            </button>
-            <button
-              v-if="isSetup && setupStep > 0"
-              type="button"
-              class="btn btn-outline-primary btn-back"
-              @click="previousSetupStep"
-            >
-              Back
-            </button>
-            <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
-              <span
-                v-if="saving"
-                class="spinner-border spinner-border-sm me-2"
-                aria-hidden="true"
-              ></span>
-              {{
-                isSetup
-                  ? setupStep === setupTotal
-                    ? 'Save preferences'
-                    : 'Next'
-                  : 'Save preferences'
-              }}
-            </button>
-          </div>
-        </footer>
-      </form>
     </div>
+
+    <div v-if="!userId && auth.ready" class="panel text-center">
+      <p class="mb-3">Log in to set your preferences.</p>
+      <RouterLink
+        class="btn btn-primary"
+        :to="{ name: 'auth', query: { redirect: route.fullPath } }"
+      >
+        Log in
+      </RouterLink>
+    </div>
+
+    <div v-else-if="loading" class="text-center py-5 text-secondary">
+      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+      Loading your preferences…
+    </div>
+
+    <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
+      <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
+        <h2 class="panel__title">4 quick questions</h2>
+        <p class="panel__sub">
+          Your answers help Fairpoint suggest places that work for you and your group.
+        </p>
+        <button type="submit" class="btn btn-primary">Get started</button>
+      </section>
+
+      <div v-else class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
+        <div class="prefs__col">
+          <section
+            v-if="!isSetup || setupStep === 1"
+            ref="activitiesPanel"
+            class="panel"
+            :class="{ 'panel--invalid': shownActivitiesError }"
+          >
+            <h2 id="prefs-activities-title" class="panel__title">
+              What do you enjoy?
+              <span class="panel__count"
+                >{{ prefs.activities.length }}/{{ activityOptions.length }} selected</span
+              >
+            </h2>
+            <p class="panel__sub">Pick at least one, as many as you like</p>
+            <div
+              class="chips"
+              role="group"
+              aria-labelledby="prefs-activities-title"
+              aria-describedby="prefs-activities-error"
+            >
+              <button
+                v-for="o in activityOptions"
+                :key="o.value"
+                type="button"
+                class="chip"
+                :class="[`chip--${o.color}`, { 'is-on': prefs.activities.includes(o.value) }]"
+                :aria-pressed="prefs.activities.includes(o.value)"
+                @click="toggle(prefs.activities, o.value)"
+              >
+                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
+                {{ o.label }}
+              </button>
+            </div>
+            <p
+              v-if="shownActivitiesError"
+              id="prefs-activities-error"
+              class="field-error"
+              role="alert"
+            >
+              {{ shownActivitiesError }}
+            </p>
+          </section>
+
+          <section v-if="!isSetup || setupStep === 2" class="panel dietary-panel">
+            <h2 id="prefs-dietary-title" class="panel__title">
+              Dietary needs
+              <span class="panel__count"
+                >{{ prefs.dietary.length }}/{{ dietaryOptions.length }} selected</span
+              >
+            </h2>
+            <p class="panel__sub">We only suggest food spots that fit everyone</p>
+            <div class="chips" role="group" aria-labelledby="prefs-dietary-title">
+              <button
+                v-for="o in dietaryOptions"
+                :key="o.value"
+                type="button"
+                class="chip"
+                :class="[`chip--${o.color}`, { 'is-on': prefs.dietary.includes(o.value) }]"
+                :aria-pressed="prefs.dietary.includes(o.value)"
+                @click="toggle(prefs.dietary, o.value)"
+              >
+                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
+                {{ o.label }}
+              </button>
+              <button
+                type="button"
+                class="chip"
+                :class="['chip--orange', { 'is-on': noRestrictions }]"
+                :aria-pressed="noRestrictions"
+                @click="prefs.dietary = []"
+              >
+                <span class="chip__emoji" aria-hidden="true">✅</span>
+                No restrictions
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div class="prefs__col">
+          <section v-if="!isSetup || setupStep === 3" class="panel">
+            <h2 class="panel__title">Budget per person</h2>
+            <p class="panel__sub">Used to filter spots by price level</p>
+            <div class="segmented" role="radiogroup" aria-label="Budget per person">
+              <button
+                v-for="o in budgetOptions"
+                :key="o.value"
+                type="button"
+                role="radio"
+                class="segmented__opt"
+                :class="{ 'is-on': prefs.budget === o.value }"
+                :aria-checked="prefs.budget === o.value"
+                @click="prefs.budget = o.value"
+              >
+                {{ o.symbol }} {{ o.label }}
+              </button>
+            </div>
+          </section>
+
+          <section v-if="!isSetup || setupStep === 4" class="panel">
+            <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
+
+            <div class="travel">
+              <label for="prefs-travel" class="travel__label">Max travel time</label>
+              <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
+            </div>
+            <input
+              id="prefs-travel"
+              v-model.number="prefs.max_travel_mins"
+              class="range"
+              type="range"
+              :min="travel.min"
+              :max="travel.max"
+              :step="travel.step"
+              :style="{ '--fill': travelFill }"
+            />
+
+            <ul class="toggles">
+              <li v-for="o in comfortOptions" :key="o.key" class="toggle-row">
+                <div>
+                  <label :for="`prefs-${o.key}`" class="toggle-row__label">{{ o.label }}</label>
+                  <p class="toggle-row__hint">{{ o.hint }}</p>
+                </div>
+                <div class="form-check form-switch mb-0">
+                  <input
+                    :id="`prefs-${o.key}`"
+                    v-model="prefs[o.key]"
+                    class="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                  />
+                </div>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+      <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
+
+      <footer v-if="!isSetup || setupStep > 0" class="actions">
+        <div class="actions__buttons">
+          <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
+          <button
+            v-if="isSetup"
+            type="button"
+            class="btn btn-light btn-skip"
+            @click="skipSetupStep"
+          >
+            Skip for now
+          </button>
+          <button
+            v-if="!isSetup"
+            type="button"
+            class="btn btn-outline-primary btn-reset"
+            @click="resetPreferences"
+          >
+            Reset preferences
+          </button>
+          <button
+            v-if="isSetup && setupStep > 0"
+            type="button"
+            class="btn btn-outline-primary btn-back"
+            @click="previousSetupStep"
+          >
+            Back
+          </button>
+          <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
+            <span
+              v-if="saving"
+              class="spinner-border spinner-border-sm me-2"
+              aria-hidden="true"
+            ></span>
+            {{
+              isSetup
+                ? setupStep === setupTotal
+                  ? 'Save preferences'
+                  : 'Next'
+                : 'Save preferences'
+            }}
+          </button>
+        </div>
+      </footer>
+    </form>
   </main>
 </template>
 
@@ -624,20 +627,21 @@ async function save() {
   gap: 0.6rem;
 }
 
-/* (Eashvar, design catalogue A1) 44px chips, no emoji, teal when chosen */
 .chip {
-  min-height: 44px;
-  padding: 0.45rem 1.1rem;
+  padding: 0.45rem 1rem;
   border: 1px solid var(--fp-border);
   border-radius: 999px;
   background: var(--fp-surface);
   color: var(--fp-ink);
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.85rem;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease,
     color 0.15s ease;
+}
+
+.chip__emoji {
+  margin-right: 0.35rem;
 }
 
 .chip:hover {
@@ -645,10 +649,46 @@ async function save() {
 }
 
 .chip.is-on {
-  border-color: var(--fp-primary);
-  background: var(--fp-primary);
-  color: #fff;
+  border-color: var(--chip-color);
+  background: var(--chip-background);
+  color: var(--chip-ink);
   font-weight: 700;
+}
+
+.chip--teal {
+  --chip-color: #0f9d91;
+  --chip-background: #dcefed;
+  --chip-ink: #155e59;
+}
+
+.chip--orange {
+  --chip-color: #f47721;
+  --chip-background: #fff0e6;
+  --chip-ink: #93410f;
+}
+
+.chip--blue {
+  --chip-color: #4b7bec;
+  --chip-background: #e5edff;
+  --chip-ink: #284eaa;
+}
+
+.chip--pink {
+  --chip-color: #df4b91;
+  --chip-background: #fbe5f0;
+  --chip-ink: #96305e;
+}
+
+.chip--green {
+  --chip-color: #39a75a;
+  --chip-background: #e2f2e6;
+  --chip-ink: #24703b;
+}
+
+.chip--purple {
+  --chip-color: #8b62d9;
+  --chip-background: #eee8fb;
+  --chip-ink: #5d3c9e;
 }
 
 /* Budget */
@@ -770,22 +810,6 @@ async function save() {
   align-items: center;
   gap: 1rem;
   margin-top: 1.25rem;
-  /* (Eashvar, design catalogue A1) a bar that stays in view while you scroll */
-  position: sticky;
-  bottom: 1rem;
-  z-index: 5;
-  padding: 0.6rem;
-  border-radius: 999px;
-  background: var(--fp-surface);
-  box-shadow: var(--fp-shadow);
-}
-
-/* phones: above the tab bar */
-@media (max-width: 767.98px) {
-  .actions {
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-    border-radius: var(--fp-radius);
-  }
 }
 
 .actions__buttons {

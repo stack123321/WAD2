@@ -5,7 +5,6 @@ import { ref, computed, onMounted } from 'vue'
 import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
-import PageBand from '@/components/ui/PageBand.vue'
 import DotIsland from '@/components/ui/DotIsland.vue'
 import WeekStrip from '@/components/dashboard/WeekStrip.vue'
 import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
@@ -72,12 +71,7 @@ const myId = computed(() => (auth.user ? auth.user.id : null))
 const planned = computed(() => upcoming.value.filter((h) => h.status !== 'confirmed').length)
 const confirmed = computed(() => upcoming.value.filter((h) => h.status === 'confirmed').length)
 
-// (Eashvar) "2 being planned · 1 confirmed" under the greeting, once there are some
-const countsLine = computed(() =>
-  upcoming.value.length > 0 ? `${planned.value} being planned · ${confirmed.value} confirmed` : '',
-)
-
-// no hangouts at all (not just none in this tab): show the first-hangout card instead
+// (Eashvar) no hangouts at all (not just none in this tab): show the first-hangout card instead
 const isNew = computed(() => !loading.value && !error.value && hangouts.value.length === 0)
 const needs = (h) => getStatus(h, myId.value).needsYou // true when this hangout is waiting on me
 const needCount = computed(() => upcoming.value.filter(needs).length)
@@ -370,207 +364,203 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main>
-    <!-- (Eashvar) the greeting, the counts and Start planning under them, in the band -->
-    <PageBand :title="heading" :lead="countsLine" size="flat">
-      <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead.
-           Not shown with no hangouts yet: the first-hangout card has its own Start planning -->
-      <router-link
-        v-if="!isNew"
-        :to="{ name: 'create-hangout' }"
-        class="btn btn-accent d-none d-md-inline-flex start-btn"
-      >
-        Start planning
-      </router-link>
-    </PageBand>
-
-    <div class="container pt-4 pb-5 page">
-      <div class="content">
-        <!-- first time here: what Fairpoint does and how to start -->
-        <section v-if="isNew" class="first" aria-labelledby="first-title">
-          <div class="first__text">
-            <h2 id="first-title" class="first__title">Plan your first hangout</h2>
-            <p class="first__lead">
-              Pick a day and your friends. Everyone adds where they’re starting, Fairpoint finds the
-              MRT stop that’s fair for all of you, and you vote on a place nearby.
-            </p>
-            <ol class="first__steps">
-              <li>
-                <span class="first__dot" aria-hidden="true"></span>Pick a day and who’s coming
-              </li>
-              <li>
-                <span class="first__dot first__dot--coral" aria-hidden="true"></span>Everyone adds
-                where they’re starting
-              </li>
-              <li>
-                <span class="first__dot first__dot--deep" aria-hidden="true"></span>Vote on a spot
-                near the fair midpoint
-              </li>
-            </ol>
-            <div class="first__actions">
-              <router-link :to="{ name: 'create-hangout' }" class="btn btn-primary btn-lg">
-                Start planning
-              </router-link>
-              <router-link :to="{ name: 'friends' }" class="btn btn-outline-primary btn-lg">
-                Find your friends
-              </router-link>
-            </div>
-          </div>
-          <div class="first__art" aria-hidden="true">
-            <DotIsland class="first__island" />
-            <p class="first__caption">
-              Your friends, all over the island.<br />One fair place to meet.
-            </p>
-          </div>
-        </section>
-
-        <!-- the "need your input" filter and the upcoming/past toggle -->
-        <div v-if="!isNew" class="mb-3">
-          <div class="d-flex flex-wrap align-items-center gap-2 dash-tools">
-            <!-- the amber chip: click to show only what needs you, aria-pressed tells screen readers it's a toggle -->
-            <button
-              v-if="tab === 'upcoming' && needCount > 0"
-              type="button"
-              class="need-chip"
-              :aria-pressed="filterOn"
-              @click="needsOnly = !needsOnly"
-            >
-              {{ needCount }} need your input
-            </button>
-            <!-- the two tabs, the active one is solid green -->
-            <div class="btn-group ms-auto" role="group" aria-label="Show upcoming or past hangouts">
-              <button
-                type="button"
-                class="btn toggle-btn"
-                :class="tab === 'upcoming' ? 'btn-primary' : 'btn-outline-secondary'"
-                :aria-pressed="tab === 'upcoming'"
-                @click="tab = 'upcoming'"
-              >
-                Upcoming
-              </button>
-              <button
-                type="button"
-                class="btn toggle-btn"
-                :class="tab === 'past' ? 'btn-primary' : 'btn-outline-secondary'"
-                :aria-pressed="tab === 'past'"
-                @click="tab = 'past'"
-              >
-                Past
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- haze banner: a long sentence on wider screens, a short one on phones -->
-        <div
-          v-if="showHaze"
-          class="alert alert-warning d-flex align-items-start gap-2 py-2 ps-3 pe-1 mb-3"
-          role="status"
+  <main class="container-fluid px-3 py-4 page">
+    <div class="content">
+      <!-- header: greeting, start button, counts and the upcoming/past toggle -->
+      <div class="mb-3">
+        <h1 class="h2 mb-0">{{ heading }}</h1>
+        <!-- (Eashvar) Start planning sits under the greeting. d-none d-md-inline-flex: hidden on
+             phones, where the tab bar has the + button instead. Not shown with no hangouts yet:
+             the first-hangout card has its own -->
+        <router-link
+          v-if="!isNew"
+          :to="{ name: 'create-hangout' }"
+          class="btn btn-primary fw-semibold d-none d-md-inline-flex align-items-center start-btn mt-3"
         >
-          <p class="mb-0 flex-grow-1 pt-1">
-            <span class="d-none d-sm-inline">
-              Haze · PSI {{ haze.psi }} ({{ haze.level }}) right now. Indoor venues recommended.
-              Source: NEA
-            </span>
-            <span class="d-sm-none">Haze · PSI {{ haze.psi }} · Indoor venues recommended</span>
-          </p>
+          Start planning
+        </router-link>
+
+        <div v-if="!isNew" class="d-flex flex-wrap align-items-center gap-2 mt-3">
+          <span v-if="upcoming.length > 0" class="text-muted small">
+            {{ planned }} being planned
+          </span>
+          <!-- the amber chip: click to show only what needs you, aria-pressed tells screen readers it's a toggle -->
           <button
+            v-if="tab === 'upcoming' && needCount > 0"
             type="button"
-            class="btn dismiss"
-            aria-label="Dismiss haze warning"
-            @click="dismissHaze"
+            class="need-chip"
+            :aria-pressed="filterOn"
+            @click="needsOnly = !needsOnly"
           >
-            ✕
+            {{ needCount }} need your input
           </button>
-        </div>
-
-        <!-- one message at most: loading, the load error, or an empty tab -->
-        <p v-if="loading" class="text-muted">Loading your hangouts…</p>
-        <p v-else-if="error" class="text-danger">{{ error }}</p>
-        <p v-else-if="!isNew && tabList.length === 0" class="text-muted">
-          {{
-            tab === 'upcoming'
-              ? 'No hangouts yet. Press Start planning to make one.'
-              : 'No past hangouts yet.'
-          }}
-        </p>
-
-        <!-- errors from the card menus, role="alert" so screen readers announce them -->
-        <p v-if="deleteError" class="text-danger" role="alert">{{ deleteError }}</p>
-        <p v-if="pinError" class="text-danger" role="alert">{{ pinError }}</p>
-
-        <!-- three loops from the sections computed: section, then day group, then hangout -->
-        <section v-for="s in sections" :key="s.key" class="mb-4">
-          <h2 class="section-label">
-            {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
-          </h2>
-          <div v-for="g in s.groups" :key="g.key" class="mb-3">
-            <!-- day heading, e.g. "Tomorrow Thu 22 Oct", left out for up next and pinned -->
-            <h3 v-if="g.main" class="day-label">
-              <strong>{{ g.main }}</strong> <span class="text-muted">{{ g.sub }}</span>
-            </h3>
-            <div v-for="h in g.items" :key="h.id" class="mb-2">
-              <!-- the card gets everything it shows as props, and tells this page about menu clicks with events -->
-              <HangoutCard
-                :hangout="h"
-                :show-date="s.showDate"
-                :featured="s.featured"
-                :my-id="myId"
-                :hours="hours"
-                :crowd="crowds[h.id] ?? null"
-                :can-delete="isHost(h)"
-                :can-leave="canLeave(h)"
-                :past="tab === 'past'"
-                :photos="photos[h.id] ?? []"
-                @delete="askDelete"
-                @leave="askLeave"
-                @toggle-pin="onTogglePin"
-              />
-            </div>
+          <span v-if="upcoming.length > 0" class="text-muted small">
+            · {{ confirmed }} confirmed
+          </span>
+          <!-- the two tabs, the active one is solid green -->
+          <div class="btn-group ms-auto" role="group" aria-label="Show upcoming or past hangouts">
+            <button
+              type="button"
+              class="btn toggle-btn"
+              :class="tab === 'upcoming' ? 'btn-primary' : 'btn-outline-secondary'"
+              :aria-pressed="tab === 'upcoming'"
+              @click="tab = 'upcoming'"
+            >
+              Upcoming
+            </button>
+            <button
+              type="button"
+              class="btn toggle-btn"
+              :class="tab === 'past' ? 'btn-primary' : 'btn-outline-secondary'"
+              :aria-pressed="tab === 'past'"
+              @click="tab = 'past'"
+            >
+              Past
+            </button>
           </div>
-        </section>
+        </div>
       </div>
 
-      <!-- wide screens only: the week and what needs you, beside the list -->
-      <aside v-if="upcoming.length > 0" class="rail" aria-label="This week">
-        <WeekStrip :hangouts="upcoming" :my-id="myId" />
-        <NeedsInputCard
-          v-if="upcoming.length >= NEEDS_CARD_MIN"
-          :hangouts="upcoming"
-          :my-id="myId"
-        />
-      </aside>
-
-      <!-- confirm leaving or deleting, opened by the card's menu item -->
-      <!-- bootstrap opens and closes it (data-bs-toggle and data-bs-dismiss), vue only fills in the words -->
+      <!-- haze banner: a long sentence on wider screens, a short one on phones -->
       <div
-        id="confirm-modal"
-        class="modal fade"
-        tabindex="-1"
-        aria-labelledby="confirm-title"
-        aria-hidden="true"
+        v-if="showHaze"
+        class="alert alert-warning d-flex align-items-start gap-2 py-2 ps-3 pe-1 mb-3"
+        role="status"
       >
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2 id="confirm-title" class="modal-title h5">{{ confirmCopy.title }}</h2>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-            </div>
-            <div class="modal-body">{{ confirmCopy.text }}</div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                Cancel
-              </button>
-              <!-- closes the dialog and runs the action -->
-              <button
-                type="button"
-                class="btn btn-danger"
-                data-bs-dismiss="modal"
-                @click="confirmNow"
-              >
-                {{ confirmCopy.button }}
-              </button>
-            </div>
+        <p class="mb-0 flex-grow-1 pt-1">
+          <span class="d-none d-sm-inline">
+            Haze · PSI {{ haze.psi }} ({{ haze.level }}) right now. Indoor venues recommended.
+            Source: NEA
+          </span>
+          <span class="d-sm-none">Haze · PSI {{ haze.psi }} · Indoor venues recommended</span>
+        </p>
+        <button
+          type="button"
+          class="btn dismiss"
+          aria-label="Dismiss haze warning"
+          @click="dismissHaze"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- one message at most: loading, the load error, or an empty tab -->
+      <p v-if="loading" class="text-muted">Loading your hangouts…</p>
+      <p v-else-if="error" class="text-danger">{{ error }}</p>
+      <!-- (Eashvar) first time here: what Fairpoint does and how to start -->
+      <section v-else-if="isNew" class="first" aria-labelledby="first-title">
+        <div class="first__text">
+          <h2 id="first-title" class="first__title">Plan your first hangout</h2>
+          <p class="first__lead">
+            Pick a day and your friends. Everyone adds where they’re starting, Fairpoint finds the
+            MRT stop that’s fair for all of you, and you vote on a place nearby.
+          </p>
+          <ol class="first__steps">
+            <li><span class="first__dot" aria-hidden="true"></span>Pick a day and who’s coming</li>
+            <li>
+              <span class="first__dot first__dot--coral" aria-hidden="true"></span>Everyone adds
+              where they’re starting
+            </li>
+            <li>
+              <span class="first__dot first__dot--deep" aria-hidden="true"></span>Vote on a spot
+              near the fair midpoint
+            </li>
+          </ol>
+          <div class="first__actions">
+            <router-link :to="{ name: 'create-hangout' }" class="btn btn-primary btn-lg">
+              Start planning
+            </router-link>
+            <router-link :to="{ name: 'friends' }" class="btn btn-outline-primary btn-lg">
+              Find your friends
+            </router-link>
+          </div>
+        </div>
+        <div class="first__art" aria-hidden="true">
+          <DotIsland class="first__island" />
+          <p class="first__caption">
+            Your friends, all over the island.<br />One fair place to meet.
+          </p>
+        </div>
+      </section>
+      <p v-else-if="tabList.length === 0" class="text-muted">
+        {{
+          tab === 'upcoming'
+            ? 'No hangouts yet. Press Start planning to make one.'
+            : 'No past hangouts yet.'
+        }}
+      </p>
+
+      <!-- errors from the card menus, role="alert" so screen readers announce them -->
+      <p v-if="deleteError" class="text-danger" role="alert">{{ deleteError }}</p>
+      <p v-if="pinError" class="text-danger" role="alert">{{ pinError }}</p>
+
+      <!-- three loops from the sections computed: section, then day group, then hangout -->
+      <section v-for="s in sections" :key="s.key" class="mb-4">
+        <h2 class="section-label">
+          {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
+        </h2>
+        <div v-for="g in s.groups" :key="g.key" class="mb-3">
+          <!-- day heading, e.g. "Tomorrow Thu 22 Oct", left out for up next and pinned -->
+          <h3 v-if="g.main" class="day-label">
+            <strong>{{ g.main }}</strong> <span class="text-muted">{{ g.sub }}</span>
+          </h3>
+          <div v-for="h in g.items" :key="h.id" class="mb-2">
+            <!-- the card gets everything it shows as props, and tells this page about menu clicks with events -->
+            <HangoutCard
+              :hangout="h"
+              :show-date="s.showDate"
+              :featured="s.featured"
+              :my-id="myId"
+              :hours="hours"
+              :crowd="crowds[h.id] ?? null"
+              :can-delete="isHost(h)"
+              :can-leave="canLeave(h)"
+              :past="tab === 'past'"
+              :photos="photos[h.id] ?? []"
+              @delete="askDelete"
+              @leave="askLeave"
+              @toggle-pin="onTogglePin"
+            />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- wide screens only: the week and what needs you, beside the list -->
+    <aside v-if="upcoming.length > 0" class="rail" aria-label="This week">
+      <WeekStrip :hangouts="upcoming" :my-id="myId" />
+      <NeedsInputCard v-if="upcoming.length >= NEEDS_CARD_MIN" :hangouts="upcoming" :my-id="myId" />
+    </aside>
+
+    <!-- confirm leaving or deleting, opened by the card's menu item -->
+    <!-- bootstrap opens and closes it (data-bs-toggle and data-bs-dismiss), vue only fills in the words -->
+    <div
+      id="confirm-modal"
+      class="modal fade"
+      tabindex="-1"
+      aria-labelledby="confirm-title"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 id="confirm-title" class="modal-title h5">{{ confirmCopy.title }}</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+          </div>
+          <div class="modal-body">{{ confirmCopy.text }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <!-- closes the dialog and runs the action -->
+            <button
+              type="button"
+              class="btn btn-danger"
+              data-bs-dismiss="modal"
+              @click="confirmNow"
+            >
+              {{ confirmCopy.button }}
+            </button>
           </div>
         </div>
       </div>
@@ -579,15 +569,21 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.content {
+  max-width: 1040px; /* rows never stretch wider than this */
+  margin: 0 auto; /* centred */
+}
 .start-btn {
-  margin-top: 1.25rem;
+  min-height: 44px; /* easy to tap */
 }
 
-/* (Eashvar) the first-hangout card: what to do, beside the island in dots */
+/* (Eashvar) the first-hangout card: what to do, beside the island in dots, in the landing
+   page's colours */
 .first {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   overflow: hidden;
+  border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
   background: var(--fp-surface);
   box-shadow: var(--fp-shadow);
@@ -691,14 +687,6 @@ onMounted(async () => {
     min-height: 200px;
     order: -1;
   }
-}
-
-.content {
-  max-width: 1040px; /* rows never stretch wider than this */
-  margin: 0; /* (Eashvar) left edge in line with the greeting in the band */
-}
-.start-btn {
-  min-height: 44px; /* easy to tap */
 }
 .toggle-btn {
   min-height: 44px;

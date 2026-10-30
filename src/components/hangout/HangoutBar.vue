@@ -6,8 +6,7 @@
 // On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
 // (Surya) The host also gets step "0 Details" before step 1, in place of the "Get there" label
 // (‹ on step 1 on phones), which opens 05 in edit mode to change the name, date, time or vibe.
-// (Eashvar, design catalogue A1) deep teal like the navbar, so the bar, the navbar and the page's
-// band read as one block; the group names are in sentence case.
+// (Eashvar) deep teal like the navbar, the landing page's colour.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
 import { computed, ref } from 'vue'
@@ -271,9 +270,9 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 999px;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border-radius: var(--fp-radius-sm);
   background: var(--fp-accent);
   color: var(--fp-deep);
   font-size: 0.875rem;
@@ -305,7 +304,7 @@ async function copyInvite() {
 }
 
 .invite-btn {
-  min-height: 44px;
+  min-height: 36px;
   white-space: nowrap;
 }
 
@@ -362,8 +361,10 @@ async function copyInvite() {
 .step-group {
   margin: 0 0.6rem 0 1.5rem;
   color: var(--fp-on-deep-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .step-group:first-child {
@@ -374,7 +375,6 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: 44px;
   color: var(--fp-on-deep-muted);
   text-decoration: none;
   font-size: 0.9rem;
@@ -403,19 +403,18 @@ async function copyInvite() {
 
 .step.current .step-link {
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .step.current .step-num {
   background: var(--fp-accent);
   border-color: var(--fp-accent);
   color: var(--fp-deep);
-  font-weight: 800;
 }
 
 /* (Surya) small laptops 1200–1365px: the full step list shows, so the avatars make way for Chat
    and Invite to stay on the same line (everyone is listed on each page anyway) */
-@media (min-width: 1200px) and (max-width: 1599.98px) {
+@media (min-width: 1200px) and (max-width: 1365.98px) {
   .avatar-stack {
     display: none !important; /* over Bootstrap's d-md-flex */
   }
@@ -447,8 +446,8 @@ async function copyInvite() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   color: #fff;
   font-size: 1.4rem;

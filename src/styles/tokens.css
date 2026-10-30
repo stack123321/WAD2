@@ -15,7 +15,7 @@
   --fp-bg-2: #ece8de; /* a step darker than the page: chip and toggle tracks */
   --fp-surface: #ffffff; /* cards */
 
-  /* A1 design language (design catalogue): the deep teal band at the top of every page */
+  /* (Eashvar) the landing page's deep teal, also used for the navbar and step bar */
   --fp-deep: #062b26;
   --fp-deep-2: #0a4a41;
   --fp-primary-soft: #e3efeb; /* a light teal fill: selected rows, notes */
@@ -34,9 +34,9 @@
   --fp-border: #e3e0d8;
 
   /* Shape */
-  --fp-radius: 20px;
-  --fp-radius-sm: 12px;
-  --fp-shadow: 0 14px 34px rgb(6 43 38 / 0.09);
+  --fp-radius: 16px;
+  --fp-radius-sm: 10px;
+  --fp-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
 
   /* Type */
   --fp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -57,28 +57,33 @@
   --bs-link-hover-color-rgb: 10, 95, 82;
 }
 
-/* A1: every button is a pill, at least 44px tall, so it's easy to tap */
+/* (Eashvar) the landing page's look carried to every page through type and colour only:
+   page titles in heavy, tightly set type, and buttons as bold pills. Sizes and layouts are
+   each page's own. */
+/* h1.h2 etc. too, so Bootstrap's size classes on a page title keep their size but not their weight */
+h1,
+h1.h1,
+h1.h2,
+h1.h3,
+h1.h4 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
 .btn {
   --bs-btn-border-radius: 999px;
   --bs-btn-font-weight: 700;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
 }
 
 .btn-sm {
   --bs-btn-border-radius: 999px;
-  min-height: 44px;
-  padding-inline: 1rem;
 }
 
 .btn-link {
   --bs-btn-font-weight: 600;
 }
 
-/* coral, for the one main action on the teal band (dark text: white on coral is too faint) */
+/* coral, for the main action on deep teal (dark text: white on coral is too faint) */
 .btn-accent {
   --bs-btn-color: var(--fp-deep);
   --bs-btn-bg: var(--fp-accent);
@@ -91,7 +96,7 @@
   --bs-btn-active-border-color: #e0573a;
 }
 
-/* a see-through button for the band */
+/* a see-through button on deep teal */
 .btn-on-deep {
   --bs-btn-color: #fff;
   --bs-btn-bg: rgb(255 255 255 / 0.12);
@@ -101,20 +106,6 @@
   --bs-btn-hover-border-color: transparent;
   --bs-btn-active-color: #fff;
   --bs-btn-active-bg: rgb(255 255 255 / 0.28);
-}
-
-.form-control,
-.form-select {
-  min-height: 48px;
-  border-radius: var(--fp-radius-sm);
-}
-
-/* content that hangs over the band's lower edge (PageBand) */
-.fp-pull {
-  position: relative;
-  z-index: 1;
-  margin-top: clamp(-80px, -6vw, -56px);
-  padding-bottom: 4rem;
 }
 
 /* Bootstrap buttons set their colours per class, so they need their own mapping */
@@ -130,7 +121,6 @@
 }
 
 .btn-outline-primary {
-  --bs-btn-border-width: 2px;
   --bs-btn-color: var(--fp-primary);
   --bs-btn-border-color: var(--fp-primary);
   --bs-btn-hover-bg: var(--fp-primary);

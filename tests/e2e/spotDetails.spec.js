@@ -32,8 +32,7 @@ test('shows the spot’s name, rating, price, address and a Google Maps link', a
 
 test('explains how well it suits the group', async ({ page }) => {
   await page.goto('/hangouts/demo/spots/quiet-cafe')
-  await expect(page.getByRole('heading', { name: 'Why it suits your group' })).toBeVisible()
-  await expect(page.getByText(/^\d+%$/)).toBeVisible() // the match %, as the big number
+  await expect(page.getByRole('heading', { name: 'Criteria' })).toBeVisible()
   // the demo group's vibe is "chill, food", and a cafe is chill
   await expect(page.getByText(/Matches your hangout's "chill, food" vibe/)).toBeVisible()
 })

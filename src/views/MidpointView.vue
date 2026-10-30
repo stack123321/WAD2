@@ -13,7 +13,6 @@ import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
 import TravelTimePanel from '@/components/transport/TravelTimePanel.vue'
 import MidpointSpots from '@/components/midpoint/MidpointSpots.vue'
-import PageBand from '@/components/ui/PageBand.vue'
 
 const route = useRoute()
 const store = useHangoutStore()
@@ -227,11 +226,6 @@ async function chooseStation(station) {
   }
 }
 
-// (Eashvar, design catalogue A1) the band says the answer once there is one
-const bandTitle = computed(() =>
-  midpoint.value?.name ? `Meet at ${midpoint.value.name}` : 'Midpoint + crowd heat map',
-)
-
 const midpoint = computed(() => {
   if (!store.hangout) return null
   // no midpoint until page 07 has worked it out (singapore's latitude never 0)
@@ -316,113 +310,103 @@ async function onMidpointMoved(position) {
 
   <div v-else-if="store.hangout">
     <!-- the step bar comes from App.vue, which adds it to every hangout page -->
-    <main>
-      <PageBand
-        :title="bandTitle"
-        :lead="
-          midpoint
-            ? 'The fairest MRT station near the middle of everyone’s starting points, with how busy it gets and the weather there.'
-            : ''
-        "
-        size="short"
-      />
+    <main class="container py-4">
+      <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
 
-      <div class="container fp-pull">
-        <template v-if="midpoint">
-          <!-- (Surya) What you can do near the midpoint, before choosing spots -->
-          <MidpointSpots
-            ref="spotsCard"
-            :stations="stationTabs"
-            :vibes="store.hangout.vibe || []"
-            :hangout-id="route.params.id"
-            :busy="moving"
-            @choose="chooseStation"
-            @preview="previewStation = $event"
-          />
+      <template v-if="midpoint">
+        <!-- (Surya) What you can do near the midpoint, before choosing spots -->
+        <MidpointSpots
+          ref="spotsCard"
+          :stations="stationTabs"
+          :vibes="store.hangout.vibe || []"
+          :hangout-id="route.params.id"
+          :busy="moving"
+          @choose="chooseStation"
+          @preview="previewStation = $event"
+        />
 
-          <!-- the map, with the midpoint, everyone's travel times and the weather beside it -->
-          <div class="row g-4 mt-1">
-            <!-- big map: the midpoint pin (draggable) and live crowds at the stations around it -->
-            <div class="col-lg-8 d-flex flex-column gap-3">
-              <CrowdHeatmap
-                :midpoint="midpoint"
-                :draggable="true"
-                :members="store.members"
-                :preview="previewStation"
-                @move="onMidpointMoved"
-                @recenter="backToMidpoint"
-              />
-            </div>
-
-            <!-- beside it: the midpoint, then the weather there -->
-            <div class="col-lg-4 d-flex flex-column gap-3">
-              <section class="card">
-                <div class="card-body">
-                  <p class="eyebrow mb-1">Your fair midpoint</p>
-                  <h2 class="h4 fw-bold mb-1">{{ midpoint.name }} MRT</h2>
-                  <!-- (Surya) Your own trip there, only when we know it -->
-                  <p v-if="myTrip" class="my-trip mb-0">
-                    <span class="text-secondary">Your trip:</span> {{ myTrip }}
-                  </p>
-                  <p class="small mt-2 mb-0">
-                    <strong>Tip:</strong> drag the pin on the map to move the midpoint to another
-                    MRT station nearby.
-                  </p>
-                  <p v-if="moving" class="small text-secondary mt-2 mb-0" role="status">
-                    Working out travel times…
-                  </p>
-                  <p v-else-if="moveMessage" class="small save-ok mt-2 mb-0">✓ {{ moveMessage }}</p>
-                  <p v-if="moveError" class="small text-danger mt-2 mb-0" role="alert">
-                    {{ moveError }}
-                  </p>
-                </div>
-              </section>
-
-              <!-- (Surya) Everyone's travel time to the midpoint -->
-              <TravelTimePanel
-                v-if="longestTrip > 0"
-                :members="store.members"
-                :station-name="midpoint.name"
-                :longest="longestTrip"
-                :subtitle="
-                  isFairest || !current
-                    ? 'The fairest MRT station near the middle of everyone\'s starting points'
-                    : 'The station your group chose'
-                "
-              />
-
-              <WeatherCard
-                :lat="midpoint.lat"
-                :lng="midpoint.lng"
-                :place="midpoint.name"
-                :at="store.hangout.starts_at"
-              />
-            </div>
+        <!-- the map, with the midpoint, everyone's travel times and the weather beside it -->
+        <div class="row g-4 mt-1">
+          <!-- big map: the midpoint pin (draggable) and live crowds at the stations around it -->
+          <div class="col-lg-8 d-flex flex-column gap-3">
+            <CrowdHeatmap
+              :midpoint="midpoint"
+              :draggable="true"
+              :members="store.members"
+              :preview="previewStation"
+              @move="onMidpointMoved"
+              @recenter="backToMidpoint"
+            />
           </div>
-          <!-- (Surya) the next step, full width at the bottom so it's clear what to do next -->
-          <router-link
-            :to="{ name: 'explore', params: { id: route.params.id } }"
-            class="btn btn-primary btn-lg w-100 mt-4 see-spots-btn"
-          >
-            Next: see nearby spots →
-          </router-link>
-          <p class="small text-secondary text-center mt-2 mb-0">
-            Pick places near {{ midpoint.name }} for the group to vote on.
-          </p>
-        </template>
 
-        <!-- reached from the step bar before page 07 has found the midpoint -->
-        <div v-else class="alert alert-info" role="status">
-          <p class="mb-2">
-            No midpoint yet. Fairpoint finds it once everyone has picked how they're travelling.
-          </p>
-          <router-link
-            :to="{ name: 'transport', params: { id: route.params.id } }"
-            class="btn btn-primary btn-sm go-btn"
-          >
-            Go to transport →
-          </router-link>
+          <!-- beside it: the midpoint, then the weather there -->
+          <div class="col-lg-4 d-flex flex-column gap-3">
+            <section class="card">
+              <div class="card-body">
+                <p class="eyebrow mb-1">Your fair midpoint</p>
+                <h2 class="h4 fw-bold mb-1">{{ midpoint.name }} MRT</h2>
+                <!-- (Surya) Your own trip there, only when we know it -->
+                <p v-if="myTrip" class="my-trip mb-0">
+                  <span class="text-secondary">Your trip:</span> {{ myTrip }}
+                </p>
+                <p class="small mt-2 mb-0">
+                  <strong>Tip:</strong> drag the pin on the map to move the midpoint to another MRT
+                  station nearby.
+                </p>
+                <p v-if="moving" class="small text-secondary mt-2 mb-0" role="status">
+                  Working out travel times…
+                </p>
+                <p v-else-if="moveMessage" class="small save-ok mt-2 mb-0">✓ {{ moveMessage }}</p>
+                <p v-if="moveError" class="small text-danger mt-2 mb-0" role="alert">
+                  {{ moveError }}
+                </p>
+              </div>
+            </section>
+
+            <!-- (Surya) Everyone's travel time to the midpoint -->
+            <TravelTimePanel
+              v-if="longestTrip > 0"
+              :members="store.members"
+              :station-name="midpoint.name"
+              :longest="longestTrip"
+              :subtitle="
+                isFairest || !current
+                  ? 'The fairest MRT station near the middle of everyone\'s starting points'
+                  : 'The station your group chose'
+              "
+            />
+
+            <WeatherCard
+              :lat="midpoint.lat"
+              :lng="midpoint.lng"
+              :place="midpoint.name"
+              :at="store.hangout.starts_at"
+            />
+          </div>
         </div>
+        <!-- (Surya) the next step, full width at the bottom so it's clear what to do next -->
+        <router-link
+          :to="{ name: 'explore', params: { id: route.params.id } }"
+          class="btn btn-primary btn-lg w-100 mt-4 see-spots-btn"
+        >
+          Next: see nearby spots →
+        </router-link>
+        <p class="small text-secondary text-center mt-2 mb-0">
+          Pick places near {{ midpoint.name }} for the group to vote on.
+        </p>
+      </template>
+
+      <!-- reached from the step bar before page 07 has found the midpoint -->
+      <div v-else class="alert alert-info" role="status">
+        <p class="mb-2">
+          No midpoint yet. Fairpoint finds it once everyone has picked how they're travelling.
+        </p>
+        <router-link
+          :to="{ name: 'transport', params: { id: route.params.id } }"
+          class="btn btn-primary btn-sm go-btn"
+        >
+          Go to transport →
+        </router-link>
       </div>
     </main>
   </div>

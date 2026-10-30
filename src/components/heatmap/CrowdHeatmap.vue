@@ -20,10 +20,8 @@ const props = defineProps({
   preview: { type: Object, default: null },
 })
 
-// tells the parent where the midpoint pin was dropped, and (surya) when "back to midpoint" is pressed.
-// (Eashvar) "levels" hands the parent every station's level and the slider's time after each load,
-// so /crowds can list the busiest and quietest beside the map
-const emit = defineEmits(['move', 'recenter', 'levels'])
+// tells the parent where the midpoint pin was dropped, and (surya) when "back to midpoint" is pressed
+const emit = defineEmits(['move', 'recenter'])
 
 // leaflet objects are plain variables, not refs, because leaflet owns them and vue doesn't need to watch them
 let map = null
@@ -78,7 +76,6 @@ async function loadCrowd() {
     // every station with its level at that time
     stations.value = await getCrowdLevels(slotToDate(slot.value))
     drawCircles()
-    emit('levels', { stations: stations.value, time: timeLabel.value })
   } catch (err) {
     console.log(err)
     error.value = 'Could not load crowd levels. Try again in a moment.'

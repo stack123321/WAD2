@@ -57,10 +57,10 @@ const pages = [
   ['/hangouts/new', 'New hangout'],
   ['/hangouts/demo/start', 'Where is everyone coming from?'],
   ['/hangouts/demo/transport', 'How is everyone getting there?'],
-  ['/hangouts/demo/midpoint', 'Meet at Bishan'],
+  ['/hangouts/demo/midpoint', 'Midpoint + crowd heat map'],
   ['/hangouts/demo/explore', 'Spots near Bishan'],
   ['/hangouts/demo/vote', 'Group voting'],
-  ['/hangouts/demo/plan', "So far it's Mock Cafe (sample data)"],
+  ['/hangouts/demo/plan', 'Final plan & itinerary'],
 ]
 
 for (const [path, title] of pages) {
@@ -111,9 +111,9 @@ test('new hangout: landing to final plan', async ({ page }) => {
   await expect(h1).toHaveText('How is everyone getting there?')
   // A button now: it saves the fairest station for the group, then opens 08
   await page.getByRole('button', { name: 'Find our midpoint' }).click()
-  // The fairest station depends on live travel times, so any area name will do
-  await expect(h1).toHaveText(/^Meet at .+/)
+  await expect(h1).toHaveText('Midpoint + crowd heat map')
   await page.getByRole('link', { name: 'See nearby spots' }).click()
+  // The fairest station depends on live travel times, so any area name will do
   await expect(h1).toHaveText(/^Spots near .+/)
 
   await page.getByRole('switch', { name: 'Google Places calls' }).check()
@@ -123,7 +123,7 @@ test('new hangout: landing to final plan', async ({ page }) => {
   await page.goto('/hangouts/demo/vote')
   await expect(h1).toHaveText('Group voting')
   await page.getByRole('button', { name: 'Close vote' }).click()
-  await expect(h1).toHaveText(/^You're going to .+/)
+  await expect(h1).toHaveText('Final plan & itinerary')
 })
 
 test('sign up: log in page to dashboard', async ({ page }) => {

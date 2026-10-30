@@ -1,7 +1,7 @@
 <script setup>
 // Owner: Hugo (UI kit). Basic version so the app runs; restyle to match Figma.
 // Ryan: top links and a profile menu from 768px, a bottom tab bar with a centre "+" below that.
-// (Eashvar, design catalogue A1) deep teal, so it runs straight into each page's band; Crowds link.
+// (Eashvar) deep teal, the landing page's colour.
 import { computed, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -95,9 +95,6 @@ async function logOut() {
                 <span class="visually-hidden">new</span>
               </span>
             </RouterLink>
-          </li>
-          <li class="nav-item">
-            <RouterLink class="nav-link" :to="{ name: 'crowds' }">Crowds</RouterLink>
           </li>
           <li class="nav-item dropdown">
             <button
@@ -226,16 +223,11 @@ async function logOut() {
 <style scoped>
 .topbar {
   background: var(--fp-deep);
-  color: #fff;
-}
-
-.topbar > div {
-  min-height: 64px;
 }
 
 .brand {
   font-weight: 800;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   color: #fff;
   text-decoration: none;
 }
@@ -245,7 +237,6 @@ async function logOut() {
   display: inline-flex;
   align-items: center;
   color: var(--fp-on-deep);
-  font-weight: 500;
 }
 
 .nav-link:hover,
@@ -256,7 +247,6 @@ async function logOut() {
 .nav-link.router-link-active {
   color: #fff;
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--fp-accent);
 }
 
 /* the Log in button, 44px tall so it's easy to tap on a phone */
@@ -270,12 +260,12 @@ async function logOut() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--fp-accent);
   color: var(--fp-deep);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .profile-btn {
@@ -306,17 +296,15 @@ async function logOut() {
   gap: 2px;
   min-height: 52px;
   border: 0;
-  border-radius: 14px;
   background: transparent;
   color: var(--fp-on-deep-muted);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-decoration: none;
 }
 
 .tab.router-link-active {
   color: #fff;
-  background: rgb(255 255 255 / 0.1);
 }
 
 /* Ryan: the badge sits on the top right corner of the tab's icon */
@@ -335,10 +323,6 @@ async function logOut() {
   padding-bottom: 0.35rem; /* puts "Plan" on the same line as the other labels */
 }
 
-.tab.plus.router-link-active {
-  background: transparent;
-}
-
 .plus-icon {
   flex-shrink: 0; /* otherwise the 52px column squashes the button */
   display: flex;
@@ -346,9 +330,10 @@ async function logOut() {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 14px;
   background: var(--fp-accent);
   color: var(--fp-deep);
+  box-shadow: var(--fp-shadow);
 }
 
 .tab-wrap {

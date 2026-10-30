@@ -31,7 +31,6 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
-import PageBand from '@/components/ui/PageBand.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -610,344 +609,334 @@ async function submit() {
 </script>
 
 <template>
-  <main>
-    <PageBand
-      :title="isEdit ? 'Hangout details' : 'New hangout'"
-      :lead="
-        isEdit
-          ? 'Change the name, date or vibe. Everyone in the hangout sees the change.'
-          : 'Pick a day and your friends. That’s it.'
-      "
-      :back="
-        isEdit ? { to: backTo, label: 'Back' } : { to: { name: 'dashboard' }, label: 'My hangouts' }
-      "
-      size="short"
-    />
+  <main class="container create">
+    <RouterLink v-if="isEdit" class="back" :to="backTo">&larr; Back</RouterLink>
+    <RouterLink v-else class="back" :to="{ name: 'dashboard' }">&larr; My hangouts</RouterLink>
 
-    <div class="container create fp-pull">
-      <!-- (Surya) Go again: what's copied from last time, so you only need a date -->
-      <div v-if="againSpot && !againDone" class="again-box" role="status">
-        <strong>↻ Going again to {{ againSpot.name }}</strong
-        ><template v-if="againNames"> with {{ againNames }}</template
-        >. Pick a date, then Create. Everyone's starting point and transport are copied from last
-        time, so you go straight to the plan.
-      </div>
-      <div v-else-if="againId && againLoaded && !againSpot" class="again-box" role="status">
-        That hangout was never decided, so this is a normal new hangout with the same people.
-      </div>
-      <div v-if="againDone" class="again-box" role="alert">
-        <p class="mb-2">
-          Created. Couldn’t add {{ againNotAdded.join(', ') }} (they may have left), so send them
-          the invite link from the plan.
-        </p>
-        <RouterLink class="btn btn-primary" :to="{ name: 'final-plan', params: { id: againDone } }">
-          Open the plan →
-        </RouterLink>
-      </div>
+    <header class="create__header">
+      <h1 class="create__title">{{ isEdit ? 'Hangout details' : 'New hangout' }}</h1>
+      <p v-if="isEdit" class="create__sub">
+        Change the name, date or vibe. Everyone in the hangout sees the change.
+      </p>
+      <p v-else class="create__sub">Pick a day and your friends. That’s it.</p>
+    </header>
 
-      <!-- (Surya) edit mode: wait for the hangout, and only the host can change it -->
-      <p v-if="isEdit && !editLoaded" class="text-secondary">Loading the hangout…</p>
-      <div v-else-if="isEdit && !canEdit" class="again-box" role="alert">
-        <p class="mb-2">Only the host can change the hangout’s details.</p>
-        <RouterLink class="btn btn-primary" :to="backTo">&larr; Back</RouterLink>
-      </div>
+    <!-- (Surya) Go again: what's copied from last time, so you only need a date -->
+    <div v-if="againSpot && !againDone" class="again-box" role="status">
+      <strong>↻ Going again to {{ againSpot.name }}</strong
+      ><template v-if="againNames"> with {{ againNames }}</template
+      >. Pick a date, then Create. Everyone's starting point and transport are copied from last
+      time, so you go straight to the plan.
+    </div>
+    <div v-else-if="againId && againLoaded && !againSpot" class="again-box" role="status">
+      That hangout was never decided, so this is a normal new hangout with the same people.
+    </div>
+    <div v-if="againDone" class="again-box" role="alert">
+      <p class="mb-2">
+        Created. Couldn’t add {{ againNotAdded.join(', ') }} (they may have left), so send them the
+        invite link from the plan.
+      </p>
+      <RouterLink class="btn btn-primary" :to="{ name: 'final-plan', params: { id: againDone } }">
+        Open the plan →
+      </RouterLink>
+    </div>
 
-      <form v-else id="create-hangout" class="create__grid" novalidate @submit.prevent="submit">
-        <!-- Hangout details -->
-        <section class="panel details">
-          <h2 class="panel__title">Hangout details</h2>
+    <!-- (Surya) edit mode: wait for the hangout, and only the host can change it -->
+    <p v-if="isEdit && !editLoaded" class="text-secondary">Loading the hangout…</p>
+    <div v-else-if="isEdit && !canEdit" class="again-box" role="alert">
+      <p class="mb-2">Only the host can change the hangout’s details.</p>
+      <RouterLink class="btn btn-primary" :to="backTo">&larr; Back</RouterLink>
+    </div>
 
-          <div class="field">
-            <label for="hangout-name" class="form-label">
-              Hangout name <span class="optional">(optional)</span>
-            </label>
+    <form v-else id="create-hangout" class="create__grid" novalidate @submit.prevent="submit">
+      <!-- Hangout details -->
+      <section class="panel details">
+        <h2 class="panel__title">Hangout details</h2>
+
+        <div class="field">
+          <label for="hangout-name" class="form-label">
+            Hangout name <span class="optional">(optional)</span>
+          </label>
+          <input
+            id="hangout-name"
+            v-model="form.name"
+            class="form-control"
+            type="text"
+            maxlength="80"
+            :placeholder="nameIdea"
+            aria-describedby="name-hint"
+          />
+          <p id="name-hint" class="field-hint mt-1 mb-0">Leave it blank to use this name.</p>
+        </div>
+
+        <!-- When: quick date buttons + date and time -->
+        <p class="form-label mb-2">When</p>
+        <div class="chips mb-3" role="group" aria-label="Pick a day">
+          <button
+            v-for="q in quickDates"
+            :key="q.value"
+            type="button"
+            class="chip"
+            :class="{ 'is-on': form.date === q.value }"
+            :aria-pressed="form.date === q.value"
+            @click="form.date = q.value"
+          >
+            {{ q.label }}
+          </button>
+        </div>
+
+        <div class="row g-3 field">
+          <div class="col-sm-6">
+            <label for="hangout-date" class="form-label">Date</label>
             <input
-              id="hangout-name"
-              v-model="form.name"
+              id="hangout-date"
+              v-model="form.date"
               class="form-control"
-              type="text"
-              maxlength="80"
-              :placeholder="nameIdea"
-              aria-describedby="name-hint"
+              type="date"
+              :min="today"
+              required
             />
-            <p id="name-hint" class="field-hint mt-1 mb-0">Leave it blank to use this name.</p>
           </div>
+          <div class="col-sm-6">
+            <label for="hangout-time" class="form-label">Time</label>
+            <input
+              id="hangout-time"
+              v-model="form.time"
+              class="form-control"
+              type="time"
+              step="900"
+              required
+            />
+          </div>
+        </div>
 
-          <!-- When: quick date buttons + date and time -->
-          <p class="form-label mb-2">When</p>
-          <div class="chips mb-3" role="group" aria-label="Pick a day">
+        <!-- Weather this week, right under the dates: tap a day to pick it -->
+        <WeekForecast
+          class="field"
+          pickable
+          :selected-date="form.date"
+          @pick="form.date = $event"
+        />
+
+        <!-- Shown (not folded away): it decides who adds the starting points -->
+        <div v-if="!isEdit" class="switch-row field">
+          <div>
+            <label for="hangout-self-start" class="switch-row__label">
+              Let friends add where they’re coming from
+            </label>
+            <p class="switch-row__hint">
+              Turn this off to fill in everyone’s starting point yourself. We’ll remember your
+              choice.
+            </p>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input
+              id="hangout-self-start"
+              v-model="form.friendsAddStart"
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+            />
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="form-label">What’s the vibe?</legend>
+          <p class="field-hint">We use this to suggest spots near your meeting point.</p>
+          <div class="chips">
             <button
-              v-for="q in quickDates"
-              :key="q.value"
+              v-for="v in vibes"
+              :key="v.value"
               type="button"
-              class="chip"
-              :class="{ 'is-on': form.date === q.value }"
-              :aria-pressed="form.date === q.value"
-              @click="form.date = q.value"
+              class="chip vibe-chip"
+              :class="{ 'is-on': form.vibe.includes(v.value) }"
+              :style="{ '--vibe': v.color }"
+              :aria-pressed="form.vibe.includes(v.value)"
+              @click="toggleVibe(v.value)"
             >
-              {{ q.label }}
+              <span aria-hidden="true">{{ v.emoji }}</span> {{ v.label }}
             </button>
           </div>
+        </fieldset>
+      </section>
 
-          <div class="row g-3 field">
-            <div class="col-sm-6">
-              <label for="hangout-date" class="form-label">Date</label>
-              <input
-                id="hangout-date"
-                v-model="form.date"
-                class="form-control"
-                type="date"
-                :min="today"
-                required
-              />
-            </div>
-            <div class="col-sm-6">
-              <label for="hangout-time" class="form-label">Time</label>
-              <input
-                id="hangout-time"
-                v-model="form.time"
-                class="form-control"
-                type="time"
-                step="900"
-                required
-              />
-            </div>
-          </div>
-
-          <!-- Weather this week, right under the dates: tap a day to pick it -->
-          <WeekForecast
-            class="field"
-            pickable
-            :selected-date="form.date"
-            @pick="form.date = $event"
-          />
-
-          <!-- Shown (not folded away): it decides who adds the starting points -->
-          <div v-if="!isEdit" class="switch-row field">
-            <div>
-              <label for="hangout-self-start" class="switch-row__label">
-                Let friends add where they’re coming from
-              </label>
-              <p class="switch-row__hint">
-                Turn this off to fill in everyone’s starting point yourself. We’ll remember your
-                choice.
-              </p>
-            </div>
-            <div class="form-check form-switch mb-0">
-              <input
-                id="hangout-self-start"
-                v-model="form.friendsAddStart"
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-              />
-            </div>
-          </div>
-
-          <fieldset class="field">
-            <legend class="form-label">What’s the vibe?</legend>
-            <p class="field-hint">We use this to suggest spots near your meeting point.</p>
-            <div class="chips">
-              <button
-                v-for="v in vibes"
-                :key="v.value"
-                type="button"
-                class="chip vibe-chip"
-                :class="{ 'is-on': form.vibe.includes(v.value) }"
-                :style="{ '--vibe': v.color }"
-                :aria-pressed="form.vibe.includes(v.value)"
-                @click="toggleVibe(v.value)"
-              >
-                <span aria-hidden="true">{{ v.emoji }}</span> {{ v.label }}
-              </button>
-            </div>
-          </fieldset>
+      <div class="side">
+        <!-- (Surya) edit mode: people are added and removed on 06 -->
+        <section v-if="isEdit" class="panel">
+          <h2 class="panel__title mb-1">Who’s coming</h2>
+          <p class="mb-2">{{ memberNames.join(', ') }}</p>
+          <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
+            Add or remove people on Starting points →
+          </RouterLink>
         </section>
 
-        <div class="side">
-          <!-- (Surya) edit mode: people are added and removed on 06 -->
-          <section v-if="isEdit" class="panel">
-            <h2 class="panel__title mb-1">Who’s coming</h2>
-            <p class="mb-2">{{ memberNames.join(', ') }}</p>
-            <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
-              Add or remove people on Starting points →
-            </RouterLink>
-          </section>
+        <!-- Who's coming? Ticked friends are added when the hangout is created -->
+        <section v-else class="panel">
+          <div class="d-flex justify-content-between align-items-baseline gap-2">
+            <h2 class="panel__title mb-1">Who’s coming?</h2>
+            <span v-if="selectedPeople.length > 0" class="small text-secondary"
+              >{{ selectedPeople.length }} picked</span
+            >
+          </div>
 
-          <!-- Who's coming? Ticked friends are added when the hangout is created -->
-          <section v-else class="panel">
-            <div class="d-flex justify-content-between align-items-baseline gap-2">
-              <h2 class="panel__title mb-1">Who’s coming?</h2>
-              <span v-if="selectedPeople.length > 0" class="small text-secondary"
-                >{{ selectedPeople.length }} picked</span
+          <!-- Picked friends first, as chips (✕ to remove), then the list to pick from -->
+          <ul v-if="selectedPeople.length > 0" class="picked" aria-label="Picked friends">
+            <li v-for="p in selectedPeople" :key="p.user_id" class="picked__chip">
+              <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="24" />
+              <span class="picked__name">{{ p.display_name }}</span>
+              <button
+                type="button"
+                class="picked__remove"
+                :aria-label="`Remove ${p.display_name}`"
+                @click="unselect(p.user_id)"
               >
-            </div>
+                ✕
+              </button>
+            </li>
+          </ul>
 
-            <!-- Picked friends first, as chips (✕ to remove), then the list to pick from -->
-            <ul v-if="selectedPeople.length > 0" class="picked" aria-label="Picked friends">
-              <li v-for="p in selectedPeople" :key="p.user_id" class="picked__chip">
-                <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="24" />
-                <span class="picked__name">{{ p.display_name }}</span>
-                <button
-                  type="button"
-                  class="picked__remove"
-                  :aria-label="`Remove ${p.display_name}`"
-                  @click="unselect(p.user_id)"
-                >
-                  ✕
-                </button>
-              </li>
-            </ul>
+          <p class="panel__sub">
+            Tick your friends and they’re added straight away. Anyone else can join with the Invite
+            link on the next page.
+          </p>
 
-            <p class="panel__sub">
-              Tick your friends and they’re added straight away. Anyone else can join with the
-              Invite link on the next page.
+          <p v-if="withFriend" class="with-friend mb-2">
+            Hanging out with <strong>{{ withFriend.display_name }}</strong> (ticked below)
+          </p>
+
+          <label for="friend-search" class="visually-hidden">Search by name</label>
+          <input
+            id="friend-search"
+            v-model="friendSearch"
+            type="search"
+            class="form-control mb-2"
+            placeholder="Search by name"
+            autocomplete="off"
+            @keydown.enter.prevent="searchEveryone"
+          />
+
+          <p v-if="friendsLoading" class="panel__sub mb-0">Loading your friends…</p>
+          <p v-else-if="friendsError" class="panel__sub mb-0">{{ friendsError }}</p>
+          <p v-else-if="friends.length === 0 && friendSearch.trim() === ''" class="panel__sub mb-0">
+            No friends yet. Search for people above, or invite them with the link on the next page.
+          </p>
+          <p v-else-if="shownFriends.length === 0" class="panel__sub mb-0">
+            No friends called “{{ friendSearch.trim() }}”.
+          </p>
+          <ul v-else class="people">
+            <li v-for="f in visibleFriends" :key="f.user_id">
+              <label class="person">
+                <input
+                  v-model="selectedFriends"
+                  type="checkbox"
+                  class="form-check-input"
+                  :value="f.user_id"
+                />
+                <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
+                <span class="person__name">{{ f.display_name }}</span>
+                <span v-if="isOften(f)" class="often">Often with you</span>
+              </label>
+            </li>
+          </ul>
+          <!-- More than 8 friends: the rest are one tap away -->
+          <button
+            v-if="hiddenCount > 0 || (showAllFriends && shownFriends.length > FIRST_FRIENDS)"
+            type="button"
+            class="btn btn-link show-all"
+            @click="showAllFriends = !showAllFriends"
+          >
+            {{ showAllFriends ? 'Show fewer ▴' : `Show all (${hiddenCount} more) ▾` }}
+          </button>
+
+          <!-- Search everyone on Fairpoint (shown while you're searching) -->
+          <button
+            v-if="friendSearch.trim().length >= 2"
+            type="button"
+            class="btn btn-link btn-sm search-all"
+            :disabled="searchingPeople"
+            @click="searchEveryone"
+          >
+            {{ searchingPeople ? 'Searching…' : `Search everyone for “${friendSearch.trim()}”` }}
+          </button>
+          <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
+
+          <template v-if="searchedText !== '' && searchedText === friendSearch.trim()">
+            <p v-if="peopleResults.length === 0" class="panel__sub mb-0">
+              Nobody else on Fairpoint matches “{{ searchedText }}”.
             </p>
-
-            <p v-if="withFriend" class="with-friend mb-2">
-              Hanging out with <strong>{{ withFriend.display_name }}</strong> (ticked below)
-            </p>
-
-            <label for="friend-search" class="visually-hidden">Search by name</label>
-            <input
-              id="friend-search"
-              v-model="friendSearch"
-              type="search"
-              class="form-control mb-2"
-              placeholder="Search by name"
-              autocomplete="off"
-              @keydown.enter.prevent="searchEveryone"
-            />
-
-            <p v-if="friendsLoading" class="panel__sub mb-0">Loading your friends…</p>
-            <p v-else-if="friendsError" class="panel__sub mb-0">{{ friendsError }}</p>
-            <p
-              v-else-if="friends.length === 0 && friendSearch.trim() === ''"
-              class="panel__sub mb-0"
-            >
-              No friends yet. Search for people above, or invite them with the link on the next
-              page.
-            </p>
-            <p v-else-if="shownFriends.length === 0" class="panel__sub mb-0">
-              No friends called “{{ friendSearch.trim() }}”.
-            </p>
-            <ul v-else class="people">
-              <li v-for="f in visibleFriends" :key="f.user_id">
-                <label class="person">
-                  <input
-                    v-model="selectedFriends"
-                    type="checkbox"
-                    class="form-check-input"
-                    :value="f.user_id"
-                  />
-                  <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
-                  <span class="person__name">{{ f.display_name }}</span>
-                  <span v-if="isOften(f)" class="often">Often with you</span>
-                </label>
-              </li>
-            </ul>
-            <!-- More than 8 friends: the rest are one tap away -->
-            <button
-              v-if="hiddenCount > 0 || (showAllFriends && shownFriends.length > FIRST_FRIENDS)"
-              type="button"
-              class="btn btn-link show-all"
-              @click="showAllFriends = !showAllFriends"
-            >
-              {{ showAllFriends ? 'Show fewer ▴' : `Show all (${hiddenCount} more) ▾` }}
-            </button>
-
-            <!-- Search everyone on Fairpoint (shown while you're searching) -->
-            <button
-              v-if="friendSearch.trim().length >= 2"
-              type="button"
-              class="btn btn-link btn-sm search-all"
-              :disabled="searchingPeople"
-              @click="searchEveryone"
-            >
-              {{ searchingPeople ? 'Searching…' : `Search everyone for “${friendSearch.trim()}”` }}
-            </button>
-            <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
-
-            <template v-if="searchedText !== '' && searchedText === friendSearch.trim()">
-              <p v-if="peopleResults.length === 0" class="panel__sub mb-0">
-                Nobody else on Fairpoint matches “{{ searchedText }}”.
+            <template v-else>
+              <p class="panel__sub mb-1">
+                Not your friends yet. Send a request, and once they accept you can add them to
+                hangouts. Or share the Invite link on the next page.
               </p>
-              <template v-else>
-                <p class="panel__sub mb-1">
-                  Not your friends yet. Send a request, and once they accept you can add them to
-                  hangouts. Or share the Invite link on the next page.
-                </p>
-                <ul class="people">
-                  <li v-for="p in peopleResults" :key="p.user_id" class="person">
-                    <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
-                    <span class="person__name">{{ p.display_name }}</span>
-                    <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
-                    <button
-                      v-else
-                      type="button"
-                      class="btn btn-outline-primary btn-sm request-btn"
-                      :aria-label="`Send ${p.display_name} a friend request`"
-                      @click="requestFriend(p)"
-                    >
-                      Add friend
-                    </button>
-                  </li>
-                </ul>
-              </template>
+              <ul class="people">
+                <li v-for="p in peopleResults" :key="p.user_id" class="person">
+                  <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
+                  <span class="person__name">{{ p.display_name }}</span>
+                  <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
+                  <button
+                    v-else
+                    type="button"
+                    class="btn btn-outline-primary btn-sm request-btn"
+                    :aria-label="`Send ${p.display_name} a friend request`"
+                    @click="requestFriend(p)"
+                  >
+                    Add friend
+                  </button>
+                </li>
+              </ul>
             </template>
-          </section>
+          </template>
+        </section>
 
-          <!-- Summary: fills in as you type -->
-          <section class="panel summary" aria-live="polite">
-            <h2 class="panel__title mb-2">Summary</h2>
-            <dl class="summary__list">
-              <dt>Name</dt>
-              <dd>{{ form.name.trim() || `${nameIdea} (suggested)` }}</dd>
-              <dt>When</dt>
-              <dd>{{ startsAt ? dateLabel(startsAt) : 'Pick a date' }}</dd>
-              <dt>Vibe</dt>
-              <dd>{{ vibeSummary }}</dd>
-              <dt>Who</dt>
-              <dd v-if="isEdit">{{ memberNames.join(', ') }}</dd>
-              <dd v-else>
-                You<template v-if="selectedNames.length > 0"
-                  >, {{ selectedNames.join(', ') }}</template
-                >
-              </dd>
-            </dl>
+        <!-- Summary: fills in as you type -->
+        <section class="panel summary" aria-live="polite">
+          <h2 class="panel__title mb-2">Summary</h2>
+          <dl class="summary__list">
+            <dt>Name</dt>
+            <dd>{{ form.name.trim() || `${nameIdea} (suggested)` }}</dd>
+            <dt>When</dt>
+            <dd>{{ startsAt ? dateLabel(startsAt) : 'Pick a date' }}</dd>
+            <dt>Vibe</dt>
+            <dd>{{ vibeSummary }}</dd>
+            <dt>Who</dt>
+            <dd v-if="isEdit">{{ memberNames.join(', ') }}</dd>
+            <dd v-else>
+              You<template v-if="selectedNames.length > 0"
+                >, {{ selectedNames.join(', ') }}</template
+              >
+            </dd>
+          </dl>
 
-            <!-- Create sits with the summary, like a checkout -->
-            <button
-              type="submit"
-              class="btn btn-accent btn-create w-100"
-              :disabled="!canSubmit"
-              aria-describedby="create-hint"
-            >
-              <span
-                v-if="busy"
-                class="spinner-border spinner-border-sm me-2"
-                aria-hidden="true"
-              ></span>
-              <template v-if="isEdit">Save changes</template>
-              <template v-else>Create &amp; add starting points &rarr;</template>
-            </button>
-            <!-- Why the Create button is greyed out -->
-            <p v-if="missingHint && !busy" id="create-hint" class="missing-hint">
-              {{ missingHint }}
-            </p>
-            <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">
-              {{ error }}
-            </p>
-            <RouterLink
-              class="btn btn-link btn-cancel w-100"
-              :to="isEdit ? backTo : { name: 'dashboard' }"
-            >
-              Cancel
-            </RouterLink>
-          </section>
-        </div>
-      </form>
-    </div>
+          <!-- Create sits with the summary, like a checkout -->
+          <button
+            type="submit"
+            class="btn btn-primary btn-create w-100"
+            :disabled="!canSubmit"
+            aria-describedby="create-hint"
+          >
+            <span
+              v-if="busy"
+              class="spinner-border spinner-border-sm me-2"
+              aria-hidden="true"
+            ></span>
+            <template v-if="isEdit">Save changes</template>
+            <template v-else>Create &amp; add starting points &rarr;</template>
+          </button>
+          <!-- Why the Create button is greyed out -->
+          <p v-if="missingHint && !busy" id="create-hint" class="missing-hint">{{ missingHint }}</p>
+          <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">
+            {{ error }}
+          </p>
+          <RouterLink
+            class="btn btn-link btn-cancel w-100"
+            :to="isEdit ? backTo : { name: 'dashboard' }"
+          >
+            Cancel
+          </RouterLink>
+        </section>
+      </div>
+    </form>
   </main>
 </template>
 
@@ -1330,35 +1319,6 @@ legend.form-label {
   color: var(--fp-muted);
   font-size: 0.85rem;
   text-align: center;
-}
-
-/* (Eashvar, design catalogue A1) the summary as a ticket on deep teal, with the one coral button */
-.panel.summary {
-  background: var(--fp-deep);
-  border-color: var(--fp-deep);
-  color: #fff;
-}
-
-.summary .panel__title {
-  color: #fff;
-}
-
-.summary .summary__list {
-  padding: 1rem 0;
-  border-top: 1px dashed rgb(255 255 255 / 0.25);
-  border-bottom: 1px dashed rgb(255 255 255 / 0.25);
-}
-
-.summary .summary__list dt {
-  color: var(--fp-on-deep-muted);
-}
-
-.summary .missing-hint {
-  color: var(--fp-on-deep);
-}
-
-.summary .btn-cancel {
-  color: var(--fp-on-deep);
 }
 
 /* Create + Cancel inside the summary card */
