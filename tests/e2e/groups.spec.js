@@ -61,14 +61,19 @@ test('once started, a vote nobody has voted in can’t be closed', async ({ page
 
 test('each hangout’s final plan lists only its own members', async ({ page }) => {
   await page.goto('/hangouts/demo-2/plan')
+  const trip = (name) =>
+    page
+      .getByRole('list', { name: "Each person's trip" })
+      .getByRole('listitem')
+      .filter({ hasText: name })
 
   await expect(
     page.getByRole('heading', { name: 'Mock Public Library (sample data)' }),
   ).toBeVisible()
   for (const name of ['Eashvar', 'Matrix', 'Hugo']) {
-    await expect(page.getByRole('rowheader', { name: new RegExp(`^${name}`) })).toBeVisible()
+    await expect(trip(name)).toBeVisible()
   }
   for (const name of ['Ryan', 'Nicole', 'Surya']) {
-    await expect(page.getByRole('rowheader', { name: new RegExp(`^${name}`) })).toBeHidden()
+    await expect(trip(name)).toBeHidden()
   }
 })

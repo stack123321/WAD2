@@ -6,13 +6,15 @@
 // spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
 // only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
 // current members' latest votes count. Surya's MembersMap shows everyone's starting point and
-// his WeatherCard the forecast at the spot for the hangout's time; a box holds space for
-// Nicole's routes.
+// his WeatherCard the forecast at the spot for the hangout's time (until the hangout starts); a
+// line under the map holds space for Nicole's routes. On phones the cards reorder so the map
+// comes straight after the spot.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone } from '@/services/votes'
+import SpotHero from '@/components/voting/SpotHero.vue'
 import TripTable from '@/components/voting/TripTable.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
@@ -63,6 +65,13 @@ const spot = computed(() => confirmedSpot.value ?? pickLeader(rows.value)?.spot 
 const backup = computed(() =>
   spot.value ? (runnerUp(rows.value, spot.value.id)?.spot ?? null) : null,
 )
+
+// "You leave by" on the spot card, for the person looking
+const myLeave = computed(() => {
+  const me = store.members.find((m) => m.user_id === myId.value)
+  if (!me || me.travel_mins == null || !startsAt.value) return null
+  return { at: formatTime(leaveBy(startsAt.value, me.travel_mins)), from: me.start_label ?? null }
+})
 
 const weatherPlace = computed(() => {
   const lat = spot.value?.lat ?? hangout.value?.midpoint_lat
@@ -165,79 +174,72 @@ onUnmounted(() => clearInterval(timer))
     <template v-else-if="hangout">
       <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
 
-      <div class="row g-4">
-        <div class="col-12 col-lg-7 d-flex flex-column gap-4">
-          <section class="panel hero" aria-labelledby="spot-heading">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <p class="label small mb-1">
-                {{ isConfirmed ? 'Confirmed spot' : 'Current leader' }}
-              </p>
-              <span v-if="status === 'done'" class="d-flex align-items-center gap-2">
-                <span class="badge done">✓ Done</span>
-                <RouterLink :to="{ name: 'debrief', params: { id: hangoutId } }" class="small">
-                  See how it went
-                </RouterLink>
-              </span>
-            </div>
-            <h2 id="spot-heading" class="h4 mb-1">{{ spot.name }}</h2>
-            <p class="muted mb-2">
-              <span class="text-capitalize">{{ spot.category }}</span>
-              <template v-if="spot.rating">
-                · <span aria-hidden="true">★</span><span class="visually-hidden">Rating</span>
-                {{ spot.rating }}
-              </template>
-              <template v-if="hangout.midpoint_name"> · {{ hangout.midpoint_name }}</template>
-            </p>
-            <p v-if="startsAt" class="mb-0">
-              <strong>{{ formatDateTime(startsAt) }}</strong> SGT
-            </p>
+      <div class="plan-layout">
+        <div class="plan-col">
+          <SpotHero
+            class="slot-hero"
+            :spot="spot"
+            :label="isConfirmed ? 'Confirmed spot' : 'Current leader'"
+            :area="hangout.midpoint_name"
+            :starts-at="startsAt"
+            :my-leave="myLeave"
+          >
             <p v-if="!isConfirmed" class="not-confirmed small mt-3 mb-0">
               Not confirmed yet. The host hasn't closed the vote, so this is the spot with the most
               votes so far.
             </p>
-          </section>
+            <p v-if="status === 'done'" class="done-row mt-3 mb-0">
+              <span class="badge done">✓ Done</span>
+              <RouterLink :to="{ name: 'debrief', params: { id: hangoutId } }">
+                See how it went →
+              </RouterLink>
+            </p>
+          </SpotHero>
 
-          <TripTable :members="store.members" :starts-at="startsAt" :my-id="myId" />
+          <TripTable
+            class="slot-trips"
+            :members="store.members"
+            :starts-at="startsAt"
+            :my-id="myId"
+          />
 
-          <section class="owner-box" aria-labelledby="routes-heading">
-            <h2 id="routes-heading" class="h6 mb-1">Getting there</h2>
-            <p class="small mb-0">Step-by-step routes for everyone are coming soon.</p>
+          <section class="panel backup slot-backup" aria-labelledby="backup-heading">
+            <div class="backup__thumb" aria-hidden="true">
+              {{ backup ? backup.name.trim().charAt(0).toUpperCase() : '–' }}
+            </div>
+            <div>
+              <h2 id="backup-heading" class="backup__label mb-0">Backup plan</h2>
+              <template v-if="backup">
+                <p class="fw-semibold mb-0">{{ backup.name }}</p>
+                <p class="small muted mb-0">
+                  The runner-up, in case {{ spot.name }} is full or closed.
+                </p>
+              </template>
+              <p v-else class="small muted mb-0">There was only one spot, so there's no backup.</p>
+            </div>
           </section>
         </div>
 
-        <div class="col-12 col-lg-5 d-flex flex-column gap-4">
-          <div class="row g-3">
-            <div class="col-12 col-md-6 col-lg-12">
-              <section class="panel h-100" aria-labelledby="map-heading">
-                <h2 id="map-heading" class="h6 mb-2">Where everyone's coming from</h2>
-                <div class="map-frame">
-                  <MembersMap :members="store.members" :highlight-id="myId" />
-                </div>
-              </section>
+        <div class="plan-col">
+          <section class="panel slot-map" aria-labelledby="map-heading">
+            <h2 id="map-heading" class="panel-title mb-2">Where everyone's coming from</h2>
+            <div class="map-frame">
+              <MembersMap :members="store.members" :highlight-id="myId" />
             </div>
-            <div v-if="weatherPlace" class="col-12 col-md-6 col-lg-12">
-              <WeatherCard
-                :lat="weatherPlace.lat"
-                :lng="weatherPlace.lng"
-                :place="weatherPlace.name"
-                :at="startsAt"
-              />
-            </div>
-          </div>
-
-          <section class="panel" aria-labelledby="backup-heading">
-            <h2 id="backup-heading" class="h6 mb-1">Backup plan</h2>
-            <template v-if="backup">
-              <p class="fw-semibold mb-0">{{ backup.name }}</p>
-              <p class="small muted mb-0">
-                The runner-up, in case {{ spot.name }} is full or closed.
-              </p>
-            </template>
-            <p v-else class="small muted mb-0">There was only one spot, so there's no backup.</p>
+            <p class="small muted mt-2 mb-0">Step-by-step routes for everyone are coming soon.</p>
           </section>
 
-          <section class="panel" aria-labelledby="actions-heading">
-            <h2 id="actions-heading" class="h6 mb-3">Save and share</h2>
+          <WeatherCard
+            v-if="weatherPlace && !hasStarted"
+            class="slot-weather"
+            :lat="weatherPlace.lat"
+            :lng="weatherPlace.lng"
+            :place="weatherPlace.name"
+            :at="startsAt"
+          />
+
+          <section class="panel slot-share" aria-labelledby="actions-heading">
+            <h2 id="actions-heading" class="panel-title mb-3">Save and share</h2>
             <div class="d-grid gap-2">
               <a
                 v-if="calendarLink"
@@ -304,6 +306,56 @@ onUnmounted(() => clearInterval(timer))
   min-height: 44px;
 }
 
+/* Phones: one column, cards in the order below (the columns step aside with display: contents).
+   From lg: the spot, trips and backup on the left; the map, weather and actions on the right. */
+.plan-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.plan-col {
+  display: contents;
+}
+
+.slot-hero {
+  order: 1;
+}
+
+.slot-map {
+  order: 2;
+}
+
+.slot-trips {
+  order: 3;
+}
+
+.slot-weather {
+  order: 4;
+}
+
+.slot-share {
+  order: 5;
+}
+
+.slot-backup {
+  order: 6;
+}
+
+@media (min-width: 992px) {
+  .plan-layout {
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    align-items: start;
+  }
+
+  .plan-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
 .panel {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
@@ -312,15 +364,9 @@ onUnmounted(() => clearInterval(timer))
   padding: 1.25rem;
 }
 
-.hero {
-  border-top: 4px solid var(--fp-primary);
-}
-
-.label {
-  color: var(--fp-primary);
+.panel-title {
+  font-size: 1rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .muted {
@@ -333,16 +379,47 @@ onUnmounted(() => clearInterval(timer))
   color: var(--fp-ink);
 }
 
+.done-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.done-row a {
+  font-weight: 600;
+}
+
 .done {
   background: var(--fp-primary);
   color: var(--fp-surface);
 }
 
-.owner-box {
-  border: 2px dashed var(--fp-border);
-  border-radius: var(--fp-radius);
-  padding: 1.25rem;
+.backup {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem;
+}
+
+.backup__thumb {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--fp-radius-sm);
+  background: var(--fp-bg);
   color: var(--fp-muted);
+  font-weight: 800;
+}
+
+.backup__label {
+  color: var(--fp-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .map-frame {

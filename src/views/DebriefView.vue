@@ -1,9 +1,9 @@
 <script setup>
 // Debrief (after 12 Final plan)
 // Owner: Eashvar
-// A look back at a hangout that's over: where the group went and when, who came, how fair the
-// trips were (Fair for everyone, same as 12), how the spot was chosen (the final vote and one line
-// on how it was settled), and the runner-up. "Plan another with this group" opens 05 New hangout
+// A look back at a hangout that's over: where the group went and when, who came, everyone's
+// photos, how the spot was chosen (the final vote and one line on how it was settled), the
+// runner-up, and how fair the trips were (Fair for everyone, the short version of 12's). "Plan another with this group" opens 05 New hangout
 // with everyone else already ticked. Opened from past hangouts on 04 and from 12 once it's marked
 // done. A hangout that hasn't been decided yet gets a short note and a link to its plan instead.
 import { computed, onMounted } from 'vue'
@@ -11,6 +11,7 @@ import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout } from '@/services/votes'
+import SpotHero from '@/components/voting/SpotHero.vue'
 import TripTable from '@/components/voting/TripTable.vue'
 import VoteResults from '@/components/voting/VoteResults.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
@@ -19,7 +20,6 @@ import {
   countableVotes,
   countVotes,
   decisionSummary,
-  formatDateTime,
   runnerUp,
 } from '@/components/voting/voteHelpers'
 
@@ -58,6 +58,14 @@ const votersBySpot = computed(() => {
     result[v.shortlist_id] = [...(result[v.shortlist_id] ?? []), voter]
   }
   return result
+})
+
+// "Ryan (you), Nicole, Surya and Hugo"
+const whoCame = computed(() => {
+  const names = store.members.map((m) =>
+    m.user_id === myId.value ? `${m.display_name} (you)` : m.display_name,
+  )
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
 })
 
 // Everyone except me, ticked on 05 New hangout
@@ -107,41 +115,49 @@ onMounted(() => store.load(hangoutId))
         <p class="muted mb-0">{{ hangout.name }}</p>
       </header>
 
-      <div class="row g-4">
-        <div class="col-12 col-lg-7 d-flex flex-column gap-4">
-          <section class="panel hero" aria-labelledby="where-heading">
-            <h2 id="where-heading" class="h4 mb-1">{{ spot.name }}</h2>
-            <p class="muted mb-2">
-              <span class="text-capitalize">{{ spot.category }}</span>
-              <template v-if="hangout.midpoint_name"> · {{ hangout.midpoint_name }}</template>
-            </p>
-            <p v-if="startsAt" class="mb-0">
-              <strong>{{ formatDateTime(startsAt) }}</strong> SGT
-            </p>
-          </section>
+      <div class="debrief-layout">
+        <div class="debrief-col">
+          <SpotHero
+            class="slot-hero"
+            heading-id="where-heading"
+            :spot="spot"
+            label="Where you went"
+            :area="hangout.midpoint_name"
+            :starts-at="startsAt"
+          />
 
-          <TripTable :members="store.members" :starts-at="startsAt" :my-id="myId" />
+          <!-- (Surya) everyone's photos from the day -->
+          <HangoutPhotos
+            class="slot-photos"
+            :hangout-id="hangoutId"
+            :my-id="myId"
+            :is-host="isHost"
+          />
+
+          <TripTable
+            class="slot-fair"
+            :members="store.members"
+            :starts-at="startsAt"
+            :my-id="myId"
+            past
+          />
         </div>
 
-        <div class="col-12 col-lg-5 d-flex flex-column gap-4">
-          <section class="panel" aria-labelledby="who-heading">
-            <h2 id="who-heading" class="h6 mb-3">Who came ({{ store.members.length }})</h2>
-            <ul class="list-unstyled d-flex flex-wrap gap-3 mb-0">
-              <li
-                v-for="m in store.members"
-                :key="m.user_id"
-                class="d-flex align-items-center gap-2"
-              >
-                <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="32" />
-                <span
-                  >{{ m.display_name }}<template v-if="m.user_id === myId"> (you)</template></span
-                >
-              </li>
-            </ul>
+        <div class="debrief-col">
+          <section class="panel slot-who" aria-labelledby="who-heading">
+            <h2 id="who-heading" class="panel-title mb-3">Who came ({{ store.members.length }})</h2>
+            <div class="d-flex align-items-center gap-3">
+              <ul class="avatars list-unstyled mb-0" aria-hidden="true">
+                <li v-for="m in store.members" :key="m.user_id">
+                  <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="40" />
+                </li>
+              </ul>
+              <p class="mb-0">{{ whoCame }}</p>
+            </div>
           </section>
 
-          <section class="panel" aria-labelledby="vote-heading">
-            <h2 id="vote-heading" class="h6 mb-1">How you decided</h2>
+          <section class="panel slot-vote" aria-labelledby="vote-heading">
+            <h2 id="vote-heading" class="panel-title mb-1">How you decided</h2>
             <p v-if="decision" class="small muted mb-3">{{ decision }}</p>
             <VoteResults :rows="rows" :voters-by-spot="votersBySpot" :final-id="spot.id" />
             <p v-if="backup" class="small muted mt-3 mb-0">
@@ -149,8 +165,8 @@ onMounted(() => store.load(hangoutId))
             </p>
           </section>
 
-          <section class="panel" aria-labelledby="next-heading">
-            <h2 id="next-heading" class="h6 mb-3">What next</h2>
+          <section class="panel slot-next" aria-labelledby="next-heading">
+            <h2 id="next-heading" class="panel-title mb-3">What next</h2>
             <div class="d-grid gap-2">
               <!-- (Surya) skips straight to the plan, with everything copied from this time -->
               <RouterLink v-if="spot" class="btn btn-primary" :to="goAgainLink">
@@ -174,9 +190,6 @@ onMounted(() => store.load(hangoutId))
         </div>
       </div>
 
-      <!-- (Surya) everyone's photos from the day -->
-      <HangoutPhotos class="mt-4" :hangout-id="hangoutId" :my-id="myId" :is-host="isHost" />
-
       <nav class="mt-4" aria-label="Back">
         <RouterLink class="btn btn-link px-0" :to="{ name: 'dashboard' }">
           Back to my hangouts
@@ -195,6 +208,56 @@ onMounted(() => store.load(hangoutId))
   min-height: 44px;
 }
 
+/* Phones: one column, cards in the order below (the columns step aside with display: contents).
+   From lg: the spot, photos and trips on the left; who came, the vote and what next on the right. */
+.debrief-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.debrief-col {
+  display: contents;
+}
+
+.slot-hero {
+  order: 1;
+}
+
+.slot-who {
+  order: 2;
+}
+
+.slot-photos {
+  order: 3;
+}
+
+.slot-vote {
+  order: 4;
+}
+
+.slot-fair {
+  order: 5;
+}
+
+.slot-next {
+  order: 6;
+}
+
+@media (min-width: 992px) {
+  .debrief-layout {
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    align-items: start;
+  }
+
+  .debrief-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
 .panel {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
@@ -203,8 +266,9 @@ onMounted(() => store.load(hangoutId))
   padding: 1.25rem;
 }
 
-.hero {
-  border-top: 4px solid var(--fp-primary);
+.panel-title {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .label {
@@ -216,5 +280,21 @@ onMounted(() => store.load(hangoutId))
 
 .muted {
   color: var(--fp-muted);
+}
+
+/* overlapping circles, like the group in the step bar */
+.avatars {
+  display: flex;
+  flex: none;
+}
+
+.avatars li {
+  display: flex;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--fp-surface);
+}
+
+.avatars li + li {
+  margin-left: -0.6rem;
 }
 </style>
