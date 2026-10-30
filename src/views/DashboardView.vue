@@ -6,6 +6,7 @@ import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/service
 import { useAuthStore } from '@/stores/auth'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import PageBand from '@/components/ui/PageBand.vue'
+import DotIsland from '@/components/ui/DotIsland.vue'
 import WeekStrip from '@/components/dashboard/WeekStrip.vue'
 import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
 import { getHaze, getHourlyForecast } from '@/services/weather'
@@ -70,6 +71,14 @@ const myId = computed(() => (auth.user ? auth.user.id : null))
 // "4 being planned · 1 confirmed", and how many hangouts are waiting on you
 const planned = computed(() => upcoming.value.filter((h) => h.status !== 'confirmed').length)
 const confirmed = computed(() => upcoming.value.filter((h) => h.status === 'confirmed').length)
+
+// (Eashvar) "2 being planned · 1 confirmed" under the greeting, once there are some
+const countsLine = computed(() =>
+  upcoming.value.length > 0 ? `${planned.value} being planned · ${confirmed.value} confirmed` : '',
+)
+
+// no hangouts at all (not just none in this tab): show the first-hangout card instead
+const isNew = computed(() => !loading.value && !error.value && hangouts.value.length === 0)
 const needs = (h) => getStatus(h, myId.value).needsYou // true when this hangout is waiting on me
 const needCount = computed(() => upcoming.value.filter(needs).length)
 
@@ -362,26 +371,60 @@ onMounted(async () => {
 
 <template>
   <main>
-    <PageBand :title="heading" size="short">
-      <template #actions>
-        <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
-        <router-link
-          :to="{ name: 'create-hangout' }"
-          class="btn btn-accent d-none d-md-inline-flex start-btn"
-        >
-          Start planning
-        </router-link>
-      </template>
+    <!-- (Eashvar) the greeting, the counts and Start planning under them, in the band -->
+    <PageBand :title="heading" :lead="countsLine" size="flat">
+      <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
+      <router-link
+        :to="{ name: 'create-hangout' }"
+        class="btn btn-accent d-none d-md-inline-flex start-btn"
+      >
+        Start planning
+      </router-link>
     </PageBand>
 
-    <div class="container-fluid px-3 fp-pull page">
+    <div class="container pt-4 pb-5 page">
       <div class="content">
-        <!-- counts and the upcoming/past toggle, on a white bar that hangs over the band -->
-        <div class="mb-3">
+        <!-- first time here: what Fairpoint does and how to start -->
+        <section v-if="isNew" class="first" aria-labelledby="first-title">
+          <div class="first__text">
+            <h2 id="first-title" class="first__title">Plan your first hangout</h2>
+            <p class="first__lead">
+              Pick a day and your friends. Everyone adds where they’re starting, Fairpoint finds the
+              MRT stop that’s fair for all of you, and you vote on a place nearby.
+            </p>
+            <ol class="first__steps">
+              <li>
+                <span class="first__dot" aria-hidden="true"></span>Pick a day and who’s coming
+              </li>
+              <li>
+                <span class="first__dot first__dot--coral" aria-hidden="true"></span>Everyone adds
+                where they’re starting
+              </li>
+              <li>
+                <span class="first__dot first__dot--deep" aria-hidden="true"></span>Vote on a spot
+                near the fair midpoint
+              </li>
+            </ol>
+            <div class="first__actions">
+              <router-link :to="{ name: 'create-hangout' }" class="btn btn-primary btn-lg">
+                Start planning
+              </router-link>
+              <router-link :to="{ name: 'friends' }" class="btn btn-outline-primary btn-lg">
+                Find your friends
+              </router-link>
+            </div>
+          </div>
+          <div class="first__art" aria-hidden="true">
+            <DotIsland class="first__island" />
+            <p class="first__caption">
+              Your friends, all over the island.<br />One fair place to meet.
+            </p>
+          </div>
+        </section>
+
+        <!-- the "need your input" filter and the upcoming/past toggle -->
+        <div v-if="!isNew" class="mb-3">
           <div class="d-flex flex-wrap align-items-center gap-2 dash-tools">
-            <span v-if="upcoming.length > 0" class="text-muted small">
-              {{ planned }} being planned
-            </span>
             <!-- the amber chip: click to show only what needs you, aria-pressed tells screen readers it's a toggle -->
             <button
               v-if="tab === 'upcoming' && needCount > 0"
@@ -392,9 +435,6 @@ onMounted(async () => {
             >
               {{ needCount }} need your input
             </button>
-            <span v-if="upcoming.length > 0" class="text-muted small">
-              · {{ confirmed }} confirmed
-            </span>
             <!-- the two tabs, the active one is solid green -->
             <div class="btn-group ms-auto" role="group" aria-label="Show upcoming or past hangouts">
               <button
@@ -445,7 +485,7 @@ onMounted(async () => {
         <!-- one message at most: loading, the load error, or an empty tab -->
         <p v-if="loading" class="text-muted">Loading your hangouts…</p>
         <p v-else-if="error" class="text-danger">{{ error }}</p>
-        <p v-else-if="tabList.length === 0" class="text-muted">
+        <p v-else-if="!isNew && tabList.length === 0" class="text-muted">
           {{
             tab === 'upcoming'
               ? 'No hangouts yet. Press Start planning to make one.'
@@ -537,24 +577,123 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* (Eashvar, design catalogue A1) the counts and toggle sit on a white bar over the band */
-.dash-tools {
-  margin-bottom: 1.5rem;
-  padding: 0.5rem 0.5rem 0.5rem 1.25rem;
-  border-radius: 999px;
+.start-btn {
+  margin-top: 1.25rem;
+}
+
+/* (Eashvar) the first-hangout card: what to do, beside the island in dots */
+.first {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  overflow: hidden;
+  border-radius: var(--fp-radius);
   background: var(--fp-surface);
   box-shadow: var(--fp-shadow);
 }
 
-@media (max-width: 575.98px) {
-  .dash-tools {
-    border-radius: var(--fp-radius);
+.first__text {
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.first__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.first__lead {
+  margin: 0.75rem 0 0;
+  max-width: 34rem;
+  font-size: 1.05rem;
+  color: var(--fp-muted);
+}
+
+.first__steps {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+.first__steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.first__dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fp-primary);
+}
+
+.first__dot--coral {
+  background: var(--fp-accent);
+}
+
+.first__dot--deep {
+  background: var(--fp-deep);
+}
+
+.first__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.first__art {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 280px;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: linear-gradient(
+    160deg,
+    var(--fp-deep) 0%,
+    var(--fp-deep-2) 55%,
+    var(--fp-primary) 100%
+  );
+  color: #fff;
+}
+
+.first__island {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 150%;
+  translate: -50% -50%;
+}
+
+.first__caption {
+  position: relative;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+@media (max-width: 767.98px) {
+  .first {
+    grid-template-columns: 1fr;
+  }
+
+  .first__art {
+    min-height: 200px;
+    order: -1;
   }
 }
 
 .content {
   max-width: 1040px; /* rows never stretch wider than this */
-  margin: 0 auto; /* centred */
+  margin: 0; /* (Eashvar) left edge in line with the greeting in the band */
 }
 .start-btn {
   min-height: 44px; /* easy to tap */
