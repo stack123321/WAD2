@@ -95,7 +95,18 @@
         </option>
       </select>
     </div>
-    <section class="cards">
+    <section class="cards-carousel">
+      <button
+        v-if="sortedSpots.length > 1"
+        type="button"
+        class="cards-carousel__arrow cards-carousel__arrow--previous"
+        aria-label="Previous spot"
+        :disabled="carouselIndex === 0"
+        @click="showPreviousSpot"
+      >
+        ‹
+      </button>
+      <div ref="cardsCarousel" class="cards" @scroll.passive="updateCarouselIndex">
       <SpotCard
         v-for="spot in sortedSpots"
         :key="spot.id"
@@ -115,6 +126,17 @@
         :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
         @add="addSpot(spot)"
       />
+      </div>
+      <button
+        v-if="sortedSpots.length > 1"
+        type="button"
+        class="cards-carousel__arrow cards-carousel__arrow--next"
+        aria-label="Next spot"
+        :disabled="carouselIndex === sortedSpots.length - 1"
+        @click="showNextSpot"
+      >
+        ›
+      </button>
     </section>
     </div>
     <div class="map-shortlist-row">
@@ -374,6 +396,31 @@ const filters = [
 const activeFilter = ref('all')
 const hideZeroMatches = ref(false)
 const showMobileFilters = ref(false)
+const cardsCarousel = ref(null)
+const carouselIndex = ref(0)
+
+function updateCarouselIndex(event) {
+  const carousel = event.currentTarget
+  carouselIndex.value = Math.round(carousel.scrollLeft / carousel.clientWidth)
+}
+
+function scrollToSpot(index) {
+  carouselIndex.value = index
+  cardsCarousel.value?.scrollTo({
+    left: cardsCarousel.value.clientWidth * index,
+    behavior: 'smooth',
+  })
+}
+
+function showPreviousSpot() {
+  if (carouselIndex.value > 0) scrollToSpot(carouselIndex.value - 1)
+}
+
+function showNextSpot() {
+  if (carouselIndex.value < sortedSpots.value.length - 1) {
+    scrollToSpot(carouselIndex.value + 1)
+  }
+}
 
 function closeMobileFiltersOutside(event) {
   if (!showMobileFilters.value) return
@@ -446,7 +493,8 @@ function prioritiseVibeMatch(comparator) {
 }
 
 const comparators = {
-  match: prioritiseVibeMatch((a, b) => b.matchPct - a.matchPct),
+  // Best group match must rank by the displayed percentage, including hard-vetoed 0% spots.
+  match: (a, b) => b.matchPct - a.matchPct,
   rating: prioritiseVibeMatch((a, b) => (b.rating ?? 0) - (a.rating ?? 0)),
   'price-asc': prioritiseVibeMatch((a, b) => (a.priceLevel ?? 0) - (b.priceLevel ?? 0)),
   'price-desc': prioritiseVibeMatch((a, b) => (b.priceLevel ?? 0) - (a.priceLevel ?? 0)),
@@ -587,6 +635,14 @@ async function selectSpot(id) {
 .cards > .is-selected {
   outline: 2px solid #0e7c6b;
   outline-offset: 2px;
+}
+
+.cards-carousel {
+  display: contents;
+}
+
+.cards-carousel__arrow {
+  display: none;
 }
 
 .map-section {
@@ -952,6 +1008,41 @@ async function selectSpot(id) {
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     overscroll-behavior-x: contain;
+  }
+
+  .cards-carousel {
+    position: relative;
+    display: block;
+    height: 100%;
+  }
+
+  .cards-carousel__arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 48%);
+    color: #fff;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .cards-carousel__arrow--previous {
+    left: 0.75rem;
+  }
+
+  .cards-carousel__arrow--next {
+    right: 0.75rem;
+  }
+
+  .cards-carousel__arrow:disabled {
+    display: none;
   }
 
   .cards::-webkit-scrollbar {

@@ -55,11 +55,16 @@ function minsUntilClose(ranges, weekMin) {
   return null
 }
 
-/** Whether a place's most specific Google type fits at least one hangout vibe. */
+/** Whether any of a place's Google types or broad category fits a hangout vibe. */
 export function matchesHangoutVibe(place, vibes = []) {
-  const types = place.types ?? []
-  const primaryType = place.primaryType ?? types[0] ?? place.category ?? null
-  return vibes.some((vibe) => (vibeTypes[vibe] ?? []).includes(primaryType))
+  const types = Array.isArray(place.types) ? place.types : []
+  const placeTypes = new Set([...types, place.primaryType].filter(Boolean))
+
+  return vibes.some((vibe) => {
+    if (place.category === vibe) return true
+    const acceptedTypes = vibeTypes[vibe] ?? []
+    return [...placeTypes].some((type) => acceptedTypes.includes(type))
+  })
 }
 
 /** Whether a place is open for the whole [startAt, endAt] window, sampled every 15 minutes. */

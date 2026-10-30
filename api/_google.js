@@ -6,7 +6,13 @@ const BASE = 'https://places.googleapis.com/v1'
 
 const CATEGORY_TYPES = {
   cafe: ['cafe', 'coffee_shop', 'bakery', 'dessert_shop'],
-  food: ['restaurant', 'meal_takeaway', 'food_court'],
+  food: [
+    'restaurant',
+    'chinese_restaurant',
+    'asian_fusion_restaurant',
+    'meal_takeaway',
+    'food_court',
+  ],
   activity: ['amusement_center', 'bowling_alley', 'movie_theater', 'museum', 'karaoke', 'gym'],
   outdoor: ['park'],
   shopping: ['shopping_mall', 'department_store', 'clothing_store', 'book_store'],

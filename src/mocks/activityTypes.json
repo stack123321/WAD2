@@ -2,6 +2,8 @@
   "cafes": ["cafe", "coffee_shop", "bakery", "dessert_shop"],
   "food": [
     "restaurant",
+    "chinese_restaurant",
+    "asian_fusion_restaurant",
     "seafood_restaurant",
     "steak_house",
     "sushi_restaurant",
