@@ -246,6 +246,64 @@ test.describe('logged in: your own hangout', () => {
     expect(cards.link.name).toBe('explore')
   })
 
+  test('works out travel times like 08 for anyone with a start and a mode, to the midpoint', async ({
+    page,
+  }) => {
+    // fake OneMap routes: a trip's minutes come from how far east the start is
+    await page.route('**/api/route**', (route) => {
+      const lng = Number(new URL(route.request().url()).searchParams.get('fromLng'))
+      route.fulfill({ json: { mins: Math.round((lng - 103.7) * 300), cost: 1.5, steps: [] } })
+    })
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { fillTravelTimes, buildHeroCards } = await import('/src/utils/heroCards.js')
+      const h = structuredClone((await import('/src/mocks/hangout.json')).default)
+      // saved hangouts have no times; Hugo hasn't picked how he's travelling
+      h.members.forEach((m) => (m.travel_mins = null))
+      h.members[3].mode = null
+      const filled = await fillTravelTimes(h)
+      const cards = buildHeroCards(
+        filled,
+        'u-ryan',
+        'upcoming',
+        new Date('2026-10-14T22:00:00+08:00'),
+      )
+      return {
+        mins: filled.members.map((m) => m.travel_mins),
+        rows: cards.times.rows.map((r) => [r.name, r.ready]),
+      }
+    })
+    expect(result.mins.slice(0, 3).every((m) => typeof m === 'number')).toBe(true)
+    expect(result.mins[3]).toBeNull()
+    expect(result.rows.at(-1)).toEqual(['Hugo', false]) // shown as "Picking transport"
+  })
+
+  test('shows the cards without times if routes fail, and says so once everyone is in', async ({
+    page,
+  }) => {
+    await page.route('**/api/route**', (route) => route.fulfill({ status: 500 }))
+    await page.goto('/')
+    const cards = await page.evaluate(async () => {
+      const { fillTravelTimes, buildHeroCards } = await import('/src/utils/heroCards.js')
+      const h = structuredClone((await import('/src/mocks/hangout.json')).default)
+      h.members.forEach((m) => (m.travel_mins = null))
+      const filled = await fillTravelTimes(h)
+      return buildHeroCards(filled, 'u-ryan', 'upcoming', new Date('2026-10-14T22:00:00+08:00'))
+    })
+    expect(cards.trips).toMatchObject({
+      kind: 'starts',
+      added: 4,
+      missingText: 'Everyone’s in. Travel times couldn’t load just now',
+    })
+    expect(cards.times.kind).toBe('starts')
+  })
+
+  test('calls a hangout later today "Today"', async ({ page }) => {
+    const cards = await heroCardsFor(page, '', 'u-ryan', '2026-10-16T09:00:00+08:00')
+    expect(cards.date).toBe('Today')
+    expect(cards.spot.when).toBe('Today, 7 pm')
+  })
+
   test('picks the next hangout over a past one, and the latest past one if none is coming', async ({
     page,
   }) => {

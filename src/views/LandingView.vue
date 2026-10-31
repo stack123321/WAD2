@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
 import DotIsland from '@/components/ui/DotIsland.vue'
 import HeroCards from '@/components/landing/HeroCards.vue'
-import { buildHeroCards, pickHeroHangout } from '@/utils/heroCards'
+import { buildHeroCards, fillTravelTimes, pickHeroHangout } from '@/utils/heroCards'
 
 const auth = useAuthStore()
 
@@ -127,15 +127,37 @@ watch(() => auth.isLoggedIn, loadData, { immediate: true })
 // (Eashvar) the hero's cards: loading until we know who you are and have your hangouts, then
 // your next (or last) hangout, or the general "right now" version
 const heroPick = computed(() => pickHeroHangout(hangouts.value))
+
+// travel times aren't saved with a hangout, so work them out (as 08 does) before showing the cards
+const heroHangout = ref(null)
+const heroFilling = ref(false)
+watch(
+  heroPick,
+  async (pick) => {
+    if (!pick) {
+      heroHangout.value = null
+      return
+    }
+    heroFilling.value = true
+    const filled = await fillTravelTimes(pick.hangout)
+    // only if it's still the hangout we're showing (the list may have reloaded meanwhile)
+    if (heroPick.value === pick) {
+      heroHangout.value = { hangout: filled, when: pick.when }
+      heroFilling.value = false
+    }
+  },
+  { immediate: true },
+)
+
 const heroMode = computed(() => {
   if (!auth.ready) return 'loading'
   if (!auth.isLoggedIn) return 'general'
-  if (loading.value) return 'loading'
-  return heroPick.value && !errorMessage.value ? 'live' : 'general'
+  if (loading.value || heroFilling.value) return 'loading'
+  return heroHangout.value && !errorMessage.value ? 'live' : 'general'
 })
 const heroCards = computed(() =>
   heroMode.value === 'live'
-    ? buildHeroCards(heroPick.value.hangout, auth.user.id, heroPick.value.when)
+    ? buildHeroCards(heroHangout.value.hangout, auth.user.id, heroHangout.value.when)
     : null,
 )
 const youInitial = computed(() => (name.value || auth.user?.email || 'You').charAt(0).toUpperCase())

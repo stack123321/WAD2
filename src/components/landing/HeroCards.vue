@@ -128,7 +128,8 @@ const generalSummary = computed(() => {
             :style="{ width: `${Math.round((cards.trips.added / cards.trips.total) * 100)}%` }"
           ></span>
         </div>
-        <div v-if="cards.trips.missing.length" class="waiting">
+        <p v-if="!cards.trips.missing.length" class="next">{{ cards.trips.missingText }}</p>
+        <div v-else class="waiting">
           <span class="stack">
             <span
               v-for="p in cards.trips.missing.slice(0, 4)"

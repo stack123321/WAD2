@@ -2,6 +2,8 @@
 // their next hangout (or, if none is coming up, the last one), worked out from the same data as
 // 11 and 12. Each card says only what's true for that hangout; where a step isn't done yet it says
 // what's still needed, never sample people. Used by components/landing/HeroCards.vue.
+// Travel times aren't saved with a hangout (08 works them out live), so fillTravelTimes() does the
+// same here before the cards are built.
 import {
   countableVotes,
   countVotes,
@@ -12,11 +14,47 @@ import {
   timeLeft,
   tripRange,
 } from '@/components/voting/voteHelpers'
+import { travelTo } from '@/services/routing'
 import { avatarColor } from '@/utils/avatarColor'
 import { sgDate } from '@/utils/dates'
 
 const SGT = 'Asia/Singapore'
 const MAX_TRIP_ROWS = 4
+const ROUTE_TIMEOUT_MS = 8000
+
+/**
+ * A copy of the hangout with each person's travel time worked out, like 08 does: OneMap routes
+ * (via /api/route) from their start, by their own mode, to the chosen spot or else the midpoint.
+ * Only for people with a start and a mode who don't have a time yet; anyone else is left as they
+ * are. If the routes fail or take too long, the hangout comes back without the times.
+ */
+export async function fillTravelTimes(h, timeoutMs = ROUTE_TIMEOUT_MS) {
+  const spot = (h.shortlist ?? []).find((s) => s.id === h.final_shortlist_id)
+  const dest =
+    spot?.lat != null
+      ? { lat: spot.lat, lng: spot.lng }
+      : h.midpoint_lat != null
+        ? { lat: h.midpoint_lat, lng: h.midpoint_lng }
+        : null
+  const need = (h.members ?? []).filter(
+    (m) => m.travel_mins == null && m.mode && m.start_lat != null && m.start_lng != null,
+  )
+  if (!dest || need.length === 0) return h
+
+  const copy = JSON.parse(JSON.stringify(h))
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('routes took too long')), timeoutMs),
+    )
+    const { travelMins } = await Promise.race([travelTo(need, dest), timeout])
+    need.forEach((m, i) => {
+      copy.members.find((c) => c.user_id === m.user_id).travel_mins = travelMins[i]
+    })
+  } catch (err) {
+    console.warn('Hero cards: no travel times', err)
+  }
+  return copy
+}
 
 /**
  * The hangout to show: the soonest one that isn't over, or else the most recent past one that was
@@ -39,8 +77,9 @@ export function pickHeroHangout(hangouts, now = new Date()) {
   return null
 }
 
-// "Fri 16 Oct" and "Fri 16 Oct, 7 pm"
-function dayLabel(iso) {
+// "Fri 16 Oct" and "Fri 16 Oct, 7 pm" ("Today" when it's today)
+function dayLabel(iso, now) {
+  if (now && sgDate(new Date(iso)) === sgDate(now)) return 'Today'
   return new Date(iso)
     .toLocaleDateString('en-SG', {
       timeZone: SGT,
@@ -51,11 +90,11 @@ function dayLabel(iso) {
     .replace(',', '')
 }
 
-function whenLabel(iso) {
+function whenLabel(iso, now) {
   const time = new Date(iso)
     .toLocaleTimeString('en-SG', { timeZone: SGT, hour: 'numeric', minute: '2-digit' })
     .replace(':00', '')
-  return `${dayLabel(iso)}, ${time}`
+  return `${dayLabel(iso, now)}, ${time}`
 }
 
 // "Nicole", "Nicole and Hugo", "Nicole, Hugo and Surya"
@@ -121,7 +160,11 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
       added: members.length - missing.length,
       total: members.length,
       missing: missing.map(person),
-      missingText: missing.length ? `Waiting on ${nameList(missing.map(nameOf))}` : '',
+      missingText: missing.length
+        ? `Waiting on ${nameList(missing.map(nameOf))}`
+        : members.some((m) => !m.mode)
+          ? 'Everyone’s in. Next: pick how you’re travelling'
+          : 'Everyone’s in. Travel times couldn’t load just now',
     }
   }
 
@@ -160,7 +203,7 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
       ]
         .filter(Boolean)
         .join(' · '),
-      when: h.starts_at ? whenLabel(h.starts_at) : null,
+      when: h.starts_at ? whenLabel(h.starts_at, now) : null,
       leave: when === 'past' ? null : myLeave,
       status: voteStatus,
     }
@@ -168,7 +211,7 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
     spot = {
       kind: 'plan',
       label: h.name,
-      when: h.starts_at ? whenLabel(h.starts_at) : 'No date yet',
+      when: h.starts_at ? whenLabel(h.starts_at, now) : 'No date yet',
       midpoint: h.midpoint_name ? `Meeting near ${h.midpoint_name}` : 'Finding the fair midpoint',
       leave: myLeave,
     }
@@ -259,7 +302,7 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
   return {
     when,
     label: when === 'past' ? 'Last time' : 'Up next',
-    date: h.starts_at ? dayLabel(h.starts_at) : null,
+    date: h.starts_at ? dayLabel(h.starts_at, now) : null,
     name: h.name,
     link: { name: stepFor(h, when), params: { id: h.id } },
     trips,
