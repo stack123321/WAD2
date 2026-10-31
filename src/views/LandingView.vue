@@ -427,14 +427,28 @@ function continueRoute(hangout) {
       </div>
     </section>
 
+    <!-- (Eashvar) carries on from the closing band's teal, so there's no hard edge; the name is a
+         soft watermark that runs off the bottom instead of stark white -->
     <footer class="landing-foot">
       <div class="container">
-        <p class="landing-foot__name" aria-hidden="true">Fairpoint</p>
-        <div class="landing-foot__line">
-          <span>Made for friend groups in Singapore</span>
-          <span>Travel times: OneMap, LTA DataMall · Weather: NEA, Open-Meteo</span>
+        <div class="landing-foot__top">
+          <div>
+            <p class="landing-foot__brand">Fairpoint</p>
+            <p class="landing-foot__tag">Meet halfway. Made for friend groups in Singapore.</p>
+          </div>
+          <nav class="landing-foot__links" aria-label="Footer">
+            <RouterLink :to="{ name: 'create-hangout' }">Start a hangout</RouterLink>
+            <RouterLink v-if="auth.isLoggedIn" :to="{ name: 'dashboard' }">My hangouts</RouterLink>
+            <RouterLink v-else :to="{ name: 'auth' }">Log in</RouterLink>
+            <RouterLink :to="{ name: 'crowds' }">MRT crowds</RouterLink>
+            <a href="#faq-list">FAQ</a>
+          </nav>
         </div>
+        <p class="landing-foot__sources">
+          Travel times: OneMap, LTA DataMall · Weather: NEA, Open-Meteo
+        </p>
       </div>
+      <p class="landing-foot__mark" aria-hidden="true">Fairpoint</p>
     </footer>
   </main>
 </template>
@@ -959,27 +973,74 @@ function continueRoute(hangout) {
 }
 
 .landing-foot {
-  padding: 3.5rem 0 2rem;
-  background: var(--fp-deep);
-  color: var(--fp-on-deep-muted);
-}
-
-.landing-foot__name {
-  margin: 0;
+  position: relative;
+  overflow: hidden;
+  padding: clamp(2.5rem, 5vw, 4rem) 0 0;
+  /* picks up the closing band's teal, then settles into a softer deep green */
+  background: linear-gradient(180deg, var(--fp-primary) 0%, var(--fp-deep-2) 70%);
   color: #fff;
-  font-size: clamp(3rem, 12vw, 10rem);
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.05em;
 }
 
-.landing-foot__line {
+.landing-foot__top {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem 1.5rem;
-  margin-top: 1.75rem;
+  gap: 1.5rem 3rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.18);
+}
+
+.landing-foot__brand {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.landing-foot__tag {
+  margin: 0.35rem 0 0;
+  max-width: 24rem;
+}
+
+.landing-foot__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.75rem;
+}
+
+.landing-foot__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.landing-foot__links a:hover,
+.landing-foot__links a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.landing-foot__sources {
+  margin: 1.25rem 0 0;
+  color: var(--fp-on-deep);
   font-size: 0.875rem;
+}
+
+/* the big name as a watermark, cut off by the bottom edge */
+.landing-foot__mark {
+  margin: 0.5rem 0 -0.22em;
+  color: rgb(255 255 255 / 0.1);
+  font-size: clamp(4rem, 19vw, 17rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
 }
 
 /* Responsive */
