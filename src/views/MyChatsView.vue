@@ -1,12 +1,14 @@
 <script setup>
 // Owner: Ryan
 // my chats: one row per hangout and per one to one chat, search by chat or person name
+// (Eashvar) friend groups on top, each opening its own page (/groups/:id), and a "New group" button
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAlertsStore } from '@/stores/alerts'
 import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
+import { getMyGroups } from '@/services/groups'
 import { planningLinks } from '@/utils/planningLinks'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 
@@ -36,8 +38,29 @@ const loading = ref(false)
 const error = ref('')
 const query = ref('')
 
+// (Eashvar) my friend groups, as the same row shape. Loaded on their own, so the chats still show
+// if groups can't load
+const groups = ref([])
+const groupsError = ref('')
+
+async function loadGroups() {
+  try {
+    const mine = await getMyGroups()
+    groups.value = mine.map((g) => ({
+      key: g.id,
+      name: g.name,
+      members: g.members,
+      to: { name: 'group', params: { groupId: g.id } },
+    }))
+  } catch (err) {
+    console.log(err)
+    groupsError.value = 'Could not load your groups.'
+  }
+}
+
 onMounted(async () => {
   loadPlanning() // not awaited, the banner appears when ready
+  loadGroups() // not awaited either, the groups appear when ready
   loading.value = true
   // hangout chats and one to one chats come from different tables, so both are loaded and turned into the same row shape for one list.
   try {
@@ -49,6 +72,7 @@ onMounted(async () => {
         name: h.name,
         members: h.members,
         to: { name: 'chat', params: { hangoutId: h.id } },
+        groupId: h.group_id ?? null, // (Eashvar) planned with a friend group: its name shows as a tag
       })
     }
     for (let d of directs) {
@@ -69,15 +93,30 @@ onMounted(async () => {
 // chats whose name or any member's name contains the search text, all of them when it is empty,
 // newest message first like a messaging app. Chats with no messages keep their old order at the
 // bottom (sort keeps the order of equal items), and filter makes a new list so chats isn't reordered
+function matches(c, text) {
+  if (c.name.toLowerCase().includes(text)) return true // the chat's name matches
+  return c.members.some((m) => m.display_name.toLowerCase().includes(text)) // or someone in it
+}
+
 const shown = computed(() => {
   const text = query.value.trim().toLowerCase() // lowercase both sides, so "mei" finds "Mei"
-  const matching = chats.value.filter((c) => {
-    if (c.name.toLowerCase().includes(text)) return true // the chat's name matches
-    return c.members.some((m) => m.display_name.toLowerCase().includes(text)) // or someone in it
-  })
+  const matching = chats.value.filter((c) => matches(c, text))
   // b minus a puts the bigger (newer) time first
   return matching.sort((a, b) => alerts.lastMessageAt(b.key) - alerts.lastMessageAt(a.key))
 })
+
+// (Eashvar) the groups, searched and ordered the same way
+const shownGroups = computed(() => {
+  const text = query.value.trim().toLowerCase()
+  const matching = groups.value.filter((g) => matches(g, text))
+  return matching.sort((a, b) => alerts.lastMessageAt(b.key) - alerts.lastMessageAt(a.key))
+})
+
+// (Eashvar) a group's name from its id, for the tag on its hangouts' chats
+function groupName(groupId) {
+  const found = groups.value.find((g) => g.key === groupId)
+  return found ? found.name : ''
+}
 </script>
 
 <template>
@@ -116,6 +155,45 @@ const shown = computed(() => {
       />
     </form>
 
+    <!-- (Eashvar) friend groups: one chat each, plus the hangouts planned with them -->
+    <section class="box mb-3" aria-labelledby="groups-title">
+      <div class="section-head">
+        <h2 id="groups-title" class="section-title">Groups</h2>
+        <router-link class="btn btn-outline-primary new-group" :to="{ name: 'new-group' }">
+          + New group
+        </router-link>
+      </div>
+      <p v-if="groupsError" class="text-danger small mb-0">{{ groupsError }}</p>
+      <p v-else-if="shownGroups.length === 0" class="text-muted small mb-0">
+        {{
+          query.trim()
+            ? 'No groups found.'
+            : 'No groups yet. Make one for the friends you meet often.'
+        }}
+      </p>
+      <router-link
+        v-for="g in shownGroups"
+        :key="g.key"
+        :to="g.to"
+        class="person text-decoration-none"
+      >
+        <span class="name" :class="{ unread: alerts.unreadIn(g.key) > 0 }">{{ g.name }}</span>
+        <span v-if="alerts.unreadIn(g.key) > 0" class="badge rounded-pill bg-danger">
+          {{ alerts.unreadIn(g.key) }}
+          <span class="visually-hidden">new</span>
+        </span>
+        <span class="avatars">
+          <MemberAvatar
+            v-for="m in g.members.slice(0, 5)"
+            :key="m.user_id"
+            :name="m.display_name"
+            :color="m.avatar_color"
+            :size="32"
+          />
+        </span>
+      </router-link>
+    </section>
+
     <p v-if="loading" class="text-muted">Loading your chats…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
 
@@ -124,6 +202,9 @@ const shown = computed(() => {
       <!-- each row: name in bold if unread, a red count, and everyone's avatars -->
       <router-link v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
         <span class="name" :class="{ unread: alerts.unreadIn(c.key) > 0 }">{{ c.name }}</span>
+        <span v-if="c.groupId && groupName(c.groupId)" class="group-tag">{{
+          groupName(c.groupId)
+        }}</span>
         <span v-if="alerts.unreadIn(c.key) > 0" class="badge rounded-pill bg-danger">
           {{ alerts.unreadIn(c.key) }}
           <span class="visually-hidden">new</span>
@@ -209,6 +290,39 @@ const shown = computed(() => {
 .name.unread {
   font-weight: 800;
   color: var(--fp-ink);
+}
+
+/* (Eashvar) the Groups heading with New group beside it */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.new-group {
+  min-height: 44px; /* easy to tap on a phone */
+  display: inline-flex;
+  align-items: center;
+}
+
+/* which group a hangout was planned with */
+.group-tag {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--fp-bg);
+  border: 1px solid var(--fp-border);
+  color: var(--fp-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* white with a darker edge, so the search box stands out from the page */
