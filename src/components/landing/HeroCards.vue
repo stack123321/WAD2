@@ -109,11 +109,12 @@ const generalSummary = computed(() => {
               <span :class="{ long: t.longest }" :style="{ width: `${t.width}%` }"></span>
             </div>
           </div>
-          <b class="trip__mins">{{ t.mins }} min</b>
+          <b class="trip__mins">{{ t.assumed ? '~' : '' }}{{ t.mins }} min</b>
         </div>
         <p class="card__note">
           <span class="chip">{{ cards.trips.gap }} min gap</span>
           <template v-if="cards.trips.soFar"> · {{ cards.trips.soFar }}</template>
+          <template v-else-if="cards.trips.assumed"> · ~ assumes MRT</template>
           <template v-else-if="cards.trips.more"> · +{{ cards.trips.more }} more</template>
           <template v-else> longest to shortest</template>
         </p>

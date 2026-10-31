@@ -25,8 +25,9 @@ const ROUTE_TIMEOUT_MS = 8000
 /**
  * A copy of the hangout with each person's travel time worked out, like 08 does: OneMap routes
  * (via /api/route) from their start, by their own mode, to the chosen spot or else the midpoint.
- * Only for people with a start and a mode who don't have a time yet; anyone else is left as they
- * are. If the routes fail or take too long, the hangout comes back without the times.
+ * Anyone who hasn't picked a mode is routed by MRT, as 07 and 08 assume when finding the midpoint,
+ * and marked mode_assumed so the cards show their time as an estimate. People with no start are
+ * left as they are. If the routes fail or take too long, the hangout comes back without the times.
  */
 export async function fillTravelTimes(h, timeoutMs = ROUTE_TIMEOUT_MS) {
   const spot = (h.shortlist ?? []).find((s) => s.id === h.final_shortlist_id)
@@ -36,9 +37,9 @@ export async function fillTravelTimes(h, timeoutMs = ROUTE_TIMEOUT_MS) {
       : h.midpoint_lat != null
         ? { lat: h.midpoint_lat, lng: h.midpoint_lng }
         : null
-  const need = (h.members ?? []).filter(
-    (m) => m.travel_mins == null && m.mode && m.start_lat != null && m.start_lng != null,
-  )
+  const need = (h.members ?? [])
+    .filter((m) => m.travel_mins == null && m.start_lat != null && m.start_lng != null)
+    .map((m) => ({ ...m, mode: m.mode || 'mrt', assumed: !m.mode }))
   if (!dest || need.length === 0) return h
 
   const copy = JSON.parse(JSON.stringify(h))
@@ -48,7 +49,9 @@ export async function fillTravelTimes(h, timeoutMs = ROUTE_TIMEOUT_MS) {
     )
     const { travelMins } = await Promise.race([travelTo(need, dest), timeout])
     need.forEach((m, i) => {
-      copy.members.find((c) => c.user_id === m.user_id).travel_mins = travelMins[i]
+      const member = copy.members.find((c) => c.user_id === m.user_id)
+      member.travel_mins = travelMins[i]
+      if (m.assumed) member.mode_assumed = true
     })
   } catch (err) {
     console.warn('Hero cards: no travel times', err)
@@ -146,12 +149,15 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
       rows: ordered.slice(0, MAX_TRIP_ROWS).map((m) => ({
         ...person(m),
         mins: m.travel_mins,
+        assumed: m.mode_assumed === true, // shown as "~27 min" until they pick how they're travelling
         width: Math.round((m.travel_mins / range.longest) * 100),
         longest: range.gap > 0 && m.travel_mins === range.longest,
       })),
       more: Math.max(0, ordered.length - MAX_TRIP_ROWS),
       // the gap is only between the trips worked out so far
       soFar: timed.length < members.length ? `${timed.length} of ${members.length} so far` : null,
+      // how many of the times assume MRT
+      assumed: timed.filter((m) => m.mode_assumed).length,
     }
   } else {
     const missing = members.filter((m) => m.start_lat == null)
@@ -237,15 +243,25 @@ export function buildHeroCards(h, myId, when, now = new Date()) {
         ? new Date(leaveBy(h.starts_at, m.travel_mins)).getTime()
         : m.travel_mins,
       // with a date: the time to leave; without one: just the trip
-      time: h.starts_at ? formatTime(leaveBy(h.starts_at, m.travel_mins)) : `${m.travel_mins} min`,
-      detail: `${modeLabel(m.mode)} · ${m.travel_mins} min`,
+      time:
+        (m.mode_assumed ? '~' : '') +
+        (h.starts_at ? formatTime(leaveBy(h.starts_at, m.travel_mins)) : `${m.travel_mins} min`),
+      detail: m.mode_assumed
+        ? `Assumes MRT · ${m.travel_mins} min`
+        : `${modeLabel(m.mode)} · ${m.travel_mins} min`,
     }))
     // earliest to leave first (or longest trip first), then whoever isn't ready yet
     withTime.sort((a, b) => (h.starts_at ? a.sortKey - b.sortKey : b.sortKey - a.sortKey))
     const all = [...withTime, ...notReady.map(pending)]
     let note
+    const guesses = ready.filter((m) => m.mode_assumed).length
     if (!h.starts_at) note = 'Leave-by times show once there’s a date'
-    else if (notReady.length) {
+    else if (guesses) {
+      note =
+        guesses === 1
+          ? '~ assumes MRT for the 1 person who hasn’t picked yet'
+          : `~ assumes MRT for the ${guesses} people who haven’t picked yet`
+    } else if (notReady.length) {
       note = `${ready.length} of ${members.length} ready · times update as people add theirs`
     } else note = when === 'past' ? null : 'Everyone’s set'
     times = {

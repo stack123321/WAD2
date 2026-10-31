@@ -246,7 +246,7 @@ test.describe('logged in: your own hangout', () => {
     expect(cards.link.name).toBe('explore')
   })
 
-  test('works out travel times like 08 for anyone with a start and a mode, to the midpoint', async ({
+  test('works out everyone’s travel time like 08, assuming MRT for anyone who hasn’t picked', async ({
     page,
   }) => {
     // fake OneMap routes: a trip's minutes come from how far east the start is
@@ -270,12 +270,20 @@ test.describe('logged in: your own hangout', () => {
       )
       return {
         mins: filled.members.map((m) => m.travel_mins),
-        rows: cards.times.rows.map((r) => [r.name, r.ready]),
+        left: cards.trips,
+        hugo: cards.times.rows.find((r) => r.name === 'Hugo'),
+        note: cards.times.note,
       }
     })
-    expect(result.mins.slice(0, 3).every((m) => typeof m === 'number')).toBe(true)
-    expect(result.mins[3]).toBeNull()
-    expect(result.rows.at(-1)).toEqual(['Hugo', false]) // shown as "Picking transport"
+    // everyone with a start gets a time, so the left card compares all four
+    expect(result.mins.every((m) => typeof m === 'number')).toBe(true)
+    expect(result.left.kind).toBe('trips')
+    expect(result.left.rows.find((r) => r.name === 'Hugo').assumed).toBe(true)
+    expect(result.left.assumed).toBe(1)
+    // Hugo's time is an estimate by MRT, marked with ~
+    expect(result.hugo.detail).toMatch(/^Assumes MRT · \d+ min$/)
+    expect(result.hugo.time.startsWith('~')).toBe(true)
+    expect(result.note).toBe('~ assumes MRT for the 1 person who hasn’t picked yet')
   })
 
   test('shows the cards without times if routes fail, and says so once everyone is in', async ({
