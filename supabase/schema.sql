@@ -770,3 +770,76 @@ create policy "photo files: owner or host removes" on storage.objects
 
 -- 5. Make Supabase's API notice the new table straight away
 notify pgrst, 'reload schema';
+
+-- ───────────────────────── Friend groups, part 2 (Eashvar) ─────────────────────────
+-- Same SQL as supabase/migrations/2026-11-01-friend-groups.sql (which also re-runs the
+-- "Friend groups" section above, in case it was never run). Usual starting points for each group,
+-- hangouts tagged only with your own groups, and group chats in the unread badges.
+
+-- ── Part 2. New: each person's usual starting point for the group ──
+-- Copied into a new hangout planned with the group, so 06 and 07 start filled in.
+alter table public.group_members add column if not exists start_label text;
+alter table public.group_members add column if not exists start_lat   float8;
+alter table public.group_members add column if not exists start_lng   float8;
+alter table public.group_members add column if not exists mode        text;
+do $$
+begin
+  alter table public.group_members
+    add constraint group_members_mode_check check (mode in ('mrt', 'bus', 'car', 'walk'));
+exception when duplicate_object then null;
+end $$;
+
+-- You change only your own usual start
+drop policy if exists "group members: edit own row" on public.group_members;
+create policy "group members: edit own row" on public.group_members
+  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- A hangout can only be tagged with a group you're in
+drop policy if exists "hangouts: create as host" on public.hangouts;
+create policy "hangouts: create as host" on public.hangouts
+  for insert to authenticated
+  with check (host_id = auth.uid() and (group_id is null or public.is_group_member(group_id)));
+
+-- ── Part 3. Group chats in the unread badges and My Chats order (Ryan's chat_summary) ──
+-- Same as before, plus group_messages. chat_reads.chat_id is the group's id for a group chat.
+create or replace function public.chat_summary()
+returns table (chat_id uuid, unread int, last_at timestamptz)
+language sql stable security invoker set search_path = public as $$
+  select m.hangout_id,
+         (count(*) filter (where m.user_id <> auth.uid()
+                           and (r.read_at is null or m.created_at > r.read_at)))::int,
+         max(m.created_at)
+  from messages m
+  left join chat_reads r on r.chat_id = m.hangout_id and r.user_id = auth.uid()
+  group by m.hangout_id
+  union all
+  select d.chat_id,
+         (count(*) filter (where d.user_id <> auth.uid()
+                           and (r.read_at is null or d.created_at > r.read_at)))::int,
+         max(d.created_at)
+  from direct_messages d
+  left join chat_reads r on r.chat_id = d.chat_id and r.user_id = auth.uid()
+  group by d.chat_id
+  union all
+  select g.group_id,
+         (count(*) filter (where g.user_id <> auth.uid()
+                           and (r.read_at is null or g.created_at > r.read_at)))::int,
+         max(g.created_at)
+  from group_messages g
+  left join chat_reads r on r.chat_id = g.group_id and r.user_id = auth.uid()
+  group by g.group_id;
+$$;
+
+-- Old group messages start as read, so they don't all show up as unread on day one
+insert into public.chat_reads (user_id, chat_id)
+  select user_id, group_id from public.group_members
+on conflict (user_id, chat_id) do nothing;
+
+-- New group messages appear live, in the chat and in the navbar badge
+do $$
+begin
+  alter publication supabase_realtime add table public.group_messages;
+exception when duplicate_object then null;
+end $$;
+
+notify pgrst, 'reload schema';
