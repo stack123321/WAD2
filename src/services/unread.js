@@ -5,7 +5,8 @@ import { supabase, hasSupabase } from './supabase'
 
 // [{ chat_id, unread, last_at }] for every chat with messages: how many I haven't seen, and when
 // the newest one was sent (My Chats puts the newest first).
-// chat_id is the hangout's id for a hangout chat, or the direct chat's id for a one to one chat.
+// chat_id is the hangout's id for a hangout chat, the direct chat's id for a one to one chat, or
+// the group's id for a group chat (Eashvar).
 export async function getChatSummary() {
   // the demo chats start empty, so nothing is ever unread
   if (!hasSupabase) {
@@ -43,6 +44,11 @@ export function subscribeToAlerts(myId, onChange) {
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+      onChange,
+    )
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'group_messages' },
       onChange,
     )
     .on(

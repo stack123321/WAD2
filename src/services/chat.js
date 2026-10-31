@@ -1,6 +1,7 @@
-// Owner: Surya. Chats, stored in Supabase. Two kinds ("rooms"):
+// Owner: Surya. Chats, stored in Supabase. Three kinds ("rooms"):
 //   'hangout' → one hangout's chat (06, 09, 11, 12), in the messages table
 //   'direct'  → a one to one chat between friends (My Chats), in the direct_messages table
+//   'group'   → a friend group's chat (/groups/:id), in the group_messages table (Eashvar)
 // New messages arrive live through Supabase Realtime, switched on for both tables in schema.sql.
 import { supabase, hasSupabase } from './supabase'
 
@@ -8,6 +9,7 @@ import { supabase, hasSupabase } from './supabase'
 const ROOMS = {
   hangout: { table: 'messages', column: 'hangout_id' },
   direct: { table: 'direct_messages', column: 'chat_id' },
+  group: { table: 'group_messages', column: 'group_id' },
 }
 
 function roomFor(kind) {
@@ -25,8 +27,9 @@ function roomFor(kind) {
  * @returns {Promise<Array<{ id, user_id, body, created_at }>>}
  */
 export async function getMessages(id, kind = 'hangout') {
-  // The demo hangout and mock mode have no database, so the chat starts empty
-  if (id === 'demo' || !hasSupabase) {
+  // The samples ("demo", "demo-2", "demo-group-1"...) and mock mode have no database, so the
+  // chat starts empty
+  if (id.startsWith('demo') || !hasSupabase) {
     return []
   }
   const room = roomFor(kind)
@@ -77,7 +80,7 @@ export async function sendMessage(id, body, kind = 'hangout') {
  * @returns {() => void} call it to stop listening (when leaving the page)
  */
 export function subscribeToMessages(id, onMessage, kind = 'hangout') {
-  if (id === 'demo' || !hasSupabase) {
+  if (id.startsWith('demo') || !hasSupabase) {
     return () => {}
   }
   const room = roomFor(kind)
