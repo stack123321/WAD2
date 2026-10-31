@@ -1,0 +1,88 @@
+[
+  {
+    "id": "demo-group-1",
+    "name": "Class project crew",
+    "owner_id": "u-surya",
+    "created_at": "2026-10-10T12:00:00+08:00",
+    "members": [
+      {
+        "user_id": "u-surya",
+        "display_name": "Surya",
+        "avatar_color": "#6C4FD6",
+        "joined_at": "2026-10-10T12:00:00+08:00",
+        "start_label": null,
+        "start_lat": null,
+        "start_lng": null,
+        "mode": null
+      },
+      {
+        "user_id": "u-ryan",
+        "display_name": "Ryan",
+        "avatar_color": "#0E7C6B",
+        "joined_at": "2026-10-10T12:05:00+08:00",
+        "start_label": "Tampines MRT",
+        "start_lat": 1.3547,
+        "start_lng": 103.9452,
+        "mode": "mrt"
+      },
+      {
+        "user_id": "u-nicole",
+        "display_name": "Nicole",
+        "avatar_color": "#C2410C",
+        "joined_at": "2026-10-10T12:05:00+08:00",
+        "start_label": "Jurong East MRT",
+        "start_lat": 1.3331,
+        "start_lng": 103.7423,
+        "mode": "mrt"
+      },
+      {
+        "user_id": "u-hugo",
+        "display_name": "Hugo",
+        "avatar_color": "#A16207",
+        "joined_at": "2026-10-10T12:05:00+08:00",
+        "start_label": null,
+        "start_lat": null,
+        "start_lng": null,
+        "mode": null
+      }
+    ]
+  },
+  {
+    "id": "demo-group-2",
+    "name": "Study buddies",
+    "owner_id": "u-eashvar",
+    "created_at": "2026-10-11T09:00:00+08:00",
+    "members": [
+      {
+        "user_id": "u-eashvar",
+        "display_name": "Eashvar",
+        "avatar_color": "#3F7D20",
+        "joined_at": "2026-10-11T09:00:00+08:00",
+        "start_label": "Bedok MRT",
+        "start_lat": 1.324,
+        "start_lng": 103.93,
+        "mode": "bus"
+      },
+      {
+        "user_id": "u-matrix",
+        "display_name": "Matrix",
+        "avatar_color": "#BE185D",
+        "joined_at": "2026-10-11T09:05:00+08:00",
+        "start_label": "Choa Chu Kang MRT",
+        "start_lat": 1.3853,
+        "start_lng": 103.7443,
+        "mode": "mrt"
+      },
+      {
+        "user_id": "u-surya",
+        "display_name": "Surya",
+        "avatar_color": "#6C4FD6",
+        "joined_at": "2026-10-11T09:10:00+08:00",
+        "start_label": null,
+        "start_lat": null,
+        "start_lng": null,
+        "mode": null
+      }
+    ]
+  }
+]
