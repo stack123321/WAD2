@@ -9,6 +9,9 @@
 // missing when Create is greyed out. "Voting closes" moved to 11 Vote, where the host starts it.)
 // (Surya) Also opens in edit mode at /hangouts/:id/edit ("Details" in the step bar): the host
 // changes the name, date, time or vibe after the hangout is made. People are managed on 06.
+// (Eashvar) "Plan a hangout with this group" on a friend group opens this page with ?group=<id>:
+// everyone in the group is ticked (untick anyone who can't make it), the hangout is tagged with
+// the group, and everyone's usual starting point and transport are filled in on 06.
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -20,6 +23,13 @@ import {
 } from '@/services/hangouts'
 import { useHangoutStore } from '@/stores/hangout'
 import { finalSpot, repeatHangout } from '@/services/goAgain'
+import {
+  fillUsualStarts,
+  getGroup,
+  getGroupHangouts,
+  groupUserId,
+  usualTrips,
+} from '@/services/groups'
 import { isMockHangout } from '@/services/votes'
 import {
   addFriendToHangout,
@@ -151,6 +161,26 @@ async function loadFriends() {
         all.push(person)
       }
     }
+    // (Eashvar) Planning with a friend group: everyone in it is in the list, and ticked
+    if (planGroup.value) {
+      for (const m of planGroup.value.members) {
+        if (m.user_id === groupUserId(auth.user)) {
+          continue
+        }
+        if (!all.find((f) => f.user_id === m.user_id)) {
+          all.push({
+            user_id: m.user_id,
+            display_name: m.display_name,
+            avatar_color: m.avatar_color,
+            together: 0,
+          })
+        }
+        if (!selectedFriends.value.includes(m.user_id)) {
+          selectedFriends.value.push(m.user_id)
+        }
+      }
+    }
+
     // The people you hang out with most come first (like "suggested" contacts)
     // A to Z by name, so you can find someone quickly (prof's feedback)
     all.sort((a, b) => a.display_name.localeCompare(b.display_name))
@@ -176,7 +206,37 @@ async function loadFriends() {
   friendsLoading.value = false
 }
 
-onMounted(loadFriends)
+// (Eashvar) the friend group this hangout is planned with (?group=), loaded before the friends
+// list so its people can be ticked. groupTrips = everyone's usual starting point.
+const groupId = typeof route.query.group === 'string' ? route.query.group : ''
+const planGroup = ref(null)
+const groupTrips = ref({})
+
+async function loadGroupThenFriends() {
+  if (groupId !== '' && !isEdit) {
+    try {
+      planGroup.value = await getGroup(groupId)
+      if (planGroup.value) {
+        const past = await getGroupHangouts(groupId)
+        groupTrips.value = usualTrips(planGroup.value, past)
+      }
+    } catch (err) {
+      console.error(err) // the page still works as a normal new hangout
+    }
+  }
+  await loadFriends()
+}
+
+onMounted(loadGroupThenFriends)
+
+// (Eashvar) how many of the ticked people have a usual starting point to fill in
+const groupStartsCount = computed(() => {
+  if (!planGroup.value) {
+    return 0
+  }
+  const coming = [groupUserId(auth.user), ...selectedFriends.value]
+  return coming.filter((id) => groupTrips.value[id]).length
+})
 
 // (Surya) Edit mode: "Details" in the step bar opens /hangouts/:id/edit, filled in with the
 // hangout's name, date, time and vibe. Only the host can save (the database checks it too).
@@ -577,13 +637,18 @@ async function submit() {
 
   try {
     // vote_deadline: null = the host sets when voting closes on 11 Vote, when they start the vote
-    const hangout = await createHangout({
+    const input = {
       name: name,
       starts_at: startsAt.value.toISOString(),
       vibe: form.vibe,
       vote_deadline: null,
       invite_code: inviteCode,
-    })
+    }
+    // (Eashvar) tagged with the friend group, so it shows on the group's page
+    if (planGroup.value) {
+      input.group_id = planGroup.value.id
+    }
+    const hangout = await createHangout(input)
     // Add the friends ticked in "Who's coming?", one by one. If one fails, the hangout still
     // exists and they can be added on 06 (Add friends).
     for (const userId of selectedFriends.value) {
@@ -592,6 +657,11 @@ async function submit() {
       } catch (e) {
         console.error(e)
       }
+    }
+    // (Eashvar) fill in everyone's usual starting point and transport from the group
+    if (planGroup.value) {
+      const coming = [groupUserId(auth.user), ...selectedFriends.value]
+      await fillUsualStarts(hangout.id, groupTrips.value, coming)
     }
     saveFriendsAddStart()
     router.push({
@@ -639,6 +709,20 @@ async function submit() {
       <RouterLink class="btn btn-primary" :to="{ name: 'final-plan', params: { id: againDone } }">
         Open the plan →
       </RouterLink>
+    </div>
+
+    <!-- (Eashvar) planning with a friend group: everyone's ticked, untick who can't make it -->
+    <div v-if="planGroup && !isEdit" class="again-box" role="status">
+      <strong>Planning with {{ planGroup.name }}.</strong> Everyone’s ticked under Who’s coming, so
+      untick anyone who can’t make it.
+      <template v-if="groupStartsCount > 0">
+        {{
+          groupStartsCount === 1
+            ? '1 usual starting point is'
+            : `${groupStartsCount} usual starting points are`
+        }}
+        filled in for you on the next page.
+      </template>
     </div>
 
     <!-- (Surya) edit mode: wait for the hangout, and only the host can change it -->
