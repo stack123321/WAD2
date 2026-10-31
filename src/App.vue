@@ -6,6 +6,7 @@ import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NavBar from '@/components/ui/NavBar.vue'
 import HangoutBar from '@/components/hangout/HangoutBar.vue'
+import PageDrop from '@/components/ui/PageDrop.vue'
 import { useHangoutStore } from '@/stores/hangout'
 
 const route = useRoute()
@@ -39,5 +40,8 @@ const showHangoutBar = computed(() => {
     :members="store.members"
     :current="route.name"
   />
-  <RouterView />
+  <!-- each kind of page drops in from above when you go to it -->
+  <PageDrop :key="route.name">
+    <RouterView />
+  </PageDrop>
 </template>
