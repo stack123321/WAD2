@@ -250,7 +250,6 @@ test.describe('Starting the vote', () => {
 
 test.describe('Tie-break wheel', () => {
   test('a tie after voting ends is settled by spinning the wheel', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-14T22:00:00+08:00') })
     await page.goto('/hangouts/demo/vote')
 
@@ -267,7 +266,8 @@ test.describe('Tie-break wheel', () => {
     await expect(page.getByRole('button', { name: 'Close vote' })).toBeHidden()
     await wheel.getByRole('button', { name: 'Spin the wheel' }).click()
 
-    await expect(wheel.getByText('The wheel picked')).toBeVisible()
+    // the wheel spins for about 3 seconds before it picks
+    await expect(wheel.getByText('The wheel picked')).toBeVisible({ timeout: 10000 })
     const picked = await wheel.getByText('The wheel picked').locator('strong').textContent()
     expect([cafe, boardGames, hawker]).toContain(picked)
 
@@ -288,7 +288,6 @@ const layoutStates = {
     await page.goto('/hangouts/demo-2/vote')
   },
   'the tie-break wheel (/vote)': async (page) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-14T22:00:00+08:00') })
     await page.goto('/hangouts/demo/vote')
     await voteButton(page, hawker).click()

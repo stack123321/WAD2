@@ -23,6 +23,7 @@
   --fp-radius: 16px;
   --fp-radius-sm: 10px;
   --fp-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+  --fp-shadow-lift: 0 12px 24px rgb(0 0 0 / 0.15); /* a card rising under the pointer */
 
   /* Type */
   --fp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;

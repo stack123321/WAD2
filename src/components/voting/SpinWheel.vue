@@ -154,10 +154,4 @@ const decided = computed(() => winner.value !== null && !props.spinning)
   min-height: 1.5rem;
   text-align: center;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .wheel {
-    transition: none;
-  }
-}
 </style>

@@ -328,10 +328,6 @@ function onLocationError(error) {
   background: var(--fp-surface);
 }
 
-.search-box:focus-within {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--fp-primary) 15%, transparent);
-}
-
 .search-icon {
   flex-shrink: 0;
   color: var(--fp-muted);

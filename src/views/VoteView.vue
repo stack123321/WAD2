@@ -260,8 +260,7 @@ async function onSpin() {
   try {
     const winner = await spinTiebreak(hangoutId, tiedIds.value)
     spinWinnerId.value = winner
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 0 : SPIN_MS))
+    await new Promise((resolve) => setTimeout(resolve, SPIN_MS))
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
