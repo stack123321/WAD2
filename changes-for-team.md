@@ -19,6 +19,8 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
 | `src/views/MyChatsView.vue` | The search box is 44px. |
 | `src/components/dashboard/HangoutCard.vue` | The laptop rows had 38px and 32px buttons on purpose. View, Add starting point and the ··· menu are now 44px. |
 | `src/views/MidpointView.vue` | "Go to transport →" is 44px. |
+| `src/views/DashboardView.vue` | The Upcoming / Past list drops in the same way when you press the buttons (not on the first load, where the page is already dropping in). |
+| `src/App.vue`, `src/components/ui/PageDrop.vue` (new) | Every page now fades in and drops down 24px from above over 0.4 seconds when you go to it. `App.vue` wraps `<RouterView />` in `<PageDrop :key="route.name">`, so it only plays when you go to a different kind of page. Nothing scrolls sideways, and at rest there is no leftover transform, so modals still sit on the whole screen. |
 | `tests/live/dashboard.spec.js` | The live test deleted hangouts with a button that no longer exists, so it left test hangouts behind. It now deletes through the ··· menu and the confirm dialog. |
 
 ### Good to know
