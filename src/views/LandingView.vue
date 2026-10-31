@@ -427,8 +427,7 @@ function continueRoute(hangout) {
       </div>
     </section>
 
-    <!-- (Eashvar) carries on from the closing band's teal, so there's no hard edge; the name is a
-         soft watermark that runs off the bottom instead of stark white -->
+    <!-- (Eashvar) carries on from the closing band's teal, so there's no hard edge -->
     <footer class="landing-foot">
       <div class="container">
         <div class="landing-foot__top">
@@ -448,7 +447,6 @@ function continueRoute(hangout) {
           Travel times: OneMap, LTA DataMall · Weather: NEA, Open-Meteo
         </p>
       </div>
-      <p class="landing-foot__mark" aria-hidden="true">Fairpoint</p>
     </footer>
   </main>
 </template>
@@ -975,7 +973,7 @@ function continueRoute(hangout) {
 .landing-foot {
   position: relative;
   overflow: hidden;
-  padding: clamp(2.5rem, 5vw, 4rem) 0 0;
+  padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(2rem, 4vw, 3rem);
   /* picks up the closing band's teal, then settles into a softer deep green */
   background: linear-gradient(180deg, var(--fp-primary) 0%, var(--fp-deep-2) 70%);
   color: #fff;
@@ -1028,19 +1026,6 @@ function continueRoute(hangout) {
   margin: 1.25rem 0 0;
   color: var(--fp-on-deep);
   font-size: 0.875rem;
-}
-
-/* the big name as a watermark, cut off by the bottom edge */
-.landing-foot__mark {
-  margin: 0.5rem 0 -0.22em;
-  color: rgb(255 255 255 / 0.1);
-  font-size: clamp(4rem, 19vw, 17rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  text-align: center;
-  white-space: nowrap;
-  user-select: none;
 }
 
 /* Responsive */
