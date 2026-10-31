@@ -545,12 +545,6 @@ async function save() {
   background: var(--fp-primary);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .progress-step__seg {
-    transition: none;
-  }
-}
-
 .prefs__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

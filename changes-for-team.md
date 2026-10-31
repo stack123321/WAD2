@@ -19,6 +19,8 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
 | `src/views/MyChatsView.vue` | The search box is 44px. |
 | `src/components/dashboard/HangoutCard.vue` | The laptop rows had 38px and 32px buttons on purpose. View, Add starting point and the ··· menu are now 44px. |
 | `src/views/MidpointView.vue` | "Go to transport →" is 44px. |
+| `src/views/DashboardView.vue`, `src/components/dashboard/HangoutCard.vue`, `src/styles/tokens.css` | On a laptop, the hangout card under the pointer rises a little and the other cards fade. New token `--fp-shadow-lift` (one line in Hugo's file). Phones are unchanged, they have no hover. The cards now sit inside one `.card-list` box. |
+| `PlaceSearch.vue`, `SpinWheel.vue`, `PreferencesView.vue`, `VoteView.vue`, `tests/e2e/voting.spec.js` | Removed `:focus-within` and `prefers-reduced-motion`, which the course doesn't teach. The search box no longer glows when focused. The tie-break wheel always spins for about 3 seconds, so the wheel test waits up to 10 seconds. |
 | `tests/live/dashboard.spec.js` | The live test deleted hangouts with a button that no longer exists, so it left test hangouts behind. It now deletes through the ··· menu and the confirm dialog. |
 
 ### Good to know

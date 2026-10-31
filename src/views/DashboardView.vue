@@ -455,35 +455,38 @@ onMounted(async () => {
       <p v-if="pinError" class="text-danger" role="alert">{{ pinError }}</p>
 
       <!-- three loops from the sections computed: section, then day group, then hangout -->
-      <section v-for="s in sections" :key="s.key" class="mb-4">
-        <h2 class="section-label">
-          {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
-        </h2>
-        <div v-for="g in s.groups" :key="g.key" class="mb-3">
-          <!-- day heading, e.g. "Tomorrow Thu 22 Oct", left out for up next and pinned -->
-          <h3 v-if="g.main" class="day-label">
-            <strong>{{ g.main }}</strong> <span class="text-muted">{{ g.sub }}</span>
-          </h3>
-          <div v-for="h in g.items" :key="h.id" class="mb-2">
-            <!-- the card gets everything it shows as props, and tells this page about menu clicks with events -->
-            <HangoutCard
-              :hangout="h"
-              :show-date="s.showDate"
-              :featured="s.featured"
-              :my-id="myId"
-              :hours="hours"
-              :crowd="crowds[h.id] ?? null"
-              :can-delete="isHost(h)"
-              :can-leave="canLeave(h)"
-              :past="tab === 'past'"
-              :photos="photos[h.id] ?? []"
-              @delete="askDelete"
-              @leave="askLeave"
-              @toggle-pin="onTogglePin"
-            />
+      <!-- one box around every card, so hovering any card can fade the others -->
+      <div class="card-list">
+        <section v-for="s in sections" :key="s.key" class="mb-4">
+          <h2 class="section-label">
+            {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
+          </h2>
+          <div v-for="g in s.groups" :key="g.key" class="mb-3">
+            <!-- day heading, e.g. "Tomorrow Thu 22 Oct", left out for up next and pinned -->
+            <h3 v-if="g.main" class="day-label">
+              <strong>{{ g.main }}</strong> <span class="text-muted">{{ g.sub }}</span>
+            </h3>
+            <div v-for="h in g.items" :key="h.id" class="mb-2">
+              <!-- the card gets everything it shows as props, and tells this page about menu clicks with events -->
+              <HangoutCard
+                :hangout="h"
+                :show-date="s.showDate"
+                :featured="s.featured"
+                :my-id="myId"
+                :hours="hours"
+                :crowd="crowds[h.id] ?? null"
+                :can-delete="isHost(h)"
+                :can-leave="canLeave(h)"
+                :past="tab === 'past'"
+                :photos="photos[h.id] ?? []"
+                @delete="askDelete"
+                @leave="askLeave"
+                @toggle-pin="onTogglePin"
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
 
     <!-- wide screens only: the week and what needs you, beside the list -->
@@ -529,6 +532,15 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* hovering a card: every card fades, then the one under the pointer comes back */
+@media (hover: hover) {
+  .card-list:hover .hangout {
+    opacity: 0.45;
+  }
+  .card-list .hangout:hover {
+    opacity: 1;
+  }
+}
 .content {
   max-width: 1040px; /* rows never stretch wider than this */
   margin: 0 auto; /* centred */
