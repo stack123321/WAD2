@@ -3,11 +3,13 @@
 // Owner: Matrix · Vet by: Hugo
 // Figma frame "03". Reads and writes the logged-in user's profiles row.
 // ?setup=1 (sent by sign up) shows the onboarding progress bar and "Skip for now".
+// (Surya) "Delete account" at the bottom (not during setup): type DELETE, then it's gone.
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
 import { defaultPreferences, getProfile, saveProfile } from '@/services/profiles'
+import { deleteMyAccount } from '@/services/account'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,6 +225,39 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+// (Surya) Delete my account: open the box, type DELETE, then delete and log out
+const deleteOpen = ref(false)
+const deleteWord = ref('')
+const deleting = ref(false)
+const deleteError = ref('')
+const deleteWordInput = ref(null)
+const canDelete = computed(() => deleteWord.value.trim().toUpperCase() === 'DELETE')
+
+async function openDelete() {
+  deleteOpen.value = true
+  deleteWord.value = ''
+  deleteError.value = ''
+  await nextTick()
+  deleteWordInput.value.focus()
+}
+
+async function confirmDelete() {
+  if (!canDelete.value) {
+    return
+  }
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await deleteMyAccount(userId.value)
+    await auth.signOut()
+    router.push({ name: 'landing' })
+  } catch (err) {
+    console.error(err)
+    deleteError.value = 'Couldn’t delete your account. Try again later.'
+  }
+  deleting.value = false
 }
 </script>
 
@@ -474,6 +509,64 @@ async function save() {
         </div>
       </footer>
     </form>
+
+    <!-- (Surya) Delete my account. Not shown while setting up after sign up. -->
+    <section
+      v-if="userId && !loading && !isSetup"
+      class="panel delete-panel"
+      aria-labelledby="delete-title"
+    >
+      <h2 id="delete-title" class="panel__title">Delete account</h2>
+      <p class="panel__sub mb-2">
+        This removes your preferences, friends, chats, votes and photos, and you can’t undo it.
+        Hangouts and groups you run are passed to the next person who joined, so your friends keep
+        them.
+      </p>
+      <button
+        v-if="!deleteOpen"
+        type="button"
+        class="btn btn-outline-danger btn-delete"
+        @click="openDelete"
+      >
+        Delete my account
+      </button>
+
+      <form v-else class="delete-confirm" novalidate @submit.prevent="confirmDelete">
+        <label for="delete-word" class="form-label small fw-semibold">
+          Type DELETE to confirm
+        </label>
+        <input
+          id="delete-word"
+          ref="deleteWordInput"
+          v-model="deleteWord"
+          type="text"
+          class="form-control"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+        />
+        <p v-if="deleteError" class="small text-danger mt-2 mb-0" role="alert">
+          {{ deleteError }}
+        </p>
+        <div class="delete-confirm__buttons">
+          <button type="button" class="btn btn-light btn-delete" @click="deleteOpen = false">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-danger btn-delete"
+            :disabled="!canDelete || deleting"
+          >
+            <span
+              v-if="deleting"
+              class="spinner-border spinner-border-sm me-2"
+              aria-hidden="true"
+            ></span>
+            {{ deleting ? 'Deleting…' : 'Delete forever' }}
+          </button>
+        </div>
+      </form>
+    </section>
   </main>
 </template>
 
@@ -823,6 +916,31 @@ async function save() {
   color: var(--fp-primary);
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+/* (Surya) Delete account, set apart at the bottom */
+.delete-panel {
+  margin-top: 2.5rem;
+}
+
+.btn-delete {
+  min-height: 44px;
+  font-weight: 600;
+}
+
+.delete-confirm {
+  max-width: 24rem;
+}
+
+.delete-confirm .form-control {
+  min-height: 44px;
+}
+
+.delete-confirm__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .btn-skip,
