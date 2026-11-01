@@ -12,8 +12,8 @@ test('a message sent in the hangout chat shows, and is still there after a reloa
   const message = `Hello from the E2E test ${Date.now()}`
 
   await page.goto(`/chats/${id}`)
-  await page.getByLabel('Message').fill(message)
-  await page.getByRole('button', { name: 'Send' }).click()
+  await page.getByLabel('Message', { exact: true }).fill(message)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
 
   await expect(page.getByText(message)).toBeVisible()
   await page.reload()
