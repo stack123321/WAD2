@@ -211,10 +211,23 @@ defineExpose({ scrollToIndex })
     bottom: 0;
     left: 0;
     display: flex;
-    padding: 1.25rem 1rem 1.5rem;
-    background: transparent;
+    max-height: 72%;
+    padding: rem 1rem 1.5rem;
+    background: linear-gradient(to bottom, rgba(30, 29, 29, 0), rgba(63, 63, 63, 0.58));
     color: #fff;
     text-shadow: 0 1px 4px rgb(0 0 0 / 85%);
+  }
+
+  :deep(.spot-card__details) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  :deep(.spot-card__action) {
+    flex: 0 0 auto;
   }
 
   :deep(.spot-card__link),
@@ -229,10 +242,13 @@ defineExpose({ scrollToIndex })
   }
 
   :deep(.spot-card__tags) {
+    flex-wrap: wrap;
+    margin-top: 5px;
     scrollbar-width: none;
   }
 
-  :deep(.spot-card__tags::-webkit-scrollbar) {
+  :deep(.spot-card__tags::-webkit-scrollbar),
+  :deep(.spot-card__details::-webkit-scrollbar) {
     display: none;
   }
 

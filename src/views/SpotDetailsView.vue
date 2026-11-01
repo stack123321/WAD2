@@ -5,13 +5,14 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BaseMap from '@/components/map/BaseMap.vue'
-import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
+import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import { googlePlacesEnabled, loadSpot, loadSpotSummary } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
 import { matchScore, matchReasons } from '@/utils/matchScore'
 import { willRainAt } from '@/services/weather'
+import { getRoute } from '@/services/routing'
 
 const route = useRoute()
 const hangout = useHangoutStore()
@@ -79,13 +80,78 @@ const price = computed(() => {
 })
 
 const imageUrls = computed(() => spot.value?.imageUrls ?? [])
+const travelRows = ref([])
+let travelRequestId = 0
+
+const modeLabels = {
+  mrt: 'MRT',
+  bus: 'Bus',
+  car: 'Car',
+  walk: 'Walking',
+}
+
+watch(
+  () => [
+    spot.value?.lat,
+    spot.value?.lng,
+    hangout.members.map((member) => [
+      member.user_id,
+      member.start_lat,
+      member.start_lng,
+      member.mode,
+    ]),
+  ],
+  async ([lat, lng]) => {
+    const requestId = ++travelRequestId
+    const members = hangout.members
+    if (lat == null || lng == null || !members.length) {
+      travelRows.value = []
+      return
+    }
+
+    const rows = members.map((member) => ({
+      userId: member.user_id,
+      name: member.display_name,
+      avatarColor: member.avatar_color,
+      mode: member.mode,
+      mins: null,
+      error: '',
+      unavailable:
+        member.start_lat == null ||
+        member.start_lng == null ||
+        !modeLabels[member.mode],
+    }))
+    travelRows.value = rows
+
+    const results = await Promise.all(
+      members.map(async (member, index) => {
+        if (rows[index].unavailable) return rows[index]
+        try {
+          const route = await getRoute(
+            { lat: member.start_lat, lng: member.start_lng },
+            { lat, lng },
+            member.mode,
+          )
+          return { ...rows[index], mins: route.mins }
+        } catch (error) {
+          return { ...rows[index], error: `Could not calculate: ${error.message}` }
+        }
+      }),
+    )
+
+    if (requestId === travelRequestId) travelRows.value = results
+  },
+  { immediate: true },
+)
 
 function showPreviousImage() {
-  scrollToImage((activeImage.value - 1 + imageUrls.value.length) % imageUrls.value.length)
+  if (activeImage.value > 0) scrollToImage(activeImage.value - 1)
 }
 
 function showNextImage() {
-  scrollToImage((activeImage.value + 1) % imageUrls.value.length)
+  if (activeImage.value < imageUrls.value.length - 1) {
+    scrollToImage(activeImage.value + 1)
+  }
 }
 
 function scrollToImage(index) {
@@ -180,7 +246,6 @@ const reasons = computed(() =>
         </svg>
         Back to exploring
       </RouterLink>
-      <GooglePlacesToggle />
     </header>
 
     <p v-if="spotError" class="spot__error text-secondary" role="status">{{ spotError }}</p>
@@ -189,24 +254,25 @@ const reasons = computed(() =>
       <div
         v-if="googlePlacesEnabled && imageUrls.length"
         class="preview-image"
-        ref="imageCarousel"
-        @scroll.passive="updateActiveImage"
       >
-        <div class="preview-image__track">
-          <img
-            v-for="(imageUrl, index) in imageUrls"
-            :key="imageUrl"
-            :src="imageUrl"
-            :alt="`${spot.name} photo ${index + 1}`"
-            class="preview-image__slide"
-            draggable="false"
-          />
+        <div ref="imageCarousel" class="preview-image__viewport" @scroll.passive="updateActiveImage">
+          <div class="preview-image__track">
+            <img
+              v-for="(imageUrl, index) in imageUrls"
+              :key="imageUrl"
+              :src="imageUrl"
+              :alt="`${spot.name} photo ${index + 1}`"
+              class="preview-image__slide"
+              draggable="false"
+            />
+          </div>
         </div>
-        <template v-if="imageUrls.length > 1 && activeImage > 0">
+        <template v-if="imageUrls.length > 1">
           <button
             type="button"
             class="preview-image__control preview-image__control--previous"
             aria-label="Previous photo"
+            :disabled="activeImage === 0"
             @click="showPreviousImage"
           >
             ‹
@@ -215,6 +281,7 @@ const reasons = computed(() =>
             type="button"
             class="preview-image__control preview-image__control--next"
             aria-label="Next photo"
+            :disabled="activeImage === imageUrls.length - 1"
             @click="showNextImage"
           >
             ›
@@ -305,7 +372,26 @@ const reasons = computed(() =>
 
     <section class="spot__traveltime card-box">
       <h2 class="h6">Travel time</h2>
-      <p class="text-secondary mb-0">Travel time per friend.</p>
+      <p class="text-secondary small mb-2">
+        Estimated from each friend’s starting point to {{ spot?.name ?? 'this spot' }}.
+      </p>
+      <ul v-if="travelRows.length" class="travel-time__list">
+        <li v-for="row in travelRows" :key="row.userId" class="travel-time__row">
+          <span class="travel-time__person">
+            <MemberAvatar :name="row.name" :color="row.avatarColor" :size="28" />
+            <span class="travel-time__name">{{ row.name }}</span>
+          </span>
+          <span v-if="row.mins !== null" class="text-secondary">
+            {{ row.mins }} min · {{ modeLabels[row.mode] }}
+          </span>
+          <span v-else-if="row.unavailable" class="text-secondary">
+            Add a starting point and transport mode
+          </span>
+          <span v-else-if="row.error" class="text-danger" role="status">{{ row.error }}</span>
+          <span v-else class="text-secondary" role="status">Calculating…</span>
+        </li>
+      </ul>
+      <p v-else class="text-secondary mb-0">Travel times aren’t available yet.</p>
     </section>
 
     
@@ -391,6 +477,33 @@ const reasons = computed(() =>
 .spot__weather {
   grid-area: weather;
 }
+
+.travel-time__list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.travel-time__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.travel-time__name {
+  font-weight: 600;
+}
+
+.travel-time__person {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .spot__space {
   grid-area: space;
 }
@@ -476,15 +589,19 @@ const reasons = computed(() =>
 
 .preview-image {
   position: relative;
+  overflow: hidden;
+  border-radius: var(--fp-radius-sm);
+}
+
+.preview-image__viewport {
   overflow-x: auto;
   overflow-y: hidden;
-  border-radius: var(--fp-radius-sm);
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
 }
 
-.preview-image::-webkit-scrollbar {
+.preview-image__viewport::-webkit-scrollbar {
   display: none;
 }
 

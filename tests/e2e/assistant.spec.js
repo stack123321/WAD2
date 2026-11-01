@@ -7,7 +7,7 @@
 import fs from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { setTime, VOTING_OPEN } from './helpers/clock.js'
-import { place, stubPlaces, turnOnGooglePlaces } from './helpers/places.js'
+import { place, stubPlaces } from './helpers/places.js'
 
 // The Ask box was taken off 09 on 26 Oct and comes back with the fix/restore-ask-box branch.
 // Until then this file is skipped (test.skip isn't covered in the course).
@@ -29,7 +29,6 @@ test.beforeEach(async ({ page }, testInfo) => {
   await setTime(page, VOTING_OPEN)
   await stubPlaces(page, [place('test-cafe', 'Test Cafe')])
   await page.goto('/hangouts/demo/explore')
-  if (!isPhoneTest) await turnOnGooglePlaces(page)
 })
 
 test('asking shows a reply for the request', async ({ page }) => {

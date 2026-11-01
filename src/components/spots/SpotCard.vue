@@ -23,11 +23,12 @@ const props = defineProps({
   softVetoReasons: { type: Array, default: () => [] },
   tags: { type: Array, default: () => [] },
   added: { type: Boolean, default: false },
+  removable: { type: Boolean, default: false },
   // Route location for the spot details page; image and name link to it when set
   to: { type: Object, default: null },
 })
 
-defineEmits(['add'])
+defineEmits(['add', 'remove'])
 
 const emoji = computed(() => CATEGORY_EMOJI[props.category] ?? '📍')
 
@@ -70,55 +71,57 @@ const matchTone = computed(() => {
     </div>
 
     <div class="spot-card__body">
-      <div class="d-flex justify-content-between align-items-start gap-2">
-        <h3 class="h6 mb-0 spot-card__name">
-          <span aria-hidden="true">{{ emoji }}</span>
-          <RouterLink v-if="to" :to="to" class="spot-card__link">{{ name }}</RouterLink>
-          <template v-else>{{ name }}</template>
-        </h3>
-        <span v-if="rating !== null" class="spot-card__rating">⭐ {{ rating.toFixed(1) }}</span>
-      </div>
+      <div class="spot-card__details">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <h3 class="h6 mb-0 spot-card__name">
+            <span aria-hidden="true">{{ emoji }}</span>
+            <RouterLink v-if="to" :to="to" class="spot-card__link">{{ name }}</RouterLink>
+            <template v-else>{{ name }}</template>
+          </h3>
+          <span v-if="rating !== null" class="spot-card__rating">⭐ {{ rating.toFixed(1) }}</span>
+        </div>
 
-      <span
-        v-if="matchPct !== null"
-        class="spot-card__match"
-        :class="`spot-card__match--${matchTone}`"
-      >
-        {{ matchPct }}% match
-      </span>
-      <p class="spot-card__meta mb-0">
-        <span v-if="distance">
-          {{ distance }} from {{ nearestStationName || 'nearest station' }}
+        <span
+          v-if="matchPct !== null"
+          class="spot-card__match"
+          :class="`spot-card__match--${matchTone}`"
+        >
+          {{ matchPct }}% match
         </span>
-        <span v-if="walkMinutes !== null">🚶 {{ walkMinutes }} min walk</span>
-        <span v-if="price" class="spot-card__price">{{ price }}</span>
-      </p>
+        <p class="spot-card__meta mb-0">
+          <span v-if="distance">
+            {{ distance }} from {{ nearestStationName || 'nearest station' }}
+          </span>
+          <span v-if="walkMinutes !== null">🚶 {{ walkMinutes }} min walk</span>
+          <span v-if="price" class="spot-card__price">{{ price }}</span>
+        </p>
 
-      <ul class="spot-card__tags">
-        <li
-          v-if="matchPct === 0 && vetoReason"
-          class="spot-card__tag spot-card__tag--veto"
-          :title="vetoReason"
-        >
-          {{ vetoReason }}
-        </li>
-        <li
-          v-for="reason in softVetoReasons"
-          :key="`soft-veto-${reason}`"
-          class="spot-card__tag spot-card__tag--soft-veto"
-          :title="reason"
-        >
-          {{ reason }}
-        </li>
-        <li v-for="tag in tags" :key="tag" class="spot-card__tag">{{ tag }}</li>
-      </ul>
+        <ul class="spot-card__tags">
+          <li
+            v-if="matchPct === 0 && vetoReason"
+            class="spot-card__tag spot-card__tag--veto"
+            :title="vetoReason"
+          >
+            {{ vetoReason }}
+          </li>
+          <li
+            v-for="reason in softVetoReasons"
+            :key="`soft-veto-${reason}`"
+            class="spot-card__tag spot-card__tag--soft-veto"
+            :title="reason"
+          >
+            {{ reason }}
+          </li>
+          <li v-for="tag in tags" :key="tag" class="spot-card__tag">{{ tag }}</li>
+        </ul>
+      </div>
 
       <button
         type="button"
-        class="btn btn-sm mt-auto"
+        class="spot-card__action btn btn-sm mt-auto"
         :class="added ? 'btn-outline-primary' : 'btn-primary'"
-        :disabled="added"
-        @click="$emit('add')"
+        :disabled="added && !removable"
+        @click="added ? $emit('remove') : $emit('add')"
       >
         {{ added ? 'Added to vote' : 'Add to vote' }}
       </button>
