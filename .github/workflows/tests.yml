@@ -1,6 +1,7 @@
-# Owner: Eashvar (testing). Runs the end-to-end tests (tests/e2e) on every pull request into main
-# and every push to main, and shows a pass/fail check on the PR. Needs no keys or secrets: the
-# tests use the sample hangouts and stub Google and Gemini. If it fails, open the run's Summary
+# Owner: Eashvar (testing). Runs the unit and component tests (Vitest) and the end-to-end tests
+# (Playwright, tests/e2e) on every pull request into main and every push to main, and shows a
+# pass/fail check on the PR. This is the automated regression testing from Week 10a. Needs no
+# keys or secrets: the tests use the sample hangouts and the api/ functions' sample data. If it fails, open the run's Summary
 # and download "playwright-report" to see what broke (with screenshots).
 # The live tests (tests/live) sign in to the real Supabase project, so they're run by hand instead.
 name: Tests
@@ -44,7 +45,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Run the tests
+      - name: Run the unit and component tests (Vitest)
+        run: npm run test:unit
+
+      - name: Run the E2E tests (Playwright)
         run: npx playwright test
         env:
           CI: true
