@@ -1,11 +1,12 @@
 // Owner: Eashvar (testing). Two real people in one hangout, against the real Supabase project
 // (npm run test:live), each in their own browser: someone who isn't in the hangout can't even
-// open it (the database only lets members read a hangout); the invite link adds them; the host sees them appear without
-// reloading; and a whole vote (spots added, vote started, the friend votes, the host sees it live
-// and closes it) reaches the final plan for both. Needs E2E_EMAIL_2 / E2E_PASSWORD_2 too
-// (tests/live/helpers.js); skipped without them (test.skip). The hangout is deleted at the end.
-// Each person gets their own browser (browser.newContext), so two people are logged in at once;
-// that isn't covered in the course, but it's the only way to test two real people together.
+// open it (the database only lets members read a hangout); the invite link adds them, and the
+// host sees them on 06 after reloading; and a whole vote (spots added, vote started, the friend
+// votes, the host sees it live and closes it) reaches the final plan for both. Needs
+// E2E_EMAIL_2 / E2E_PASSWORD_2 too (tests/live/helpers.js); skipped without them (test.skip).
+// The hangout is deleted at the end. Each person gets their own browser (browser.newContext), so
+// two people are logged in at once; that isn't covered in the course, but it's the only way to
+// test two real people together.
 import { test, expect } from '@playwright/test'
 import {
   copyInviteLink,
@@ -51,10 +52,11 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
     await friendPage.goto(invite)
     await expect(friendPage).toHaveURL(`/hangouts/${id}/start`)
 
-    // The host sees the group become two without reloading (live updates)
-    await expect(hostPage.getByText('of 2 added', { exact: false })).toBeVisible({
-      timeout: 15000,
-    })
+    // The host sees the group become two after reloading. (06 doesn't listen for people joining:
+    // subscribeToMembers in services/hangouts.js only hears changes to existing members, and
+    // nothing calls it yet.)
+    await hostPage.reload()
+    await expect(hostPage.getByText('of 2 added', { exact: false })).toBeVisible()
 
     // The host puts two spots on the shortlist from 10 Spot details (Google is faked)
     await stubSpots(hostPage, [SPOT_A, SPOT_B])
