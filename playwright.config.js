@@ -11,7 +11,9 @@ import { defineConfig, devices } from '@playwright/test'
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
+  /* The optional live tests have their own config (npm run test:live). */
+  testIgnore: '**/live/**',
   /* Maximum time one test can run for. */
   timeout: 30 * 1000,
   expect: {
@@ -91,7 +93,7 @@ export default defineConfig({
 
   /* Eashvar: the tests start their own dev server on 5198 (never your own on 5173), always without
      the Supabase keys, so they use the sample hangouts on every machine and on GitHub. The dev
-     server, not `npm run preview`, because only it runs the api/ functions (scripts/dev-api.js).
+     server, not `npm run preview`, because only it runs the api/ functions (scripts/devApi.js).
      Other keys in .env.local (Google, OneMap) still load locally; tests stub those calls or skip
      when a key is missing. */
   webServer: {

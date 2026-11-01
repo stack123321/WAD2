@@ -2,7 +2,7 @@
 // Views call these functions; they never call supabase or fetch directly.
 import { supabase, hasSupabase } from './supabase'
 import mockHangout from '@/mocks/hangout.json'
-import mockHangout2 from '@/mocks/hangout-2.json'
+import mockHangout2 from '@/mocks/hangout-collecting.json'
 
 // Two sample groups with different people, so switching between hangouts can be tried without keys
 const mockHangouts = [mockHangout, mockHangout2]

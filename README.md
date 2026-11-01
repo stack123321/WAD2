@@ -58,7 +58,7 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 | Responsive design | Breakpoints at 576, 768, 992 and 1200 px (Bootstrap's). `tests/e2e/layout.spec.js` checks every page at 375, 768 and 1366 px for sideways scrolling, and the voting pages also check tap-target size. |
 | Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). Schema: [supabase/schema.sql](supabase/schema.sql). |
 | External APIs, called asynchronously | See the table below. |
-| End-to-end tests | Playwright, 246 tests in `tests/e2e/`. See [Running the tests](#running-the-tests). |
+| End-to-end tests | Playwright, 237 end-to-end tests in `tests/e2e/` and 9 unit tests in `tests/unit/`. See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
@@ -101,7 +101,7 @@ The app still runs. Each service falls back to sample data when its key is missi
 
 | Data | Real source | With no key |
 |---|---|---|
-| Hangouts, members, shortlist, votes | Supabase | `src/mocks/hangout.json` and `hangout-2.json` (the demo hangouts) |
+| Hangouts, members, shortlist, votes | Supabase | `src/mocks/hangout.json` and `hangout-collecting.json` (the demo hangouts) |
 | Address search | OneMap | `src/mocks/addresses.json` |
 | Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) |
 | Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) |
@@ -120,7 +120,7 @@ cp .env.example .env.local    # optional: paste in keys, see below
 npm run dev                   # http://localhost:5173 opens the landing page
 ```
 
-`npm run dev` also runs the functions in `api/` (through `scripts/dev-api.js`), so `/api/route`, `/api/crowd` and the rest work locally. On Vercel the same files run as serverless functions.
+`npm run dev` also runs the functions in `api/` (through `scripts/devApi.js`), so `/api/route`, `/api/crowd` and the rest work locally. On Vercel the same files run as serverless functions.
 
 | Key in `.env.local` | Needed? | What it unlocks |
 |---|---|---|
@@ -148,10 +148,11 @@ The tests need no keys and no account. They start their own copy of the app on p
 
 ```bash
 npx playwright install chromium    # once, downloads the test browser
-npm run test:e2e                   # runs everything in tests/e2e/
+npm run test:e2e                   # the end-to-end tests in tests/e2e/
+npm run test:unit                  # the unit tests in tests/unit/ (plain functions, no page)
 ```
 
-Expected result: all tests pass, `<<FILL: N passed, after the Ask box is back>>`. The tests run on GitHub for every pull request ([.github/workflows/tests.yml](.github/workflows/tests.yml)) together with lint and the build.
+Expected result: no failures. The tests that need a key skip themselves, so a run with no keys shows some as skipped. The tests run on GitHub for every pull request ([.github/workflows/tests.yml](.github/workflows/tests.yml)) together with lint and the build.
 
 | Command | What it does |
 |---|---|
@@ -159,7 +160,7 @@ Expected result: all tests pass, `<<FILL: N passed, after the Ask box is back>>`
 | `npx playwright test tests/e2e/smoke.spec.js` | Run one spec file |
 | `npx playwright test -g "Past shows"` | Run the tests whose name contains some text |
 | `npx playwright test --ui` | Watch the tests run |
-| `npx playwright test tests/e2e/avatarColor.spec.js tests/e2e/hangoutStatus.spec.js` | Only the unit-style tests (plain functions, no page) |
+| `npx playwright test` | Everything: end-to-end and unit tests |
 
 `npm run test:live` runs `tests/live/` against the real Supabase project. It is optional and needs real accounts in `.env.local` (`E2E_EMAIL` and so on). It is not part of the normal run.
 
@@ -171,7 +172,7 @@ Tests find things by role, label and visible text (`getByRole`, `getByLabel`), a
 | `landing.spec.js` | 01: the hero, its button, "How it works" |
 | `auth.spec.js` | 02: validation messages for log in and sign up |
 | `preferences.spec.js` | 03: toggling and saving preferences, the sign-up setup steps |
-| `dashboard.spec.js`, `hangoutStatus.spec.js` | 04: cards, filters, search, each card's next step |
+| `dashboard.spec.js` | 04: cards, filters, search, each card's next step |
 | `createHangout.spec.js` | 05: validation, quick dates, creating a hangout |
 | `startingPoints.spec.js` | 06: search a place, pick it, use my location |
 | `transport.spec.js` | 07: reminders for friends with no starting point |
@@ -184,7 +185,6 @@ Tests find things by role, label and visible text (`getByRole`, `getByLabel`), a
 | `friends.spec.js`, `chats.spec.js`, `groups.spec.js`, `hangoutDetails.spec.js` | Friends, chats, switching between hangouts, the step bar |
 | `layout.spec.js` | Every page at 375, 768 and 1366 px: no sideways scrolling |
 | `api.spec.js` | Each `/api/` function answers with the shape the pages rely on |
-| `avatarColor.spec.js` | Avatar colours are readable with white text |
 
 ## AI and LLM usage
 
@@ -199,7 +199,7 @@ The brief allows AI for lower-order work only: boilerplate, tidying, test cases,
 | Dashboard (04) | `DashboardView.vue`, `components/dashboard/` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Crowd heat map (08, `/crowds`) | `CrowdHeatmap.vue`, `CrowdsView.vue`, `services/crowd.js` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Crowd API | `api/crowd.js`, `api/_data/stations.js`, `api/_mocks/crowd.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Dev server for `api/` | `scripts/dev-api.js` | <<FILL>> | <<FILL>> | <<FILL>> |
+| Dev server for `api/` | `scripts/devApi.js` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Friends and chats | `FriendsView.vue`, `MyChatsView.vue`, `ChatView.vue`, `DirectChatView.vue`, `services/friends.js`, `directChats.js`, `unread.js` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Router, store, helpers | `router/index.js`, `stores/hangout.js`, `stores/alerts.js`, `utils/hangoutStatus.js`, `avatarColor.js`, `dates.js` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Tests | dashboard, chats, friends, midpoint, avatarColor and hangoutStatus specs | <<FILL>> | <<FILL>> | <<FILL>> |
@@ -242,7 +242,7 @@ Data and APIs: [OneMap](https://www.onemap.gov.sg/apidocs/) (search, reverse geo
 api/             Vercel serverless functions, one file per /api/... URL. Files starting with _ are helpers.
   _data/         Station positions and mall car park rates
   _mocks/        Sample answers used when a key is missing
-scripts/         dev-api.js (runs api/ during npm run dev), build-carpark-rates.js (one-time data script)
+scripts/         devApi.js (runs api/ during npm run dev), buildCarparkRates.js (one-time data script)
 src/
   views/         One file per page
   components/    Page parts, grouped by feature (dashboard, map, spots, voting, ...)
@@ -255,9 +255,10 @@ src/
   styles/        tokens.css, the only global CSS
 supabase/        schema.sql (the full database) and migrations/ (dated changes already included in it)
 tests/
-  e2e/           The Playwright tests (npm run test:e2e)
+  e2e/           The end-to-end Playwright tests (npm run test:e2e)
+  unit/          Tests of plain functions with no page (npm run test:unit)
   live/          Optional tests against the real Supabase project
-.github/         Workflows: tests on every pull request, deploy to Vercel on main
+.github/         Workflows (tests on every pull request, deploy to Vercel on main) and the pull request template
 ```
 
 Conventions:

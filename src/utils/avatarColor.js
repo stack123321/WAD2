@@ -1,5 +1,5 @@
 // Owner: Ryan
-// avatar colours, all dark enough for white text (4.5:1, checked in tests/e2e/avatarColor.spec.js)
+// avatar colours, all dark enough for white text (4.5:1, checked in tests/unit/avatarColor.spec.js)
 export const AVATAR_COLORS = [
   '#0E7C6B',
   '#2F6FDE',

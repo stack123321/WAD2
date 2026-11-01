@@ -5,7 +5,7 @@
 // page 07 a copy of the Saturday sample (demo-2) with Matrix missing his starting point and Hugo
 // missing his mode. Without a group chat, the demo copies the reminder instead of posting it.
 import { test, expect } from '@playwright/test'
-import saturday from '../../src/mocks/hangout-2.json' with { type: 'json' }
+import saturday from '../../src/mocks/hangout-collecting.json' with { type: 'json' }
 
 // Serve the Saturday sample with one friend missing a start and one missing a mode
 async function withFriendsToRemind(page) {
@@ -19,7 +19,7 @@ async function withFriendsToRemind(page) {
       Object.assign(m, { mode: null })
     }
   }
-  await page.route('**/src/mocks/hangout-2.json*', (route) =>
+  await page.route('**/src/mocks/hangout-collecting.json*', (route) =>
     route.fulfill({
       contentType: 'application/javascript',
       body: `export default ${JSON.stringify(hangout)}`,

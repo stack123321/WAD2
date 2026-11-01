@@ -1,4 +1,4 @@
-// Made by scripts/build-carpark-rates.js, do not edit by hand.
+// Made by scripts/buildCarparkRates.js, do not edit by hand.
 // Mall / attraction / hotel car park rates in dollars per hour (LTA via data.gov.sg, 2018)
 export const CARPARK_RATES = {
   "25 toa payoh lorong 8": 2.6,

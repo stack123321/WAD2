@@ -1,6 +1,6 @@
 // Owner: Nicole
 // One-time script: download LTA's mall / attraction / hotel car park rates (data.gov.sg) and save
-// them as { name: dollars per hour } in api/_data/carparkRates.js. Run: node scripts/build-carpark-rates.js
+// them as { name: dollars per hour } in api/_data/carparkRates.js. Run: node scripts/buildCarparkRates.js
 // The rates are from 2018, so they're a rough guide, not today's exact price.
 import axios from 'axios'
 import fs from 'node:fs'
@@ -32,7 +32,7 @@ async function doBuild() {
       }
     }
     const file =
-      '// Made by scripts/build-carpark-rates.js, do not edit by hand.\n' +
+      '// Made by scripts/buildCarparkRates.js, do not edit by hand.\n' +
       '// Mall / attraction / hotel car park rates in dollars per hour (LTA via data.gov.sg, 2018)\n' +
       `export const CARPARK_RATES = ${JSON.stringify(rates, null, 2)}\n`
     fs.writeFileSync('api/_data/carparkRates.js', file)
