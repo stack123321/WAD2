@@ -57,6 +57,8 @@ function minsUntilClose(ranges, weekMin) {
 
 /** Whether any of a place's Google types or broad category fits a hangout vibe. */
 export function matchesHangoutVibe(place, vibes = []) {
+  if (vibes.length === 0) return true
+
   const types = Array.isArray(place.types) ? place.types : []
   const placeTypes = [...types, place.primaryType].filter(Boolean)
 
