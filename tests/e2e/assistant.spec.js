@@ -19,13 +19,17 @@ const askBox = (page) => page.getByRole('textbox', { name: 'Ask for something sp
 const reply = 'Sample results for "prata for dinner" near Bishan'
 
 test.beforeEach(async ({ page }, testInfo) => {
-  if (testInfo.title.startsWith('on a phone')) {
+  const isPhoneTest = testInfo.title.startsWith('on a phone')
+  if (isPhoneTest) {
     await page.setViewportSize({ width: 375, height: 812 })
+    await page.addInitScript(() =>
+      window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),
+    )
   }
   await setTime(page, VOTING_OPEN)
   await stubPlaces(page, [place('test-cafe', 'Test Cafe')])
   await page.goto('/hangouts/demo/explore')
-  await turnOnGooglePlaces(page)
+  if (!isPhoneTest) await turnOnGooglePlaces(page)
 })
 
 test('asking shows a reply for the request', async ({ page }) => {

@@ -463,11 +463,8 @@ function closeMobileFiltersOutside(event) {
   showMobileFilters.value = false
 }
 
-onMounted(async () => {
+onMounted(() => {
   document.addEventListener('click', closeMobileFiltersOutside)
-  await store.load(route.params.id)
-  await loadRanking()
-
 })
 
 onBeforeUnmount(() => {
