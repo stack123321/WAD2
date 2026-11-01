@@ -92,7 +92,7 @@ async function ask(text, before = history.value) {
     }
     message.value = ''
     // An answer that isn't a search (e.g. "hi") leaves the list as it is
-    if (answer.query) emit('found', cacheSpots(answer.places))
+    if (answer.query || answer.sample) emit('found', cacheSpots(answer.places))
   } catch (err) {
     error.value = err.message
   } finally {

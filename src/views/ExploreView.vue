@@ -1,6 +1,21 @@
 ﻿<template>
+   <div
+    v-if="hangout.loading"
+    class="d-flex align-items-center gap-2 text-secondary p-5"
+    role="status"
+  >
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    Loading hangout…
+  </div>
+
+  <div v-else-if="hangout.error" class="container py-5">
+    <div class="alert alert-danger" role="alert">
+      Couldn't load this hangout. Check the link, or go back to
+      <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
+    </div>
+  </div>
   <!-- reached from the step bar before a midpoint has been picked: no filters, map or shortlist to show yet -->
-  <main v-if="noMidpoint" class="container py-4">
+  <main v-else-if="noMidpoint" class="container py-4">
     <h1 class="page-title mb-3">Spots near the midpoint</h1>
     <div class="alert alert-info" role="status">
       <p class="mb-2">
@@ -21,7 +36,7 @@
     <section class="head">
       <h1 class="cards-title page-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <div class="head-actions">
-        <GooglePlacesToggle />
+  
         <button
           v-if="shortlisted.length < 2"
           type="button"
@@ -39,15 +54,42 @@
         </router-link>
       </div>
     </section>
-    <button
-      type="button"
-      class="mobile-filter-toggle"
-      :aria-expanded="showMobileFilters"
-      aria-controls="explore-filters"
-      @click="showMobileFilters = !showMobileFilters"
-    >
-      Filters
-    </button>
+    <div class="mobile-toggles">
+      <button
+        v-if="!askedSpots"
+        type="button"
+        class="mobile-filter-toggle"
+        :aria-expanded="showMobileFilters"
+        aria-controls="explore-filters"
+        @click="toggleMobilePanel('filters')"
+      >
+        Filters
+      </button>
+      <button
+        v-if="hasMidpoint"
+        type="button"
+        class="mobile-ask-toggle"
+        :aria-expanded="showMobileAsk"
+        aria-controls="explore-ask"
+        :aria-label="
+          askedSpots
+            ? `Ask for something specific, ${askedSpots.length} found`
+            : 'Ask for something specific'
+        "
+        @click="toggleMobilePanel('ask')"
+      >
+        {{ askedSpots ? `Ask · ${askedSpots.length}` : 'Ask' }}
+      </button>
+    </div>
+    <AskSpots
+      v-if="hasMidpoint"
+      id="explore-ask"
+      class="ask-panel"
+      :class="{ 'is-mobile-visible': showMobileAsk }"
+      :hangout="hangout.hangout"
+      :members="hangout.members"
+      @found="onAskFound"
+    />
     <div
       v-if="showMobileFilters"
       class="mobile-filter-barrier"
@@ -64,13 +106,13 @@
     </p>
     <p v-else-if="loadingSpots" class="explore-status text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
     <p v-if="loadError || shortlistError" class="explore-status text-danger">{{ loadError || shortlistError }}</p>
-    <p v-else-if="googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="explore-status text-secondary" role="status">
+    <p v-else-if="!askedSpots && googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="explore-status text-secondary" role="status">
       No nearby spots were found. Try again later or choose another midpoint.
     </p>
-    <p v-else-if="hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
+    <p v-else-if="!askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
+    <div v-if="!askedSpots" id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
       <div class="filter-buttons">
         <button
           v-for="filter in filters"
@@ -88,14 +130,14 @@
         <span>Hide 0% matches</span>
       </label>
     </div>
-    <div class="sort-control" :class="{ 'is-mobile-visible': showMobileFilters }">
+    <div v-if="!askedSpots" class="sort-control" :class="{ 'is-mobile-visible': showMobileFilters }">
       <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
         <option v-for="option in sortOptions" :key="option.value" :value="option.value">
           {{ option.label }}
         </option>
       </select>
     </div>
-    <SpotCarousel ref="spotCarousel" :items="sortedSpots">
+    <SpotCarousel ref="spotCarousel" :items="shownSpots">
       <template #default="{ item: spot }">
         <SpotCard
           :id="`spot-card-${spot.id}`"
@@ -240,9 +282,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
+import AskSpots from '@/components/assistant/AskSpots.vue'
 import {
   googlePlacesEnabled,
   loadSpots,
@@ -296,9 +338,9 @@ watch(
   { immediate: true },
 )
 
-// Spots with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
-const scoredSpots = computed(() =>
-  spots.value.map((spot) => ({
+// A spot with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
+function scoreSpot(spot) {
+  return {
     ...spot,
     matchPct: matchScore(spot, hangout.members, {
       vibes: hangout.hangout?.vibe,
@@ -324,9 +366,26 @@ const scoredSpots = computed(() =>
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
     }),
+    vetoReason: hardVetoReason(spot, hangout.members, {
+      vibes: hangout.hangout?.vibe,
+      startAt: hangout.hangout?.starts_at,
+      raining: raining.value,
+      midpoint: hasMidpoint.value
+        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
+        : null,
+    }),
+    softVetoReasons: softVetoReasons(spot, hangout.members, {
+      vibes: hangout.hangout?.vibe,
+      startAt: hangout.hangout?.starts_at,
+      raining: raining.value,
+      midpoint: hasMidpoint.value
+        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
+        : null,
+    }),
     vibeMatch: matchesHangoutVibe(spot, hangout.hangout?.vibe ?? []),
-  })),
-)
+  }
+}
+const scoredSpots = computed(() => spots.value.map(scoreSpot))
 let spotRequestId = 0
 const refreshCount = ref(0)
 let forceNextLoad = false
@@ -389,6 +448,14 @@ const filters = [
 const activeFilter = ref('all')
 const hideZeroMatches = ref(false)
 const showMobileFilters = ref(false)
+const showMobileAsk = ref(false)
+
+function toggleMobilePanel(panel) {
+  const open = panel === 'ask' ? !showMobileAsk.value : !showMobileFilters.value
+  showMobileAsk.value = panel === 'ask' && open
+  showMobileFilters.value = panel === 'filters' && open
+}
+
 function closeMobileFiltersOutside(event) {
   if (!showMobileFilters.value) return
   if (event.target.closest('.mobile-filter-toggle, .filters, .sort-control')) return
@@ -471,6 +538,15 @@ const comparators = {
   crowd: prioritiseVibeMatch((a, b) => a.crowdLevel - b.crowdLevel),
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
+const askedSpots = ref(null)
+const shownSpots = computed(() =>
+  askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
+)
+
+function onAskFound(found) {
+  askedSpots.value = found
+  if (found && window.matchMedia('(max-width: 767px)').matches) showMobileAsk.value = false
+}
 
 const {
   addedIds,
@@ -486,8 +562,13 @@ const shortlisted = computed(() => {
     name: savedSpot.name,
     imageUrl: savedSpot.image_url,
   }))
-  const savedIds = savedSpots.map((spot) => spot.id)
-  const pendingSpots = spots.value.filter((spot) => addedIds.has(spot.id) && !savedIds.includes(spot.id))
+  const savedIds = new Set(savedSpots.map((spot) => spot.id))
+  const pendingSpots = [...spots.value, ...(askedSpots.value ?? [])].filter(
+    (spot, i, all) =>
+      addedIds.has(spot.id) &&
+      !savedIds.has(spot.id) &&
+      all.findIndex((s) => s.id === spot.id) === i,
+  )
   return [...savedSpots, ...pendingSpots]
 })
 
@@ -497,7 +578,7 @@ const mapCenter = computed(() =>
     : null,
 )
 const mapMarkers = computed(() =>
-  sortedSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
+  shownSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
 )
 
 // Clicking a map marker scrolls the cards bar sideways to that spot's card
@@ -508,7 +589,7 @@ const isShortlistCollapsed = ref(false)
 async function selectSpot(id) {
   selectedId.value = id
   await nextTick()
-  const index = sortedSpots.value.findIndex((spot) => spot.id === id)
+  const index = shownSpots.value.findIndex((spot) => spot.id === id)
   if (index >= 0) spotCarousel.value?.scrollToIndex(index)
 }
 
@@ -580,7 +661,7 @@ async function selectSpot(id) {
   display: none;
 }
 
-.mobile-filter-toggle {
+.mobile-toggles {
   display: none;
 }
 
@@ -853,11 +934,19 @@ async function selectSpot(id) {
     display: inline-flex;
   }
 
-  .mobile-filter-toggle {
+  .mobile-toggles {
     position: absolute;
     z-index: 6;
     top: 1rem;
     left: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .mobile-filter-toggle,
+  .mobile-ask-toggle {
     display: grid;
     place-items: center;
     min-width: 44px;
@@ -870,6 +959,23 @@ async function selectSpot(id) {
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
+  }
+
+  .nearby-page .ask-panel {
+    position: absolute;
+    z-index: 5;
+    top: 7.5rem;
+    left: 1rem;
+    right: 1rem;
+    display: none;
+    max-height: calc(100% - 8.5rem);
+    margin: 0;
+    overflow-y: auto;
+    box-shadow: var(--fp-shadow);
+  }
+
+  .nearby-page .ask-panel.is-mobile-visible {
+    display: grid;
   }
 
   .mobile-filter-barrier {
