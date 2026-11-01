@@ -646,39 +646,39 @@ async function save() {
 }
 
 .chip--teal {
-  --chip-color: #0f9d91;
-  --chip-background: #dcefed;
-  --chip-ink: #155e59;
+  --chip-color: var(--fp-chip-teal);
+  --chip-background: var(--fp-chip-teal-tint);
+  --chip-ink: var(--fp-chip-teal-ink);
 }
 
 .chip--orange {
-  --chip-color: #f47721;
-  --chip-background: #fff0e6;
-  --chip-ink: #93410f;
+  --chip-color: var(--fp-chip-orange);
+  --chip-background: var(--fp-chip-orange-tint);
+  --chip-ink: var(--fp-chip-orange-ink);
 }
 
 .chip--blue {
-  --chip-color: #4b7bec;
-  --chip-background: #e5edff;
-  --chip-ink: #284eaa;
+  --chip-color: var(--fp-chip-blue);
+  --chip-background: var(--fp-chip-blue-tint);
+  --chip-ink: var(--fp-chip-blue-ink);
 }
 
 .chip--pink {
-  --chip-color: #df4b91;
-  --chip-background: #fbe5f0;
-  --chip-ink: #96305e;
+  --chip-color: var(--fp-chip-pink);
+  --chip-background: var(--fp-chip-pink-tint);
+  --chip-ink: var(--fp-chip-pink-ink);
 }
 
 .chip--green {
-  --chip-color: #39a75a;
-  --chip-background: #e2f2e6;
-  --chip-ink: #24703b;
+  --chip-color: var(--fp-chip-green);
+  --chip-background: var(--fp-chip-green-tint);
+  --chip-ink: var(--fp-chip-green-ink);
 }
 
 .chip--purple {
-  --chip-color: #8b62d9;
-  --chip-background: #eee8fb;
-  --chip-ink: #5d3c9e;
+  --chip-color: var(--fp-chip-purple);
+  --chip-background: var(--fp-chip-purple-tint);
+  --chip-ink: var(--fp-chip-purple-ink);
 }
 
 /* Budget */

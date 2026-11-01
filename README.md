@@ -267,7 +267,7 @@ Conventions:
 
 - Services own every API and database call. Views and components never call `fetch` or Supabase directly.
 - Secret keys have no `VITE_` prefix and are used only in `api/`. The Supabase service-role key is never in the front end, and `.env.local` is never committed.
-- Colours, radius and shadows come from `var(--fp-...)` tokens in `src/styles/tokens.css`. Components use `<style scoped>`.
+- Colours, radius and shadows come from `var(--fp-...)` tokens in `src/styles/tokens.css`. Components use `<style scoped>`. The one exception is `src/utils/palette.js`, for colours that JavaScript has to hold itself (the avatar colours and the Leaflet map shapes).
 - Components are `PascalCase.vue`, JavaScript modules in `src/` are `camelCase.js`, and files in `api/` are `kebab-case.js` because each one is a URL.
 
 ## Database

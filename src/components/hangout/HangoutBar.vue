@@ -281,7 +281,7 @@ async function copyInvite() {
 }
 
 .chat-link:hover {
-  background: color-mix(in srgb, var(--fp-accent) 85%, #000);
+  background: color-mix(in srgb, var(--fp-accent) 85%, black);
   color: var(--fp-ink);
 }
 
@@ -295,8 +295,8 @@ async function copyInvite() {
   padding: 0 5px;
   border: 2px solid var(--fp-surface);
   border-radius: 999px;
-  background: #d93025;
-  color: #fff;
+  background: var(--fp-danger);
+  color: var(--fp-white);
   font-size: 0.7rem;
   line-height: 16px;
   text-align: center;

@@ -144,10 +144,10 @@ function summary(count) {
 }
 .day.today {
   background: var(--fp-primary);
-  color: #fff;
+  color: var(--fp-white);
 }
 .day.today .wd {
-  color: #fff;
+  color: var(--fp-white);
 }
 .day.open {
   border: 1px dashed var(--fp-primary);
@@ -171,7 +171,7 @@ function summary(count) {
 }
 /* a small square turned 45 degrees, so it looks like a diamond */
 .needs {
-  background: #a16207;
+  background: var(--fp-amber-dark);
   border-radius: 1px;
   transform: rotate(45deg);
 }
@@ -181,10 +181,10 @@ function summary(count) {
 }
 .today .confirmed,
 .today .needs {
-  background: #fff;
+  background: var(--fp-white);
 }
 .today .planning {
-  border-color: #fff;
+  border-color: var(--fp-white);
 }
 .legend {
   display: flex;

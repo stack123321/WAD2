@@ -19,6 +19,49 @@
   --fp-muted: #5f6b69;
   --fp-border: #e3e0d8;
 
+  /* White for text and icons on dark fills, and the alert red of the unread badge */
+  --fp-white: #fff;
+  --fp-danger: #d93025;
+  --fp-amber-dark: #a16207; /* "needs input" marker */
+
+  /* Accent colours shared by the landing and login pages and the vibe buttons on 05 */
+  --fp-pink: #d6528f;
+  --fp-blue: #4a7fe8;
+  --fp-purple: #7056e0;
+  --fp-amber: #f2b33d;
+  --fp-panel-dark: #275b4f; /* the login page's brand panel */
+  --fp-cloud: #d5dbe6;
+  --fp-vibe-chill: #0e9384;
+  --fp-vibe-food: #e8772e;
+  --fp-vibe-active: #3a9d5d;
+  --fp-vibe-shopping: #8b5cf6;
+
+  /* The little map drawn on the landing and login pages */
+  --fp-map-land: #e9ece4;
+  --fp-map-water: #cfdfe6;
+  --fp-map-park: #cfe0c3;
+  --fp-map-road: #f2d48f;
+
+  /* Preference chips on 03: the colour, a light tint and the text colour of each group */
+  --fp-chip-teal: #0f9d91;
+  --fp-chip-teal-tint: #dcefed;
+  --fp-chip-teal-ink: #155e59;
+  --fp-chip-orange: #f47721;
+  --fp-chip-orange-tint: #fff0e6;
+  --fp-chip-orange-ink: #93410f;
+  --fp-chip-blue: #4b7bec;
+  --fp-chip-blue-tint: #e5edff;
+  --fp-chip-blue-ink: #284eaa;
+  --fp-chip-pink: #df4b91;
+  --fp-chip-pink-tint: #fbe5f0;
+  --fp-chip-pink-ink: #96305e;
+  --fp-chip-green: #39a75a;
+  --fp-chip-green-tint: #e2f2e6;
+  --fp-chip-green-ink: #24703b;
+  --fp-chip-purple: #8b62d9;
+  --fp-chip-purple-tint: #eee8fb;
+  --fp-chip-purple-ink: #5d3c9e;
+
   /* Shape */
   --fp-radius: 16px;
   --fp-radius-sm: 10px;

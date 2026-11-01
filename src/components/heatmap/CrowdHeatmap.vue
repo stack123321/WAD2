@@ -384,7 +384,7 @@ watch(() => props.members, drawMembers, { deep: true })
   border-radius: 50%;
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
-  color: #fff;
+  color: var(--fp-white);
   font-weight: 700;
   font-size: 0.8rem;
 }

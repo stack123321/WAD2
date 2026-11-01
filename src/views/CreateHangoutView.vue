@@ -38,18 +38,18 @@ const auth = useAuthStore()
 
 // emoji + color give each vibe its own look when picked; nameWord is for the name idea
 const vibes = [
-  { value: 'chill', label: 'Chill', emoji: '☕', color: '#0e9384', nameWord: 'chill' },
-  { value: 'food', label: 'Food', emoji: '🍜', color: '#e8772e', nameWord: 'makan' },
-  { value: 'study', label: 'Study', emoji: '📚', color: '#4a7fe8', nameWord: 'study session' },
+  { value: 'chill', label: 'Chill', emoji: '☕', color: 'var(--fp-vibe-chill)', nameWord: 'chill' },
+  { value: 'food', label: 'Food', emoji: '🍜', color: 'var(--fp-vibe-food)', nameWord: 'makan' },
+  { value: 'study', label: 'Study', emoji: '📚', color: 'var(--fp-blue)', nameWord: 'study session' },
   {
     value: 'celebrate',
     label: 'Celebrate',
     emoji: '🎉',
-    color: '#d6528f',
+    color: 'var(--fp-pink)',
     nameWord: 'celebration',
   },
-  { value: 'active', label: 'Active', emoji: '🏃', color: '#3a9d5d', nameWord: 'workout' },
-  { value: 'shopping', label: 'Shopping', emoji: '🛍️', color: '#8b5cf6', nameWord: 'shopping' },
+  { value: 'active', label: 'Active', emoji: '🏃', color: 'var(--fp-vibe-active)', nameWord: 'workout' },
+  { value: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'var(--fp-vibe-shopping)', nameWord: 'shopping' },
 ]
 
 function toDateInput(d) {

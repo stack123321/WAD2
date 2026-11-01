@@ -3,6 +3,7 @@
 // The map itself comes from createOneMap() (OneMap tiles, no key needed).
 import L from 'leaflet'
 import { createOneMap } from '@/utils/mapSetup'
+import { PIN_FILL, PIN_RING } from '@/utils/palette'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
@@ -24,9 +25,9 @@ function drawMarkers() {
   for (const m of props.markers) {
     L.circleMarker([m.lat, m.lng], {
       radius: 9,
-      color: '#fff',
+      color: PIN_RING,
       weight: 2,
-      fillColor: '#0e7c6b',
+      fillColor: PIN_FILL,
       fillOpacity: 1,
     })
       .bindTooltip(m.label ?? '')

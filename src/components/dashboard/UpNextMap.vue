@@ -63,7 +63,7 @@ function draw() {
       title: m.display_name,
       icon: L.divIcon({
         className: '',
-        html: `<span class="member-dot" style="background:${background};color:#fff">${escapeHtml(m.display_name.charAt(0))}</span>`,
+        html: `<span class="member-dot" style="background:${background};color:var(--fp-white)">${escapeHtml(m.display_name.charAt(0))}</span>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       }),

@@ -1,7 +1,8 @@
 // Owner: Ryan
 // avatar colours: white text must be readable on every palette colour (plain functions, no page)
 import { test, expect } from '@playwright/test'
-import { AVATAR_COLORS, avatarColor } from '../../src/utils/avatarColor.js'
+import { avatarColor } from '../../src/utils/avatarColor.js'
+import { AVATAR_COLORS } from '../../src/utils/palette.js'
 
 const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
 function contrastWithWhite(hex) {
