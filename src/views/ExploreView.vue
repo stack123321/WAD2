@@ -1,7 +1,7 @@
 ﻿<template>
   <!-- reached from the step bar before a midpoint has been picked: no filters, map or shortlist to show yet -->
   <main v-if="noMidpoint" class="container py-4">
-    <h1 class="h3 mb-3">Spots near the midpoint</h1>
+    <h1 class="page-title mb-3">Spots near the midpoint</h1>
     <div class="alert alert-info" role="status">
       <p class="mb-2">
         No midpoint yet. Pick one first, then Fairpoint finds cafes, activities and restaurants near it.
@@ -19,7 +19,7 @@
     <div class="content">
     <div class="main-col">
     <section class="head">
-      <h1 class="cards-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
+      <h1 class="cards-title page-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <div class="head-actions">
         <GooglePlacesToggle />
         <button
@@ -550,9 +550,6 @@ async function selectSpot(id) {
 <style scoped>
 .nearby-page {
   min-height: 100vh;
-  font-family: system-ui, sans-serif;
-  background: #f5f5f5;
-  color: #222;
 }
 
 .content {
@@ -561,7 +558,6 @@ async function selectSpot(id) {
 
 .cards-title {
   margin: 0;
-  font-size: 1.5rem;
 }
 
 .filters {
@@ -709,7 +705,7 @@ async function selectSpot(id) {
   z-index: 1;
   width: 280px;
   padding: 10px;
-  background: #f5f5f5;
+  background: #f6f4ef;
   border-radius: 10px;
 }
 
@@ -770,7 +766,7 @@ async function selectSpot(id) {
 
   .content {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr); /* the map column never gets narrower than 240px */
     gap: 16px;
     height: calc(100vh - 120px);
     min-height: 480px;
@@ -856,6 +852,13 @@ async function selectSpot(id) {
   .shortlist-list {
     max-height: none;
     overflow-y: visible;
+  }
+}
+
+/* between 768px and 991px three cards per row are too narrow, so show two */
+@media (min-width: 768px) and (max-width: 991px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

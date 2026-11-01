@@ -82,7 +82,7 @@ const shown = computed(() => {
 
 <template>
   <main class="container py-4 chats-page">
-    <h1 class="h3 mt-2 mb-3">My Chats</h1>
+    <h1 class="page-title mt-2 mb-3">My Chats</h1>
 
     <div v-if="planning" class="planning-banner mb-3" role="region" aria-label="Back to planning">
       <span class="planning-text">Still planning “{{ planning.hangout.name }}”?</span>
