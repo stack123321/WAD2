@@ -14,8 +14,8 @@ import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone } from '@/services/votes'
-import SpotHero from '@/components/voting/SpotHero.vue'
-import TripTable from '@/components/voting/TripTable.vue'
+import SpotHero from '@/components/shared/SpotHero.vue'
+import TripTable from '@/components/shared/TripTable.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
 import {
@@ -29,7 +29,7 @@ import {
   pickLeader,
   runnerUp,
   tripRange,
-} from '@/components/voting/voteHelpers'
+} from '@/utils/voteHelpers'
 
 const route = useRoute()
 const store = useHangoutStore()

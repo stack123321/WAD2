@@ -4,7 +4,7 @@
 // everyone. It's disabled, with a hint, until there's at least one shortlisted spot, or when no
 // closing time is left before the hangout starts. Emits start(deadline ISO).
 import { ref, watch } from 'vue'
-import { defaultCloseOption, formatDateTime } from './voteHelpers'
+import { defaultCloseOption, formatDateTime } from '@/utils/voteHelpers'
 
 const props = defineProps({
   spotCount: { type: Number, required: true },

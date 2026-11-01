@@ -5,7 +5,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import { isInSingapore } from '@/services/onemap'
-import { createOneMap } from './oneMap'
+import { createOneMap } from '@/utils/mapSetup'
 import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({

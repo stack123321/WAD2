@@ -71,10 +71,10 @@ Secret keys stay on the server: the browser only calls our own `/api/...` functi
 | OneMap Search | Finds the address, MRT station or postal code a friend types on 06 | `api/search.js` | `ONEMAP_EMAIL`, `ONEMAP_PASSWORD` | Token is reused until it expires |
 | OneMap Reverse Geocode | Names the place when a friend drags their pin on 06 or uses their current location | `api/reverse.js` | same | |
 | OneMap Routing | Travel time, fare and steps for each person, by MRT, bus, car or walking (07, 08) | `api/route.js` | same | Answers are kept in memory so repeat requests do not call OneMap again |
-| OneMap map tiles | The base map on 06, 08 and `/crowds`, with OneMap's required credit shown on the map | `src/components/map/oneMap.js` | none | |
+| OneMap map tiles | The base map on 06, 08 and `/crowds`, with OneMap's required credit shown on the map | `src/utils/mapSetup.js` | none | |
 | LTA DataMall | Crowd level at each MRT station (live platform crowd, or the forecast), and car park rates for the parking cost | `api/crowd.js`, `api/_parking.js` | `LTA_ACCOUNT_KEY` | Cached per line for 10 minutes (live) or 30 minutes (forecast) |
 | NEA via data.gov.sg and Open-Meteo | Weather, rain chance and haze for the hangout's time and place (04, 08, 12) | `src/services/weather.js` | none | |
-| Google Places (New) | Nearby cafes, restaurants and activities, photos, and a short summary (09, 10) | `api/places.js`, `api/place-photo.js` | `GOOGLE_PLACES_API_KEY` | Off until the user turns it on (the toggle on 09); photos are cacheable for an hour |
+| Google Places (New) | Nearby cafes, restaurants and activities, photos, and a short summary (09, 10) | `api/places.js`, `api/place-photo.js` | `GOOGLE_PLACES_API_KEY` | Off until the user turns it on (the toggle on 09). The Google project allows 100 nearby searches a day and each category on 09 counts as one. Photos are cacheable for an hour |
 | Gemini | The Ask box on 09: turns "prata for dinner, one of us is halal" into a search. It never names places, Google Places finds them. <<FILL: keep this row only if the Ask box is back on 09>> | `api/assistant.js`, `api/_gemini.js` | `GEMINI_API_KEY` | |
 
 ### The algorithm
@@ -246,10 +246,12 @@ scripts/         devApi.js (runs api/ during npm run dev), buildCarparkRates.js 
 src/
   views/         One file per page
   components/    Page parts, grouped by feature (dashboard, map, spots, voting, ...)
+    shared/      Parts used by several pages (trip table, spot hero)
+    chat/        The chat box and the latest-message preview
   composables/   Small reusable Vue helpers
   services/      Every call to an API or to Supabase
   stores/        Pinia stores: auth, hangout, alerts
-  utils/         Plain functions with no Vue: midpoint.js, matchScore.js, dates, status
+  utils/         Plain functions with no Vue: midpoint.js, matchScore.js, voteHelpers.js, dates, status, and mapSetup.js (the Leaflet map)
   mocks/         Sample hangouts, addresses and place types
   router/        All routes, and the login redirect
   styles/        tokens.css, the only global CSS
@@ -281,7 +283,7 @@ To set up a fresh Supabase project:
 ## Known limitations
 
 - Each person's travel time to the midpoint is worked out on pages 07 and 08 but is not saved to the database, so "Leave by" on 11 and 12 can show "—" for hangouts stored in Supabase.
-- Google Places is off until the user turns it on (the toggle on 09), and there is no server-side cap on Google calls. Without it, 09 and 10 have no spots.
+- Google Places is off until the user turns it on (the toggle on 09). The Google project allows only 100 nearby searches a day (each category on 09 counts as one) and our server does not cache the results, so once the day's quota is used up 09 and 10 show an error until it resets. Without Google, 09 and 10 have no spots.
 - Preferences for avoiding crowds, maximum travel time and dietary needs are saved but do not change the match score, and "Sort: Crowd level" on 09 has no effect yet.
 - Page 10 still has some fixed placeholder text: "Travel time per friend" always shows, and "Photo / map preview" and "Description and details" show when no spot has loaded (for example when Google Places is off).
 - Some colours are still written as hex codes in component styles instead of tokens.

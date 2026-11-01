@@ -17,8 +17,8 @@ import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangout
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
-import HangoutChat from '@/components/start/HangoutChat.vue'
-import LatestMessage from '@/components/start/LatestMessage.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
+import LatestMessage from '@/components/chat/LatestMessage.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
 

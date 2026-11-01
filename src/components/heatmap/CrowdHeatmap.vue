@@ -3,7 +3,7 @@
 // crowd heat map for 08 and /crowds: station circles, time slider, and on 08 the midpoint pin and starting points
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet' // the map library
-import { createOneMap } from '@/components/map/oneMap' // sets up the shared onemap map of singapore
+import { createOneMap } from '@/utils/mapSetup' // sets up the shared onemap map of singapore
 import { getCrowdLevels } from '@/services/crowd'
 import { avatarColor } from '@/utils/avatarColor'
 import { escapeHtml } from '@/utils/escapeHtml' // names go inside the pins' html

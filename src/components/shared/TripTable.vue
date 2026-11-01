@@ -5,8 +5,8 @@
 // Longest/shortest are tagged only when the trips differ. With `past` (the Debrief) it drops the
 // three numbers, the cost and the leave-by time, and says how fair it was instead.
 import { computed } from 'vue'
-import MemberAvatar from './MemberAvatar.vue'
-import { formatCost, formatTime, leaveBy, modeLabel, tripRange } from './voteHelpers'
+import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import { formatCost, formatTime, leaveBy, modeLabel, tripRange } from '@/utils/voteHelpers'
 
 const props = defineProps({
   members: { type: Array, required: true },

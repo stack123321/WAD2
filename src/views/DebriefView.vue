@@ -11,8 +11,8 @@ import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout } from '@/services/votes'
-import SpotHero from '@/components/voting/SpotHero.vue'
-import TripTable from '@/components/voting/TripTable.vue'
+import SpotHero from '@/components/shared/SpotHero.vue'
+import TripTable from '@/components/shared/TripTable.vue'
 import VoteResults from '@/components/voting/VoteResults.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import HangoutPhotos from '@/components/debrief/HangoutPhotos.vue'
@@ -21,7 +21,7 @@ import {
   countVotes,
   decisionSummary,
   runnerUp,
-} from '@/components/voting/voteHelpers'
+} from '@/utils/voteHelpers'
 
 const route = useRoute()
 const store = useHangoutStore()

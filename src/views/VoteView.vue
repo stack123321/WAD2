@@ -38,7 +38,7 @@ import ClosePanel from '@/components/voting/ClosePanel.vue'
 import SpinWheel from '@/components/voting/SpinWheel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
 import DeadlinePanel from '@/components/voting/DeadlinePanel.vue'
-import HangoutChat from '@/components/start/HangoutChat.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
 import {
   countableVotes,
   countVotes,
@@ -49,7 +49,7 @@ import {
   pickLeader,
   tiedLeaders,
   timeLeft,
-} from '@/components/voting/voteHelpers'
+} from '@/utils/voteHelpers'
 
 const SPIN_MS = 3200
 

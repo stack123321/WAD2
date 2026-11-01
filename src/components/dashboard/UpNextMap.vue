@@ -4,7 +4,7 @@
 // and dashed lines between them (the map itself comes from createOneMap)
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
-import { createOneMap } from '@/components/map/oneMap'
+import { createOneMap } from '@/utils/mapSetup'
 import { avatarColor } from '@/utils/avatarColor'
 import { escapeHtml } from '@/utils/escapeHtml'
 

@@ -216,7 +216,7 @@ Mixes two colours, for example 10% teal into white to get a pale teal without pi
 ```css
 background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 ```
-Used in: [SpotHero.vue](../src/components/voting/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/start/HangoutChat.vue).
+Used in: [SpotHero.vue](../src/components/shared/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/chat/HangoutChat.vue).
 
 ### `:not(.class)`
 Selects elements that do not match. Here: every item in a stack except the first, which gets the gap above it.

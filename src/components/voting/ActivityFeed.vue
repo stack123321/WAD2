@@ -3,7 +3,7 @@
 // newest first, with an avatar and the time in SGT (date included if it wasn't today).
 // The database keeps only each person's latest vote, so changes are listed only while the page is open.
 import MemberAvatar from './MemberAvatar.vue'
-import { formatDateTime, formatTime, isSameSgtDay } from './voteHelpers'
+import { formatDateTime, formatTime, isSameSgtDay } from '@/utils/voteHelpers'
 
 defineProps({
   items: { type: Array, required: true },

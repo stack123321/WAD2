@@ -2,7 +2,7 @@
 // Owner: Surya. A simple map with clickable dots (09 Nearby spots, 10 Spot details).
 // The map itself comes from createOneMap() (OneMap tiles, no key needed).
 import L from 'leaflet'
-import { createOneMap } from './oneMap'
+import { createOneMap } from '@/utils/mapSetup'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
