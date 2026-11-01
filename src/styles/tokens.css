@@ -23,6 +23,18 @@
   --fp-white: #fff;
   --fp-danger: #d93025;
   --fp-amber-dark: #a16207; /* "needs input" marker */
+  --fp-black: #111;
+  --fp-error: #dc3545; /* error text on 09 */
+  --fp-skeleton: #e0e0e0; /* grey bar while spots load */
+
+  /* Good / careful / bad badges on the spot cards and 10: a tint, the text colour and a border */
+  --fp-ok-tint: #e3f6ec;
+  --fp-ok-ink: #0e7c3f;
+  --fp-warn-tint: #fdf2d7;
+  --fp-warn-border: #f3d48a;
+  --fp-bad-tint: #fbe4e4;
+  --fp-bad-ink: #b42318;
+  --fp-bad-border: #f3b4b4;
 
   /* Accent colours shared by the landing and login pages and the vibe buttons on 05 */
   --fp-pink: #d6528f;

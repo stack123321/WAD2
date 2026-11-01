@@ -207,18 +207,18 @@ const matchTone = computed(() => {
 }
 
 .spot-card__match--good {
-  background: #e3f6ec;
-  color: #0e7c3f;
+  background: var(--fp-ok-tint);
+  color: var(--fp-ok-ink);
 }
 
 .spot-card__match--ok {
-  background: #fdf2d7;
-  color: #a16207;
+  background: var(--fp-warn-tint);
+  color: var(--fp-amber-dark);
 }
 
 .spot-card__match--poor {
-  background: #fbe4e4;
-  color: #b42318;
+  background: var(--fp-bad-tint);
+  color: var(--fp-bad-ink);
 }
 
 .spot-card__meta {
@@ -256,14 +256,14 @@ const matchTone = computed(() => {
 }
 
 .spot-card__tag--veto {
-  color: #b42318;
-  background: #fbe4e4;
-  border-color: #f3b4b4;
+  color: var(--fp-bad-ink);
+  background: var(--fp-bad-tint);
+  border-color: var(--fp-bad-border);
 }
 
 .spot-card__tag--soft-veto {
-  color: #a16207;
-  background: #fdf2d7;
-  border-color: #f3d48a;
+  color: var(--fp-amber-dark);
+  background: var(--fp-warn-tint);
+  border-color: var(--fp-warn-border);
 }
 </style>
