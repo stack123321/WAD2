@@ -1,5 +1,5 @@
 <template>
-   <div
+  <div
     v-if="hangout.loading"
     class="d-flex align-items-center gap-2 text-secondary p-5"
     role="status"
@@ -19,7 +19,8 @@
     <h1 class="page-title mb-3">Spots near the midpoint</h1>
     <div class="alert alert-info" role="status">
       <p class="mb-2">
-        No midpoint yet. Pick one first, then Fairpoint finds cafes, activities and restaurants near it.
+        No midpoint yet. Pick one first, then Fairpoint finds cafes, activities and restaurants near
+        it.
       </p>
       <router-link
         :to="{ name: 'midpoint', params: { id: route.params.id } }"
@@ -32,247 +33,291 @@
 
   <div v-else class="nearby-page px-3 py-4">
     <div class="content">
-    <div class="main-col">
-    <section class="head">
-      <h1 class="cards-title page-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
-      <div class="head-actions">
-  
-        <button
-          v-if="shortlisted.length < 2"
-          type="button"
-          class="btn btn-sm btn-primary mobile-vote-action"
-          disabled
-        >
-          Go Vote!
-        </button>
-        <router-link
-          v-else
-          :to="{ name: 'vote', params: { id: route.params.id } }"
-          class="btn btn-sm btn-primary mobile-vote-action"
-        >
-          Go Vote!
-        </router-link>
-      </div>
-    </section>
-    <div class="mobile-toggles">
-      <button
-        v-if="!askedSpots"
-        type="button"
-        class="mobile-filter-toggle"
-        :aria-expanded="showMobileFilters"
-        aria-controls="explore-filters"
-        @click="toggleMobilePanel('filters')"
-      >
-        Filters
-      </button>
-      <button
-        v-if="hasMidpoint"
-        type="button"
-        class="mobile-ask-toggle"
-        :aria-expanded="showMobileAsk"
-        aria-controls="explore-ask"
-        :aria-label="
-          askedSpots
-            ? `Ask for something specific, ${askedSpots.length} found`
-            : 'Ask for something specific'
-        "
-        @click="toggleMobilePanel('ask')"
-      >
-        {{ askedSpots ? `Ask · ${askedSpots.length}` : 'Ask' }}
-      </button>
-    </div>
-    <AskSpots
-      v-if="hasMidpoint"
-      id="explore-ask"
-      class="ask-panel"
-      :class="{ 'is-mobile-visible': showMobileAsk }"
-      :hangout="hangout.hangout"
-      :members="hangout.members"
-      @found="onAskFound"
-    />
-    <div
-      v-if="showMobileFilters"
-      class="mobile-filter-barrier"
-      aria-hidden="true"
-      @click="showMobileFilters = false"
-    />
-
-    <p v-if="hangout.loading" class="explore-status text-secondary" role="status">Loading hangout…</p>
-    <p v-else-if="!hasMidpoint" class="explore-status text-secondary" role="status">
-      This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby spots.
-    </p>
-    <p v-else-if="!googlePlacesEnabled" class="explore-status text-secondary" role="status">
-      Google Places is off. Turn it on to find nearby spots. This preference is saved on this device.
-    </p>
-    <p v-else-if="loadingSpots" class="explore-status text-secondary" role="status">Finding spots near {{ hangout.hangout.midpoint_name }}…</p>
-    <p v-if="loadError || shortlistError" class="explore-status text-danger">{{ loadError || shortlistError }}</p>
-    <p v-else-if="!askedSpots && googlePlacesEnabled && hasMidpoint && !loadingSpots && !sortedSpots.length && spots.length === 0" class="explore-status text-secondary" role="status">
-      No nearby spots were found. Try again later or choose another midpoint.
-    </p>
-    <p v-else-if="!askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
-      No spots match this filter.
-    </p>
-    <div v-if="!askedSpots" id="explore-filters" class="filters" :class="{ 'is-mobile-visible': showMobileFilters }">
-      <div class="filter-buttons">
-        <button
-          v-for="filter in filters"
-          :key="filter.value"
-          type="button"
-          class="btn btn-sm"
-          :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
-          @click="activeFilter = filter.value"
-        >
-          {{ filter.label }}
-        </button>
-      </div>
-      <label class="match-filter">
-        <input v-model="hideZeroMatches" type="checkbox" />
-        <span>Hide 0% matches</span>
-      </label>
-    </div>
-    <div v-if="!askedSpots" class="sort-control" :class="{ 'is-mobile-visible': showMobileFilters }">
-      <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
-        <option v-for="option in sortOptions" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
-    </div>
-    <SpotCarousel ref="spotCarousel" :items="shownSpots">
-      <template #default="{ item: spot }">
-        <SpotCard
-          :id="`spot-card-${spot.id}`"
-          :class="{ 'is-selected': selectedId === spot.id }"
-          :name="spot.name"
-          :image-url="spot.imageUrl"
-          :category="spot.category"
-          :rating="spot.rating"
-          :station-distance-m="spot.stationDistanceM"
-          :nearest-station-name="spot.nearestStationName"
-          :price-level="spot.priceLevel"
-          :match-pct="spot.matchPct"
-          :veto-reason="spot.vetoReason"
-          :soft-veto-reasons="spot.softVetoReasons"
-          :tags="spot.tags"
-          :added="addedIds.has(spot.id)"
-          :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
-          @add="addSpot(spot)"
-        />
-      </template>
-    </SpotCarousel>
-    </div>
-    <div class="map-shortlist-row">
-      <div class="map-section">
-        <button
-          type="button"
-          class="mobile-collapse-toggle"
-          aria-controls="explore-map-content"
-          :aria-expanded="!isMapCollapsed"
-          @click="isMapCollapsed = !isMapCollapsed"
-        >
-          Map
-          <span aria-hidden="true">{{ isMapCollapsed ? '+' : '−' }}</span>
-        </button>
-        <div
-          id="explore-map-content"
-          class="map-content"
-          :class="{ 'is-collapsed': isMapCollapsed }"
-        >
-          <BaseMap
-            v-if="mapCenter && !isMapCollapsed"
-            class="map"
-            :center="mapCenter"
-            :markers="mapMarkers"
-            @marker-click="selectSpot"
-          />
-          <p v-else-if="!mapCenter && !isMapCollapsed" class="text-secondary p-3 mb-0">
-            A midpoint is needed to show nearby spots on the map.
-          </p>
-          <div v-if="mapCenter && !isMapCollapsed" class="radius-slider">
-            <label for="explore-radius" class="radius-label">
-              Within {{ radiusKm }} km of the midpoint
-            </label>
-            <input
-              id="explore-radius"
-              v-model.number="radiusKm"
-              type="range"
-              class="form-range"
-              min="1"
-              max="3"
-              step="0.5"
-            />
-          </div>
-        </div>
-      </div>
-      <div class="shortlist-panel">
-        <section class="shortlist">
-          <button
-            type="button"
-            class="shortlist-toggle"
-            aria-controls="explore-shortlist-content"
-            :aria-expanded="!isShortlistCollapsed"
-            @click="isShortlistCollapsed = !isShortlistCollapsed"
-          >
-            Vote Shortlist
-            <span aria-hidden="true">{{ isShortlistCollapsed ? '+' : '−' }}</span>
-          </button>
-          <div
-            id="explore-shortlist-content"
-            class="shortlist-content"
-            :class="{ 'is-collapsed': isShortlistCollapsed }"
-          >
-            <ul v-if="shortlisted.length" class="shortlist-list">
-              <li v-for="spot in shortlisted" :key="spot.id" class="shortlist-item">
-                <img v-if="spot.imageUrl" :src="spot.imageUrl" :alt="spot.name" class="shortlist-thumb" />
-                <span v-else class="shortlist-thumb"></span>
-                <span class="shortlist-name">{{ spot.name }}</span>
-                <MemberAvatar
-                  :name="ownerProfile(spot.id)?.display_name ?? 'Someone'"
-                  :color="ownerProfile(spot.id)?.avatar_color ?? null"
-                  :size="24"
-                />
-                <span class="visually-hidden">Added by {{ ownerProfile(spot.id)?.display_name ?? 'someone' }}</span>
-                <button
-                  v-if="isMine(spot.id)"
-                  type="button"
-                  class="shortlist-remove"
-                  :aria-label="`Remove ${spot.name} from shortlist`"
-                  @click="removeSpot(spot)"
-                >
-                  &times;
-                </button>
-              </li>
-            </ul>
-            <p v-else class="text-secondary mb-0">No spots added yet.</p>
+      <div class="main-col">
+        <section class="head">
+          <h1 class="cards-title page-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
+          <div class="head-actions">
+            <button
+              v-if="shortlisted.length < 2"
+              type="button"
+              class="btn btn-sm btn-primary mobile-vote-action"
+              disabled
+            >
+              Go Vote!
+            </button>
+            <router-link
+              v-else
+              :to="{ name: 'vote', params: { id: route.params.id } }"
+              class="btn btn-sm btn-primary mobile-vote-action"
+            >
+              Go Vote!
+            </router-link>
           </div>
         </section>
-        <div class="shortlist-actions">
+        <div class="mobile-toggles">
           <button
-            v-if="googlePlacesEnabled && hasMidpoint"
+            v-if="!askedSpots"
             type="button"
-            class="btn btn-sm btn-outline-secondary"
-            :disabled="loadingSpots"
-            @click="refreshSpots"
+            class="mobile-filter-toggle"
+            :aria-expanded="showMobileFilters"
+            aria-controls="explore-filters"
+            @click="toggleMobilePanel('filters')"
           >
-            Refresh spots
+            Filters
           </button>
           <button
-            v-if="shortlisted.length < 2"
+            v-if="hasMidpoint"
             type="button"
-            class="btn btn-sm btn-primary shortlist-vote-action"
-            disabled
+            class="mobile-ask-toggle"
+            :aria-expanded="showMobileAsk"
+            aria-controls="explore-ask"
+            :aria-label="
+              askedSpots
+                ? `Ask for something specific, ${askedSpots.length} found`
+                : 'Ask for something specific'
+            "
+            @click="toggleMobilePanel('ask')"
           >
-            Go Vote!
+            {{ askedSpots ? `Ask · ${askedSpots.length}` : 'Ask' }}
           </button>
-          <router-link
-            v-else
-            :to="{ name: 'vote', params: { id: route.params.id } }"
-            class="btn btn-sm btn-primary shortlist-vote-action"
+        </div>
+        <AskSpots
+          v-if="hasMidpoint"
+          id="explore-ask"
+          class="ask-panel"
+          :class="{ 'is-mobile-visible': showMobileAsk }"
+          :hangout="hangout.hangout"
+          :members="hangout.members"
+          @found="onAskFound"
+        />
+        <div
+          v-if="showMobileFilters"
+          class="mobile-filter-barrier"
+          aria-hidden="true"
+          @click="showMobileFilters = false"
+        />
+
+        <p v-if="hangout.loading" class="explore-status text-secondary" role="status">
+          Loading hangout…
+        </p>
+        <p v-else-if="!hasMidpoint" class="explore-status text-secondary" role="status">
+          This hangout doesn't have a midpoint yet. Choose a midpoint before looking for nearby
+          spots.
+        </p>
+        <p v-else-if="!googlePlacesEnabled" class="explore-status text-secondary" role="status">
+          Google Places is off. Turn it on to find nearby spots. This preference is saved on this
+          device.
+        </p>
+        <p v-else-if="loadingSpots" class="explore-status text-secondary" role="status">
+          Finding spots near {{ hangout.hangout.midpoint_name }}…
+        </p>
+        <p v-if="loadError || shortlistError" class="explore-status text-danger">
+          {{ loadError || shortlistError }}
+        </p>
+        <p
+          v-else-if="
+            !askedSpots &&
+            googlePlacesEnabled &&
+            hasMidpoint &&
+            !loadingSpots &&
+            !sortedSpots.length &&
+            spots.length === 0
+          "
+          class="explore-status text-secondary"
+          role="status"
+        >
+          No nearby spots were found. Try again later or choose another midpoint.
+        </p>
+        <p
+          v-else-if="
+            !askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length
+          "
+          class="explore-status text-secondary"
+          role="status"
+        >
+          No spots match this filter.
+        </p>
+        <div
+          v-if="!askedSpots"
+          id="explore-filters"
+          class="filters"
+          :class="{ 'is-mobile-visible': showMobileFilters }"
+        >
+          <div class="filter-buttons">
+            <button
+              v-for="filter in filters"
+              :key="filter.value"
+              type="button"
+              class="btn btn-sm"
+              :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
+              @click="activeFilter = filter.value"
+            >
+              {{ filter.label }}
+            </button>
+          </div>
+          <label class="match-filter">
+            <input v-model="hideZeroMatches" type="checkbox" />
+            <span>Hide 0% matches</span>
+          </label>
+        </div>
+        <div
+          v-if="!askedSpots"
+          class="sort-control"
+          :class="{ 'is-mobile-visible': showMobileFilters }"
+        >
+          <select
+            v-model="sortBy"
+            class="form-select form-select-sm sort-select"
+            aria-label="Sort spots"
           >
-            Go Vote!
-          </router-link>
+            <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+        <SpotCarousel ref="spotCarousel" :items="shownSpots">
+          <template #default="{ item: spot }">
+            <SpotCard
+              :id="`spot-card-${spot.id}`"
+              :class="{ 'is-selected': selectedId === spot.id }"
+              :name="spot.name"
+              :image-url="spot.imageUrl"
+              :category="spot.category"
+              :rating="spot.rating"
+              :station-distance-m="spot.stationDistanceM"
+              :nearest-station-name="spot.nearestStationName"
+              :price-level="spot.priceLevel"
+              :match-pct="spot.matchPct"
+              :veto-reason="spot.vetoReason"
+              :soft-veto-reasons="spot.softVetoReasons"
+              :tags="spot.tags"
+              :added="addedIds.has(spot.id)"
+              :to="{ name: 'spot-details', params: { id: route.params.id, spotId: spot.id } }"
+              @add="addSpot(spot)"
+            />
+          </template>
+        </SpotCarousel>
+      </div>
+      <div class="map-shortlist-row">
+        <div class="map-section">
+          <button
+            type="button"
+            class="mobile-collapse-toggle"
+            aria-controls="explore-map-content"
+            :aria-expanded="!isMapCollapsed"
+            @click="isMapCollapsed = !isMapCollapsed"
+          >
+            Map
+            <span aria-hidden="true">{{ isMapCollapsed ? '+' : '−' }}</span>
+          </button>
+          <div
+            id="explore-map-content"
+            class="map-content"
+            :class="{ 'is-collapsed': isMapCollapsed }"
+          >
+            <BaseMap
+              v-if="mapCenter && !isMapCollapsed"
+              class="map"
+              :center="mapCenter"
+              :markers="mapMarkers"
+              @marker-click="selectSpot"
+            />
+            <p v-else-if="!mapCenter && !isMapCollapsed" class="text-secondary p-3 mb-0">
+              A midpoint is needed to show nearby spots on the map.
+            </p>
+            <div v-if="mapCenter && !isMapCollapsed" class="radius-slider">
+              <label for="explore-radius" class="radius-label">
+                Within {{ radiusKm }} km of the midpoint
+              </label>
+              <input
+                id="explore-radius"
+                v-model.number="radiusKm"
+                type="range"
+                class="form-range"
+                min="1"
+                max="3"
+                step="0.5"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="shortlist-panel">
+          <section class="shortlist">
+            <button
+              type="button"
+              class="shortlist-toggle"
+              aria-controls="explore-shortlist-content"
+              :aria-expanded="!isShortlistCollapsed"
+              @click="isShortlistCollapsed = !isShortlistCollapsed"
+            >
+              Vote Shortlist
+              <span aria-hidden="true">{{ isShortlistCollapsed ? '+' : '−' }}</span>
+            </button>
+            <div
+              id="explore-shortlist-content"
+              class="shortlist-content"
+              :class="{ 'is-collapsed': isShortlistCollapsed }"
+            >
+              <ul v-if="shortlisted.length" class="shortlist-list">
+                <li v-for="spot in shortlisted" :key="spot.id" class="shortlist-item">
+                  <img
+                    v-if="spot.imageUrl"
+                    :src="spot.imageUrl"
+                    :alt="spot.name"
+                    class="shortlist-thumb"
+                  />
+                  <span v-else class="shortlist-thumb"></span>
+                  <span class="shortlist-name">{{ spot.name }}</span>
+                  <MemberAvatar
+                    :name="ownerProfile(spot.id)?.display_name ?? 'Someone'"
+                    :color="ownerProfile(spot.id)?.avatar_color ?? null"
+                    :size="24"
+                  />
+                  <span class="visually-hidden"
+                    >Added by {{ ownerProfile(spot.id)?.display_name ?? 'someone' }}</span
+                  >
+                  <button
+                    v-if="isMine(spot.id)"
+                    type="button"
+                    class="shortlist-remove"
+                    :aria-label="`Remove ${spot.name} from shortlist`"
+                    @click="removeSpot(spot)"
+                  >
+                    &times;
+                  </button>
+                </li>
+              </ul>
+              <p v-else class="text-secondary mb-0">No spots added yet.</p>
+            </div>
+          </section>
+          <div class="shortlist-actions">
+            <button
+              v-if="googlePlacesEnabled && hasMidpoint"
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              :disabled="loadingSpots"
+              @click="refreshSpots"
+            >
+              Refresh spots
+            </button>
+            <button
+              v-if="shortlisted.length < 2"
+              type="button"
+              class="btn btn-sm btn-primary shortlist-vote-action"
+              disabled
+            >
+              Go Vote!
+            </button>
+            <router-link
+              v-else
+              :to="{ name: 'vote', params: { id: route.params.id } }"
+              class="btn btn-sm btn-primary shortlist-vote-action"
+            >
+              Go Vote!
+            </router-link>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -285,18 +330,10 @@ import BaseMap from '@/components/map/BaseMap.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
-import {
-  googlePlacesEnabled,
-  loadSpots,
-} from '@/services/places'
+import { googlePlacesEnabled, loadSpots } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
-import {
-  hardVetoReason,
-  matchScore,
-  matchesHangoutVibe,
-  softVetoReasons,
-} from '@/utils/matchScore'
+import { hardVetoReason, matchScore, matchesHangoutVibe, softVetoReasons } from '@/utils/matchScore'
 import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
 
@@ -308,9 +345,7 @@ const spots = ref([])
 const loadError = ref('')
 const loadingSpots = ref(false)
 const hasMidpoint = computed(
-  () =>
-    hangout.hangout?.midpoint_lat != null &&
-    hangout.hangout?.midpoint_lng != null,
+  () => hangout.hangout?.midpoint_lat != null && hangout.hangout?.midpoint_lng != null,
 )
 
 // The hangout has loaded but nobody has picked a midpoint yet, so there is nothing to search around
@@ -578,9 +613,7 @@ const shortlisted = computed(() => {
 })
 
 const mapCenter = computed(() =>
-  hasMidpoint.value
-    ? [hangout.hangout.midpoint_lat, hangout.hangout.midpoint_lng]
-    : null,
+  hasMidpoint.value ? [hangout.hangout.midpoint_lat, hangout.hangout.midpoint_lng] : null,
 )
 const mapMarkers = computed(() =>
   shownSpots.value.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name })),
@@ -597,7 +630,6 @@ async function selectSpot(id) {
   const index = shownSpots.value.findIndex((spot) => spot.id === id)
   if (index >= 0) spotCarousel.value?.scrollToIndex(index)
 }
-
 </script>
 
 <style scoped>
@@ -802,7 +834,10 @@ async function selectSpot(id) {
 
   .content {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr); /* the map column never gets narrower than 240px */
+    grid-template-columns: minmax(0, 3fr) minmax(
+        240px,
+        1fr
+      ); /* the map column never gets narrower than 240px */
     gap: 16px;
     height: calc(100vh - 120px);
     min-height: 480px;
