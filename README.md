@@ -4,7 +4,7 @@ Meet-in-the-middle hangout planner (IS216 WAD2). Each friend adds where they're 
 
 Figma: https://www.figma.com/design/VPDZrAHBK7HWniY3HM2wUY
 
-Stack: Vue 3 + Vite, Bootstrap 5, Pinia, Supabase (Postgres, Auth, Realtime), Leaflet, Vercel, Playwright.
+Stack: Vue 3 + Vite, Bootstrap 5, Pinia, Supabase (Postgres, Auth, Realtime), Leaflet, Vercel, Vitest, Playwright.
 
 ## Getting started
 
@@ -20,18 +20,19 @@ npm run dev                    # http://localhost:5173
 
 The demo hangout and most services have sample data (see [Sample data](#sample-data)). Nearby spots require `GOOGLE_PLACES_API_KEY` in `.env.local`; the Explore page lists real Google Places around the hangout's saved midpoint and reports an error if the API key is unavailable. Google Places calls are off by default; enable them on Explore to load nearby spots. The preference is saved in the browser and also controls spot details and photos. Adding a spot to vote inserts it into that hangout's Supabase `shortlist`; Supabase records the signed-in user in `added_by`.
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the app with hot reload |
-| `npm run lint` | Check and auto-fix code style problems. Run before every PR |
-| `npm run format` | Tidy formatting with Prettier |
-| `npm run build` | Production build into `dist/` |
-| `npx playwright install chromium` | One-time: download the test browser |
-| `npm run test:e2e` | Run the end-to-end tests in `tests/e2e/` (they start their own keyless server on port 5198) |
-| `npx playwright test --ui` | Same, but watch the tests run |
-| `npm run test:live` | Run the live tests in `tests/live/` against the real Supabase project, with the test accounts in `.env.local` (`E2E_EMAIL`, `E2E_PASSWORD`, and `E2E_EMAIL_2`, `E2E_PASSWORD_2` for the two-person tests) |
+| Command                           | What it does                                                                                                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                     | Start the app with hot reload                                                                                                                                                                             |
+| `npm run lint`                    | Check and auto-fix code style problems. Run before every PR                                                                                                                                               |
+| `npm run format`                  | Tidy formatting with Prettier                                                                                                                                                                             |
+| `npm run build`                   | Production build into `dist/`                                                                                                                                                                             |
+| `npm run test:unit`               | Run the unit and component tests (Vitest) in the `__tests__` folders next to the code                                                                                                                     |
+| `npx playwright install chromium` | One-time: download the test browser                                                                                                                                                                       |
+| `npm run test:e2e`                | Run the end-to-end tests in `tests/e2e/` (they start their own keyless server on port 5198)                                                                                                               |
+| `npx playwright test --ui`        | Same, but watch the tests run                                                                                                                                                                             |
+| `npm run test:live`               | Run the live tests in `tests/live/` against the real Supabase project, with the test accounts in `.env.local` (`E2E_EMAIL`, `E2E_PASSWORD`, and `E2E_EMAIL_2`, `E2E_PASSWORD_2` for the two-person tests) |
 
-The end-to-end tests also run automatically on GitHub for every pull request into `main` (`.github/workflows/tests.yml`), with lint and the build. The PR shows a **Tests** check; if it fails, open it and download `playwright-report` to see what broke.
+Testing follows the course's three kinds (Week 10): unit tests for plain functions and component/integration tests for Vue components, both with Vitest, and one end-to-end test per user journey with Playwright. Both run automatically on GitHub for every pull request into `main` (`.github/workflows/tests.yml`), with lint and the build. The PR shows a **Tests** check; if it fails, open it and download `playwright-report` to see what broke.
 
 `npm run dev` also runs the serverless functions in `api/` (via `scripts/dev-api.js`), so `/api/route`, `/api/crowd` and `/api/places` work locally with no extra setup. On Vercel the same files run as real serverless functions.
 
@@ -47,52 +48,52 @@ Testers may create their own account using an accessible email address.
 
 One file = one owner. If you need to change someone else's file, ask them first or say so in your PR.
 
-| Folder / file | Owner |
-|---|---|
-| `src/router/index.js`, `src/stores/hangout.js`, `src/App.vue` | Ryan |
-| `src/styles/tokens.css`, `src/components/ui/` | Hugo |
-| `src/views/` | One file per page, owner named at the top of each file |
-| `src/components/map/`, `weather/` | Surya |
-| `src/components/transport/`, `src/utils/midpoint.js` | Nicole |
-| `src/components/heatmap/` | Ryan |
-| `src/components/spots/` | Hugo |
-| `src/components/voting/` | Eashvar |
-| `src/components/preferences/`, `src/utils/matchScore.js`, `src/stores/auth.js` | Matrix |
-| `src/services/` | Owner named at the top of each file |
-| `api/route.js` Nicole · `api/crowd.js` Ryan · `api/places.js` Hugo | |
-| `supabase/schema.sql` | Matrix |
-| `tests/e2e/` | Eashvar sets up; everyone adds a spec for their journey |
+| Folder / file                                                                  | Owner                                                                                                              |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `src/router/index.js`, `src/stores/hangout.js`, `src/App.vue`                  | Ryan                                                                                                               |
+| `src/styles/tokens.css`, `src/components/ui/`                                  | Hugo                                                                                                               |
+| `src/views/`                                                                   | One file per page, owner named at the top of each file                                                             |
+| `src/components/map/`, `weather/`                                              | Surya                                                                                                              |
+| `src/components/transport/`, `src/utils/midpoint.js`                           | Nicole                                                                                                             |
+| `src/components/heatmap/`                                                      | Ryan                                                                                                               |
+| `src/components/spots/`                                                        | Hugo                                                                                                               |
+| `src/components/voting/`                                                       | Eashvar                                                                                                            |
+| `src/components/preferences/`, `src/utils/matchScore.js`, `src/stores/auth.js` | Matrix                                                                                                             |
+| `src/services/`                                                                | Owner named at the top of each file                                                                                |
+| `api/route.js` Nicole · `api/crowd.js` Ryan · `api/places.js` Hugo             |                                                                                                                    |
+| `supabase/schema.sql`                                                          | Matrix                                                                                                             |
+| `tests/e2e/`, `vitest.config.js`                                               | Eashvar sets up; everyone adds a spec for their journey, and unit tests in a `__tests__` folder next to their code |
 
 ## Pages
 
-| # | Page | URL | View | Owner |
-|---|---|---|---|---|
-| 01 | Landing | `/` | `LandingView.vue` | Matrix |
-| 02 | Log in / Sign up | `/login` | `AuthView.vue` | Matrix |
-| 03 | Preferences | `/preferences` | `PreferencesView.vue` | Matrix |
-| 04 | My hangouts | `/dashboard` | `DashboardView.vue` | Ryan |
-| 05 | Create hangout & invite | `/hangouts/new` | `CreateHangoutView.vue` | Matrix |
-| 06 | Starting points | `/hangouts/:id/start` | `StartingPointsView.vue` | Surya |
-| 07 | Mode of transport | `/hangouts/:id/transport` | `TransportView.vue` | Nicole |
-| 08 | Midpoint + heat map | `/hangouts/:id/midpoint` | `MidpointView.vue` | Ryan + Surya |
-| 09 | Nearby spots | `/hangouts/:id/explore` | `ExploreView.vue` | Hugo |
-| 10 | Spot details | `/hangouts/:id/spots/:spotId` | `SpotDetailsView.vue` | Hugo |
-| 11 | Group voting | `/hangouts/:id/vote` | `VoteView.vue` | Eashvar |
-| 12 | Final plan | `/hangouts/:id/plan` | `FinalPlanView.vue` | Eashvar (routes: Nicole) |
+| #   | Page                    | URL                           | View                     | Owner                    |
+| --- | ----------------------- | ----------------------------- | ------------------------ | ------------------------ |
+| 01  | Landing                 | `/`                           | `LandingView.vue`        | Matrix                   |
+| 02  | Log in / Sign up        | `/login`                      | `AuthView.vue`           | Matrix                   |
+| 03  | Preferences             | `/preferences`                | `PreferencesView.vue`    | Matrix                   |
+| 04  | My hangouts             | `/dashboard`                  | `DashboardView.vue`      | Ryan                     |
+| 05  | Create hangout & invite | `/hangouts/new`               | `CreateHangoutView.vue`  | Matrix                   |
+| 06  | Starting points         | `/hangouts/:id/start`         | `StartingPointsView.vue` | Surya                    |
+| 07  | Mode of transport       | `/hangouts/:id/transport`     | `TransportView.vue`      | Nicole                   |
+| 08  | Midpoint + heat map     | `/hangouts/:id/midpoint`      | `MidpointView.vue`       | Ryan + Surya             |
+| 09  | Nearby spots            | `/hangouts/:id/explore`       | `ExploreView.vue`        | Hugo                     |
+| 10  | Spot details            | `/hangouts/:id/spots/:spotId` | `SpotDetailsView.vue`    | Hugo                     |
+| 11  | Group voting            | `/hangouts/:id/vote`          | `VoteView.vue`           | Eashvar                  |
+| 12  | Final plan              | `/hangouts/:id/plan`          | `FinalPlanView.vue`      | Eashvar (routes: Nicole) |
 
 ## Sample data
 
 Everyone can build their page before the database and APIs are ready. There are two kinds of data, and both have samples:
 
-| Kind | Real source | Sample until it's ready | Swap happens in |
-|---|---|---|---|
-| Saved: hangout, members, shortlist, votes | Supabase | `src/mocks/hangout.json` | `src/services/hangouts.js` (automatic once `.env.local` has Supabase keys) |
-| Address search | OneMap Search | `src/mocks/addresses.json` (until `.env.local` has `ONEMAP_EMAIL` / `ONEMAP_PASSWORD`) | `api/search.js` |
-| Weather + haze | data.gov.sg (NEA) + Open-Meteo | None needed: both are free with no key, so it's always real data | `src/services/weather.js` |
-| Travel times | OneMap Routing | `api/_mocks/route.js` (estimates from distance) | `api/route.js` |
-| Crowd levels | LTA DataMall | `api/_mocks/crowd.js` (busier at peak hours) | `api/crowd.js` |
-| Nearby places | Google Places (`GOOGLE_PLACES_API_KEY`) | None; the API reports an error if the key is missing | `api/places.js` |
-| Ask box on 09 ("prata for dinner") | Gemini (`GEMINI_API_KEY`) reads the request, then Google Places finds the spots | `api/_mocks/assistant.js` ("Sample spot 1–3", sample hangouts only) | `api/assistant.js` |
+| Kind                                      | Real source                                                                     | Sample until it's ready                                                                | Swap happens in                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Saved: hangout, members, shortlist, votes | Supabase                                                                        | `src/mocks/hangout.json`                                                               | `src/services/hangouts.js` (automatic once `.env.local` has Supabase keys) |
+| Address search                            | OneMap Search                                                                   | `src/mocks/addresses.json` (until `.env.local` has `ONEMAP_EMAIL` / `ONEMAP_PASSWORD`) | `api/search.js`                                                            |
+| Weather + haze                            | data.gov.sg (NEA) + Open-Meteo                                                  | None needed: both are free with no key, so it's always real data                       | `src/services/weather.js`                                                  |
+| Travel times                              | OneMap Routing                                                                  | `api/_mocks/route.js` (estimates from distance)                                        | `api/route.js`                                                             |
+| Crowd levels                              | LTA DataMall                                                                    | `api/_mocks/crowd.js` (busier at peak hours)                                           | `api/crowd.js`                                                             |
+| Nearby places                             | Google Places (`GOOGLE_PLACES_API_KEY`)                                         | None; the API reports an error if the key is missing                                   | `api/places.js`                                                            |
+| Ask box on 09 ("prata for dinner")        | Gemini (`GEMINI_API_KEY`) reads the request, then Google Places finds the spots | `api/_mocks/assistant.js` ("Sample spot 1–3", sample hangouts only)                    | `api/assistant.js`                                                         |
 
 Pages call the service functions and never know which one they got. The nearby-spots API returns real results around the midpoint stored on the hangout. Other keyed APIs keep answering with samples when their key is missing from `.env.local`, so teammates without those keys can still work.
 
