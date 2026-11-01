@@ -62,6 +62,20 @@ export function fairness(travelMins) {
   return { longest, gap: longest - shortest, average: Math.round(average) }
 }
 
+/**
+ * Everyone's time and cost to one station, saved with the midpoint so 12 can show "Leave by".
+ * @param {Array<{ user_id: string }>} members in the same order as the station's travelMins
+ * @param {{ travelMins: number[], travelCosts: number[] }} station
+ * @returns {Array<{ user_id: string, mins: number, cost: number }>}
+ */
+export function timesFor(members, station) {
+  const times = []
+  members.forEach((m, i) => {
+    times.push({ user_id: m.user_id, mins: station.travelMins[i], cost: station.travelCosts[i] })
+  })
+  return times
+}
+
 /** Areas we test as possible midpoints. Coordinates are the MRT stations (approximate). */
 export const CANDIDATE_AREAS = [
   { name: 'Bishan', lat: 1.3508, lng: 103.8485 },

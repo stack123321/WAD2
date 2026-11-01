@@ -6,6 +6,7 @@
   import { useHangoutStore } from '@/stores/hangout'
   import { useAuthStore } from '@/stores/auth'
   import { rankStations } from '@/services/routing'
+  import { timesFor } from '@/utils/midpoint'
   import {
     getMyHangouts,
     saveMidpoint,
@@ -72,19 +73,15 @@
     if (!best) return
     saving.value = true
     saveError.value = ''
+
+    const members = store.members.filter((m) => m.start_lat != null)
     const midpoint = {
       name: best.name,
       lat: best.lat,
       lng: best.lng,
       avgMins: best.average,
       gapMins: best.gap,
-      times: store.members
-        .filter((m) => m.start_lat != null)
-        .map((m) => ({
-          user_id: m.user_id,
-          mins: m.travel_mins,
-          cost: m.travel_cost,
-        })),
+      times: timesFor(members, best),
     }
     try {
       await saveMidpoint(route.params.id, midpoint)

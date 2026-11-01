@@ -6,7 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
-import { nearestStations } from '@/utils/midpoint'
+import { nearestStations, timesFor } from '@/utils/midpoint'
 import { rankStations, scoreStation } from '@/services/routing'
 import { saveMidpoint } from '@/services/hangouts'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
@@ -218,6 +218,7 @@ async function chooseStation(station) {
       lng: station.lng,
       avgMins: station.average,
       gapMins: station.gap,
+      times: timesFor(rankedFor.value, station),
     })
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
@@ -252,12 +253,14 @@ async function onMidpointMoved(position) {
   // everyone's travel time to the new station, if we know how they're travelling (from 07)
   let avgMins = null
   let gapMins = null
+  let times = []
   const travellers = store.members.filter((m) => m.mode && m.start_lat != null)
   if (travellers.length > 0) {
     try {
       const scored = await scoreStation(travellers, station)
       avgMins = scored.average
       gapMins = scored.gap
+      times = timesFor(travellers, scored)
       travellers.forEach((m, i) => {
         m.travel_mins = scored.travelMins[i]
         m.travel_cost = scored.travelCosts[i]
@@ -281,11 +284,7 @@ async function onMidpointMoved(position) {
       lng: station.lng,
       avgMins: avgMins,
       gapMins: gapMins,
-      times: travellers.map((m) => ({
-        user_id: m.user_id,
-        mins: m.travel_mins,
-        cost: m.travel_cost,
-      })),
+      times: times,
     })
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
