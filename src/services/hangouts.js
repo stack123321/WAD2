@@ -346,6 +346,7 @@ export async function saveMidpoint(hangoutId, midpoint) {
     p_lng: midpoint.lng,
     p_avg: midpoint.avgMins,
     p_gap: midpoint.gapMins,
+    p_times: midpoint.times ?? [],
   })
   if (error) {
     throw error
