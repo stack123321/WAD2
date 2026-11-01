@@ -96,7 +96,7 @@ function closesSoon(openingHours, at, withinMins) {
  * @param {object} place a spot shaped like src/services/places.js's toSpot(): category, types,
  *   priceLevel, lat, lng, openingHours ({ periods } | null), wheelchairAccessible (boolean | null)
  * @param {Array<object>} profiles members' preference rows from the profiles table (activities,
- *   budget, indoor_if_rain, step_free, vote_history)
+ *   budget, max_travel_mins, indoor_if_rain, avoid_crowds, step_free, vote_history)
  * @param {object} [context] live/group conditions
  * @param {string[]} [context.vibes] the hangout's vibe tags, e.g. hangout.vibe
  * @param {string|Date} [context.startAt] hangout start, e.g. hangout.starts_at
@@ -172,7 +172,26 @@ function evaluate(place, profiles = [], context = {}) {
   }).length
   const scoreD = (withinBudget / y) * 33
 
-  const base = scoreA + scoreB + scoreC + scoreD
+  // E. Dietary fit is only scored when the place advertises a matching signal. Unknown
+  // dietary information stays neutral rather than penalising every place.
+  const placeText = [place.name, place.category, ...(place.types ?? []), ...(place.tags ?? [])]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  const dietaryMatches = profiles.filter((p) => {
+    const needs = p.dietary ?? []
+    if (needs.length === 0) return true
+    return needs.some((need) => {
+      const value = String(need).toLowerCase()
+      return placeText.includes(value) || (value === 'vegetarian' && placeText.includes('vegetarian'))
+    })
+  }).length
+  const dietaryKnown =
+    profiles.some((p) => (p.dietary ?? []).length > 0) &&
+    /(halal|vegetarian|vegan|kosher|gluten[- ]free)/.test(placeText)
+  const scoreE = dietaryKnown ? (dietaryMatches / y) * 5 : 0
+
+  const base = scoreA + scoreB + scoreC + scoreD + scoreE
 
   // ── 3. Soft veto multipliers ──
   let walkingMultiplier = 1
@@ -188,9 +207,20 @@ function evaluate(place, profiles = [], context = {}) {
       (endAt && closesSoon(place.openingHours, endAt, 60)),
   )
   const closingMultiplier = closingSoon ? 0.5 : 1
+  const travelLimitMembers = profiles.filter(
+    (p) => p.max_travel_mins != null && p.travel_mins != null,
+  )
+  const withinTravelLimit = travelLimitMembers.filter(
+    (p) => p.travel_mins <= p.max_travel_mins,
+  ).length
+  const travelMultiplier =
+    travelLimitMembers.length > 0 ? 0.7 + 0.3 * (withinTravelLimit / travelLimitMembers.length) : 1
+  const crowdLevel = place.crowdLevel ?? context.crowdLevel
+  const crowdMultiplier =
+    profiles.some((p) => p.avoid_crowds) && (crowdLevel === 'h' || crowdLevel >= 2) ? 0.7 : 1
 
   // ── 4. Final score ──
-  const final = base * walkingMultiplier * closingMultiplier
+  const final = base * walkingMultiplier * closingMultiplier * travelMultiplier * crowdMultiplier
   const score = Math.min(100, Math.max(0, Math.round(final)))
 
   return {
@@ -201,9 +231,13 @@ function evaluate(place, profiles = [], context = {}) {
     preference: { matches: preferenceMatches, of: y },
     voteHistory: { avgRank, rankStep },
     budget: { matches: withinBudget, of: y },
+    dietary: { matches: dietaryMatches, of: y, known: dietaryKnown },
+    travel: { within: withinTravelLimit, of: travelLimitMembers.length },
+    crowd: { level: crowdLevel, multiplier: crowdMultiplier },
     walkMins,
     walkingMultiplier,
     closingSoon,
+    travelMultiplier,
   }
 }
 
@@ -291,6 +325,21 @@ export function matchReasons(place, profiles = [], context = {}) {
     reasons.push({ tone: 'bad', text: 'Over budget for everyone in the group' })
   } else {
     reasons.push({ tone: 'warn', text: `Within budget for ${budgetMatches} of ${y} members` })
+  }
+
+  if (result.dietary.known) {
+    const { matches: dietaryMatches } = result.dietary
+    if (dietaryMatches === y) {
+      reasons.push({ tone: 'good', text: 'Dietary needs are catered for' })
+    } else {
+      reasons.push({ tone: 'warn', text: `Dietary needs are catered for ${dietaryMatches} of ${y} members` })
+    }
+  }
+  if (result.travel.of > 0 && result.travel.within < result.travel.of) {
+    reasons.push({ tone: 'warn', text: `${result.travel.within} of ${result.travel.of} members are within their travel limit` })
+  }
+  if (result.crowd.multiplier < 1) {
+    reasons.push({ tone: 'warn', text: 'Usually busy, which may not suit members avoiding crowds' })
   }
 
   // Soft penalties, only mentioned when they actually bite

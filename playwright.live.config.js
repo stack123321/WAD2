@@ -8,7 +8,9 @@ process.loadEnvFile('.env.local')
 
 export default defineConfig({
   testDir: './tests/live',
-  timeout: 30 * 1000,
+  // 60 seconds: these tests wait on the real database and OneMap, and the longest ones (making a
+  // hangout, searching, saving, reloading, deleting it) can take over 30
+  timeout: 60 * 1000,
   // one test at a time: they share real test accounts and the same database
   workers: 1,
   fullyParallel: false,

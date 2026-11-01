@@ -11,6 +11,7 @@ import { googlePlacesEnabled, loadSpot, loadSpotSummary } from '@/services/place
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
 import { matchScore, matchReasons } from '@/utils/matchScore'
+import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
 import { getRoute } from '@/services/routing'
 
@@ -175,6 +176,7 @@ const distance = computed(() => {
 
 // Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.
 const raining = ref(false)
+const crowdLevel = ref(null)
 watch(
   () => [
     hangout.hangout?.midpoint_lat,
@@ -196,10 +198,25 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => [hangout.hangout?.midpoint_name, hangout.hangout?.starts_at],
+  async ([stationName, startsAt]) => {
+    crowdLevel.value = null
+    if (!stationName || !startsAt) return
+    try {
+      crowdLevel.value = await getStationCrowd(stationName, new Date(startsAt))
+    } catch (error) {
+      console.error('Could not load crowd level', error)
+    }
+  },
+  { immediate: true },
+)
+
 const matchContext = computed(() => ({
   vibes: hangout.hangout?.vibe,
   startAt: hangout.hangout?.starts_at,
   raining: raining.value,
+  crowdLevel: crowdLevel.value,
   midpoint:
     hangout.hangout?.midpoint_lat != null && hangout.hangout?.midpoint_lng != null
       ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }

@@ -61,6 +61,14 @@ export async function closeVote(hangoutId, shortlistId) {
   await updateHangout(hangoutId, { status: 'confirmed', final_shortlist_id: shortlistId })
 }
 
+export async function reopenVote(hangoutId) {
+  await updateHangout(hangoutId, {
+    status: 'voting',
+    vote_deadline: null,
+    final_shortlist_id: null,
+  })
+}
+
 export async function spinTiebreak(hangoutId, tiedIds) {
   if (isMockHangout(hangoutId)) return tiedIds[Math.floor(Math.random() * tiedIds.length)]
   const { data, error } = await supabase.rpc('spin_tiebreak', { p_hangout: hangoutId })
