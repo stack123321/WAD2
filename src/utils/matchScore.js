@@ -123,7 +123,7 @@ function evaluate(place, profiles = [], context = {}) {
   if (profiles.some((p) => p.step_free) && place.wheelchairAccessible === false) {
     return {
       score: 0,
-      vetoReason: 'Not wheelchair accessible, and someone in the group needs step-free access',
+      vetoReason: 'Not step-free accessible for a group member',
     }
   }
   const isOutdoor = types.some((t) => outdoorTypes.includes(t))
@@ -131,7 +131,7 @@ function evaluate(place, profiles = [], context = {}) {
     return {
       score: 0,
       vetoReason:
-        "It's an outdoor spot, rain is forecast, and someone in the group prefers to stay indoors when it rains",
+        "Outdoors, but rain is forecast",
     }
   }
 
@@ -212,6 +212,25 @@ export function matchScore(place, profiles = [], context = {}) {
 /** The hard-veto explanation, or null when a zero score came from normal scoring. */
 export function hardVetoReason(place, profiles = [], context = {}) {
   return evaluate(place, profiles, context).vetoReason
+}
+
+/** Explanations for soft penalties that reduce a place's score without forcing it to 0%. */
+export function softVetoReasons(place, profiles = [], context = {}) {
+  const result = evaluate(place, profiles, context)
+  if (result.vetoReason) return []
+
+  const reasons = []
+  if (result.walkMins !== null && result.walkingMultiplier < 1) {
+    reasons.push(
+      result.walkingMultiplier >= 0.7
+        ? `Distant from the group's midpoint (~${result.walkMins} min)`
+        : `Far from the group's midpoint (~${result.walkMins} min walk)`,
+    )
+  }
+  if (result.closingSoon) {
+    reasons.push('Closes within an hour of your hangout starting')
+  }
+  return reasons
 }
 
 /**
