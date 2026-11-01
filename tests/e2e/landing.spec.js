@@ -75,8 +75,8 @@ test('on a phone the hero map waits until it is scrolled into view', async ({ pa
   await expect(page.locator('.midpoint-label')).toHaveCSS('opacity', '1', { timeout: 5000 })
 })
 
-test('the midpoint keeps glowing after the map has played', async ({ page }) => {
+test('the midpoint keeps pulsing after the map has played', async ({ page }) => {
   const pulse = page.locator('.map__pulse')
-  await expect(pulse).toHaveCSS('animation-name', /glow/) // Vue adds an id to scoped names
+  await expect(pulse).toHaveCSS('animation-name', /pulse-ring/) // Vue adds an id to scoped names
   await expect(pulse).toHaveCSS('animation-iteration-count', 'infinite')
 })

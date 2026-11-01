@@ -8,7 +8,7 @@
 // (Eashvar) The hero map is "You" and three friends, each with their trip time, instead of named
 // people meeting in Bishan, so it fits anyone. It plays once it's on screen (on phones and tablets
 // it's below the text): pins drop in, routes fade in, the midpoint appears, then the times and
-// the label. The midpoint then keeps glowing. No motion if reduced motion is on.
+// the label. A ring then keeps pulsing out of the midpoint. No motion if reduced motion is on.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
@@ -26,6 +26,9 @@ const friends = [
   { label: 'You', x: 105, y: 325, color: 'var(--landing-purple)', mins: 18 },
 ].map((f) => ({ ...f, chipX: f.x > 450 ? f.x - 24 - CHIP_WIDTH : f.x + 24 }))
 const midpoint = { x: 318, y: 215 }
+// the midpoint's circles grow from the midpoint itself (otherwise SVG shapes grow from the
+// SVG's top-left corner and slide across the map)
+const midpointOrigin = { transformOrigin: `${midpoint.x}px ${midpoint.y}px` }
 
 // (Eashvar) Start the map's animation only once most of it is on screen. On every scroll (or window
 // resize) we check where the map is; once 60% of it is above the bottom of the window, it plays
@@ -317,10 +320,28 @@ function continueRoute(hangout) {
             :style="{ animationDelay: `${1 + i * 0.12}s` }"
           />
 
-          <!-- Midpoint, with a glow on top that keeps fading in and out -->
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__pulse" />
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="10" class="map__mid" />
+          <!-- Midpoint, with a ring that keeps pulsing out from it -->
+          <circle
+            :cx="midpoint.x"
+            :cy="midpoint.y"
+            r="38"
+            class="map__halo"
+            :style="midpointOrigin"
+          />
+          <circle
+            :cx="midpoint.x"
+            :cy="midpoint.y"
+            r="38"
+            class="map__pulse"
+            :style="midpointOrigin"
+          />
+          <circle
+            :cx="midpoint.x"
+            :cy="midpoint.y"
+            r="10"
+            class="map__mid"
+            :style="midpointOrigin"
+          />
 
           <!-- You and your friends, dropping in one after another -->
           <g
@@ -681,13 +702,21 @@ function continueRoute(hangout) {
   }
 }
 
-@keyframes glow {
-  0%,
-  100% {
+@keyframes pop-in {
+  from {
     opacity: 0;
+    transform: scale(0.3);
   }
-  50% {
-    opacity: 0.35;
+}
+
+@keyframes pulse-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
   }
 }
 
@@ -726,9 +755,11 @@ function continueRoute(hangout) {
   }
 }
 
-/* the glow over the midpoint: invisible unless it's animating */
+/* the ring around the midpoint: invisible unless it's animating */
 .map__pulse {
-  fill: var(--fp-primary);
+  fill: none;
+  stroke: var(--fp-primary);
+  stroke-width: 3;
   opacity: 0;
 }
 
@@ -754,7 +785,7 @@ function continueRoute(hangout) {
 
   .is-playing .map__halo,
   .is-playing .map__mid {
-    animation: fade-in 0.45s ease-out 1.8s both;
+    animation: pop-in 0.45s ease-out 1.8s both;
   }
 
   .is-playing .map__chip {
@@ -765,9 +796,9 @@ function continueRoute(hangout) {
     animation: fade-in 0.4s ease-out 2.6s both;
   }
 
-  /* fades in and out every 2.4s, forever */
+  /* a ring grows out of the midpoint and fades, every 2.4s, forever */
   .is-playing .map__pulse {
-    animation: glow 2.4s ease-in-out 2.2s infinite;
+    animation: pulse-ring 2.4s ease-out 2.2s infinite;
   }
 }
 
