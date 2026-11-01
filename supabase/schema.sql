@@ -193,8 +193,10 @@ $$;
 
 -- Save the group's midpoint (07 "Find our midpoint", 08 dragging the pin). Any member may, not just
 -- the host, but only the midpoint columns change: renaming or deleting the hangout stays host-only.
+-- (Nicole) p_times also saves everyone's travel time and cost, for "Leave by" on 12.
 create function public.set_midpoint(
-  p_hangout uuid, p_name text, p_lat float8, p_lng float8, p_avg integer, p_gap integer
+  p_hangout uuid, p_name text, p_lat float8, p_lng float8, p_avg integer, p_gap integer,
+  p_times jsonb default '[]' -- [{ "user_id": ..., "mins": 32, "cost": 1.79 }], empty = no times
 ) returns void
 language plpgsql security definer set search_path = public as $$
 begin
@@ -205,6 +207,12 @@ begin
   set midpoint_name = p_name, midpoint_lat = p_lat, midpoint_lng = p_lng,
       avg_mins = p_avg, gap_mins = p_gap
   where id = p_hangout;
+  -- each person's time and cost to the new midpoint (only people in this hangout)
+  update hangout_members hm
+  set travel_mins = round((t ->> 'mins')::numeric),
+      travel_cost = (t ->> 'cost')::numeric
+  from jsonb_array_elements(p_times) as t
+  where hm.hangout_id = p_hangout and hm.user_id = (t ->> 'user_id')::uuid;
 end;
 $$;
 
