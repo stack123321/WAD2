@@ -4,27 +4,16 @@
 // with its sample reply. The usual list comes from the fake Google Places answers
 // (helpers/places.js). How the group's needs are worked out has unit tests in
 // src/components/assistant/__tests__.
-import fs from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { setTime, VOTING_OPEN } from './helpers/clock.js'
 import { place, stubPlaces } from './helpers/places.js'
-
-// The Ask box was taken off 09 on 26 Oct and comes back with the fix/restore-ask-box branch.
-// Until then this file is skipped (test.skip isn't covered in the course).
-const askBoxOnPage = fs.readFileSync('src/views/ExploreView.vue', 'utf8').includes('<AskSpots')
-// eslint-disable-next-line playwright/no-skipped-test -- only until the Ask box is back on 09
-test.skip(!askBoxOnPage, 'The Ask box is not on 09 yet (fix/restore-ask-box)')
 
 const askBox = (page) => page.getByRole('textbox', { name: 'Ask for something specific' })
 const reply = 'Sample results for "prata for dinner" near Bishan'
 
 test.beforeEach(async ({ page }, testInfo) => {
-  const isPhoneTest = testInfo.title.startsWith('on a phone')
-  if (isPhoneTest) {
+  if (testInfo.title.includes('phone')) {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.addInitScript(() =>
-      window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),
-    )
   }
   await setTime(page, VOTING_OPEN)
   await stubPlaces(page, [place('test-cafe', 'Test Cafe')])

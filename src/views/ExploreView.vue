@@ -35,7 +35,7 @@
     class="nearby-page px-3 py-4"
     :class="{
       'is-mobile-ask-open': showMobileAsk,
-      'is-mobile-view-active': activeMobileView !== null,
+      'is-mobile-view-active': activeMobileView === 'map' || activeMobileView === 'shortlist',
       'has-mobile-tabbar': auth.isLoggedIn,
     }"
   >
@@ -282,6 +282,7 @@
       </div>
       <div class="shortlist-panel">
         <section class="shortlist">
+          <h2 class="shortlist-heading">Vote Shortlist</h2>
           <button
             type="button"
             class="shortlist-toggle"
@@ -863,6 +864,10 @@ async function selectSpot(id) {
   cursor: pointer;
 }
 
+.shortlist-heading {
+  display: none;
+}
+
 .shortlist-content.is-collapsed {
   display: none;
 }
@@ -961,6 +966,21 @@ async function selectSpot(id) {
 }
 
 @media (min-width: 768px) {
+  .shortlist-toggle {
+    display: none;
+  }
+
+  .shortlist-heading {
+    display: block;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .shortlist-content.is-collapsed {
+    display: block;
+  }
+
   .nearby-page {
     min-height: 0;
   }
