@@ -59,7 +59,7 @@ defineExpose({ selectTab })
 
 // Spots already loaded for each station, so switching back to a tab doesn't call Google again
 // (key: station name)
-const cache = new Map()
+const cache = {}
 
 const MAX_SPOTS = 6
 const spots = ref([])
@@ -82,8 +82,8 @@ async function loadSpots() {
     return
   }
   const name = station.value.name
-  if (cache.has(name)) {
-    showSpots(cache.get(name))
+  if (cache[name] !== undefined) {
+    showSpots(cache[name])
     return
   }
   loading.value = true
@@ -93,7 +93,7 @@ async function loadSpots() {
       { lat: station.value.lat, lng: station.value.lng },
       { radiusM: 800, categories: categoriesForVibes(props.vibes) },
     )
-    cache.set(name, found)
+    cache[name] = found
     // only show it if this tab is still the open one (you might have tapped another meanwhile)
     if (station.value.name === name) {
       showSpots(found)

@@ -573,7 +573,10 @@ onMounted(async () => {
 .need-chip::after {
   content: '';
   position: absolute;
-  inset: -6px -2px; /* a 44px tap area around the 32px chip */
+  top: -6px;
+  right: -2px;
+  bottom: -6px;
+  left: -2px; /* a 44px tap area around the 32px chip */
 }
 /* while the filter is on, the chip turns solid amber */
 .need-chip[aria-pressed='true'] {

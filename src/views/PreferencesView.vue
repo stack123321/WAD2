@@ -78,16 +78,16 @@ const activitiesError = computed(() =>
 const shownActivitiesError = computed(() => (showErrors.value ? activitiesError.value : ''))
 
 function clean(profile) {
-  const known = (options) => new Set(options.map((o) => o.value))
+  const known = (options) => options.map((o) => o.value)
   const activities = known(activityOptions)
   const dietary = known(dietaryOptions)
   const budgets = known(budgetOptions)
   const mins = Number(profile.max_travel_mins)
 
   return {
-    activities: (profile.activities ?? []).filter((a) => activities.has(a)),
-    dietary: (profile.dietary ?? []).filter((d) => dietary.has(d)),
-    budget: budgets.has(profile.budget) ? profile.budget : defaultPreferences.budget,
+    activities: (profile.activities ?? []).filter((a) => activities.includes(a)),
+    dietary: (profile.dietary ?? []).filter((d) => dietary.includes(d)),
+    budget: budgets.includes(profile.budget) ? profile.budget : defaultPreferences.budget,
     max_travel_mins: Number.isFinite(mins)
       ? Math.min(travel.max, Math.max(travel.min, Math.round(mins / travel.step) * travel.step))
       : defaultPreferences.max_travel_mins,
@@ -743,11 +743,6 @@ async function save() {
   border: 2px solid var(--fp-primary);
   border-radius: 50%;
   background: var(--fp-surface);
-}
-
-.range:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--fp-primary) 40%, transparent);
-  outline-offset: 6px;
 }
 
 /* Toggles */

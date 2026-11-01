@@ -9,9 +9,15 @@
  */
 export function groupNeeds(members) {
   const budgets = members.map((m) => m.budget).filter((b) => b != null)
+  const dietary = []
+  for (const member of members) {
+    for (const need of member.dietary ?? []) {
+      if (!dietary.includes(need)) dietary.push(need)
+    }
+  }
   return {
     size: members.length,
-    dietary: [...new Set(members.flatMap((m) => m.dietary ?? []))],
+    dietary,
     maxPrice: budgets.length ? Math.min(...budgets) : null,
   }
 }

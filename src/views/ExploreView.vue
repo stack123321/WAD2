@@ -486,8 +486,8 @@ const shortlisted = computed(() => {
     name: savedSpot.name,
     imageUrl: savedSpot.image_url,
   }))
-  const savedIds = new Set(savedSpots.map((spot) => spot.id))
-  const pendingSpots = spots.value.filter((spot) => addedIds.has(spot.id) && !savedIds.has(spot.id))
+  const savedIds = savedSpots.map((spot) => spot.id)
+  const pendingSpots = spots.value.filter((spot) => addedIds.has(spot.id) && !savedIds.includes(spot.id))
   return [...savedSpots, ...pendingSpots]
 })
 
@@ -814,7 +814,8 @@ async function selectSpot(id) {
     z-index: 2;
     top: 50%;
     left: 50%;
-    width: min(85%, 24rem);
+    width: 85%;
+    max-width: 24rem;
     margin: 0;
     transform: translate(-50%, -50%);
     text-align: center;
@@ -874,7 +875,10 @@ async function selectSpot(id) {
   .mobile-filter-barrier {
     position: absolute;
     z-index: 4;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     background: transparent;
   }
 

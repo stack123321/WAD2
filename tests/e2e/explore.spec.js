@@ -150,9 +150,6 @@ test.describe('On a phone', () => {
   })
 
   test('nothing scrolls sideways and the buttons are easy to tap', async ({ page }) => {
-    // Known (29 Oct): Go Vote! and Add to vote are 31px tall on phones. Hugo is on 09's phone
-    // layout; once they're 44px this test passes, Playwright reports it, and this line goes.
-    test.fail(true, 'Go Vote! and Add to vote are 31px tall on phones (Hugo, 09)')
     const layout = await page.evaluate(() => ({
       pageWidth: document.documentElement.scrollWidth,
       tooSmall: [...document.querySelectorAll('.nearby-page button, .nearby-page .btn')]

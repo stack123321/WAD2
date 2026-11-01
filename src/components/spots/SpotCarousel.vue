@@ -137,8 +137,8 @@ defineExpose({ scrollToIndex })
     z-index: 3;
     display: grid;
     place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
     transform: translateY(-50%);
     border: 0;
     border-radius: 50%;
@@ -182,14 +182,20 @@ defineExpose({ scrollToIndex })
 
   :deep(.spot-card__image) {
     position: absolute;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     aspect-ratio: auto;
   }
 
   :deep(.spot-card__image::after) {
     content: '';
     position: absolute;
-    inset: 35% 0 0;
+    top: 35%;
+    right: 0;
+    bottom: 0;
+    left: 0;
     background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 72%));
     pointer-events: none;
   }

@@ -31,6 +31,13 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
 | `src/views/ExploreView.vue` | On a tablet (768 to 991px) the map and shortlist column was about 180px wide, so shortlist names wrapped one word per line. The column is now at least 240px and the spot cards are 2 per row at that size (3 per row from 992px). Phones and laptops are unchanged. |
 | `DashboardView.vue`, `PreferencesView.vue`, `CreateHangoutView.vue` | Same content width as the other pages: Bootstrap's `container` (1140px). They were 1040px and 1060px. |
 | `docs/beyond-the-syllabus.md` | New entries for CSS variables, `color-mix`, `:not`, `clamp`, `aspect-ratio`, `dvh`/`env()`, `setTimeout`, `Promise.all`, `AbortController`, `matchMedia`, clipboard and geolocation, `defineExpose`. |
+| `AuthView.vue`, `LandingView.vue`, `StartingPointsView.vue`, `ExploreView.vue` | `clamp()` and `min()` are replaced by a fixed `font-size` or `width` plus `max-width`, with a `@media` rule for the bigger size. Titles on the Landing and log in pages step up at 768px, 992px and 1200px instead of growing smoothly. |
+| `HangoutPhotos`, `HangoutCard`, `UpNextMap`, `ExploreView`, `DashboardView`, `StartingPointsView` | `inset: 0` is written out as `top/right/bottom/left`. Same result. |
+| `PersonModeRow.vue`, `HangoutCard.vue` | `:not(.active)` and `:not(.featured)` are gone: the friends' rows are dimmed by default and `.active` sets it back, and a non-featured hangout card now has a `compact` class. |
+| `PreferencesView.vue` | Removed the custom focus ring on the sliders (the browser's own one shows instead). |
+| `SpotCard.vue` | Two plain elements with `v-if`/`v-else` instead of `<component :is>`. |
+| `src/views/ExploreView.vue`, `tests/e2e/explore.spec.js` | The phone carousel's "Next spot" arrow is 44px (it was 40px). The `test.fail(...)` line in the phone test is deleted: Go Vote! and Add to vote are 44px now (the global button rule in `tokens.css`), and the arrow was the last button under 44px, so the test passes for real. |
+| `utils/midpoint.js`, `utils/matchScore.js`, `groupNeeds.js`, `VoteResults.vue`, `voteHelpers.js`, `PreferencesView.vue`, `ExploreView.vue`, `MidpointSpots.vue`, `services/places.js` | `reduce`, `new Set`, `flatMap` and `new Map` are replaced by `for` loops, `.includes` and plain `{}` lookups. Same results: checked with 140,000 random inputs on the real old and new files. The shortlist's reactive `Set`/`Map` (`useShortlist.js`) and the invite code (`hangouts.js`) are left alone. |
 
 ### Good to know
 

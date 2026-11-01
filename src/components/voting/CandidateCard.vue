@@ -168,8 +168,12 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
   background: var(--fp-primary);
 }
 
-.voters > :not(:first-child) {
+.voters > * {
   margin-left: -6px;
+}
+
+.voters > :first-child {
+  margin-left: 0;
 }
 
 .vote-btn {
