@@ -3,7 +3,9 @@
 // starting point or vote; the invite link adds them; the host sees them appear without
 // reloading; and a whole vote (spots added, vote started, the friend votes, the host sees it live
 // and closes it) reaches the final plan for both. Needs E2E_EMAIL_2 / E2E_PASSWORD_2 too
-// (tests/live/helpers.js); skipped without them. The hangout is deleted at the end.
+// (tests/live/helpers.js); skipped without them (test.skip). The hangout is deleted at the end.
+// Each person gets their own browser (browser.newContext), so two people are logged in at once;
+// that isn't covered in the course, but it's the only way to test two real people together.
 import { test, expect } from '@playwright/test'
 import {
   copyInviteLink,
@@ -18,7 +20,7 @@ import {
 } from './helpers.js'
 
 test.skip(!hasFriend, 'Add E2E_EMAIL_2 and E2E_PASSWORD_2 (a second test account) to .env.local')
-test.describe.configure({ mode: 'serial', timeout: 120000 })
+test.setTimeout(120000) // two people, the real database and live updates take longer
 
 const SPOT_A = spot('e2e-live-spot-a', 'E2E Live Spot A')
 const SPOT_B = spot('e2e-live-spot-b', 'E2E Live Spot B')
@@ -46,18 +48,18 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
       friendPage.getByText("You're not in this hangout, so you can't vote.", { exact: false }),
     ).toBeVisible()
 
-    // The host keeps 06 open; the friend joins with the invite link
+    // The host keeps 06 open, where the group is just them; the friend joins with the invite link
     const invite = await copyInviteLink(hostPage, hostContext, name)
     await hostPage.goto(`/hangouts/${id}/start`)
-    // the group list is the list with the host's own "(you)" row
-    const groupRows = hostPage.locator('ul').filter({ hasText: '(you)' }).getByRole('listitem')
-    const before = await groupRows.count()
+    await expect(hostPage.getByText('of 1 added', { exact: false })).toBeVisible()
 
     await friendPage.goto(invite)
     await expect(friendPage).toHaveURL(`/hangouts/${id}/start`)
 
-    // The host sees one more person without reloading (live updates)
-    await expect(groupRows).toHaveCount(before + 1, { timeout: 15000 })
+    // The host sees the group become two without reloading (live updates)
+    await expect(hostPage.getByText('of 2 added', { exact: false })).toBeVisible({
+      timeout: 15000,
+    })
 
     // The host puts two spots on the shortlist from 10 Spot details (Google is faked)
     await stubSpots(hostPage, [SPOT_A, SPOT_B])
@@ -70,19 +72,20 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
     // The host starts the vote and keeps 11 open
     await hostPage.goto(`/hangouts/${id}/vote`)
     await hostPage.getByRole('button', { name: 'Start the vote' }).click()
-    await expect(hostPage.getByText('Closes in')).toBeVisible()
-    const tally = hostPage.getByRole('progressbar', { name: SPOT_B.name, exact: true })
-    await expect(tally).toHaveAttribute('aria-valuenow', '0')
+    await expect(hostPage.getByText('Closes in', { exact: false })).toBeVisible()
+    await expect(hostPage.getByText('0 of 2 voted')).toBeVisible()
 
     // The friend votes for spot B
+    const friendVote = friendPage.getByRole('button', {
+      name: `Vote for ${SPOT_B.name}`,
+      exact: true,
+    })
     await friendPage.goto(`/hangouts/${id}/vote`)
-    await friendPage.getByRole('button', { name: `Vote for ${SPOT_B.name}`, exact: true }).click()
-    await expect(
-      friendPage.getByRole('progressbar', { name: SPOT_B.name, exact: true }),
-    ).toHaveAttribute('aria-valuenow', '1')
+    await friendVote.click()
+    await expect(friendVote).toHaveText('✓ Your vote')
 
     // The host sees it without reloading, then closes the vote
-    await expect(tally).toHaveAttribute('aria-valuenow', '1', { timeout: 15000 })
+    await expect(hostPage.getByText('1 of 2 voted')).toBeVisible({ timeout: 15000 })
     // spot B leads, so it's the winner the close card picks
     await hostPage.getByRole('button', { name: 'Close vote' }).click()
     await expect(hostPage).toHaveURL(`/hangouts/${id}/plan`)
