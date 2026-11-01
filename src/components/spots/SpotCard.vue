@@ -19,6 +19,8 @@ const props = defineProps({
   matchPct: { type: Number, default: null },
   // Explanation shown when a hard veto forces the match to 0%
   vetoReason: { type: String, default: null },
+  // Explanations for soft penalties that reduce the match without forcing it to 0%
+  softVetoReasons: { type: Array, default: () => [] },
   tags: { type: Array, default: () => [] },
   added: { type: Boolean, default: false },
   // Route location for the spot details page; image and name link to it when set
@@ -84,12 +86,6 @@ const matchTone = computed(() => {
       >
         {{ matchPct }}% match
       </span>
-      <span v-if="matchPct === 0 && vetoReason"
-          class="spot-card__match spot-card__tag--veto"
-          :title="vetoReason"
-        >
-          {{ vetoReason }}</span>
-
       <p class="spot-card__meta mb-0">
         <span v-if="distance">
           {{ distance }} from {{ nearestStationName || 'nearest station' }}
@@ -99,8 +95,22 @@ const matchTone = computed(() => {
       </p>
 
       <ul class="spot-card__tags">
+        <li
+          v-if="matchPct === 0 && vetoReason"
+          class="spot-card__tag spot-card__tag--veto"
+          :title="vetoReason"
+        >
+          {{ vetoReason }}
+        </li>
+        <li
+          v-for="reason in softVetoReasons"
+          :key="`soft-veto-${reason}`"
+          class="spot-card__tag spot-card__tag--soft-veto"
+          :title="reason"
+        >
+          {{ reason }}
+        </li>
         <li v-for="tag in tags" :key="tag" class="spot-card__tag">{{ tag }}</li>
-        
       </ul>
 
       <button
@@ -249,5 +259,11 @@ const matchTone = computed(() => {
   color: #b42318;
   background: #fbe4e4;
   border-color: #f3b4b4;
+}
+
+.spot-card__tag--soft-veto {
+  color: #a16207;
+  background: #fdf2d7;
+  border-color: #f3d48a;
 }
 </style>
