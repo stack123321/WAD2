@@ -10,10 +10,10 @@
 // line under the map holds space for Nicole's routes. On phones the cards reorder so the map
 // comes straight after the spot.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
-import { isMockHangout, markHangoutDone } from '@/services/votes'
+import { isMockHangout, markHangoutDone, reopenVote } from '@/services/votes'
 import SpotHero from '@/components/voting/SpotHero.vue'
 import TripTable from '@/components/voting/TripTable.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
@@ -32,6 +32,7 @@ import {
 } from '@/components/voting/voteHelpers'
 
 const route = useRoute()
+const router = useRouter()
 const store = useHangoutStore()
 const auth = useAuthStore()
 
@@ -42,6 +43,8 @@ const copyMessage = ref('')
 const copyFailed = ref(false)
 const actionError = ref('')
 const markingDone = ref(false)
+const revoting = ref(false)
+const showRevoteModal = ref(false)
 const now = ref(Date.now())
 
 let timer = null
@@ -129,6 +132,7 @@ async function markDone() {
     actionError.value = 'The hangout hasn’t started yet, so it can’t be marked as done.'
     return
   }
+
   markingDone.value = true
   actionError.value = ''
   try {
@@ -138,6 +142,27 @@ async function markDone() {
     actionError.value = `Couldn't mark the hangout as done: ${e.message}`
   } finally {
     markingDone.value = false
+  }
+}
+
+function startRevote() {
+  showRevoteModal.value = true
+}
+
+async function confirmRevote() {
+  showRevoteModal.value = false
+  revoting.value = true
+  actionError.value = ''
+  try {
+    await reopenVote(hangoutId)
+    store.hangout.status = 'voting'
+    store.hangout.vote_deadline = null
+    store.hangout.final_shortlist_id = null
+    router.push({ name: 'vote', params: { id: hangoutId } })
+  } catch (e) {
+    actionError.value = `Couldn't start the re-vote: ${e.message}`
+  } finally {
+    revoting.value = false
   }
 }
 
@@ -262,6 +287,16 @@ onUnmounted(() => clearInterval(timer))
               >
                 Mark as done
               </button>
+              <button
+                v-if="isHost && status === 'confirmed'"
+                type="button"
+                class="btn btn-outline-danger"
+                :disabled="revoting || markingDone"
+                @click="startRevote"
+              >
+                <span v-if="revoting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                Re-vote
+              </button>
             </div>
             <p v-if="isHost && status === 'confirmed' && !hasStarted" class="small muted mt-2 mb-0">
               You can mark it done once the hangout has started.
@@ -294,6 +329,35 @@ onUnmounted(() => clearInterval(timer))
         </RouterLink>
       </nav>
     </template>
+
+    <div
+      v-if="showRevoteModal"
+      class="revote-modal-backdrop"
+      role="presentation"
+      @click.self="showRevoteModal = false"
+    >
+      <section
+        class="revote-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="revote-modal-title"
+      >
+        <h2 id="revote-modal-title" class="h5 mb-2">Start a re-vote?</h2>
+        <p class="mb-4">
+          The current confirmed spot will be cleared and everyone can vote again.
+        </p>
+        <div class="revote-modal__actions">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="showRevoteModal = false"
+          >
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" @click="confirmRevote">OK</button>
+        </div>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -304,6 +368,44 @@ onUnmounted(() => clearInterval(timer))
   justify-content: center;
   gap: 0.35rem;
   min-height: 44px;
+}
+
+.revote-modal-backdrop {
+  position: fixed;
+  z-index: 1050;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 45%);
+}
+
+.revote-modal {
+  width: min(100%, 28rem);
+  padding: 1.5rem;
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius);
+  background: var(--fp-surface);
+  box-shadow: var(--fp-shadow);
+}
+
+.revote-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.revote-modal__actions .btn {
+  min-width: 6rem;
+}
+
+.revote-modal__actions .btn-outline-secondary:hover,
+.revote-modal__actions .btn-outline-secondary:focus-visible,
+.revote-modal__actions .btn-primary:hover,
+.revote-modal__actions .btn-primary:focus-visible {
+  border-color: var(--fp-primary);
+  background: var(--fp-primary);
+  color: var(--fp-surface);
 }
 
 /* Phones: one column, cards in the order below (the columns step aside with display: contents).
