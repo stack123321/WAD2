@@ -68,3 +68,32 @@ test('on a phone the Ask toggle opens over the cards and closes after a search',
   await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible()
 })
+
+test('on a phone an Ask result returns the carousel to its first card', async ({ page }) => {
+  await stubPlaces(page, [
+    place('test-cafe', 'Test Cafe'),
+    place('second-cafe', 'Second Cafe', {}, 250),
+  ])
+  await page.route('**/api/assistant', (route) =>
+    route.fulfill({
+      json: {
+        reply,
+        query: 'prata',
+        places: [place('ask-cafe-one', 'Ask Cafe One'), place('ask-cafe-two', 'Ask Cafe Two')],
+        suggestOtherStations: false,
+      },
+    }),
+  )
+
+  const toggle = page.getByRole('button', { name: 'Ask for something specific' })
+  const previous = page.getByRole('button', { name: 'Previous spot' })
+  await page.getByRole('button', { name: 'Next spot' }).click()
+  await expect(previous).toBeVisible()
+
+  await toggle.click()
+  await askBox(page).fill('prata for dinner')
+  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+
+  await expect(page.locator('.cards article')).toHaveCount(2)
+  await expect(previous).toBeHidden()
+})

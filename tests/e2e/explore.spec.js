@@ -4,6 +4,7 @@ import { place, stubPlaces } from './helpers/places.js'
 
 const spots = [
   place('top-cafe', 'Top Rated Cafe', { rating: 4.8 }, 150),
+  place('second-cafe', 'Second Cafe', {}, 200),
   place('noodle-house', 'Noodle House', { category: 'food', types: ['restaurant'] }, 250),
   place('town-park', 'Town Park', { category: 'outdoor', types: ['park'] }, 400),
 ]
@@ -148,6 +149,21 @@ test('mobile Spots controls open and dismiss Filters and Ask', async ({ page }) 
   await expect(page.locator('.mobile-filter-barrier')).toBeVisible()
   await page.locator('.mobile-filter-barrier').click({ position: { x: 350, y: 50 } })
   await expect(page.locator('.ask-panel')).toBeHidden()
+})
+
+test('mobile category filter returns the carousel to its first card', async ({ page }) => {
+  await openExplore(page, { mobile: true })
+  const previous = page.getByRole('button', { name: 'Previous spot' })
+  const next = page.getByRole('button', { name: 'Next spot' })
+
+  await next.click()
+  await expect(previous).toBeVisible()
+
+  await page.locator('.mobile-filter-toggle').click()
+  await page.locator('#explore-filters').getByRole('button', { name: 'Cafes' }).click()
+
+  await expect(page.locator('.cards article')).toHaveCount(2)
+  await expect(previous).toBeHidden()
 })
 
 test('adding a spot lists it on Shortlist and lets the user remove it', async ({ page }) => {

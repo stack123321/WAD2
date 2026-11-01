@@ -188,7 +188,7 @@
             type="button"
             class="btn btn-sm"
             :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
-            @click="activeFilter = filter.value"
+            @click="selectFilter(filter.value)"
           >
             {{ filter.label }}
           </button>
@@ -577,6 +577,17 @@ function closeMobileFiltersOutside(event) {
   showDesktopFilters.value = false
 }
 
+async function resetCarouselOnMobile() {
+  if (!mobileViewport?.matches) return
+  await nextTick()
+  spotCarousel.value?.scrollToIndex(0)
+}
+
+async function selectFilter(filter) {
+  activeFilter.value = filter
+  await resetCarouselOnMobile()
+}
+
 let mobileViewport
 function setDocumentScrollLock() {
   const isMobile = mobileViewport.matches
@@ -674,9 +685,10 @@ const shownSpots = computed(() =>
   askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
 )
 
-function onAskFound(found) {
+async function onAskFound(found) {
   askedSpots.value = found
   if (found && window.matchMedia('(max-width: 767px)').matches) showMobileAsk.value = false
+  await resetCarouselOnMobile()
 }
 
 const {
