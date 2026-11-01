@@ -36,7 +36,7 @@
     <section class="head">
       <h1 class="cards-title page-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <div class="head-actions">
-        <GooglePlacesToggle />
+  
         <button
           v-if="shortlisted.length < 2"
           type="button"
@@ -282,7 +282,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
