@@ -5,6 +5,7 @@
 // with a hint, until at least one person has voted (voteCount).
 defineProps({
   shortlist: { type: Array, required: true },
+  leaderId: { type: String, default: null },
   selectedId: { type: String, default: null },
   voteCount: { type: Number, default: 0 },
   deadlineText: { type: String, default: null },
@@ -26,12 +27,24 @@ const emit = defineEmits(['select', 'close'])
     <select
       id="winner"
       class="form-select mb-3"
-      :value="selectedId"
+      :value="selectedId ?? leaderId"
       :disabled="disabled || closing"
       @change="emit('select', $event.target.value)"
     >
+      <option v-if="leaderId" :value="leaderId">
+        Most voted: {{ shortlist.find((spot) => spot.id === leaderId)?.name }}
+      </option>
       <option v-for="spot in shortlist" :key="spot.id" :value="spot.id">{{ spot.name }}</option>
     </select>
+    <button
+      v-if="leaderId && selectedId !== leaderId"
+      type="button"
+      class="btn btn-outline-danger w-100 mb-3"
+      :disabled="disabled || closing"
+      @click="emit('select', leaderId)"
+    >
+      Use most voted spot
+    </button>
 
     <button
       type="button"

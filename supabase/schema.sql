@@ -34,6 +34,7 @@ create table public.hangouts (
   invite_code        text not null unique default substr(md5(gen_random_uuid()::text), 1, 8),
   status             text not null default 'collecting'
                        check (status in ('collecting', 'voting', 'confirmed', 'done')),
+  friends_add_start  boolean not null default true,
   optimise_for       text not null default 'fairest'
                        check (optimise_for in ('fairest', 'fastest', 'cheapest')),
   midpoint_name      text,
@@ -190,6 +191,10 @@ begin
   return hid;
 end;
 $$;
+
+-- Adding a parameter makes a second function instead of replacing the old one, so drop the old
+-- six-argument version first. Existing callers remain safe because p_times defaults to empty.
+drop function if exists public.set_midpoint(uuid, text, float8, float8, integer, integer);
 
 -- Save the group's midpoint (07 "Find our midpoint", 08 dragging the pin). Any member may, not just
 -- the host, but only the midpoint columns change: renaming or deleting the hangout stays host-only.
