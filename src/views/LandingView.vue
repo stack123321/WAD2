@@ -5,20 +5,60 @@
 // full-width sections down the page (how it works, features, FAQ, a final button).
 // Logged-in users see their next hangout instead of the "how it works" steps.
 // (Surya, improve/user-friendly-customised: one button, personal welcome card, feature rows, FAQ.)
-import { computed, ref, watch } from 'vue'
+// (Eashvar) The hero map is "You" and three friends, each with their trip time, instead of named
+// people meeting in Bishan, so it fits anyone. It plays once it's on screen (on phones and tablets
+// it's below the text): pins drop in, routes fade in, the midpoint appears, then the times and
+// the label. A ring then keeps pulsing out of the midpoint. No motion if reduced motion is on.
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
 
 const auth = useAuthStore()
 
-// Friends shown on the hero map. x/y are positions in the SVG's 600×460 viewBox.
+// You and three friends on the hero map. x/y are positions in the SVG's 600×460 viewBox, mins is
+// each person's trip to the midpoint (all close together: that's what "fair" means).
+// chipX is where their time sits: to the right of the pin, or to the left near the right edge.
+const CHIP_WIDTH = 60
 const friends = [
-  { initial: 'N', x: 300, y: 105, color: 'var(--landing-pink)' },
-  { initial: 'H', x: 470, y: 95, color: 'var(--landing-blue)' },
-  { initial: 'S', x: 560, y: 260, color: 'var(--fp-accent)' },
-  { initial: 'R', x: 105, y: 325, color: 'var(--landing-purple)' },
-]
+  { label: '', x: 300, y: 105, color: 'var(--landing-pink)', mins: 21 },
+  { label: '', x: 470, y: 95, color: 'var(--landing-blue)', mins: 19 },
+  { label: '', x: 560, y: 260, color: 'var(--fp-accent)', mins: 22 },
+  { label: 'You', x: 105, y: 325, color: 'var(--landing-purple)', mins: 18 },
+].map((f) => ({ ...f, chipX: f.x > 450 ? f.x - 24 - CHIP_WIDTH : f.x + 24 }))
 const midpoint = { x: 318, y: 215 }
+// the midpoint's circles grow from the midpoint itself (otherwise SVG shapes grow from the
+// SVG's top-left corner and slide across the map)
+const midpointOrigin = { transformOrigin: `${midpoint.x}px ${midpoint.y}px` }
+
+// (Eashvar) Start the map's animation only once most of it is on screen. On every scroll (or window
+// resize) we check where the map is; once 60% of it is above the bottom of the window, it plays
+// (only once).
+const heroMap = ref(null)
+const mapPlaying = ref(false)
+
+function checkMapInView() {
+  const box = heroMap.value.getBoundingClientRect()
+  if (box.top + box.height * 0.6 <= window.innerHeight) {
+    mapPlaying.value = true
+    window.removeEventListener('scroll', checkMapInView)
+    window.removeEventListener('resize', checkMapInView)
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', checkMapInView)
+  window.addEventListener('resize', checkMapInView)
+  checkMapInView() // on laptops the map is already on screen, so it plays straight away
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', checkMapInView)
+  window.removeEventListener('resize', checkMapInView)
+})
+
+// "18–22 min", shown in the label on phones instead of the time tags
+const allMins = friends.map((f) => f.mins)
+const timeRange = `${Math.min(...allMins)}–${Math.max(...allMins)} min`
 
 // Part (a) How it works (shown when logged out)
 const steps = [
@@ -213,8 +253,10 @@ function continueRoute(hangout) {
       </div>
 
       <div
+        ref="heroMap"
         class="hero__visual"
-        aria-label="Preview: four friends meeting at a fair midpoint in Bishan"
+        :class="{ 'is-playing': mapPlaying }"
+        aria-label="Preview: you and three friends meeting at a fair midpoint, each 18 to 22 minutes away"
         role="img"
       >
         <svg
@@ -265,30 +307,70 @@ function continueRoute(hangout) {
           <circle cx="165" cy="300" r="70" fill="url(#heat-amber)" />
           <circle cx="350" cy="145" r="55" fill="url(#heat-amber)" />
 
-          <!-- Routes to the midpoint -->
+          <!-- Routes to the midpoint, fading in one after another -->
           <line
-            v-for="f in friends"
-            :key="`route-${f.initial}`"
+            v-for="(f, i) in friends"
+            :key="`route-${i}`"
             :x1="f.x"
             :y1="f.y"
             :x2="midpoint.x"
             :y2="midpoint.y"
             :stroke="f.color"
             class="map__route"
+            :style="{ animationDelay: `${1 + i * 0.12}s` }"
           />
 
-          <!-- Midpoint -->
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
-          <circle :cx="midpoint.x" :cy="midpoint.y" r="10" class="map__mid" />
+          <!-- Midpoint, with a ring that keeps pulsing out from it -->
+          <circle
+            :cx="midpoint.x"
+            :cy="midpoint.y"
+            r="38"
+            class="map__halo"
+            :style="midpointOrigin"
+          />
+          <circle
+            :cx="midpoint.x"
+            :cy="midpoint.y"
+            r="38"
+            class="map__pulse"
+            :style="midpointOrigin"
+          />
+          <circle
+            :cx="midpoint.x"
+            :cy="midpoint.y"
+            r="10"
+            class="map__mid"
+            :style="midpointOrigin"
+          />
 
-          <!-- Friends -->
-          <g v-for="f in friends" :key="`pin-${f.initial}`" class="map__pin">
+          <!-- You and your friends, dropping in one after another -->
+          <g
+            v-for="(f, i) in friends"
+            :key="`pin-${i}`"
+            class="map__pin"
+            :style="{ animationDelay: `${i * 0.22}s` }"
+          >
             <circle :cx="f.x" :cy="f.y" r="15" :fill="f.color" />
-            <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.initial }}</text>
+            <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.label }}</text>
+          </g>
+
+          <!-- Everyone's trip time, close together -->
+          <g
+            v-for="(f, i) in friends"
+            :key="`time-${i}`"
+            class="map__chip"
+            :style="{ animationDelay: `${2.1 + i * 0.1}s` }"
+          >
+            <rect :x="f.chipX" :y="f.y - 11" :width="CHIP_WIDTH" height="22" rx="11" />
+            <text :x="f.chipX + CHIP_WIDTH / 2" :y="f.y" dy="0.35em" text-anchor="middle">
+              {{ f.mins }} min
+            </text>
           </g>
         </svg>
 
-        <div class="midpoint-label">Fair midpoint · Bishan</div>
+        <div class="midpoint-label">
+          Fair for everyone<span class="midpoint-label__times"> · {{ timeRange }}</span>
+        </div>
       </div>
     </section>
 
@@ -597,8 +679,51 @@ function continueRoute(hangout) {
 
 .map__pin text {
   fill: var(--fp-surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.map__chip rect {
+  fill: var(--fp-surface);
+  stroke: var(--fp-border);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.12));
+}
+
+.map__chip text {
+  fill: var(--fp-ink);
   font-size: 12px;
   font-weight: 700;
+}
+
+@keyframes pin-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes pulse-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .midpoint-label {
@@ -613,6 +738,68 @@ function continueRoute(hangout) {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* phones: the map is too small to read the time tags, so the label gives the range instead */
+.midpoint-label__times {
+  display: none;
+}
+
+@media (max-width: 575.98px) {
+  .map__chip {
+    display: none;
+  }
+
+  .midpoint-label__times {
+    display: inline;
+  }
+}
+
+/* the ring around the midpoint: invisible unless it's animating */
+.map__pulse {
+  fill: none;
+  stroke: var(--fp-primary);
+  stroke-width: 3;
+  opacity: 0;
+}
+
+/* The hero map's animation, in order, only when "reduce motion" is off (with it on, the finished
+   map just shows). Until the map is on screen (no is-playing class yet) its parts are hidden. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__visual:not(.is-playing) .map__route,
+  .hero__visual:not(.is-playing) .map__pin,
+  .hero__visual:not(.is-playing) .map__halo,
+  .hero__visual:not(.is-playing) .map__mid,
+  .hero__visual:not(.is-playing) .map__chip,
+  .hero__visual:not(.is-playing) .midpoint-label {
+    opacity: 0;
+  }
+
+  .is-playing .map__pin {
+    animation: pin-drop 0.45s ease-out both;
+  }
+
+  .is-playing .map__route {
+    animation: fade-in 0.6s ease-out both;
+  }
+
+  .is-playing .map__halo,
+  .is-playing .map__mid {
+    animation: pop-in 0.45s ease-out 1.8s both;
+  }
+
+  .is-playing .map__chip {
+    animation: fade-in 0.35s ease-out both;
+  }
+
+  .is-playing .midpoint-label {
+    animation: fade-in 0.4s ease-out 2.6s both;
+  }
+
+  /* a ring grows out of the midpoint and fades, every 2.4s, forever */
+  .is-playing .map__pulse {
+    animation: pulse-ring 2.4s ease-out 2.2s infinite;
+  }
 }
 
 /* How it works */

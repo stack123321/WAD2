@@ -23,6 +23,7 @@
   --fp-radius: 16px;
   --fp-radius-sm: 10px;
   --fp-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+  --fp-shadow-lift: 0 12px 24px rgb(0 0 0 / 0.15); /* a card rising under the pointer */
 
   /* Type */
   --fp-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -62,6 +63,20 @@
   --bs-btn-hover-border-color: var(--fp-primary);
   --bs-btn-active-bg: var(--fp-primary-dark);
   --bs-btn-active-border-color: var(--fp-primary-dark);
+  --bs-btn-disabled-color: var(--fp-primary);
+  --bs-btn-disabled-border-color: var(--fp-primary);
+}
+
+/* every button size uses the same corner radius, and none is shorter than a finger can tap */
+.btn {
+  --bs-btn-border-radius: var(--fp-radius-sm);
+  min-height: 44px;
+}
+
+/* the one style for a page's main heading, so every page title matches */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
 }
 
 /* the bottom tab bar (NavBar, below 768px) sits on top of the page, so leave room for it (Ryan) */

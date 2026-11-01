@@ -24,7 +24,7 @@ test('a done hangout links from the final plan to its debrief', async ({ page })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('How it went')
   await expect(page.getByText('Done', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: cafe, exact: true })).toBeVisible()
-  await expect(page.getByText("Everyone's trip is within 9 min of each other.")).toBeVisible()
+  await expect(page.getByText("Everyone's trip was within 9 min of each other.")).toBeVisible()
 })
 
 test('the debrief shows who came and how the vote went', async ({ page }) => {

@@ -469,7 +469,7 @@ const savedText = computed(() => {
       <!-- Left panel: search + group -->
       <div class="col-lg-5 col-xl-4 panel p-4 p-lg-5">
         <!-- (Surya) the group chat is the 💬 Chat button in the step bar, like on every step -->
-        <h1 class="h3 fw-bold mb-1">Where is everyone coming from?</h1>
+        <h1 class="page-title mb-1">Where is everyone coming from?</h1>
         <!-- Personal status: what you need to do, or who you're waiting for -->
         <!-- Saved: a clear next step at the top. Otherwise: what you need to do -->
         <div v-if="showSavedBox" class="saved-box" role="status">

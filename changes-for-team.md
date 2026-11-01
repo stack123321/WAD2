@@ -19,7 +19,18 @@ Layout check done at 375px, 768px and 1366px on dashboard, friends, chats and 08
 | `src/views/MyChatsView.vue` | The search box is 44px. |
 | `src/components/dashboard/HangoutCard.vue` | The laptop rows had 38px and 32px buttons on purpose. View, Add starting point and the ··· menu are now 44px. |
 | `src/views/MidpointView.vue` | "Go to transport →" is 44px. |
+| `src/views/DashboardView.vue`, `src/components/dashboard/HangoutCard.vue`, `src/styles/tokens.css` | On a laptop, the hangout card under the pointer rises a little and the other cards fade. New token `--fp-shadow-lift` (one line in Hugo's file). Phones are unchanged, they have no hover. The cards now sit inside one `.card-list` box. |
+| `src/components/midpoint/MidpointSpots.vue` (Surya's) | The "Things to do near" spot cards on 08 get the same hover as the dashboard cards: the spot under the pointer rises and the others fade (laptop only). The list has a new `spot-list` class. |
+| `PlaceSearch.vue`, `SpinWheel.vue`, `PreferencesView.vue`, `VoteView.vue`, `tests/e2e/voting.spec.js` | Removed `:focus-within` and `prefers-reduced-motion`, which the course doesn't teach. The search box no longer glows when focused. The tie-break wheel always spins for about 3 seconds, so the wheel test waits up to 10 seconds. |
+| `src/views/DashboardView.vue` | The Upcoming / Past list drops in the same way when you press the buttons (not on the first load, where the page is already dropping in). |
+| `src/App.vue`, `src/components/ui/PageDrop.vue` (new) | Every page now fades in and drops down 24px from above over 0.4 seconds when you go to it. `App.vue` wraps `<RouterView />` in `<PageDrop :key="route.name">`, so it only plays when you go to a different kind of page. Nothing scrolls sideways, and at rest there is no leftover transform, so modals still sit on the whole screen. |
 | `tests/live/dashboard.spec.js` | The live test deleted hangouts with a button that no longer exists, so it left test hangouts behind. It now deletes through the ··· menu and the confirm dialog. |
+| `src/styles/tokens.css` (Hugo's) | Every button now has the same 10px corners and is at least 44px tall (small buttons were 4px, large ones 16px). A disabled `btn-outline-primary` is teal, it was Bootstrap blue (the "Update closing time" button on 11). New `.page-title` class: the one style for a page's main heading, 28px bold. |
+| `ChatView`, `DirectChatView`, `MyChatsView`, `FriendsView`, `CrowdsView`, `MidpointView`, `SpotDetailsView`, `StartingPointsView`, `VoteView`, `DebriefView`, `FinalPlanView`, `DashboardView`, `ExploreView`, `PreferencesView`, `CreateHangoutView`, `TransportView` | Each page's `<h1>` uses `page-title`. Page titles were 7 different sizes and weights (24px to 32px, weight 500 to 800). On 09 the title is still the small white one over the map on phones. |
+| `src/views/ExploreView.vue` | 09 used its own font (`system-ui`), grey background and darker text. It now uses the same font, cream background and text colour as the other pages. |
+| `src/views/ExploreView.vue` | On a tablet (768 to 991px) the map and shortlist column was about 180px wide, so shortlist names wrapped one word per line. The column is now at least 240px and the spot cards are 2 per row at that size (3 per row from 992px). Phones and laptops are unchanged. |
+| `DashboardView.vue`, `PreferencesView.vue`, `CreateHangoutView.vue` | Same content width as the other pages: Bootstrap's `container` (1140px). They were 1040px and 1060px. |
+| `docs/beyond-the-syllabus.md` | New entries for CSS variables, `color-mix`, `:not`, `clamp`, `aspect-ratio`, `dvh`/`env()`, `setTimeout`, `Promise.all`, `AbortController`, `matchMedia`, clipboard and geolocation, `defineExpose`. |
 
 ### Good to know
 

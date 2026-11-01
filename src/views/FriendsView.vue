@@ -207,7 +207,7 @@ async function remove(person) {
 <template>
   <main class="container py-4 friends-page">
     <router-link :to="{ name: 'dashboard' }" class="small">← My hangouts</router-link>
-    <h1 class="h3 mt-2 mb-3">Friends</h1>
+    <h1 class="page-title mt-2 mb-3">Friends</h1>
 
     <!-- search -->
     <form class="mb-3" role="search" @submit.prevent="search">

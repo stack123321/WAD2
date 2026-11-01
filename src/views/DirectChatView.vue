@@ -35,7 +35,7 @@ onMounted(async () => {
     <p v-if="loading" class="text-muted mt-3">Loading the chat…</p>
     <p v-else-if="error" class="text-danger mt-3">{{ error }}</p>
     <template v-else>
-      <h1 class="h3 mt-2 mb-3">{{ chat.friend.display_name }}</h1>
+      <h1 class="page-title mt-2 mb-3">{{ chat.friend.display_name }}</h1>
       <!-- the same chat box as hangouts, given :direct instead of :hangout -->
       <HangoutChat :direct="chat" :height="420" title="Chat" />
     </template>

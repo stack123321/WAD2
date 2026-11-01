@@ -37,3 +37,46 @@ test('Log in in the navbar opens the log in page', async ({ page }) => {
   await expect(page).toHaveURL(/\/login/)
   await expect(page.getByRole('button', { name: 'Log in', exact: true })).toBeVisible()
 })
+
+test('the hero map fits anyone: you and three friends, no made-up place', async ({ page }) => {
+  const map = page.getByRole('img', { name: /you and three friends meeting at a fair midpoint/ })
+  await expect(map).toBeVisible()
+  await expect(map).toContainText('You')
+  await expect(map).not.toContainText('Bishan')
+  // the label appears once the animation has played
+  await expect(map.getByText('Fair for everyone')).toBeVisible()
+  for (const mins of ['18 min', '19 min', '21 min', '22 min']) {
+    await expect(map.getByText(mins, { exact: true })).toBeVisible()
+  }
+})
+
+test('with reduced motion the hero map shows straight away, and phones get the time range', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/')
+  const label = page.locator('.midpoint-label')
+  await expect(label).toHaveText('Fair for everyone · 18–22 min', { timeout: 500 })
+  await expect(label).toHaveCSS('opacity', '1')
+  await expect(page.locator('.map__chip').first()).toBeHidden()
+})
+
+test('on a phone the hero map waits until it is scrolled into view', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 600 }) // the map starts below the fold
+  await page.goto('/')
+  const map = page.locator('.hero__visual')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(map).not.toHaveClass(/is-playing/) // waiting, with its parts hidden
+  await expect(page.locator('.midpoint-label')).toHaveCSS('opacity', '0')
+
+  await map.scrollIntoViewIfNeeded()
+  await expect(map).toHaveClass(/is-playing/)
+  await expect(page.locator('.midpoint-label')).toHaveCSS('opacity', '1', { timeout: 5000 })
+})
+
+test('the midpoint keeps pulsing after the map has played', async ({ page }) => {
+  const pulse = page.locator('.map__pulse')
+  await expect(pulse).toHaveCSS('animation-name', /pulse-ring/) // Vue adds an id to scoped names
+  await expect(pulse).toHaveCSS('animation-iteration-count', 'infinite')
+})

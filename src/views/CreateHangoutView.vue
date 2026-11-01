@@ -614,7 +614,7 @@ async function submit() {
     <RouterLink v-else class="back" :to="{ name: 'dashboard' }">&larr; My hangouts</RouterLink>
 
     <header class="create__header">
-      <h1 class="create__title">{{ isEdit ? 'Hangout details' : 'New hangout' }}</h1>
+      <h1 class="create__title page-title">{{ isEdit ? 'Hangout details' : 'New hangout' }}</h1>
       <p v-if="isEdit" class="create__sub">
         Change the name, date or vibe. Everyone in the hangout sees the change.
       </p>
@@ -942,7 +942,6 @@ async function submit() {
 
 <style scoped>
 .create {
-  max-width: 1060px;
   padding-block: 2rem 4rem;
 }
 
@@ -966,9 +965,6 @@ async function submit() {
 
 .create__title {
   margin-bottom: 0.4rem;
-  font-size: 1.85rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 .create__sub {

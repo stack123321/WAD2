@@ -260,8 +260,7 @@ async function onSpin() {
   try {
     const winner = await spinTiebreak(hangoutId, tiedIds.value)
     spinWinnerId.value = winner
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 0 : SPIN_MS))
+    await new Promise((resolve) => setTimeout(resolve, SPIN_MS))
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
@@ -315,7 +314,7 @@ onUnmounted(() => {
       <div class="col-12 col-lg-8">
         <header class="mb-3">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
-            <h1 class="h3 fw-bold mb-0">Group voting</h1>
+            <h1 class="page-title mb-0">Group voting</h1>
             <p
               v-if="hangout && (deadline || status === 'collecting')"
               class="deadline small mb-0"

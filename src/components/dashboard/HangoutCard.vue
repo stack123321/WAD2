@@ -366,6 +366,17 @@ async function copyInvite() {
 /* the coloured left edge: amber = your turn, grey = waiting on others, green = confirmed */
 .hangout {
   border-left-width: 4px;
+  transition:
+    transform 0.25s,
+    box-shadow 0.25s,
+    opacity 0.25s;
+}
+/* the card under the pointer rises a little */
+@media (hover: hover) {
+  .hangout:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--fp-shadow-lift);
+  }
 }
 .edge-amber {
   border-left-color: var(--bs-warning);
