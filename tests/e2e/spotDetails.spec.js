@@ -65,6 +65,26 @@ test('photo arrows navigate through the image carousel', async ({ page }) => {
   await expect(firstIndicator).toHaveAttribute('aria-current', 'true')
 })
 
+test('large-screen photo gallery is centered and uses a bounded frame', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openCafe(page)
+
+  const gallery = page.locator('.preview-image')
+  const viewport = page.locator('.preview-image__viewport')
+  const galleryBounds = await gallery.boundingBox()
+  const previewBounds = await page.locator('.spot__preview').boundingBox()
+  const viewportStyle = await viewport.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { height: style.height, objectFit: getComputedStyle(element.querySelector('img')).objectFit }
+  })
+
+  expect(galleryBounds.width).toBeLessThanOrEqual(1100)
+  expect(Math.abs(
+    galleryBounds.x + galleryBounds.width / 2 - (previewBounds.x + previewBounds.width / 2),
+  )).toBeLessThanOrEqual(1)
+  expect(viewportStyle).toEqual({ height: '520px', objectFit: 'cover' })
+})
+
 test('shows estimated travel time to the spot for each friend', async ({ page }) => {
   await page.addInitScript(() =>
     window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),

@@ -708,4 +708,26 @@ const reasons = computed(() =>
       'space';
   }
 }
+
+@media (min-width: 992px) {
+  .preview-image {
+    width: min(100%, 1100px);
+    margin-inline: auto;
+  }
+
+  .preview-image__viewport {
+    height: clamp(360px, 42vw, 520px);
+    background: var(--fp-bg);
+  }
+
+  .preview-image__track {
+    height: 100%;
+  }
+
+  .preview-image img {
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+  }
+}
 </style>
