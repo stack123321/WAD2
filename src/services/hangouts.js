@@ -26,7 +26,7 @@ export async function getHangout(id) {
       // Preference columns (activities, budget, ...) are read here so Matrix's matchScore() can
       // score each spot against every member, not just whoever is looking at the page. dietary is
       // for the Ask box on 09 (a halal member means a halal search).
-      '*, members:hangout_members(*, profile:profiles(display_name, avatar_color, activities, dietary, budget, indoor_if_rain, step_free, vote_history)), shortlist!hangout_id(*), votes(*)',
+      '*, members:hangout_members(*, profile:profiles(display_name, avatar_color, activities, dietary, budget, max_travel_mins, indoor_if_rain, avoid_crowds, step_free, vote_history)), shortlist!hangout_id(*), votes(*)',
     )
     .eq('id', id)
     .single()
@@ -70,7 +70,7 @@ export function makeInviteCode(length = 6) {
 
 /**
  * Create a hangout and add the host as its first member. Used by 05 Create hangout.
- * @param {{ name: string, starts_at: string, vibe: string[], vote_deadline: string | null, invite_code: string }} input
+ * @param {{ name: string, starts_at: string, vibe: string[], vote_deadline: string | null, invite_code: string, friends_add_start?: boolean }} input
  * @returns {Promise<object>} the new hangout row
  */
 export async function createHangout(input) {
@@ -331,7 +331,7 @@ export function subscribeToMembers(hangoutId, onChange) {
  * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
  * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
  * @param {string} hangoutId
- * @param {{ name: string, lat: number, lng: number, avgMins: number | null, gapMins: number | null }} midpoint
+ * @param {{ name: string, lat: number, lng: number, avgMins: number | null, gapMins: number | null, times?: Array<{ user_id: string, mins: number, cost: number }> }} midpoint
  */
 export async function saveMidpoint(hangoutId, midpoint) {
   // The demo hangout and mock mode have no database to save to
@@ -346,6 +346,7 @@ export async function saveMidpoint(hangoutId, midpoint) {
     p_lng: midpoint.lng,
     p_avg: midpoint.avgMins,
     p_gap: midpoint.gapMins,
+    p_times: midpoint.times ?? [],
   })
   if (error) {
     throw error

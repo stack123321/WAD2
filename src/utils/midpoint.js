@@ -63,6 +63,20 @@ export function fairness(travelMins) {
 }
 
 /**
+ * Everyone's time and cost to one station, saved with the midpoint so 12 can show "Leave by".
+ * @param {Array<{ user_id: string }>} members in the same order as the station's travelMins
+ * @param {{ travelMins: number[], travelCosts: number[] }} station
+ * @returns {Array<{ user_id: string, mins: number, cost: number }>}
+ */
+export function timesFor(members, station) {
+  const times = []
+  members.forEach((m, i) => {
+    times.push({ user_id: m.user_id, mins: station.travelMins[i], cost: station.travelCosts[i] })
+  })
+  return times
+}
+
+/**
  * Score every candidate area and sort best first.
  * @param {Array<{ name: string, lat: number, lng: number, travelMins: number[], travelCosts: number[] }>} candidates
  *   travelMins / travelCosts: one entry per person, in the same order as the members

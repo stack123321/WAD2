@@ -36,7 +36,7 @@
     <section class="head">
       <h1 class="cards-title page-title">Spots near {{ hangout.hangout?.midpoint_name }}</h1>
       <div class="head-actions">
-        <GooglePlacesToggle />
+  
         <button
           v-if="shortlisted.length < 2"
           type="button"
@@ -282,7 +282,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
 import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
@@ -298,6 +297,7 @@ import {
   matchesHangoutVibe,
   softVetoReasons,
 } from '@/utils/matchScore'
+import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
 
 const route = useRoute()
@@ -322,6 +322,7 @@ const noMidpoint = computed(
 // One call covers every spot (they're all close to the midpoint), refreshed when the hangout's
 // time or place changes.
 const raining = ref(false)
+const crowdLevel = ref(null)
 watch(
   () => [hangout.hangout?.midpoint_lat, hangout.hangout?.midpoint_lng, hangout.hangout?.starts_at],
   async ([lat, lng, startsAt]) => {
@@ -339,6 +340,22 @@ watch(
   { immediate: true },
 )
 
+// Crowd level at the midpoint during the hangout, shared by every nearby spot because
+// the Places search is centred around that station.
+watch(
+  () => [hangout.hangout?.midpoint_name, hangout.hangout?.starts_at],
+  async ([stationName, startsAt]) => {
+    crowdLevel.value = null
+    if (!stationName || !startsAt) return
+    try {
+      crowdLevel.value = await getStationCrowd(stationName, new Date(startsAt))
+    } catch (error) {
+      console.error('Could not load crowd level', error)
+    }
+  },
+  { immediate: true },
+)
+
 // A spot with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
 function scoreSpot(spot) {
   return {
@@ -347,6 +364,7 @@ function scoreSpot(spot) {
       vibes: hangout.hangout?.vibe,
       startAt: hangout.hangout?.starts_at,
       raining: raining.value,
+      crowdLevel: crowdLevel.value,
       midpoint: hasMidpoint.value
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
@@ -355,6 +373,7 @@ function scoreSpot(spot) {
       vibes: hangout.hangout?.vibe,
       startAt: hangout.hangout?.starts_at,
       raining: raining.value,
+      crowdLevel: crowdLevel.value,
       midpoint: hasMidpoint.value
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
@@ -363,22 +382,7 @@ function scoreSpot(spot) {
       vibes: hangout.hangout?.vibe,
       startAt: hangout.hangout?.starts_at,
       raining: raining.value,
-      midpoint: hasMidpoint.value
-        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
-        : null,
-    }),
-    vetoReason: hardVetoReason(spot, hangout.members, {
-      vibes: hangout.hangout?.vibe,
-      startAt: hangout.hangout?.starts_at,
-      raining: raining.value,
-      midpoint: hasMidpoint.value
-        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
-        : null,
-    }),
-    softVetoReasons: softVetoReasons(spot, hangout.members, {
-      vibes: hangout.hangout?.vibe,
-      startAt: hangout.hangout?.starts_at,
-      raining: raining.value,
+      crowdLevel: crowdLevel.value,
       midpoint: hasMidpoint.value
         ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
         : null,
@@ -736,10 +740,17 @@ async function selectSpot(id) {
 
 .shortlist-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+.shortlist-actions > .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
 }
 
 .shortlist-list {

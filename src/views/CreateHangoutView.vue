@@ -583,6 +583,7 @@ async function submit() {
       vibe: form.vibe,
       vote_deadline: null,
       invite_code: inviteCode,
+      friends_add_start: form.friendsAddStart,
     })
     // Add the friends ticked in "Who's coming?", one by one. If one fails, the hangout still
     // exists and they can be added on 06 (Add friends).
