@@ -10,7 +10,13 @@ const props = defineProps({
   finalId: { type: String, default: null },
 })
 
-const total = computed(() => props.rows.reduce((sum, row) => sum + row.count, 0))
+const total = computed(() => {
+  let sum = 0
+  for (const row of props.rows) {
+    sum += row.count
+  }
+  return sum
+})
 
 const ranked = computed(() =>
   [...props.rows]
@@ -106,8 +112,12 @@ const ranked = computed(() =>
   background: var(--fp-primary);
 }
 
-.stack > :not(:first-child) {
+.stack > * {
   margin-left: -6px;
+}
+
+.stack > :first-child {
+  margin-left: 0;
 }
 
 .muted {

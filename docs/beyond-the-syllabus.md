@@ -219,18 +219,11 @@ background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 Used in: [SpotHero.vue](../src/components/voting/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/start/HangoutChat.vue).
 
 ### `:not(.class)`
-Selects elements that do not match. Here: every button in the read-only mode row that isn't the active one.
+Selects elements that do not match. Here: every item in a stack except the first, which gets the gap above it.
 ```css
-.segmented--readonly button:not(.active) { opacity: 0.5; }
+.stack > :not(:first-child) { margin-top: 0.75rem; }
 ```
-Used in: [PersonModeRow.vue](../src/components/transport/PersonModeRow.vue).
-
-### `clamp(min, preferred, max)`
-A size that grows with the screen but never goes below `min` or above `max`, so a heading shrinks on a phone without a media query.
-```css
-font-size: clamp(2.5rem, 5.5vw, 4rem); /* 5.5% of the screen width, kept between 40px and 64px */
-```
-Used in: [LandingView.vue](../src/views/LandingView.vue), [AuthView.vue](../src/views/AuthView.vue).
+Used in: [VoteResults.vue](../src/components/voting/VoteResults.vue), [CandidateCard.vue](../src/components/voting/CandidateCard.vue), [VoteView.vue](../src/views/VoteView.vue), and the Landing FAQ.
 
 ### `aspect-ratio: 16 / 9`
 Keeps a box at a fixed width-to-height shape, so a photo area keeps its shape while the card resizes.

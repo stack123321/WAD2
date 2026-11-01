@@ -58,12 +58,12 @@ function minsUntilClose(ranges, weekMin) {
 /** Whether any of a place's Google types or broad category fits a hangout vibe. */
 export function matchesHangoutVibe(place, vibes = []) {
   const types = Array.isArray(place.types) ? place.types : []
-  const placeTypes = new Set([...types, place.primaryType].filter(Boolean))
+  const placeTypes = [...types, place.primaryType].filter(Boolean)
 
   return vibes.some((vibe) => {
     if (place.category === vibe) return true
     const acceptedTypes = vibeTypes[vibe] ?? []
-    return [...placeTypes].some((type) => acceptedTypes.includes(type))
+    return placeTypes.some((type) => acceptedTypes.includes(type))
   })
 }
 
@@ -123,7 +123,7 @@ function evaluate(place, profiles = [], context = {}) {
   if (profiles.some((p) => p.step_free) && place.wheelchairAccessible === false) {
     return {
       score: 0,
-      vetoReason: 'Not wheelchair accessible, and someone in the group needs step-free access',
+      vetoReason: 'Not step-free accessible for a group member',
     }
   }
   const isOutdoor = types.some((t) => outdoorTypes.includes(t))
@@ -131,7 +131,7 @@ function evaluate(place, profiles = [], context = {}) {
     return {
       score: 0,
       vetoReason:
-        "It's an outdoor spot, rain is forecast, and someone in the group prefers to stay indoors when it rains",
+        "Outdoors, but rain is forecast",
     }
   }
 
@@ -155,7 +155,11 @@ function evaluate(place, profiles = [], context = {}) {
     const idx = sorted.findIndex(([t]) => t === primaryType)
     return idx === -1 ? DEFAULT_RANK : idx + 1
   })
-  const avgRank = ranks.reduce((sum, r) => sum + r, 0) / (ranks.length || 1)
+  let rankTotal = 0
+  for (const r of ranks) {
+    rankTotal += r
+  }
+  const avgRank = rankTotal / (ranks.length || 1)
   const rankStep = Math.floor(avgRank / 5)
   const scoreC = Math.max(0, (1 - 0.1 * rankStep) * 16)
 
@@ -212,6 +216,25 @@ export function matchScore(place, profiles = [], context = {}) {
 /** The hard-veto explanation, or null when a zero score came from normal scoring. */
 export function hardVetoReason(place, profiles = [], context = {}) {
   return evaluate(place, profiles, context).vetoReason
+}
+
+/** Explanations for soft penalties that reduce a place's score without forcing it to 0%. */
+export function softVetoReasons(place, profiles = [], context = {}) {
+  const result = evaluate(place, profiles, context)
+  if (result.vetoReason) return []
+
+  const reasons = []
+  if (result.walkMins !== null && result.walkingMultiplier < 1) {
+    reasons.push(
+      result.walkingMultiplier >= 0.7
+        ? `Distant from the group's midpoint (~${result.walkMins} min)`
+        : `Far from the group's midpoint (~${result.walkMins} min walk)`,
+    )
+  }
+  if (result.closingSoon) {
+    reasons.push('Closes within an hour of your hangout starting')
+  }
+  return reasons
 }
 
 /**

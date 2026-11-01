@@ -145,8 +145,12 @@ const labels = { mrt: 'MRT', bus: 'Bus', car: 'Car', walk: 'Walk' }
   cursor: default;
 }
 
-.segmented--readonly button:not(.active) {
+.segmented--readonly button {
   opacity: 0.45;
+}
+
+.segmented--readonly button.active {
+  opacity: 1;
 }
 
 /* Time and cost pushed to the right edge */
