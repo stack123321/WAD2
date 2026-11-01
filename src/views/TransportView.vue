@@ -78,6 +78,13 @@
       lng: best.lng,
       avgMins: best.average,
       gapMins: best.gap,
+      times: store.members
+        .filter((m) => m.start_lat != null)
+        .map((m) => ({
+          user_id: m.user_id,
+          mins: m.travel_mins,
+          cost: m.travel_cost,
+        })),
     }
     try {
       await saveMidpoint(route.params.id, midpoint)
