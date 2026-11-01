@@ -61,3 +61,22 @@ test('with reduced motion the hero map shows straight away, and phones get the t
   await expect(label).toHaveCSS('opacity', '1')
   await expect(page.locator('.map__chip').first()).toBeHidden()
 })
+
+test('on a phone the hero map waits until it is scrolled into view', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 600 }) // the map starts below the fold
+  await page.goto('/')
+  const map = page.locator('.hero__visual')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(map).not.toHaveClass(/is-playing/) // waiting, paused before the first frame
+  await expect(page.locator('.midpoint-label')).toHaveCSS('animation-play-state', 'paused')
+
+  await map.scrollIntoViewIfNeeded()
+  await expect(map).toHaveClass(/is-playing/)
+  await expect(page.locator('.midpoint-label')).toHaveCSS('opacity', '1', { timeout: 5000 })
+})
+
+test('the midpoint keeps pulsing after the map has played', async ({ page }) => {
+  const pulse = page.locator('.map__pulse')
+  await expect(pulse).toHaveCSS('animation-iteration-count', 'infinite')
+  await expect(pulse).toHaveCSS('animation-play-state', 'running')
+})
