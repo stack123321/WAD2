@@ -5,20 +5,30 @@
 // full-width sections down the page (how it works, features, FAQ, a final button).
 // Logged-in users see their next hangout instead of the "how it works" steps.
 // (Surya, improve/user-friendly-customised: one button, personal welcome card, feature rows, FAQ.)
+// (Eashvar) The hero map is "You" and three friends, each with their trip time, instead of named
+// people meeting in Bishan, so it fits anyone. It plays once: pins drop in, routes draw to the
+// middle, the midpoint pulses, then the times and the label appear (no motion if reduced).
 import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
 
 const auth = useAuthStore()
 
-// Friends shown on the hero map. x/y are positions in the SVG's 600×460 viewBox.
+// You and three friends on the hero map. x/y are positions in the SVG's 600×460 viewBox, mins is
+// each person's trip to the midpoint (all close together: that's what "fair" means).
+// chipX is where their time sits: to the right of the pin, or to the left near the right edge.
+const CHIP_WIDTH = 60
 const friends = [
-  { initial: 'N', x: 300, y: 105, color: 'var(--landing-pink)' },
-  { initial: 'H', x: 470, y: 95, color: 'var(--landing-blue)' },
-  { initial: 'S', x: 560, y: 260, color: 'var(--fp-accent)' },
-  { initial: 'R', x: 105, y: 325, color: 'var(--landing-purple)' },
-]
+  { label: '', x: 300, y: 105, color: 'var(--landing-pink)', mins: 21 },
+  { label: '', x: 470, y: 95, color: 'var(--landing-blue)', mins: 19 },
+  { label: '', x: 560, y: 260, color: 'var(--fp-accent)', mins: 22 },
+  { label: 'You', x: 105, y: 325, color: 'var(--landing-purple)', mins: 18 },
+].map((f) => ({ ...f, chipX: f.x > 450 ? f.x - 24 - CHIP_WIDTH : f.x + 24 }))
 const midpoint = { x: 318, y: 215 }
+
+// "18–22 min", shown in the label on phones instead of the time tags
+const allMins = friends.map((f) => f.mins)
+const timeRange = `${Math.min(...allMins)}–${Math.max(...allMins)} min`
 
 // Part (a) How it works (shown when logged out)
 const steps = [
@@ -214,7 +224,7 @@ function continueRoute(hangout) {
 
       <div
         class="hero__visual"
-        aria-label="Preview: four friends meeting at a fair midpoint in Bishan"
+        aria-label="Preview: you and three friends meeting at a fair midpoint, each 18 to 22 minutes away"
         role="img"
       >
         <svg
@@ -224,6 +234,23 @@ function continueRoute(hangout) {
           aria-hidden="true"
         >
           <defs>
+            <!-- each route is drawn from the friend to the middle by revealing it with a mask -->
+            <mask
+              v-for="(f, i) in friends"
+              :id="`route-mask-${i}`"
+              :key="`mask-${i}`"
+              maskUnits="userSpaceOnUse"
+            >
+              <line
+                :x1="f.x"
+                :y1="f.y"
+                :x2="midpoint.x"
+                :y2="midpoint.y"
+                pathLength="1"
+                class="map__route-reveal"
+                :style="{ animationDelay: `${1 + i * 0.12}s` }"
+              />
+            </mask>
             <radialGradient id="heat-red">
               <stop offset="0%" stop-color="var(--fp-accent)" stop-opacity="0.75" />
               <stop offset="100%" stop-color="var(--fp-accent)" stop-opacity="0" />
@@ -267,13 +294,14 @@ function continueRoute(hangout) {
 
           <!-- Routes to the midpoint -->
           <line
-            v-for="f in friends"
-            :key="`route-${f.initial}`"
+            v-for="(f, i) in friends"
+            :key="`route-${i}`"
             :x1="f.x"
             :y1="f.y"
             :x2="midpoint.x"
             :y2="midpoint.y"
             :stroke="f.color"
+            :mask="`url(#route-mask-${i})`"
             class="map__route"
           />
 
@@ -281,14 +309,34 @@ function continueRoute(hangout) {
           <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
           <circle :cx="midpoint.x" :cy="midpoint.y" r="10" class="map__mid" />
 
-          <!-- Friends -->
-          <g v-for="f in friends" :key="`pin-${f.initial}`" class="map__pin">
+          <!-- You and your friends, dropping in one after another -->
+          <g
+            v-for="(f, i) in friends"
+            :key="`pin-${i}`"
+            class="map__pin"
+            :style="{ animationDelay: `${i * 0.22}s` }"
+          >
             <circle :cx="f.x" :cy="f.y" r="15" :fill="f.color" />
-            <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.initial }}</text>
+            <text :x="f.x" :y="f.y" dy="0.35em" text-anchor="middle">{{ f.label }}</text>
+          </g>
+
+          <!-- Everyone's trip time, close together -->
+          <g
+            v-for="(f, i) in friends"
+            :key="`time-${i}`"
+            class="map__chip"
+            :style="{ animationDelay: `${2.1 + i * 0.1}s` }"
+          >
+            <rect :x="f.chipX" :y="f.y - 11" :width="CHIP_WIDTH" height="22" rx="11" />
+            <text :x="f.chipX + CHIP_WIDTH / 2" :y="f.y" dy="0.35em" text-anchor="middle">
+              {{ f.mins }} min
+            </text>
           </g>
         </svg>
 
-        <div class="midpoint-label">Fair midpoint · Bishan</div>
+        <div class="midpoint-label">
+          Fair for everyone<span class="midpoint-label__times"> · {{ timeRange }}</span>
+        </div>
       </div>
     </section>
 
@@ -579,14 +627,34 @@ function continueRoute(hangout) {
   stroke-dasharray: 6 5;
 }
 
+/* the white line in each route's mask: it grows from the friend to the middle */
+.map__route-reveal {
+  fill: none;
+  stroke: #fff; /* white in a mask = show */
+  stroke-width: 12;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: route-draw 0.7s ease-out both;
+}
+
 .map__halo {
   fill: rgb(0 0 0 / 0.12);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: halo-pulse 1.2s ease-out 1.8s both;
 }
 
 .map__mid {
   fill: var(--fp-primary);
   stroke: var(--fp-surface);
   stroke-width: 4;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 1.8s both;
+}
+
+.map__pin {
+  animation: pin-drop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .map__pin circle {
@@ -597,8 +665,61 @@ function continueRoute(hangout) {
 
 .map__pin text {
   fill: var(--fp-surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.map__chip {
+  animation: fade-in 0.35s ease-out both;
+}
+
+.map__chip rect {
+  fill: var(--fp-surface);
+  stroke: var(--fp-border);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.12));
+}
+
+.map__chip text {
+  fill: var(--fp-ink);
   font-size: 12px;
   font-weight: 700;
+}
+
+@keyframes pin-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+@keyframes route-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes halo-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .midpoint-label {
@@ -613,6 +734,34 @@ function continueRoute(hangout) {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+  animation: fade-in 0.4s ease-out 2.6s both;
+}
+
+/* phones: the map is too small to read the time tags, so the label gives the range instead */
+.midpoint-label__times {
+  display: none;
+}
+
+@media (max-width: 575.98px) {
+  .map__chip {
+    display: none;
+  }
+
+  .midpoint-label__times {
+    display: inline;
+  }
+}
+
+/* reduced motion: skip straight to the finished map */
+@media (prefers-reduced-motion: reduce) {
+  .map__route-reveal,
+  .map__halo,
+  .map__mid,
+  .map__pin,
+  .map__chip,
+  .midpoint-label {
+    animation: none;
+  }
 }
 
 /* How it works */
