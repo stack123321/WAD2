@@ -58,7 +58,7 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 | Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 575 px found no sideways scrolling on any page. |
 | Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). Schema: [supabase/schema.sql](supabase/schema.sql). |
 | External APIs, called asynchronously | See the table below. |
-| Tests | Vitest unit and component tests (92, in `__tests__` folders next to the code) and Playwright end-to-end tests (73, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
+| Tests | Vitest unit and component tests (160, in `__tests__` folders next to the code) and Playwright end-to-end tests (78, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
@@ -75,7 +75,7 @@ Secret keys stay on the server: the browser only calls our own `/api/...` functi
 | LTA DataMall | Crowd level at each MRT station (live platform crowd, or the forecast), and car park rates for the parking cost | `api/crowd.js`, `api/_parking.js` | `LTA_ACCOUNT_KEY` | Cached per line for 10 minutes (live) or 30 minutes (forecast) |
 | NEA via data.gov.sg and Open-Meteo | Weather, rain chance and haze for the hangout's time and place (04, 08, 12) | `src/services/weather.js` | none | |
 | Google Places (New) | Nearby cafes, restaurants and activities, photos, and a short summary (09, 10) | `api/places.js`, `api/place-photo.js` | `GOOGLE_PLACES_API_KEY` | Off until the user turns it on (the toggle on 09). The Google project allows 100 nearby searches a day and each category on 09 counts as one. Photos are cacheable for an hour |
-| Gemini | The Ask box on 09: turns "prata for dinner, one of us is halal" into a search. It never names places, Google Places finds them. <<FILL: keep this row only if the Ask box is back on 09>> | `api/assistant.js`, `api/_gemini.js` | `GEMINI_API_KEY` | |
+| Gemini | The Ask box on 09: turns "prata for dinner, one of us is halal" into a search. It never names places, Google Places finds them. | `api/assistant.js`, `api/_gemini.js` | `GEMINI_API_KEY` | |
 
 ### The algorithm
 
@@ -154,7 +154,7 @@ npx playwright install chromium    # once, downloads the test browser
 npm run test:e2e                   # Playwright: the end-to-end tests in tests/e2e/
 ```
 
-Expected result: no failures. Two Ask box tests skip themselves until the Ask box is on page 09 <<FILL: remove this sentence once the Ask box is back>>. Both kinds of test run on GitHub for every pull request ([.github/workflows/tests.yml](.github/workflows/tests.yml)), together with lint and the build.
+Expected result: no failures. Both kinds of test run on GitHub for every pull request ([.github/workflows/tests.yml](.github/workflows/tests.yml)), together with lint and the build.
 
 | Command | What it does |
 |---|---|
@@ -173,7 +173,7 @@ Expected result: no failures. Two Ask box tests skip themselves until the Ask bo
 | `smoke.spec.js` | Every page opens with the right heading; a new hangout from the landing page to the final plan; sign up to My hangouts |
 | `landing.spec.js` | 01: the hero button starts a hangout; "How it works" and the FAQ |
 | `auth.spec.js` | 02: log in and sign up say what is missing; logging in opens My hangouts |
-| `preferences.spec.js` | 03: saving preferences; the setup steps after sign up |
+| `preferences.spec.js`, `deleteAccount.spec.js` | 03: saving preferences; the setup steps after sign up; Delete my account |
 | `dashboard.spec.js` | 04: both hangouts and their progress; a card opens its next step; pinning |
 | `createHangout.spec.js` | 05: Create says what is missing; creating opens 06 |
 | `hangoutDetails.spec.js` | The step bar's Details: editing a hangout's details |
@@ -181,13 +181,13 @@ Expected result: no failures. Two Ask box tests skip themselves until the Ask bo
 | `transport.spec.js` | 07: everyone's mode; Find our midpoint opens 08 |
 | `midpoint.spec.js`, `crowds.spec.js` | 08 and `/crowds`: the time slider; See nearby spots |
 | `explore.spec.js` | 09: spots appear once Google Places is on; filters; opening a spot |
-| `assistant.spec.js` | 09: the Ask box <<FILL: only runs when the Ask box is on 09>> |
+| `assistant.spec.js` | 09: the Ask box |
 | `spotDetails.spec.js` | 10: details; Add to Vote and Remove; back to 09 |
 | `voting.spec.js` | 11 and 12: start the vote, change a vote, close it, the final plan shows the winner |
 | `debrief.spec.js`, `pastHangouts.spec.js` | After the hangout: the debrief, "Plan another with this group", Go again |
 | `friends.spec.js`, `chats.spec.js`, `groups.spec.js` | Friends and requests, chats, switching between hangouts |
 
-**Unit and component tests** (`src/**/__tests__/`): the voting helpers, dates, hangout status, avatar colours, vibes, weather and "Go again" logic, and the voting, dashboard and weather components.
+**Unit and component tests** (`src/**/__tests__/`): the fair-midpoint algorithm (fairness, ranking, times per person), the match score, the voting helpers, dates, hangout status, avatar colours, vibes, weather and "Go again" logic, and the voting, transport, spot and weather components.
 
 ## AI and LLM usage
 
@@ -284,9 +284,7 @@ To set up a fresh Supabase project:
 
 ## Known limitations
 
-- Each person's travel time to the midpoint is worked out on pages 07 and 08 but is not saved to the database, so "Leave by" on 11 and 12 can show "—" for hangouts stored in Supabase.
 - Google Places is off until the user turns it on (the toggle on 09). The Google project allows only 100 nearby searches a day (each category on 09 counts as one) and our server does not cache the results, so once the day's quota is used up 09 and 10 show an error until it resets. Without Google, 09 and 10 have no spots.
 - Preferences for avoiding crowds, maximum travel time and dietary needs are saved but do not change the match score, and "Sort: Crowd level" on 09 has no effect yet.
 - Page 10 still has some fixed placeholder text: "Travel time per friend" always shows, and "Photo / map preview" and "Description and details" show when no spot has loaded (for example when Google Places is off).
-- Some colours are still written as hex codes in component styles instead of tokens.
-- Free Supabase projects pause after 7 idle days, and nothing keeps this one awake. <<FILL: remove this line once the keep-alive job exists>>
+- Free Supabase projects pause after 7 idle days. A GitHub Action ([.github/workflows/keep-alive.yml](.github/workflows/keep-alive.yml)) pings the database every 3 days to keep it awake.
