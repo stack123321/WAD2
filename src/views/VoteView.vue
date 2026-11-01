@@ -64,7 +64,7 @@ const isMock = isMockHangout(hangoutId)
 const votes = ref([])
 const history = ref([])
 const now = ref(Date.now())
-const pickedWinnerId = ref(null)
+const manualWinnerId = ref(null)
 const actionError = ref('')
 const closing = ref(false)
 const starting = ref(false)
@@ -124,7 +124,11 @@ const waitingText = computed(() => {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 })
 
-const winnerId = computed(() => pickedWinnerId.value ?? leader.value?.spot.id ?? null)
+const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+
+function selectWinner(spotId) {
+  manualWinnerId.value = spotId === leaderId.value ? null : spotId
+}
 
 const deadline = computed(() => hangout.value?.vote_deadline ?? null)
 const timeLeftText = computed(() => (deadline.value ? timeLeft(deadline.value, now.value) : null))
@@ -447,11 +451,12 @@ onUnmounted(() => {
           <ClosePanel
             v-if="isHost && status === 'voting' && !needsSpin"
             :shortlist="store.shortlist"
+            :leader-id="leaderId"
             :selected-id="winnerId"
             :vote-count="totalVotes"
             :deadline-text="deadline ? formatDateTime(deadline) : null"
             :closing="closing"
-            @select="pickedWinnerId = $event"
+            @select="selectWinner"
             @close="onClose"
           />
           <ActivityFeed :items="feedItems" />

@@ -78,6 +78,13 @@
       lng: best.lng,
       avgMins: best.average,
       gapMins: best.gap,
+      times: store.members
+        .filter((m) => m.start_lat != null)
+        .map((m) => ({
+          user_id: m.user_id,
+          mins: m.travel_mins,
+          cost: m.travel_cost,
+        })),
     }
     try {
       await saveMidpoint(route.params.id, midpoint)
@@ -180,6 +187,7 @@
 
   onMounted(async () => {
     await store.load(route.params.id)
+    if (store.error) return
     await useUsualMode()
     await scoreAreas()
     stopListening = subscribeToMembers(route.params.id, onMemberChanged)
@@ -244,7 +252,23 @@
 </script>
 
    <template>
-    <section class="container py-4">
+    <div
+      v-if="store.loading"
+      class="d-flex align-items-center gap-2 text-secondary p-5"
+      role="status"
+    >
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      Loading hangout…
+    </div>
+
+    <div v-else-if="store.error" class="container py-5">
+      <div class="alert alert-danger" role="alert">
+        Couldn't load this hangout. Check the link, or go back to
+        <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
+      </div>
+    </div>
+
+    <section v-else-if="store.hangout" class="container py-4">
       <h1 class="title page-title">How is everyone getting there?</h1>
       <p class="subtitle">Pick how you’re getting there. Your friends pick their own.</p>
       <p v-if="usualModeNote" class="usual-note small">✓ {{ usualModeNote }}</p>

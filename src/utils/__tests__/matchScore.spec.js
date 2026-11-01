@@ -122,8 +122,8 @@ describe('TestSuite: matchesHangoutVibe', () => {
     expect(matchesHangoutVibe(cafe, ['active'])).toBeFalsy()
   })
 
-  it('Test3: a hangout with no vibe matches nothing', () => {
-    expect(matchesHangoutVibe(cafe, [])).toBeFalsy()
+  it('Test3: a hangout with no vibe chosen matches every place', () => {
+    expect(matchesHangoutVibe(cafe, [])).toBeTruthy()
   })
 })
 
