@@ -73,7 +73,7 @@ export async function averageParking(to) {
     const average = rates.reduce((a, b) => a + b, 0) / rates.length
     return Math.round(average * 100) / 100 // to the cent
   } catch (error) {
-    console.log('[api/_parking]', error.message)
+    console.error('[api/_parking]', error.message)
     return STANDARD_RATE
   }
 }

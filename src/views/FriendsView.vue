@@ -39,7 +39,7 @@ async function loadFriendships() {
     pending.value = lists.pending
     requests.value = lists.requests
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load your friends.'
   }
 }
@@ -57,7 +57,7 @@ async function loadOpenHangouts() {
     )
   } catch (err) {
     // only the shortcut is lost: "Add to hangout" still starts a new hangout with them
-    console.log(err)
+    console.error(err)
   }
 }
 
@@ -89,7 +89,7 @@ async function search() {
     results.value = await searchPeople(query.value.trim()) // trim() drops spaces at either end
     searched.value = true
   } catch (err) {
-    console.log(err)
+    console.error(err)
     searchError.value = 'Could not search right now. Try again in a moment.'
   }
   searching.value = false
@@ -128,7 +128,7 @@ async function addFriend(person) {
     clearSearch()
     actionDone.value = `Friend request sent to ${person.display_name}.`
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't send a friend request to ${person.display_name}.`
   }
 }
@@ -144,7 +144,7 @@ async function accept(person) {
     if (results.value.some((r) => r.user_id === person.user_id)) clearSearch()
     actionDone.value = `You and ${person.display_name} are now friends.`
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't accept ${person.display_name}'s request.`
   }
 }
@@ -157,7 +157,7 @@ async function decline(person) {
     await loadFriendships()
     alerts.refresh(myId.value) // update the badge here too
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't decline ${person.display_name}'s request.`
   }
 }
@@ -169,7 +169,7 @@ async function openChat(person) {
     const chat = await getOrCreateDirectChat(person) // the existing chat, or a new one the first time
     router.push({ name: 'direct-chat', params: { chatId: chat.id } }) // go to it
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't open a chat with ${person.display_name}.`
   }
 }
@@ -184,7 +184,7 @@ async function addToHangout(person, hangout) {
     hangout.members.push({ user_id: person.user_id })
     actionDone.value = `Added ${person.display_name} to ${hangout.name}.`
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't add ${person.display_name} to ${hangout.name}.`
   }
 }
@@ -198,7 +198,7 @@ async function remove(person) {
     confirmingId.value = null // close the "are you sure?"
     await loadFriendships() // they disappear from my friends
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't remove ${person.display_name}.`
   }
 }

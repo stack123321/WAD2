@@ -226,7 +226,6 @@ onUnmounted(() => clearInterval(timer))
             <div class="map-frame">
               <MembersMap :members="store.members" :highlight-id="myId" />
             </div>
-            <p class="small muted mt-2 mb-0">Step-by-step routes for everyone are coming soon.</p>
           </section>
 
           <WeatherCard

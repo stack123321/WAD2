@@ -77,7 +77,7 @@ async function loadCrowd() {
     stations.value = await getCrowdLevels(slotToDate(slot.value))
     drawCircles()
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load crowd levels. Try again in a moment.'
   }
   loading.value = false

@@ -270,7 +270,7 @@ const hazeDismissed = ref(false)
 try {
   hazeDismissed.value = sessionStorage.getItem('fp-haze-dismissed') === '1' // '1' means closed earlier this visit
 } catch (err) {
-  console.log(err) // storage can be blocked, the banner just shows again
+  console.error(err) // storage can be blocked, the banner just shows again
 }
 
 // only for unhealthy haze, and only if not closed
@@ -284,7 +284,7 @@ function dismissHaze() {
   try {
     sessionStorage.setItem('fp-haze-dismissed', '1') // and remember it for this visit
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
 }
 
@@ -296,13 +296,13 @@ async function loadWeather() {
   try {
     hours.value = await getHourlyForecast(1.3521, 103.8198) // the middle of singapore
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
   // a separate try, so a haze failure doesn't lose the forecast
   try {
     haze.value = await getHaze()
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
 }
 
@@ -320,7 +320,7 @@ async function loadCrowds() {
       const level = await getStationCrowd(h.midpoint_name, start)
       if (level) crowds.value[h.id] = level // null means lta has no real reading, so no chip
     } catch (err) {
-      console.log(err) // the crowd is extra, so no chip if it fails
+      console.error(err) // the crowd is extra, so no chip if it fails
     }
   }
 }
@@ -338,7 +338,7 @@ async function loadPhotos() {
     }
     photos.value = result
   } catch (err) {
-    console.log(err) // photos are extra, so the cards just show none
+    console.error(err) // photos are extra, so the cards just show none
   }
 }
 
@@ -357,7 +357,7 @@ onMounted(async () => {
       }
     }
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load your hangouts.'
   }
   loading.value = false

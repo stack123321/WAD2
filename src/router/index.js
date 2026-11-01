@@ -1,5 +1,5 @@
 // Owner: Ryan
-// all 12 pages are registered here, numbers match the figma frames (01–12)
+// every page is registered here, the numbers 01–12 match the figma frames (the other pages have no number)
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -27,7 +27,7 @@ const routes = [
     name: 'crowds',
     component: () => import('@/views/CrowdsView.vue'),
     meta: { requiresAuth: true },
-  }, // Ryan: full crowd heat map, no link to it yet
+  }, // Ryan: full crowd heat map, only reached by typing /crowds (no page links to it)
   {
     path: '/friends',
     name: 'friends',

@@ -108,7 +108,6 @@ test.describe('12 Final plan', () => {
       page.getByRole('region', { name: "Map of everyone's starting points" }),
     ).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Weather at Bishan' })).toBeVisible()
-    await expect(page.getByText('coming soon')).toBeVisible()
   })
 
   test('copy plan puts a summary on the clipboard', async ({ page, context }) => {

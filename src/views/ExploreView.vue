@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <!-- reached from the step bar before a midpoint has been picked: no filters, map or shortlist to show yet -->
   <main v-if="noMidpoint" class="container py-4">
     <h1 class="page-title mb-3">Spots near the midpoint</h1>

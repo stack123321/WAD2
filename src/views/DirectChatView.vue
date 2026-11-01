@@ -21,7 +21,7 @@ onMounted(async () => {
       error.value = 'Could not find this chat.'
     }
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load this chat.'
   }
   loading.value = false // runs after both success and failure

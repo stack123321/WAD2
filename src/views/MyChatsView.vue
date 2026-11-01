@@ -27,7 +27,7 @@ async function loadPlanning() {
       planning.value = { hangout: hangout, links: links }
     }
   } catch (err) {
-    console.log(err) // no banner, the list still works
+    console.error(err) // no banner, the list still works
   }
 }
 // each is { key, name, members, to }, hangout chats first and then one to one chats
@@ -60,7 +60,7 @@ onMounted(async () => {
       })
     }
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load your chats.'
   }
   loading.value = false

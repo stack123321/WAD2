@@ -57,7 +57,7 @@ One file = one owner. If you need to change someone else's file, ask them first 
 | `src/components/heatmap/` | Ryan |
 | `src/components/spots/` | Hugo |
 | `src/components/voting/` | Eashvar |
-| `src/components/preferences/`, `src/utils/matchScore.js`, `src/stores/auth.js` | Matrix |
+| `src/utils/matchScore.js`, `src/stores/auth.js` | Matrix |
 | `src/services/` | Owner named at the top of each file |
 | `api/route.js` Nicole · `api/crowd.js` Ryan · `api/places.js` Hugo | |
 | `supabase/schema.sql` | Matrix |

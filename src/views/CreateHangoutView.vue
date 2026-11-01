@@ -597,7 +597,7 @@ async function submit() {
     router.push({
       name: 'starting-points',
       params: { id: hangout.id },
-      // TODO(Matrix): save this on the hangout once the schema has a column for it
+      // not saved on the hangout (it has no column for it), the choice is kept in this browser by saveFriendsAddStart()
       query: form.friendsAddStart ? {} : { entry: 'host' },
     })
   } catch (e) {

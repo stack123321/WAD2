@@ -31,7 +31,7 @@ onMounted(async () => {
   try {
     hangout.value = await getHangout(route.params.hangoutId) // the id from the address, /chats/<id>
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load this chat.'
   }
 })

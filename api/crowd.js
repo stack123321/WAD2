@@ -58,8 +58,8 @@ export default async function handler(req, res) {
         addReading(crowd, reading)
       }
     } catch (error) {
-      if (error.response) console.log(`LTA replied with ${error.response.status} for ${line}`)
-      else console.log(`Could not reach LTA for ${line}:`, error.message)
+      if (error.response) console.error(`LTA replied with ${error.response.status} for ${line}`)
+      else console.error(`Could not reach LTA for ${line}:`, error.message)
     }
   }
 
@@ -77,7 +77,7 @@ async function getLine(line, at, isNow) {
     try {
       return await remember(realTimeCache, line, TEN_MINUTES, () => getRealTime(line))
     } catch (error) {
-      console.log(
+      console.error(
         `Real-time crowds unavailable for ${line} (${error.message}), using LTA's forecast instead`,
       )
     }

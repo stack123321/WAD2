@@ -10,13 +10,10 @@
 //     …forecast…
 //     <template #footer>Source: …</template>
 //   </WeatherFrame>
-defineProps({
-  compact: { type: Boolean, default: false }, // one-line layout (icon beside text), for WeatherStrip
-})
 </script>
 
 <template>
-  <section class="weather-frame" :class="{ compact }">
+  <section class="weather-frame">
     <header v-if="$slots.header" class="frame-header">
       <slot name="header"></slot>
     </header>
@@ -36,13 +33,6 @@ defineProps({
   border-radius: var(--fp-radius);
   box-shadow: var(--fp-shadow);
   padding: 1.5rem;
-}
-
-.weather-frame.compact {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
 }
 
 .frame-header {

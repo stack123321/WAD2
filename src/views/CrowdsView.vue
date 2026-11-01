@@ -1,6 +1,6 @@
 <script setup>
 // Owner: Ryan
-// crowd heat map for all of singapore, from "crowds right now" on 04 (same map as 08, no midpoint)
+// crowd heat map for all of singapore (same map as 08, no midpoint), reached only by typing /crowds
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 </script>
 
