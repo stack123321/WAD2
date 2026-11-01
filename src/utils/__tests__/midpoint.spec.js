@@ -1,9 +1,17 @@
 // Owner: Eashvar (testing; for Nicole's fair-midpoint algorithm). Unit tests for midpoint.js (Week
 // 10a): how fair one area is (fairness), ranking the candidate areas for "fairest", "fastest" or
-// "cheapest" (rankAreas, pickFairestArea), and the helpers for the first guess (centroid,
-// nearestStations).
+// "cheapest" (rankAreas, pickFairestArea), the helpers for the first guess (centroid,
+// nearestStations), and pairing everyone with their time and cost to the chosen station
+// (timesFor), which is saved with the midpoint for "Leave by" on 12.
 import { describe, it, expect } from 'vitest'
-import { fairness, rankAreas, pickFairestArea, centroid, nearestStations } from '../midpoint.js'
+import {
+  fairness,
+  rankAreas,
+  pickFairestArea,
+  centroid,
+  nearestStations,
+  timesFor,
+} from '../midpoint.js'
 
 // Two candidate areas for a group of two. Area A is quicker on average but unfair: one person
 // travels 40 min while the other travels 20. Area B is a little slower on average but fair.
@@ -111,5 +119,33 @@ describe('TestSuite: centroid and nearestStations', () => {
     const nearest = nearestStations({ lat: 1.3508, lng: 103.8485 }, 3)
     expect(nearest).toHaveLength(3)
     expect(nearest[0].name).toBe('Bishan')
+  })
+})
+
+describe('TestSuite: timesFor', () => {
+  it('Test1: pairs each person with their own time and cost, in order', () => {
+    const members = [{ user_id: 'amy' }, { user_id: 'ben' }]
+    const station = { travelMins: [20, 35], travelCosts: [1.5, 2.1] }
+    expect(timesFor(members, station)).toEqual([
+      { user_id: 'amy', mins: 20, cost: 1.5 },
+      { user_id: 'ben', mins: 35, cost: 2.1 },
+    ])
+  })
+
+  it('Test2: no members gives an empty list', () => {
+    expect(timesFor([], { travelMins: [], travelCosts: [] })).toEqual([])
+  })
+
+  it('Test3: only keeps user_id, mins and cost', () => {
+    // toEqual fails if the result has an extra field, like display_name or mode
+    const members = [{ user_id: 'amy', display_name: 'Amy', mode: 'bus' }]
+    const station = { travelMins: [12], travelCosts: [0.99] }
+    expect(timesFor(members, station)).toEqual([{ user_id: 'amy', mins: 12, cost: 0.99 }])
+  })
+
+  it("Test4: doesn't change the station passed in", () => {
+    const station = { travelMins: [20], travelCosts: [1.5] }
+    timesFor([{ user_id: 'amy' }], station)
+    expect(station).toEqual({ travelMins: [20], travelCosts: [1.5] })
   })
 })
