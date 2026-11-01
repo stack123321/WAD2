@@ -1,6 +1,7 @@
 {
   "name": "fairpoint",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Fairpoint: a meet-in-the-middle hangout planner. Friends add where they are coming from, Fairpoint picks the fairest MRT midpoint, and the group votes on a nearby spot.",
   "private": true,
   "type": "module",
   "scripts": {

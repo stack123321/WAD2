@@ -236,6 +236,8 @@
 </template>
 
 <script setup>
+// 09 Nearby spots
+// Owner: Hugo
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'

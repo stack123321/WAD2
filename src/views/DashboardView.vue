@@ -1,6 +1,6 @@
 <script setup>
-// 04 my hangouts
-// Owner: Ryan · Vet by: Eashvar
+// 04 My hangouts
+// Owner: Ryan
 import { ref, computed, onMounted } from 'vue'
 import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'

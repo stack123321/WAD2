@@ -1,6 +1,6 @@
 <script setup>
 // 02 Log in / Sign up
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "02". Split screen: brand panel with a map preview on the left, auth card on the right.
 // ?mode=signup opens Sign up; ?redirect=/path is where to go after logging in;
 // ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in;

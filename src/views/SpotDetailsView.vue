@@ -1,6 +1,6 @@
 <script setup>
 // 10 Spot details
-// Owner: Hugo · Vet by: Matrix
+// Owner: Hugo
 // Figma frame "10". One Google place: photos or map, rating, price, a short summary and how well it suits the group.
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'

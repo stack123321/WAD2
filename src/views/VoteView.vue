@@ -1,6 +1,6 @@
 <script setup>
 // 11 Group voting
-// Owner: Eashvar · Vet by: Ryan
+// Owner: Eashvar
 // Figma frame "11". While the hangout is still collecting, the host starts the vote (members see
 // who they're waiting for). Then everyone votes for one shortlisted spot and can change it until
 // the deadline (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally

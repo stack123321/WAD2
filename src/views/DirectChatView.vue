@@ -1,4 +1,5 @@
 <script setup>
+// Direct chat
 // Owner: Ryan
 // one to one chat with a friend, opened from my chats or the friends page (chat box: components/start/HangoutChat.vue)
 import { ref, onMounted } from 'vue'

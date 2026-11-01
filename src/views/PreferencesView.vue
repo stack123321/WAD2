@@ -1,6 +1,6 @@
 <script setup>
 // 03 User preferences
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "03". Reads and writes the logged-in user's profiles row.
 // ?setup=1 (sent by sign up) shows the onboarding progress bar and "Skip for now".
 import { computed, nextTick, reactive, ref, watch } from 'vue'

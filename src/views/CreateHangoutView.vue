@@ -1,6 +1,6 @@
 <script setup>
 // 05 Create hangout & invite
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "05". Left: hangout details (with quick date buttons and a name idea).
 // Right: "Who's coming?" (tick friends to add them straight away) and a live summary.
 // Anyone else can be invited with the Invite button in the step bar once the hangout exists.

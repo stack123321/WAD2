@@ -1,6 +1,6 @@
 <script setup>
 // 01 Landing
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "01". Explains what Fairpoint is, Netflix-style: a hero with one button, then
 // full-width sections down the page (how it works, features, FAQ, a final button).
 // Logged-in users see their next hangout instead of the "how it works" steps.

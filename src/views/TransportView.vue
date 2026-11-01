@@ -1,6 +1,6 @@
    <script setup>
   // 07 Mode of transport
-  // Owner: Nicole · Vet by: Surya
+  // Owner: Nicole
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'

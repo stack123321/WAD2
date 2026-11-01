@@ -1,6 +1,6 @@
 <script setup>
-// 08 midpoint + crowd heat map
-// Owner: Ryan (heat map) + Surya (weather card, midpoint dragging) · Vet by: Eashvar
+// 08 Midpoint + crowd heat map
+// Owner: Ryan (heat map) + Surya (weather card, midpoint dragging)
 // midpoint (fairest mrt station, saved on 07) on a map with live crowds and weather, dragging the pin snaps to the nearest station and re-saves it
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'

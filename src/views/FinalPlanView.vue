@@ -1,6 +1,6 @@
 <script setup>
 // 12 Final plan & itinerary
-// Owner: Eashvar (routes section: Nicole) · Vet by: Ryan
+// Owner: Eashvar (routes section: Nicole)
 // Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
 // a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
 // spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which

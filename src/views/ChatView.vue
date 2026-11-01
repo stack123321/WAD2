@@ -1,4 +1,5 @@
 <script setup>
+// Hangout chat
 // Owner: Ryan
 // one hangout's chat on its own page, opened from my chats (chat itself: components/start/HangoutChat.vue)
 import { ref, computed, onMounted } from 'vue'

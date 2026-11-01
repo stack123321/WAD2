@@ -1,4 +1,5 @@
 <script setup>
+// Crowds
 // Owner: Ryan
 // crowd heat map for all of singapore (same map as 08, no midpoint), reached only by typing /crowds
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'

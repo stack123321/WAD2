@@ -1,6 +1,6 @@
 <script setup>
 // 06 Starting points
-// Owner: Surya · Vet by: Nicole
+// Owner: Surya
 // Figma frame "06". Each member searches for where they're coming from (MRT, address or postal
 // code, via OneMap) and everyone's pin shows on the shared map. Your own pin can be dragged.
 // Host mode: if the host switched off "Friends add their own starting point" on 05 Create hangout,

@@ -1,4 +1,5 @@
 <script setup>
+// Friends
 // Owner: Ryan
 // friends: search, send and accept requests, see pending and my friends (data: services/friends.js)
 import { ref, computed, onMounted } from 'vue'
