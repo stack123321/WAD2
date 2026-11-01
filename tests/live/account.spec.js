@@ -6,9 +6,10 @@ import { createHangout, deleteHangout, host, logIn } from './helpers.js'
 
 test('a wrong password is refused', async ({ page }) => {
   await page.goto('/login')
-  await page.locator('#auth-email').fill(host.email)
-  await page.locator('#auth-password').fill('definitely-not-the-password')
-  await page.locator('button[type="submit"]').click()
+  await page.getByLabel('Email').fill(host.email)
+  await page.getByLabel('Password', { exact: true }).fill('definitely-not-the-password')
+
+  await page.getByRole('button', { name: 'Log in', exact: true }).last().click()
 
   await expect(page.getByRole('alert')).toBeVisible()
   await expect(page).toHaveURL(/\/login/)
@@ -16,7 +17,10 @@ test('a wrong password is refused', async ({ page }) => {
 
 test('logging out goes back to being logged out', async ({ page }) => {
   await logIn(page, host)
-  page.once('dialog', (dialog) => dialog.accept()) // "Log out of Fairpoint?"
+  // the app asks "Log out of Fairpoint?" in a browser pop-up; this answers OK
+  // (page.once isn't covered in the course: Playwright would otherwise answer Cancel)
+  page.once('dialog', (dialog) => dialog.accept())
+
   await page.getByRole('button', { name: 'Your profile menu' }).click()
   await page.getByRole('button', { name: 'Log out' }).first().click()
 
@@ -27,46 +31,38 @@ test('logging out goes back to being logged out', async ({ page }) => {
 
 test('preferences are still there after a reload', async ({ page }) => {
   await logIn(page, host, '/preferences')
-  const karaoke = page.getByRole('button', { name: /Karaoke/ })
-  const was = await karaoke.getAttribute('aria-pressed')
-  // Karaoke can't be the only activity, or saving it off would be refused
-  const cafes = page.getByRole('button', { name: /Cafes/ }).first()
-  if ((await cafes.getAttribute('aria-pressed')) !== 'true') await cafes.click()
+  // Cafes stays picked, so Karaoke is never the only activity (saving with none is refused)
+  const cafesOff = page.getByRole('button', { name: /Cafes/, pressed: false }).first()
+  if (await cafesOff.isVisible()) await cafesOff.click()
+  const karaokeWasOn = await page
+    .getByRole('button', { name: /Karaoke/, pressed: true })
+    .isVisible()
 
-  try {
-    await karaoke.click()
-    await page.getByRole('button', { name: 'Save preferences' }).click()
-    await expect(page.getByText('Saved ✓')).toBeVisible()
+  await page.getByRole('button', { name: /Karaoke/ }).click()
+  await page.getByRole('button', { name: 'Save preferences' }).click()
+  await expect(page.getByText('Saved ✓')).toBeVisible()
+  await page.reload()
 
-    await page.reload()
-    await expect(page.getByRole('button', { name: /Karaoke/ })).toHaveAttribute(
-      'aria-pressed',
-      was === 'true' ? 'false' : 'true',
-    )
-  } finally {
-    // put it back the way it was
-    const now = page.getByRole('button', { name: /Karaoke/ })
-    if ((await now.getAttribute('aria-pressed')) !== was) {
-      await now.click()
-      await page.getByRole('button', { name: 'Save preferences' }).click()
-      await expect(page.getByText('Saved ✓')).toBeVisible()
-    }
-  }
+  await expect(page.getByRole('button', { name: /Karaoke/, pressed: !karaokeWasOn })).toBeVisible()
+
+  // put Karaoke back the way it was
+  await page.getByRole('button', { name: /Karaoke/ }).click()
+  await page.getByRole('button', { name: 'Save preferences' }).click()
+  await expect(page.getByText('Saved ✓')).toBeVisible()
 })
 
 test('a starting point is saved and still there after a reload', async ({ page }) => {
   await logIn(page, host)
   const { name, id } = await createHangout(page)
+  // try/finally: the test hangout is deleted even if a check fails
   try {
     await page.getByRole('combobox').fill('Bishan')
-    const first = page.getByRole('option').first()
-    const label = (await first.innerText()).split('\n')[0].trim()
-    await first.click()
+    await page.getByRole('option').first().click()
     await expect(page.getByText('✓ Saved')).toBeVisible()
-
     await page.reload()
+
     await expect(page).toHaveURL(`/hangouts/${id}/start`)
-    await expect(page.getByRole('listitem').filter({ hasText: '(you)' })).toContainText(label)
+    await expect(page.getByText(/Bishan/i).first()).toBeVisible()
   } finally {
     await deleteHangout(page, name)
   }
