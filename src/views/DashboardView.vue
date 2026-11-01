@@ -367,12 +367,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container-fluid px-3 py-4 page">
+  <main class="container py-4 page">
     <div class="content">
       <!-- header: greeting, start button, counts and the upcoming/past toggle -->
       <div class="mb-3">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <h1 class="h2 fw-semibold mb-0">{{ heading }}</h1>
+          <h1 class="page-title mb-0">{{ heading }}</h1>
           <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
           <router-link
             :to="{ name: 'create-hangout' }"
@@ -549,10 +549,6 @@ onMounted(async () => {
   .card-list .hangout:hover {
     opacity: 1;
   }
-}
-.content {
-  max-width: 1040px; /* rows never stretch wider than this */
-  margin: 0 auto; /* centred */
 }
 .start-btn {
   min-height: 44px; /* easy to tap */

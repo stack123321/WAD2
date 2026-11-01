@@ -154,7 +154,7 @@ onUnmounted(() => clearInterval(timer))
 <template>
   <main class="container py-4">
     <header class="mb-4">
-      <h1 class="h2 mb-0">Final plan & itinerary</h1>
+      <h1 class="page-title mb-0">Final plan & itinerary</h1>
     </header>
 
     <div v-if="store.loading" class="text-center py-5">

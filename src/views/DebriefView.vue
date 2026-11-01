@@ -99,7 +99,7 @@ onMounted(() => store.load(hangoutId))
     </div>
 
     <template v-else-if="hangout && !spot">
-      <h1 class="h2 mb-2">How it went</h1>
+      <h1 class="page-title mb-2">How it went</h1>
       <div class="alert alert-info">
         This hangout hasn't been decided yet, so there's nothing to look back on.
         <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }"
@@ -111,7 +111,7 @@ onMounted(() => store.load(hangoutId))
     <template v-else-if="hangout">
       <header class="mb-4">
         <p class="label small mb-1">{{ status === 'done' ? 'Done' : 'Not marked as done yet' }}</p>
-        <h1 class="h2 mb-1">How it went</h1>
+        <h1 class="page-title mb-1">How it went</h1>
         <p class="muted mb-0">{{ hangout.name }}</p>
       </header>
 

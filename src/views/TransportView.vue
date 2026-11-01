@@ -245,7 +245,7 @@
 
    <template>
     <section class="container py-4">
-      <h1 class="title">How is everyone getting there?</h1>
+      <h1 class="title page-title">How is everyone getting there?</h1>
       <p class="subtitle">Pick how you’re getting there. Your friends pick their own.</p>
       <p v-if="usualModeNote" class="usual-note small">✓ {{ usualModeNote }}</p>
       <p v-if="modeError" class="text-danger small" role="alert">{{ modeError }}</p>
@@ -312,8 +312,6 @@
 
 <style scoped>
 .title {
-  font-size: 1.75rem;
-  font-weight: 800;
   margin-bottom: 0.25rem;
 }
 

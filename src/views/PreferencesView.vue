@@ -230,7 +230,7 @@ async function save() {
   <main class="container prefs">
     <header class="prefs__header">
       <div>
-        <h1 class="prefs__title">Tell us what you like</h1>
+        <h1 class="prefs__title page-title">Tell us what you like</h1>
         <p class="prefs__sub">
           {{
             isSetup
@@ -479,7 +479,6 @@ async function save() {
 
 <style scoped>
 .prefs {
-  max-width: 1060px;
   padding-block: 2rem 4rem;
 }
 
@@ -494,9 +493,6 @@ async function save() {
 
 .prefs__title {
   margin-bottom: 0.4rem;
-  font-size: 1.85rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 .prefs__sub {
