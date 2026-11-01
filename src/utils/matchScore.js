@@ -58,12 +58,12 @@ function minsUntilClose(ranges, weekMin) {
 /** Whether any of a place's Google types or broad category fits a hangout vibe. */
 export function matchesHangoutVibe(place, vibes = []) {
   const types = Array.isArray(place.types) ? place.types : []
-  const placeTypes = new Set([...types, place.primaryType].filter(Boolean))
+  const placeTypes = [...types, place.primaryType].filter(Boolean)
 
   return vibes.some((vibe) => {
     if (place.category === vibe) return true
     const acceptedTypes = vibeTypes[vibe] ?? []
-    return [...placeTypes].some((type) => acceptedTypes.includes(type))
+    return placeTypes.some((type) => acceptedTypes.includes(type))
   })
 }
 
@@ -155,7 +155,11 @@ function evaluate(place, profiles = [], context = {}) {
     const idx = sorted.findIndex(([t]) => t === primaryType)
     return idx === -1 ? DEFAULT_RANK : idx + 1
   })
-  const avgRank = ranks.reduce((sum, r) => sum + r, 0) / (ranks.length || 1)
+  let rankTotal = 0
+  for (const r of ranks) {
+    rankTotal += r
+  }
+  const avgRank = rankTotal / (ranks.length || 1)
   const rankStep = Math.floor(avgRank / 5)
   const scoreC = Math.max(0, (1 - 0.1 * rankStep) * 16)
 

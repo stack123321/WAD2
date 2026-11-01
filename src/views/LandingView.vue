@@ -545,9 +545,15 @@ function continueRoute(hangout) {
 
 .section-title {
   margin-bottom: 1rem;
-  font-size: clamp(1.6rem, 3.5vw, 2.25rem);
+  font-size: 1.6rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+@media (min-width: 992px) {
+  .section-title {
+    font-size: 2.25rem;
+  }
 }
 
 /* A soft coloured band across the whole width */
@@ -591,10 +597,22 @@ function continueRoute(hangout) {
 
 .hero__title {
   margin: 1.5rem 0 1.25rem;
-  font-size: clamp(2.5rem, 5.5vw, 4rem);
+  font-size: 2.5rem;
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.035em;
+}
+
+@media (min-width: 768px) {
+  .hero__title {
+    font-size: 3.25rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .hero__title {
+    font-size: 4rem;
+  }
 }
 
 .hero__lead {
@@ -931,7 +949,8 @@ function continueRoute(hangout) {
 }
 
 .vote {
-  width: min(100%, 280px);
+  width: 100%;
+  max-width: 280px;
   padding: 1.25rem;
 }
 

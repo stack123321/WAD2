@@ -37,11 +37,13 @@ export function nearestStations(point, count) {
  */
 export function centroid(points) {
   if (points.length === 0) return null
-  const sum = points.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), {
-    lat: 0,
-    lng: 0,
-  })
-  return { lat: sum.lat / points.length, lng: sum.lng / points.length }
+  let latSum = 0
+  let lngSum = 0
+  for (const p of points) {
+    latSum += p.lat
+    lngSum += p.lng
+  }
+  return { lat: latSum / points.length, lng: lngSum / points.length }
 }
 
 /**
@@ -52,7 +54,11 @@ export function centroid(points) {
 export function fairness(travelMins) {
   const longest = Math.max(...travelMins)
   const shortest = Math.min(...travelMins)
-  const average = travelMins.reduce((a, b) => a + b, 0) / travelMins.length
+  let totalMins = 0
+  for (const mins of travelMins) {
+    totalMins += mins
+  }
+  const average = totalMins / travelMins.length
   return { longest, gap: longest - shortest, average: Math.round(average) }
 }
 
@@ -75,7 +81,10 @@ export const CANDIDATE_AREAS = [
 export function rankAreas(candidates, optimiseFor = 'fairest') {
   const scored = candidates.map((c) => {
     const f = fairness(c.travelMins)
-    const totalCost = c.travelCosts.reduce((a, b) => a + b, 0)
+    let totalCost = 0
+    for (const cost of c.travelCosts) {
+      totalCost += cost
+    }
     let score
     if (optimiseFor === 'fastest') score = f.average
     else if (optimiseFor === 'cheapest') score = totalCost

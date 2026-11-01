@@ -699,7 +699,10 @@ const savedText = computed(() => {
 /* Chat panel: dark backdrop + a panel on the right (full width on phones) */
 .chat-backdrop {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 1040;
   background: rgb(0 0 0 / 0.35);
 }
@@ -710,7 +713,8 @@ const savedText = computed(() => {
   right: 0;
   bottom: 0;
   z-index: 1050; /* above the map and the navbar */
-  width: min(420px, 100%);
+  width: 100%;
+  max-width: 420px;
   padding: 3.25rem 1rem 1rem;
   overflow-y: auto;
   background: var(--fp-surface);

@@ -657,10 +657,16 @@ const avatars = [
 .brand-panel__title {
   max-width: 24rem;
   margin-bottom: 1rem;
-  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.03em;
+}
+
+@media (min-width: 1200px) {
+  .brand-panel__title {
+    font-size: 2.75rem;
+  }
 }
 
 .brand-panel__lead {

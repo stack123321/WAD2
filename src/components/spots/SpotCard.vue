@@ -58,10 +58,14 @@ const matchTone = computed(() => {
 
 <template>
   <article class="spot-card">
-    <component :is="to ? 'RouterLink' : 'div'" :to="to ?? undefined" class="spot-card__image">
+    <RouterLink v-if="to" :to="to" class="spot-card__image">
       <img v-if="imageUrl" :src="imageUrl" :alt="name" loading="lazy" />
       <span v-else class="spot-card__no-image" aria-hidden="true">{{ emoji }}</span>
-    </component>
+    </RouterLink>
+    <div v-else class="spot-card__image">
+      <img v-if="imageUrl" :src="imageUrl" :alt="name" loading="lazy" />
+      <span v-else class="spot-card__no-image" aria-hidden="true">{{ emoji }}</span>
+    </div>
 
     <div class="spot-card__body">
       <div class="d-flex justify-content-between align-items-start gap-2">

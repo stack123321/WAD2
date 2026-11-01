@@ -505,8 +505,12 @@ onUnmounted(() => {
   padding: 0.75rem 1rem;
 }
 
-.stack > :not(:first-child) {
+.stack > * {
   margin-left: -6px;
+}
+
+.stack > :first-child {
+  margin-left: 0;
 }
 
 .suggest {
