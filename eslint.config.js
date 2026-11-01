@@ -37,7 +37,7 @@ export default defineConfig([
 
   {
     ...pluginPlaywright.configs['flat/recommended'],
-    files: ['tests/{e2e,unit}/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    files: ['tests/e2e/**/*.{test,spec}.{js,ts,jsx,tsx}'],
   },
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),

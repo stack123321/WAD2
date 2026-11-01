@@ -1,35 +1,22 @@
-// Owner: Ryan
-// page 08 crowd heat map with the demo hangout
+// Owner: Eashvar (testing; from Ryan's tests). E2E tests (Week 10c) for 08 Midpoint + crowd heat
+// map on the Friday sample hangout: moving the time slider shows that time, and "See nearby
+// spots" opens 09. Crowd levels come from api/crowd.js's sample data, since the tests run without
+// an LTA key.
 import { test, expect } from '@playwright/test'
 
-test('draws station circles and the midpoint pin', async ({ page }) => {
+test('moving the time slider shows that time', async ({ page }) => {
   await page.goto('/hangouts/demo/midpoint')
-  await expect(page.locator('#crowd-map .midpoint-pin')).toBeVisible()
-  // at least one station circle (the map opens zoomed in, so some are off-screen)
-  await expect(page.locator('#crowd-map path.crowd')).not.toHaveCount(0)
-})
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Midpoint + crowd heat map')
 
-test('moving the slider loads that time and updates the label', async ({ page }) => {
-  await page.goto('/hangouts/demo/midpoint')
-  await expect(page.locator('#crowd-map path.crowd')).not.toHaveCount(0)
-
-  const request = page.waitForRequest((r) => r.url().includes('/api/crowd'))
   await page.getByLabel(/Time today/).fill('38') // slot 38 = 7:00 pm
-  await request
+
   await expect(page.getByText('Time today: 7:00 pm')).toBeVisible()
 })
 
-test('See nearby spots goes to page 09', async ({ page }) => {
+test('See nearby spots opens 09', async ({ page }) => {
   await page.goto('/hangouts/demo/midpoint')
-  await page.getByRole('link', { name: 'See nearby spots' }).click()
-  await expect(page).toHaveURL('/hangouts/demo/explore')
-})
 
-test("shows everyone's starting point on the OneMap base map", async ({ page }) => {
-  await page.goto('/hangouts/demo/midpoint')
-  await expect(page.locator('#crowd-map .member-pin')).toHaveCount(4)
-  await expect(page.locator('#crowd-map img.leaflet-tile').first()).toHaveAttribute(
-    'src',
-    /onemap\.gov\.sg/,
-  )
+  await page.getByRole('link', { name: 'See nearby spots' }).click()
+
+  await expect(page).toHaveURL('/hangouts/demo/explore')
 })

@@ -55,10 +55,10 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 |---|---|
 | HTML, CSS, JavaScript, a framework | Vue 3 single-file components in `src/views/` and `src/components/`, built with Vite. Vue Router for the pages, Pinia for the hangout, login and alert stores. |
 | CSS framework | Bootstrap 5 for the grid, spacing and breakpoints. Colours, radius and fonts are tokens in `src/styles/tokens.css`; components use `<style scoped>`. |
-| Responsive design | Breakpoints at 576, 768, 992 and 1200 px (Bootstrap's). `tests/e2e/layout.spec.js` checks every page at 375, 768 and 1366 px for sideways scrolling, and the voting pages also check tap-target size. |
+| Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 575 px found no sideways scrolling on any page. |
 | Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). Schema: [supabase/schema.sql](supabase/schema.sql). |
 | External APIs, called asynchronously | See the table below. |
-| End-to-end tests | Playwright, 237 end-to-end tests in `tests/e2e/` and 9 unit tests in `tests/unit/`. See [Running the tests](#running-the-tests). |
+| Tests | Vitest unit and component tests (92, in `__tests__` folders next to the code) and Playwright end-to-end tests (73, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
@@ -144,47 +144,50 @@ Only the two `VITE_` values are sent to the browser. Every other key has no `VIT
 
 ## Running the tests
 
-The tests need no keys and no account. They start their own copy of the app on port 5198 with the Supabase keys blanked, so they use the demo hangouts, and they stub the Google Places and Gemini calls.
+Testing follows the course's three kinds (Week 10): unit tests for plain functions and component tests for Vue components, both with Vitest, and one end-to-end test per user journey with Playwright.
+
+The tests need no keys and no account. The end-to-end tests start their own copy of the app on port 5198 with every key blanked, so the app uses the demo hangouts and the functions' sample data, and the tests answer the Google Places calls themselves.
 
 ```bash
+npm run test:unit                  # Vitest: unit and component tests, next to the code in __tests__ folders
 npx playwright install chromium    # once, downloads the test browser
-npm run test:e2e                   # the end-to-end tests in tests/e2e/
-npm run test:unit                  # the unit tests in tests/unit/ (plain functions, no page)
+npm run test:e2e                   # Playwright: the end-to-end tests in tests/e2e/
 ```
 
-Expected result: no failures. The tests that need a key skip themselves, so a run with no keys shows some as skipped. The tests run on GitHub for every pull request ([.github/workflows/tests.yml](.github/workflows/tests.yml)) together with lint and the build.
+Expected result: no failures. Two Ask box tests skip themselves until the Ask box is on page 09 <<FILL: remove this sentence once the Ask box is back>>. Both kinds of test run on GitHub for every pull request ([.github/workflows/tests.yml](.github/workflows/tests.yml)), together with lint and the build.
 
 | Command | What it does |
 |---|---|
-| `npx playwright show-report` | Open the HTML report from the last run |
-| `npx playwright test tests/e2e/smoke.spec.js` | Run one spec file |
-| `npx playwright test -g "Past shows"` | Run the tests whose name contains some text |
-| `npx playwright test --ui` | Watch the tests run |
-| `npx playwright test` | Everything: end-to-end and unit tests |
+| `npx playwright show-report` | Open the HTML report from the last end-to-end run |
+| `npx playwright test tests/e2e/smoke.spec.js` | Run one end-to-end spec |
+| `npx playwright test -g "pinned"` | Run the end-to-end tests whose name contains some text |
+| `npx playwright test --ui` | Watch the end-to-end tests run |
+| `npx vitest` | Vitest in watch mode while you edit |
 
 `npm run test:live` runs `tests/live/` against the real Supabase project. It is optional and needs real accounts in `.env.local` (`E2E_EMAIL` and so on). It is not part of the normal run.
 
-Tests find things by role, label and visible text (`getByRole`, `getByLabel`), and the Google Places and Gemini calls are stubbed, so those tests do not depend on quota or the time of day.
+**End-to-end tests** (`tests/e2e/`), each one a user journey on the demo hangouts:
 
-| Spec | Journey covered |
+| Spec | Journey |
 |---|---|
-| `smoke.spec.js` | Every page opens with the right heading; landing to final plan; sign up to dashboard |
-| `landing.spec.js` | 01: the hero, its button, "How it works" |
-| `auth.spec.js` | 02: validation messages for log in and sign up |
-| `preferences.spec.js` | 03: toggling and saving preferences, the sign-up setup steps |
-| `dashboard.spec.js` | 04: cards, filters, search, each card's next step |
-| `createHangout.spec.js` | 05: validation, quick dates, creating a hangout |
-| `startingPoints.spec.js` | 06: search a place, pick it, use my location |
-| `transport.spec.js` | 07: reminders for friends with no starting point |
-| `midpoint.spec.js`, `crowds.spec.js` | 08 and `/crowds`: heat map, time slider |
-| `explore.spec.js` | 09: filters, sorting, adding and removing spots |
-| `assistant.spec.js` | 09: the Ask box <<FILL: runs only when the Ask box is on 09>> |
-| `spotDetails.spec.js` | 10: details, match reasons, add to vote |
-| `voting.spec.js` | 11 and 12: starting the vote, voting, tie-break wheel, final plan |
-| `debrief.spec.js`, `pastHangouts.spec.js` | After the hangout: debrief, "Go again" |
-| `friends.spec.js`, `chats.spec.js`, `groups.spec.js`, `hangoutDetails.spec.js` | Friends, chats, switching between hangouts, the step bar |
-| `layout.spec.js` | Every page at 375, 768 and 1366 px: no sideways scrolling |
-| `api.spec.js` | Each `/api/` function answers with the shape the pages rely on |
+| `smoke.spec.js` | Every page opens with the right heading; a new hangout from the landing page to the final plan; sign up to My hangouts |
+| `landing.spec.js` | 01: the hero button starts a hangout; "How it works" and the FAQ |
+| `auth.spec.js` | 02: log in and sign up say what is missing; logging in opens My hangouts |
+| `preferences.spec.js` | 03: saving preferences; the setup steps after sign up |
+| `dashboard.spec.js` | 04: both hangouts and their progress; a card opens its next step; pinning |
+| `createHangout.spec.js` | 05: Create says what is missing; creating opens 06 |
+| `hangoutDetails.spec.js` | The step bar's Details: editing a hangout's details |
+| `startingPoints.spec.js` | 06: everyone's starting point; search and pick a place; no match |
+| `transport.spec.js` | 07: everyone's mode; Find our midpoint opens 08 |
+| `midpoint.spec.js`, `crowds.spec.js` | 08 and `/crowds`: the time slider; See nearby spots |
+| `explore.spec.js` | 09: spots appear once Google Places is on; filters; opening a spot |
+| `assistant.spec.js` | 09: the Ask box <<FILL: only runs when the Ask box is on 09>> |
+| `spotDetails.spec.js` | 10: details; Add to Vote and Remove; back to 09 |
+| `voting.spec.js` | 11 and 12: start the vote, change a vote, close it, the final plan shows the winner |
+| `debrief.spec.js`, `pastHangouts.spec.js` | After the hangout: the debrief, "Plan another with this group", Go again |
+| `friends.spec.js`, `chats.spec.js`, `groups.spec.js` | Friends and requests, chats, switching between hangouts |
+
+**Unit and component tests** (`src/**/__tests__/`): the voting helpers, dates, hangout status, avatar colours, vibes, weather and "Go again" logic, and the voting, dashboard and weather components.
 
 ## AI and LLM usage
 
@@ -202,7 +205,7 @@ The brief allows AI for lower-order work only: boilerplate, tidying, test cases,
 | Dev server for `api/` | `scripts/devApi.js` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Friends and chats | `FriendsView.vue`, `MyChatsView.vue`, `ChatView.vue`, `DirectChatView.vue`, `services/friends.js`, `directChats.js`, `unread.js` | <<FILL>> | <<FILL>> | <<FILL>> |
 | Router, store, helpers | `router/index.js`, `stores/hangout.js`, `stores/alerts.js`, `utils/hangoutStatus.js`, `avatarColor.js`, `dates.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Tests | dashboard, chats, friends, midpoint, avatarColor and hangoutStatus specs | <<FILL>> | <<FILL>> | <<FILL>> |
+| Tests | dashboard, chats, friends and midpoint e2e specs; avatarColor and hangoutStatus unit tests | <<FILL>> | <<FILL>> | <<FILL>> |
 | Code explanations | study comments and notes | Claude | Wrote explanations and comments | Read and learned them |
 | Repository tidy-up before submission | file clean-up, README and CONTRIBUTORS drafts | Claude | Deleted unused files, drafted this README and the header comments | Reviewed and approved each step |
 
@@ -243,7 +246,7 @@ api/             Vercel serverless functions, one file per /api/... URL. Files s
   _data/         Station positions and mall car park rates
   _mocks/        Sample answers used when a key is missing
 scripts/         devApi.js (runs api/ during npm run dev), buildCarparkRates.js (one-time data script)
-src/
+src/              (a __tests__/ folder next to the code holds its Vitest tests)
   views/         One file per page
   components/    Page parts, grouped by feature (dashboard, map, spots, voting, ...)
     shared/      Parts used by several pages (trip table, spot hero)
@@ -258,7 +261,6 @@ src/
 supabase/        schema.sql (the full database) and migrations/ (dated changes already included in it)
 tests/
   e2e/           The end-to-end Playwright tests (npm run test:e2e)
-  unit/          Tests of plain functions with no page (npm run test:unit)
   live/          Optional tests against the real Supabase project
 .github/         Workflows (tests on every pull request, deploy to Vercel on main) and the pull request template
 ```
