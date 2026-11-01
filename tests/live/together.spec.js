@@ -1,6 +1,6 @@
 // Owner: Eashvar (testing). Two real people in one hangout, against the real Supabase project
-// (npm run test:live), each in their own browser: someone who isn't in the hangout can't add a
-// starting point or vote; the invite link adds them; the host sees them appear without
+// (npm run test:live), each in their own browser: someone who isn't in the hangout can't even
+// open it (the database only lets members read a hangout); the invite link adds them; the host sees them appear without
 // reloading; and a whole vote (spots added, vote started, the friend votes, the host sees it live
 // and closes it) reaches the final plan for both. Needs E2E_EMAIL_2 / E2E_PASSWORD_2 too
 // (tests/live/helpers.js); skipped without them (test.skip). The hangout is deleted at the end.
@@ -36,17 +36,12 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
   const { name, id } = await createHangout(hostPage)
 
   try {
-    // Before joining, the friend can't add a starting point or vote (database rules)
+    // Before joining, the friend can't open the hangout's pages at all: the database only lets
+    // members read a hangout ("hangouts: members read" in supabase/schema.sql)
     await friendPage.goto(`/hangouts/${id}/start`)
-    await expect(
-      friendPage.getByText(
-        "You're not a member of this hangout, so you can't add a starting point.",
-      ),
-    ).toBeVisible()
+    await expect(friendPage.getByText("Couldn't load this hangout", { exact: false })).toBeVisible()
     await friendPage.goto(`/hangouts/${id}/vote`)
-    await expect(
-      friendPage.getByText("You're not in this hangout, so you can't vote.", { exact: false }),
-    ).toBeVisible()
+    await expect(friendPage.getByText("Couldn't load this hangout", { exact: false })).toBeVisible()
 
     // The host keeps 06 open, where the group is just them; the friend joins with the invite link
     const invite = await copyInviteLink(hostPage, hostContext, name)
