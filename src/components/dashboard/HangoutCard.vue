@@ -3,7 +3,7 @@
 // one hangout on 04 dashboard: a compact row, or the big UP NEXT card with a map when `featured`
 // the whole card opens the hangout (the title is a stretched link), the button and the ⋯ menu keep their own clicks
 import { computed, ref } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import PinIcon from '@/components/dashboard/PinIcon.vue'
 import UpNextMap from '@/components/dashboard/UpNextMap.vue'
 import WeatherLineIcon from '@/components/dashboard/WeatherLineIcon.vue'

@@ -9,7 +9,7 @@ import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
 import { useAuthStore } from '@/stores/auth'
 import { useAlertsStore } from '@/stores/alerts'
 import { markChatRead } from '@/services/unread'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   hangout: { type: Object, default: null }, // needs id, members

@@ -14,7 +14,7 @@ import { isMockHangout } from '@/services/votes'
 import SpotHero from '@/components/shared/SpotHero.vue'
 import TripTable from '@/components/shared/TripTable.vue'
 import VoteResults from '@/components/voting/VoteResults.vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import HangoutPhotos from '@/components/debrief/HangoutPhotos.vue'
 import {
   countableVotes,

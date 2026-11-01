@@ -282,7 +282,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
 import {

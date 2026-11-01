@@ -9,7 +9,7 @@ import { useAlertsStore } from '@/stores/alerts'
 import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
 import { planningLinks } from '@/utils/planningLinks'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const route = useRoute()
 const auth = useAuthStore()

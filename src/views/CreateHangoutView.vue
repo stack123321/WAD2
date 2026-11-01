@@ -29,7 +29,7 @@ import {
   sendFriendRequest,
 } from '@/services/friends'
 import { useAuthStore } from '@/stores/auth'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
 
 const route = useRoute()
