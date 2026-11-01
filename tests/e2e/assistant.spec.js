@@ -18,7 +18,10 @@ test.skip(!askBoxOnPage, 'The Ask box is not on 09 yet (fix/restore-ask-box)')
 const askBox = (page) => page.getByRole('textbox', { name: 'Ask for something specific' })
 const reply = 'Sample results for "prata for dinner" near Bishan'
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.title.startsWith('on a phone')) {
+    await page.setViewportSize({ width: 375, height: 812 })
+  }
   await setTime(page, VOTING_OPEN)
   await stubPlaces(page, [place('test-cafe', 'Test Cafe')])
   await page.goto('/hangouts/demo/explore')
@@ -48,7 +51,6 @@ test('"Show all spots" goes back to the usual list', async ({ page }) => {
 test('on a phone the Ask toggle opens over the cards and closes after a search', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
   const toggle = page.getByRole('button', { name: 'Ask for something specific' })
 
   await expect(askBox(page)).toBeHidden()
