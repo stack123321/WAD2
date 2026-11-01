@@ -2,9 +2,16 @@
 // a place fits the group, out of 100. The score adds up four parts: the hangout's vibe (34),
 // members' preferred activities (17), what the group has voted for before (16) and budget (33).
 // A spot closed during the hangout, not step-free for a member who needs it, or outdoors in the
-// rain scores 0. A long walk from the midpoint or closing soon lowers the score.
+// rain scores 0. A long walk from the midpoint or closing soon lowers the score. matchReasons
+// explains the same score in words, for 10 Spot details' "Criteria" list.
 import { describe, it, expect } from 'vitest'
-import { matchScore, hardVetoReason, softVetoReasons, matchesHangoutVibe } from '../matchScore.js'
+import {
+  matchScore,
+  hardVetoReason,
+  softVetoReasons,
+  matchesHangoutVibe,
+  matchReasons,
+} from '../matchScore.js'
 
 // A cafe at Bishan that fits the group in every way: a "study" vibe (cafes fit it), everyone
 // likes cafes, cafes top everyone's vote history, and it's cheap ($, within every budget).
@@ -117,5 +124,50 @@ describe('TestSuite: matchesHangoutVibe', () => {
 
   it('Test3: a hangout with no vibe matches nothing', () => {
     expect(matchesHangoutVibe(cafe, [])).toBeFalsy()
+  })
+})
+
+describe('TestSuite: matchReasons (the "Criteria" list on 10)', () => {
+  it('Test1: a place that fits in every way gets four good reasons', () => {
+    expect(matchReasons(cafe, group, studyHangout)).toEqual([
+      { tone: 'good', text: `Matches your hangout's "study" vibe` },
+      { tone: 'good', text: 'Everyone in the group listed this as a preferred activity' },
+      { tone: 'good', text: 'The group has often voted for this kind of place before' },
+      { tone: 'good', text: 'Within budget for everyone in the group' },
+    ])
+  })
+
+  it('Test2: a place that doesn’t match the vibe says so', () => {
+    const reasons = matchReasons(cafe, group, { vibes: ['active'] })
+    expect(reasons[0]).toEqual({ tone: 'bad', text: `Doesn't match your hangout's "active" vibe` })
+  })
+
+  it('Test3: with no vibe set, the vibe counts neither way', () => {
+    expect(matchReasons(cafe, group, {})[0].tone).toBe('neutral')
+  })
+
+  it('Test4: within budget for some of the group is a warning', () => {
+    const midPriced = { ...cafe, priceLevel: 2 }
+    const mixedBudgets = [cafeLover, { ...cafeLover, budget: 1 }]
+    expect(matchReasons(midPriced, mixedBudgets, studyHangout)).toContainEqual({
+      tone: 'warn',
+      text: 'Within budget for 1 of 2 members',
+    })
+  })
+
+  it('Test5: a place that is vetoed gives only the veto reason', () => {
+    const steps = { ...cafe, wheelchairAccessible: false }
+    const needsStepFree = [{ ...cafeLover, step_free: true }]
+    expect(matchReasons(steps, needsStepFree, studyHangout)).toEqual([
+      { tone: 'bad', text: 'Not step-free accessible for a group member' },
+    ])
+  })
+
+  it('Test6: a place at the midpoint mentions the short walk', () => {
+    const atTheMidpoint = { ...studyHangout, midpoint: { lat: 1.3508, lng: 103.8485 } }
+    expect(matchReasons(cafe, group, atTheMidpoint)).toContainEqual({
+      tone: 'good',
+      text: "Short walk from the group's midpoint (~0 min)",
+    })
   })
 })
