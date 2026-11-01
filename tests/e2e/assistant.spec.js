@@ -44,3 +44,33 @@ test('"Show all spots" goes back to the usual list', async ({ page }) => {
   await expect(page.getByText(reply)).toBeHidden()
   await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
 })
+
+test('on a phone the Ask toggle opens over the cards and closes after a search', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  const toggle = page.getByRole('button', { name: 'Ask for something specific' })
+
+  await expect(askBox(page)).toBeHidden()
+  await toggle.click()
+  await expect(askBox(page)).toBeVisible()
+  await askBox(page).fill('prata for dinner')
+  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+
+  await expect(askBox(page)).toBeHidden()
+  await expect(toggle).toContainText('Ask ·')
+  await toggle.click()
+  await expect(page.getByText(reply)).toBeVisible()
+
+  expect(
+    Math.round(
+      await page.getByRole('button', { name: 'Show all spots' }).evaluate((el) =>
+        el.getBoundingClientRect().height,
+      ),
+    ),
+  ).toBeGreaterThanOrEqual(44)
+
+  await page.getByRole('button', { name: 'Show all spots' }).click()
+  await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible()
+})
