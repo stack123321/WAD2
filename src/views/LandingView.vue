@@ -7,8 +7,8 @@
 // (Surya, improve/user-friendly-customised: one button, personal welcome card, feature rows, FAQ.)
 // (Eashvar) The hero map is "You" and three friends, each with their trip time, instead of named
 // people meeting in Bishan, so it fits anyone. It plays once it's on screen (on phones and tablets
-// it's below the text): pins drop in, routes draw to the middle, the midpoint appears, then the
-// times and the label. The midpoint then keeps pulsing. No motion if reduced motion is on.
+// it's below the text): pins drop in, routes fade in, the midpoint appears, then the times and
+// the label. The midpoint then keeps glowing. No motion if reduced motion is on.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyHangouts } from '@/services/hangouts'
@@ -27,34 +27,30 @@ const friends = [
 ].map((f) => ({ ...f, chipX: f.x > 450 ? f.x - 24 - CHIP_WIDTH : f.x + 24 }))
 const midpoint = { x: 318, y: 215 }
 
-// (Eashvar) Start the map's animation only once most of it is on screen. IntersectionObserver
-// (not covered in the course) is the browser's way to be told when an element scrolls into view,
-// without checking on every scroll. Older browsers without it just play straight away.
+// (Eashvar) Start the map's animation only once most of it is on screen. On every scroll (or window
+// resize) we check where the map is; once 60% of it is above the bottom of the window, it plays
+// (only once).
 const heroMap = ref(null)
 const mapPlaying = ref(false)
-let mapObserver = null
+
+function checkMapInView() {
+  const box = heroMap.value.getBoundingClientRect()
+  if (box.top + box.height * 0.6 <= window.innerHeight) {
+    mapPlaying.value = true
+    window.removeEventListener('scroll', checkMapInView)
+    window.removeEventListener('resize', checkMapInView)
+  }
+}
 
 onMounted(() => {
-  if (!('IntersectionObserver' in window)) {
-    mapPlaying.value = true
-    return
-  }
-  mapObserver = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting) {
-        mapPlaying.value = true
-        mapObserver.disconnect() // it only plays once
-      }
-    },
-    { threshold: 0.6 }, // 60% of the map in view
-  )
-  mapObserver.observe(heroMap.value)
+  window.addEventListener('scroll', checkMapInView)
+  window.addEventListener('resize', checkMapInView)
+  checkMapInView() // on laptops the map is already on screen, so it plays straight away
 })
 
 onUnmounted(() => {
-  if (mapObserver) {
-    mapObserver.disconnect()
-  }
+  window.removeEventListener('scroll', checkMapInView)
+  window.removeEventListener('resize', checkMapInView)
 })
 
 // "18–22 min", shown in the label on phones instead of the time tags
@@ -267,23 +263,6 @@ function continueRoute(hangout) {
           aria-hidden="true"
         >
           <defs>
-            <!-- each route is drawn from the friend to the middle by revealing it with a mask -->
-            <mask
-              v-for="(f, i) in friends"
-              :id="`route-mask-${i}`"
-              :key="`mask-${i}`"
-              maskUnits="userSpaceOnUse"
-            >
-              <line
-                :x1="f.x"
-                :y1="f.y"
-                :x2="midpoint.x"
-                :y2="midpoint.y"
-                pathLength="1"
-                class="map__route-reveal"
-                :style="{ animationDelay: `${1 + i * 0.12}s` }"
-              />
-            </mask>
             <radialGradient id="heat-red">
               <stop offset="0%" stop-color="var(--fp-accent)" stop-opacity="0.75" />
               <stop offset="100%" stop-color="var(--fp-accent)" stop-opacity="0" />
@@ -325,7 +304,7 @@ function continueRoute(hangout) {
           <circle cx="165" cy="300" r="70" fill="url(#heat-amber)" />
           <circle cx="350" cy="145" r="55" fill="url(#heat-amber)" />
 
-          <!-- Routes to the midpoint -->
+          <!-- Routes to the midpoint, fading in one after another -->
           <line
             v-for="(f, i) in friends"
             :key="`route-${i}`"
@@ -334,11 +313,11 @@ function continueRoute(hangout) {
             :x2="midpoint.x"
             :y2="midpoint.y"
             :stroke="f.color"
-            :mask="`url(#route-mask-${i})`"
             class="map__route"
+            :style="{ animationDelay: `${1 + i * 0.12}s` }"
           />
 
-          <!-- Midpoint, with a ring that keeps pulsing out from it -->
+          <!-- Midpoint, with a glow on top that keeps fading in and out -->
           <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__halo" />
           <circle :cx="midpoint.x" :cy="midpoint.y" r="38" class="map__pulse" />
           <circle :cx="midpoint.x" :cy="midpoint.y" r="10" class="map__mid" />
@@ -702,27 +681,13 @@ function continueRoute(hangout) {
   }
 }
 
-@keyframes route-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-}
-
-@keyframes pop-in {
-  from {
+@keyframes glow {
+  0%,
+  100% {
     opacity: 0;
-    transform: scale(0.3);
   }
-}
-
-@keyframes pulse-ring {
-  from {
-    opacity: 0.9;
-    transform: scale(0.3);
-  }
-  to {
-    opacity: 0;
-    transform: scale(1.9);
+  50% {
+    opacity: 0.35;
   }
 }
 
@@ -761,70 +726,48 @@ function continueRoute(hangout) {
   }
 }
 
-/* The hero map's animation, in order. Each part waits (paused) until the map is on screen. */
-/* the white line in each route's mask: it grows from the friend to the middle */
-.map__route-reveal {
-  fill: none;
-  stroke: #fff; /* white in a mask = show */
-  stroke-width: 12;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-  animation: route-draw 0.7s ease-out both;
-}
-
-.hero__visual .map__pin {
-  animation: pin-drop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-.hero__visual .map__halo,
-.hero__visual .map__mid {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 1.8s both;
-}
-
-/* hidden between pulses (opacity 0), then a ring grows out of the midpoint every 2.4s, forever */
+/* the glow over the midpoint: invisible unless it's animating */
 .map__pulse {
-  fill: none;
-  stroke: var(--fp-primary);
-  stroke-width: 3;
+  fill: var(--fp-primary);
   opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pulse-ring 2.4s ease-out 2.2s infinite;
 }
 
-.hero__visual .map__chip {
-  animation: fade-in 0.35s ease-out both;
-}
-
-.hero__visual .midpoint-label {
-  animation: fade-in 0.4s ease-out 2.6s both;
-}
-
-.hero__visual:not(.is-playing) .map__route-reveal,
-.hero__visual:not(.is-playing) .map__pin,
-.hero__visual:not(.is-playing) .map__halo,
-.hero__visual:not(.is-playing) .map__mid,
-.hero__visual:not(.is-playing) .map__pulse,
-.hero__visual:not(.is-playing) .map__chip,
-.hero__visual:not(.is-playing) .midpoint-label {
-  animation-play-state: paused;
-}
-
-/* reduced motion: skip straight to the finished map, with no pulsing */
-@media (prefers-reduced-motion: reduce) {
-  .hero__visual .map__route-reveal,
-  .hero__visual .map__pin,
-  .hero__visual .map__halo,
-  .hero__visual .map__mid,
-  .hero__visual .map__chip,
-  .hero__visual .midpoint-label {
-    animation: none;
+/* The hero map's animation, in order, only when "reduce motion" is off (with it on, the finished
+   map just shows). Until the map is on screen (no is-playing class yet) its parts are hidden. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__visual:not(.is-playing) .map__route,
+  .hero__visual:not(.is-playing) .map__pin,
+  .hero__visual:not(.is-playing) .map__halo,
+  .hero__visual:not(.is-playing) .map__mid,
+  .hero__visual:not(.is-playing) .map__chip,
+  .hero__visual:not(.is-playing) .midpoint-label {
+    opacity: 0;
   }
 
-  .hero__visual .map__pulse {
-    display: none;
+  .is-playing .map__pin {
+    animation: pin-drop 0.45s ease-out both;
+  }
+
+  .is-playing .map__route {
+    animation: fade-in 0.6s ease-out both;
+  }
+
+  .is-playing .map__halo,
+  .is-playing .map__mid {
+    animation: fade-in 0.45s ease-out 1.8s both;
+  }
+
+  .is-playing .map__chip {
+    animation: fade-in 0.35s ease-out both;
+  }
+
+  .is-playing .midpoint-label {
+    animation: fade-in 0.4s ease-out 2.6s both;
+  }
+
+  /* fades in and out every 2.4s, forever */
+  .is-playing .map__pulse {
+    animation: glow 2.4s ease-in-out 2.2s infinite;
   }
 }
 

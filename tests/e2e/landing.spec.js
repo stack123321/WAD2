@@ -67,16 +67,16 @@ test('on a phone the hero map waits until it is scrolled into view', async ({ pa
   await page.goto('/')
   const map = page.locator('.hero__visual')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(map).not.toHaveClass(/is-playing/) // waiting, paused before the first frame
-  await expect(page.locator('.midpoint-label')).toHaveCSS('animation-play-state', 'paused')
+  await expect(map).not.toHaveClass(/is-playing/) // waiting, with its parts hidden
+  await expect(page.locator('.midpoint-label')).toHaveCSS('opacity', '0')
 
   await map.scrollIntoViewIfNeeded()
   await expect(map).toHaveClass(/is-playing/)
   await expect(page.locator('.midpoint-label')).toHaveCSS('opacity', '1', { timeout: 5000 })
 })
 
-test('the midpoint keeps pulsing after the map has played', async ({ page }) => {
+test('the midpoint keeps glowing after the map has played', async ({ page }) => {
   const pulse = page.locator('.map__pulse')
+  await expect(pulse).toHaveCSS('animation-name', /glow/) // Vue adds an id to scoped names
   await expect(pulse).toHaveCSS('animation-iteration-count', 'infinite')
-  await expect(pulse).toHaveCSS('animation-play-state', 'running')
 })
