@@ -200,6 +200,16 @@ const travelFill = computed(
 
 watch(prefs, () => (saved.value = false))
 
+// (Surya) Where setup goes when it's done: the page they were heading to before signing up
+// (?next=, from 02), or My hangouts. Only a page inside Fairpoint ("/..."), never another site.
+function afterSetup() {
+  const next = route.query.next
+  if (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')) {
+    return next
+  }
+  return { name: 'dashboard' }
+}
+
 async function save() {
   error.value = ''
   showErrors.value = true
@@ -214,7 +224,7 @@ async function save() {
   try {
     await saveProfile(userId.value, displayName.value, clean(prefs))
     if (isSetup.value) {
-      router.push({ name: 'dashboard' })
+      router.push(afterSetup())
     } else {
       saved.value = true
     }

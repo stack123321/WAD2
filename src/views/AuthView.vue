@@ -92,9 +92,22 @@ function setMode(m) {
   router.replace({ query }) // also drops any #error=... left by an expired reset link
 }
 
+// (Surya) A new account always goes through the Preferences setup first, even when it came from
+// a page that needed a login (e.g. "Start a hangout" → /login?redirect=/hangouts/new). That page
+// is passed on as ?next=, and setup goes there when it's done.
 function nextRoute() {
-  if (typeof route.query.redirect === 'string') return route.query.redirect
-  return isSignup.value ? { name: 'preferences', query: { setup: '1' } } : { name: 'dashboard' }
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+  if (isSignup.value) {
+    const query = { setup: '1' }
+    if (redirect) {
+      query.next = redirect
+    }
+    return { name: 'preferences', query }
+  }
+  if (redirect) {
+    return redirect
+  }
+  return { name: 'dashboard' }
 }
 
 const inviteCode = typeof route.query.invite === 'string' ? route.query.invite : null
