@@ -151,12 +151,10 @@ function resetPreferences() {
   showErrors.value = false
 }
 
-const noRestrictions = computed(() => prefs.dietary.length === 0)
-
 const setupStep = ref(0)
 const setupTotal = 4
 // (Surya) what each setup step asks about, shown beside "Step 2 of 4"
-const setupStepNames = ['What you enjoy', 'Food', 'Budget', 'Travel & comfort']
+const setupStepNames = ['What you enjoy', 'Travel', 'Budget', 'Comfort and Accessibility']
 const setupStepLabel = computed(() => `Step ${setupStep.value} of ${setupTotal}`)
 
 async function nextSetupStep() {
@@ -369,38 +367,23 @@ async function confirmDelete() {
             </p>
           </section>
 
-          <section v-if="!isSetup || setupStep === 2" class="panel dietary-panel">
-            <h2 id="prefs-dietary-title" class="panel__title">
-              Dietary needs
-              <span class="panel__count"
-                >{{ prefs.dietary.length }}/{{ dietaryOptions.length }} selected</span
-              >
-            </h2>
-            <p class="panel__sub">We only suggest food spots that fit everyone</p>
-            <div class="chips" role="group" aria-labelledby="prefs-dietary-title">
-              <button
-                v-for="o in dietaryOptions"
-                :key="o.value"
-                type="button"
-                class="chip"
-                :class="[`chip--${o.color}`, { 'is-on': prefs.dietary.includes(o.value) }]"
-                :aria-pressed="prefs.dietary.includes(o.value)"
-                @click="toggle(prefs.dietary, o.value)"
-              >
-                <span class="chip__emoji" aria-hidden="true">{{ o.emoji }}</span>
-                {{ o.label }}
-              </button>
-              <button
-                type="button"
-                class="chip"
-                :class="['chip--orange', { 'is-on': noRestrictions }]"
-                :aria-pressed="noRestrictions"
-                @click="prefs.dietary = []"
-              >
-                <span class="chip__emoji" aria-hidden="true">✅</span>
-                No restrictions
-              </button>
+          <section v-if="!isSetup || setupStep === 2" class="panel">
+            <h2 class="panel__title mb-3">Travel</h2>
+
+            <div class="travel">
+              <label for="prefs-travel" class="travel__label">Max travel time</label>
+              <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
             </div>
+            <input
+              id="prefs-travel"
+              v-model.number="prefs.max_travel_mins"
+              class="range"
+              type="range"
+              :min="travel.min"
+              :max="travel.max"
+              :step="travel.step"
+              :style="{ '--fill': travelFill }"
+            />
           </section>
         </div>
 
@@ -425,22 +408,7 @@ async function confirmDelete() {
           </section>
 
           <section v-if="!isSetup || setupStep === 4" class="panel">
-            <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
-
-            <div class="travel">
-              <label for="prefs-travel" class="travel__label">Max travel time</label>
-              <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
-            </div>
-            <input
-              id="prefs-travel"
-              v-model.number="prefs.max_travel_mins"
-              class="range"
-              type="range"
-              :min="travel.min"
-              :max="travel.max"
-              :step="travel.step"
-              :style="{ '--fill': travelFill }"
-            />
+            <h2 class="panel__title">Comfort and Accessibility</h2>
 
             <ul class="toggles">
               <li v-for="o in comfortOptions" :key="o.key" class="toggle-row">
@@ -663,10 +631,6 @@ async function confirmDelete() {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
-}
-
-.dietary-panel {
-  min-height: 13rem;
 }
 
 .panel__title {
@@ -943,10 +907,6 @@ async function confirmDelete() {
 @media (max-width: 767.98px) {
   .prefs__grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .dietary-panel {
-    min-height: 0;
   }
 
   .actions__buttons {
