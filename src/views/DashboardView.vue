@@ -1,6 +1,6 @@
 <script setup>
-// 04 my hangouts
-// Owner: Ryan · Vet by: Eashvar
+// 04 My hangouts
+// Owner: Ryan
 import { ref, computed, onMounted } from 'vue'
 import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
@@ -8,6 +8,7 @@ import PageDrop from '@/components/ui/PageDrop.vue'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import WeekStrip from '@/components/dashboard/WeekStrip.vue'
 import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import { getHaze, getHourlyForecast } from '@/services/weather'
 import { getStationCrowd } from '@/services/crowd'
 import { getPhotos } from '@/services/photos'
@@ -167,6 +168,17 @@ const sections = computed(() => {
   return result
 })
 
+// the card whose ⋯ menu is open, so the other cards stay faded until it closes
+const openMenuId = ref(null)
+
+function onMenu(hangout, open) {
+  if (open) {
+    openMenuId.value = hangout.id
+  } else if (openMenuId.value === hangout.id) {
+    openMenuId.value = null // only the open card can clear it: opening another card's menu closes this one first
+  }
+}
+
 // the pin changes on screen straight away and is saved in the background, so the page feels instant.
 // if saving fails, the pin is flipped back so the screen matches the database again.
 async function onTogglePin(hangout) {
@@ -225,8 +237,8 @@ async function doDelete(hangout) {
   }
 }
 
-// the card's menu item opens the confirm dialog (data-bs-toggle="modal") and tells us which one
-// there is one dialog for the whole page, so it needs to remember which hangout and which action it is asking about.
+// the card's menu item tells us which hangout and which action, and the pop-up asks about it
+// there is one pop-up for the whole page, so it needs to remember which hangout and which action it is asking about.
 const confirmAction = ref(null) // { kind: 'leave' | 'delete', hangout }
 
 function askLeave(hangout) {
@@ -270,7 +282,7 @@ const hazeDismissed = ref(false)
 try {
   hazeDismissed.value = sessionStorage.getItem('fp-haze-dismissed') === '1' // '1' means closed earlier this visit
 } catch (err) {
-  console.log(err) // storage can be blocked, the banner just shows again
+  console.error(err) // storage can be blocked, the banner just shows again
 }
 
 // only for unhealthy haze, and only if not closed
@@ -284,7 +296,7 @@ function dismissHaze() {
   try {
     sessionStorage.setItem('fp-haze-dismissed', '1') // and remember it for this visit
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
 }
 
@@ -296,13 +308,13 @@ async function loadWeather() {
   try {
     hours.value = await getHourlyForecast(1.3521, 103.8198) // the middle of singapore
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
   // a separate try, so a haze failure doesn't lose the forecast
   try {
     haze.value = await getHaze()
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
 }
 
@@ -320,7 +332,7 @@ async function loadCrowds() {
       const level = await getStationCrowd(h.midpoint_name, start)
       if (level) crowds.value[h.id] = level // null means lta has no real reading, so no chip
     } catch (err) {
-      console.log(err) // the crowd is extra, so no chip if it fails
+      console.error(err) // the crowd is extra, so no chip if it fails
     }
   }
 }
@@ -338,7 +350,7 @@ async function loadPhotos() {
     }
     photos.value = result
   } catch (err) {
-    console.log(err) // photos are extra, so the cards just show none
+    console.error(err) // photos are extra, so the cards just show none
   }
 }
 
@@ -357,7 +369,7 @@ onMounted(async () => {
       }
     }
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load your hangouts.'
   }
   loading.value = false
@@ -464,7 +476,7 @@ onMounted(async () => {
       <!-- three loops from the sections computed: section, then day group, then hangout -->
       <PageDrop :key="tab" :play="toggled">
         <!-- one box around every card, so hovering any card can fade the others -->
-        <div class="card-list">
+        <div class="card-list" :class="{ 'has-open-menu': openMenuId !== null }">
           <section v-for="s in sections" :key="s.key" class="mb-4">
             <h2 class="section-label">
               {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
@@ -490,6 +502,7 @@ onMounted(async () => {
                   @delete="askDelete"
                   @leave="askLeave"
                   @toggle-pin="onTogglePin"
+                  @menu="onMenu(h, $event)"
                 />
               </div>
             </div>
@@ -505,50 +518,45 @@ onMounted(async () => {
     </aside>
 
     <!-- confirm leaving or deleting, opened by the card's menu item -->
-    <!-- bootstrap opens and closes it (data-bs-toggle and data-bs-dismiss), vue only fills in the words -->
-    <div
-      id="confirm-modal"
-      class="modal fade"
-      tabindex="-1"
-      aria-labelledby="confirm-title"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2 id="confirm-title" class="modal-title h5">{{ confirmCopy.title }}</h2>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-          </div>
-          <div class="modal-body">{{ confirmCopy.text }}</div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-              Cancel
-            </button>
-            <!-- closes the dialog and runs the action -->
-            <button
-              type="button"
-              class="btn btn-danger"
-              data-bs-dismiss="modal"
-              @click="confirmNow"
-            >
-              {{ confirmCopy.button }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      :open="confirmAction !== null"
+      :title="confirmCopy.title"
+      :text="confirmCopy.text"
+      :button="confirmCopy.button"
+      danger
+      @confirm="confirmNow"
+      @cancel="confirmAction = null"
+    />
   </main>
 </template>
 
 <style scoped>
 /* hovering a card: every card fades, then the one under the pointer comes back */
 @media (hover: hover) {
+  /* the gaps and headings between cards don't count as hovering the list, so the cards only fade
+     while the pointer is on a card */
+  .card-list {
+    pointer-events: none;
+  }
+  .card-list .hangout {
+    pointer-events: auto;
+  }
   .card-list:hover .hangout {
     opacity: 0.45;
   }
   .card-list .hangout:hover {
     opacity: 1;
   }
+}
+/* a card's ⋯ menu is open: the others stay faded and don't lift, so only that card is highlighted */
+.card-list.has-open-menu .hangout:not(.menu-open) {
+  opacity: 0.45;
+  transform: none;
+  box-shadow: none;
+}
+/* and the open card stays bright, even when the pointer is over another part of the list */
+.card-list.has-open-menu .hangout.menu-open {
+  opacity: 1;
 }
 .start-btn {
   min-height: 44px; /* easy to tap */

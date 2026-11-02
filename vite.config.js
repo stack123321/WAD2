@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import devApi from './scripts/dev-api.js'
+import devApi from './scripts/devApi.js'
 
 // https://vite.dev/config/
 export default defineConfig({

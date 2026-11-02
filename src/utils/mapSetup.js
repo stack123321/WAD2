@@ -3,6 +3,7 @@
 // BaseMap (09, 10). Each map then adds its own pins on top.
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { SEA_COLOR } from './palette'
 
 export const SINGAPORE = [1.3521, 103.8198]
 
@@ -12,10 +13,6 @@ const BOUNDS = [
   [1.144, 103.6],
   [1.494, 104.1],
 ]
-
-// OneMap's sea colour. Leaflet shows grey wherever there's no map picture (outside Singapore when
-// you zoom out on a big screen), so we paint that background like the sea instead.
-const SEA_COLOR = '#6da8e4'
 
 // OneMap's terms of use require this credit on the map
 const ATTRIBUTION =

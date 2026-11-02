@@ -1,5 +1,5 @@
 // Owner: Eashvar. E2E tests (Week 10c) for two different groups: the two sample hangouts
-// (src/mocks/hangout.json, voting, and hangout-2.json, still collecting) have different people,
+// (src/mocks/hangout.json, voting, and hangout-collecting.json, still collecting) have different people,
 // with Hugo in both. Moving between them in the app must never mix their spots or votes.
 import { test, expect } from '@playwright/test'
 import { setTime, VOTING_OPEN } from './helpers/clock.js'

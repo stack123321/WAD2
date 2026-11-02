@@ -1,27 +1,37 @@
 <script setup>
-// 08 midpoint + crowd heat map
-// Owner: Ryan (heat map) + Surya (weather card, midpoint dragging) · Vet by: Eashvar
+// 08 Midpoint + crowd heat map
+// Owner: Ryan (heat map) + Surya (weather card, midpoint dragging)
 // midpoint (fairest mrt station, saved on 07) on a map with live crowds and weather, dragging the pin snaps to the nearest station and re-saves it
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { nearestStations, timesFor } from '@/utils/midpoint'
 import { rankStations, scoreStation } from '@/services/routing'
-import { saveMidpoint } from '@/services/hangouts'
+import { saveMidpoint, setMidpointLocked, subscribeToHangout } from '@/services/hangouts'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
 import TravelTimePanel from '@/components/transport/TravelTimePanel.vue'
 import MidpointSpots from '@/components/midpoint/MidpointSpots.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
 
+let stopListening = () => {}
+
 onMounted(async () => {
   await store.load(route.params.id)
   await loadRanking()
+  // (Ryan) someone else locks, unlocks or moves the midpoint: show it straight away, without a refresh
+  stopListening = subscribeToHangout(route.params.id, (row) => {
+    store.applyChange(row)
+    if (locked.value && pendingMove.value) cancelMove() // locked while "Move the midpoint?" was open
+  })
 })
+
+onUnmounted(() => stopListening())
 
 // (Surya) Why this station? Rank the 8 stations near the middle again (the same way 07 does), so
 // we can explain the choice and offer the next best ones. Anyone who hasn't picked a mode counts
@@ -58,6 +68,42 @@ const current = computed(() => {
 })
 
 const isFairest = computed(() => ranked.value.length > 0 && current.value === ranked.value[0])
+
+// (Ryan) the host decides whether to follow a fairer station, and can lock the midpoint so nobody
+// moves it by accident. In the demo you're the host, like on 11, so it can be tried without logging in
+const isHost = computed(() => {
+  if (route.params.id === 'demo') return true
+  return auth.user !== null && store.hangout !== null && store.hangout.host_id === auth.user.id
+})
+
+const locked = computed(() => store.hangout !== null && store.hangout.midpoint_locked === true)
+const lockBusy = ref(false) // saving a lock or unlock
+const lockError = ref('')
+
+async function setLocked(value) {
+  lockError.value = ''
+  lockBusy.value = true
+  try {
+    await setMidpointLocked(route.params.id, value)
+    store.hangout.midpoint_locked = value
+    // unlocking: rank the stations again with the latest starting points, in case someone moved theirs while it was locked
+    if (!value) {
+      await store.load(route.params.id)
+      await loadRanking()
+    }
+  } catch (err) {
+    console.error(err)
+    lockError.value = value ? "Couldn't lock the midpoint." : "Couldn't unlock the midpoint."
+  }
+  lockBusy.value = false
+}
+
+// (Ryan) starting points can change after the midpoint is saved, and nothing moves it by itself,
+// so when another station has become the fairest, say so (not while it's locked: the host already decided)
+const fairerStation = computed(() => {
+  if (locked.value || ranked.value.length === 0 || isFairest.value) return null
+  return ranked.value[0]
+})
 
 // Put each person's time and cost to a station on them (for the travel-time bars)
 function showTimes(station) {
@@ -202,10 +248,39 @@ function backToMidpoint() {
 
 // "Make ___ our midpoint": make another station the midpoint, for everyone
 
-async function chooseStation(station) {
+// (Ryan) moving to another station clears the shortlist and its votes, so ask first,
+// but only when there's something to lose (the same station, or no spots yet, moves straight away)
+const pendingMove = ref(null) // { name, run } while the pop-up is asking
+const heatmap = ref(null) // CrowdHeatmap, so Cancel can put a dragged pin back
+
+function askBeforeMoving(name, run) {
+  if (name === store.hangout.midpoint_name || store.shortlist.length === 0) {
+    run()
+    return
+  }
+  pendingMove.value = { name: name, run: run }
+}
+
+function confirmMove() {
+  const run = pendingMove.value.run
+  pendingMove.value = null
+  run()
+}
+
+function cancelMove() {
+  pendingMove.value = null
+  heatmap.value.resetPin()
+}
+
+function chooseStation(station) {
+  askBeforeMoving(station.name, () => moveToStation(station))
+}
+
+async function moveToStation(station) {
   moveMessage.value = ''
   moveError.value = ''
   showTimes(station)
+  if (station.name !== store.hangout.midpoint_name) store.clearSpots() // checked before the name changes below
   store.hangout.midpoint_name = station.name
   store.hangout.midpoint_lat = station.lat
   store.hangout.midpoint_lng = station.lng
@@ -223,7 +298,10 @@ async function chooseStation(station) {
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
     console.error(err)
-    moveError.value = `Moved to ${station.name} MRT on your screen, but couldn't save it for the group.`
+    await store.load(route.params.id) // it didn't save: put back what the group really has
+    moveError.value = locked.value
+      ? "The host has locked the midpoint, so it wasn't moved."
+      : "Couldn't move the midpoint. Try again."
   }
 }
 
@@ -243,9 +321,13 @@ const moving = ref(false)
 const moveMessage = ref('')
 const moveError = ref('')
 
-async function onMidpointMoved(position) {
+function onMidpointMoved(position) {
   // snap to closest mrt station to where pin dropped
   const station = nearestStations(position, 1)[0]
+  askBeforeMoving(station.name, () => moveToDropped(station))
+}
+
+async function moveToDropped(station) {
   moving.value = true
   moveMessage.value = ''
   moveError.value = ''
@@ -271,6 +353,7 @@ async function onMidpointMoved(position) {
   }
 
   // show straight away, then save it for the group
+  if (station.name !== store.hangout.midpoint_name) store.clearSpots()
   store.hangout.midpoint_name = station.name
   store.hangout.midpoint_lat = station.lat
   store.hangout.midpoint_lng = station.lng
@@ -289,7 +372,10 @@ async function onMidpointMoved(position) {
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
     console.error(err)
-    moveError.value = `Moved to ${station.name} MRT on your screen, but couldn't save it for the group.`
+    await store.load(route.params.id) // it didn't save: put back what the group really has
+    moveError.value = locked.value
+      ? "The host has locked the midpoint, so it wasn't moved."
+      : "Couldn't move the midpoint. Try again."
   }
   moving.value = false
 }
@@ -315,16 +401,48 @@ async function onMidpointMoved(position) {
   <div v-else-if="store.hangout">
     <!-- the step bar comes from App.vue, which adds it to every hangout page -->
     <main class="container py-4">
-      <h1 class="page-title mb-3">Midpoint + Crowd heat map</h1>
+      <h1 class="page-title mb-3">Midpoint</h1>
 
       <template v-if="midpoint">
+        <!-- (Ryan) another station is fairer now, e.g. after someone changed their starting point -->
+        <div
+          v-if="fairerStation"
+          class="alert alert-warning fairer-bar d-flex flex-wrap align-items-center gap-2"
+          role="status"
+        >
+          <span class="me-auto">
+            {{ fairerStation.name }} is now the fairest station for everyone's starting points.
+            <span v-if="!isHost">
+              {{ store.hostName }} can choose whether to move the midpoint.
+            </span>
+          </span>
+          <template v-if="isHost">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="lockBusy"
+              @click="setLocked(true)"
+            >
+              🔒 Lock {{ midpoint.name }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="moving"
+              @click="chooseStation(fairerStation)"
+            >
+              Move to {{ fairerStation.name }}
+            </button>
+          </template>
+        </div>
+
         <!-- (Surya) What you can do near the midpoint, before choosing spots -->
         <MidpointSpots
           ref="spotsCard"
           :stations="stationTabs"
           :vibes="store.hangout.vibe || []"
           :hangout-id="route.params.id"
-          :busy="moving"
+          :busy="moving || locked"
           @choose="chooseStation"
           @preview="previewStation = $event"
         />
@@ -334,8 +452,9 @@ async function onMidpointMoved(position) {
           <!-- big map: the midpoint pin (draggable) and live crowds at the stations around it -->
           <div class="col-lg-8 d-flex flex-column gap-3">
             <CrowdHeatmap
+              ref="heatmap"
               :midpoint="midpoint"
-              :draggable="true"
+              :draggable="!locked"
               :members="store.members"
               :preview="previewStation"
               @move="onMidpointMoved"
@@ -353,9 +472,25 @@ async function onMidpointMoved(position) {
                 <p v-if="myTrip" class="my-trip mb-0">
                   <span class="text-secondary">Your trip:</span> {{ myTrip }}
                 </p>
-                <p class="small mt-2 mb-0">
+                <!-- (Ryan) locked: nobody can move it until the host unlocks -->
+                <p v-if="locked" class="small mt-2 mb-0">
+                  🔒 Locked by {{ isHost ? 'you' : store.hostName }}, so it can't be moved.
+                </p>
+                <p v-else class="small mt-2 mb-0">
                   <strong>Tip:</strong> drag the pin on the map to move the midpoint to another MRT
                   station nearby.
+                </p>
+                <button
+                  v-if="isHost"
+                  type="button"
+                  class="btn btn-outline-secondary lock-btn mt-2"
+                  :disabled="lockBusy || moving"
+                  @click="setLocked(!locked)"
+                >
+                  {{ locked ? 'Unlock midpoint' : '🔒 Lock midpoint' }}
+                </button>
+                <p v-if="lockError" class="small text-danger mt-2 mb-0" role="alert">
+                  {{ lockError }}
                 </p>
                 <p v-if="moving" class="small text-secondary mt-2 mb-0" role="status">
                   Working out travel times…
@@ -412,11 +547,27 @@ async function onMidpointMoved(position) {
           Go to transport →
         </router-link>
       </div>
+
+      <ConfirmDialog
+        :open="pendingMove !== null"
+        :title="pendingMove ? `Move the midpoint to ${pendingMove.name} MRT?` : ''"
+        text="The shortlisted spots and any votes on them will be cleared, so the group picks spots near the new midpoint."
+        button="Move midpoint"
+        danger
+        @confirm="confirmMove"
+        @cancel="cancelMove"
+      />
     </main>
   </div>
 </template>
 
 <style scoped>
+/* (Ryan) the lock button and the "another station is fairer" bar's buttons, 44px tall so they're easy to tap */
+.lock-btn,
+.fairer-bar .btn {
+  min-height: 44px;
+}
+
 /* the Go to transport button, 44px tall so it is easy to tap */
 .go-btn {
   min-height: 44px;

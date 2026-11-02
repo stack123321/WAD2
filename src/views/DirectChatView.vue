@@ -1,11 +1,12 @@
 <script setup>
+// Direct chat
 // Owner: Ryan
-// one to one chat with a friend, opened from my chats or the friends page (chat box: components/start/HangoutChat.vue)
+// one to one chat with a friend, opened from my chats or the friends page (chat box: components/chat/HangoutChat.vue)
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getDirectChat } from '@/services/directChats'
-import HangoutChat from '@/components/start/HangoutChat.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -21,7 +22,7 @@ onMounted(async () => {
       error.value = 'Could not find this chat.'
     }
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load this chat.'
   }
   loading.value = false // runs after both success and failure

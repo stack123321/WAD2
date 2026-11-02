@@ -17,12 +17,10 @@ test('a wrong password is refused', async ({ page }) => {
 
 test('logging out goes back to being logged out', async ({ page }) => {
   await logIn(page, host)
-  // the app asks "Log out of Fairpoint?" in a browser pop-up; this answers OK
-  // (page.once isn't covered in the course: Playwright would otherwise answer Cancel)
-  page.once('dialog', (dialog) => dialog.accept())
-
   await page.getByRole('button', { name: 'Your profile menu' }).click()
   await page.getByRole('button', { name: 'Log out' }).first().click()
+  // then the same button again in the "Log out of Fairpoint?" pop-up
+  await page.getByRole('dialog').getByRole('button', { name: 'Log out' }).click()
 
   await expect(page.getByRole('link', { name: 'Log in' }).first()).toBeVisible()
   await page.goto('/dashboard')

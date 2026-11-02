@@ -1,13 +1,12 @@
 // Owner: Eashvar (testing; for Nicole's fair-midpoint algorithm). Unit tests for midpoint.js (Week
 // 10a): how fair one area is (fairness), ranking the candidate areas for "fairest", "fastest" or
-// "cheapest" (rankAreas, pickFairestArea), the helpers for the first guess (centroid,
+// "cheapest" (rankAreas), the helpers for the first guess (centroid,
 // nearestStations), and pairing everyone with their time and cost to the chosen station
 // (timesFor), which is saved with the midpoint for "Leave by" on 12.
 import { describe, it, expect } from 'vitest'
 import {
   fairness,
   rankAreas,
-  pickFairestArea,
   centroid,
   nearestStations,
   timesFor,
@@ -88,16 +87,6 @@ describe('TestSuite: rankAreas', () => {
       totalCost: 3.5,
       score: 60,
     })
-  })
-})
-
-describe('TestSuite: pickFairestArea', () => {
-  it('Test1: picks the best area', () => {
-    expect(pickFairestArea([areaA, areaB]).name).toBe('Area B')
-  })
-
-  it('Test2: gives nothing when there are no areas', () => {
-    expect(pickFairestArea([])).toBe(null)
   })
 })
 

@@ -1,12 +1,12 @@
 <script setup>
 // 10 Spot details
-// Owner: Hugo · Vet by: Matrix
-// Figma frame "10". Layout is done; sections hold placeholder content until wired to live data.
+// Owner: Hugo
+// Figma frame "10". One Google place: photos or map, rating, price, a short summary and how well it suits the group.
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BaseMap from '@/components/map/BaseMap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import { googlePlacesEnabled, loadSpot, loadSpotSummary } from '@/services/places'
 import { useHangoutStore } from '@/stores/hangout'
 import { useShortlist } from '@/composables/useShortlist'
@@ -542,18 +542,18 @@ const reasons = computed(() =>
 }
 
 .criteria__score--good {
-  background: #e3f6ec;
-  color: #0e7c3f;
+  background: var(--fp-ok-tint);
+  color: var(--fp-ok-ink);
 }
 
 .criteria__score--ok {
-  background: #fdf2d7;
-  color: #a16207;
+  background: var(--fp-warn-tint);
+  color: var(--fp-amber-dark);
 }
 
 .criteria__score--poor {
-  background: #fbe4e4;
-  color: #b42318;
+  background: var(--fp-bad-tint);
+  color: var(--fp-bad-ink);
 }
 
 .criteria__list {
@@ -582,15 +582,15 @@ const reasons = computed(() =>
 }
 
 .criteria__item--good::before {
-  background: #0e7c3f;
+  background: var(--fp-ok-ink);
 }
 
 .criteria__item--warn::before {
-  background: #a16207;
+  background: var(--fp-amber-dark);
 }
 
 .criteria__item--bad::before {
-  background: #b42318;
+  background: var(--fp-bad-ink);
 }
 
 .criteria__item--neutral::before {
@@ -644,7 +644,7 @@ const reasons = computed(() =>
   border: 0;
   border-radius: 50%;
   background: rgb(0 0 0 / 55%);
-  color: #fff;
+  color: var(--fp-white);
   font-size: 2rem;
   line-height: 1;
 }
@@ -671,13 +671,13 @@ const reasons = computed(() =>
   width: 0.5rem;
   height: 0.5rem;
   padding: 0;
-  border: 1px solid #fff;
+  border: 1px solid var(--fp-white);
   border-radius: 50%;
   background: rgb(0 0 0 / 40%);
 }
 
 .preview-image__indicator.is-active {
-  background: #fff;
+  background: var(--fp-white);
 }
 
 .preview-map {

@@ -93,7 +93,7 @@ export default defineConfig({
      any keys, so on every machine and on GitHub they use the sample hangouts and the api/
      functions' sample data (routes, crowds, addresses, the Ask box). An empty key here stops
      .env.local's from being used. The dev server, not `npm run preview`, because only it runs
-     the api/ functions (scripts/dev-api.js). */
+     the api/ functions (scripts/devApi.js). */
   webServer: {
     command: 'npx vite --port 5198 --strictPort',
     port: 5198,

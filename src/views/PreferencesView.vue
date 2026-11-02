@@ -1,6 +1,6 @@
 <script setup>
 // 03 User preferences
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "03". Reads and writes the logged-in user's profiles row.
 // ?setup=1 (sent by sign up) shows the onboarding progress bar and "Skip for now".
 // (Surya) "Delete account" at the bottom (not during setup): type DELETE, then it's gone.
@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
 import { defaultPreferences, getProfile, saveProfile } from '@/services/profiles'
 import { deleteMyAccount } from '@/services/account'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,12 +134,11 @@ function toggle(list, value) {
   else list.splice(i, 1)
 }
 
-// Ask first, then put every choice back to the defaults. Nothing is saved until they press Save preferences.
+const askingReset = ref(false) // true while the "Reset?" pop-up is showing
+
+// the pop-up asked first, so put every choice back to the defaults. Nothing is saved until they press Save preferences.
 function resetPreferences() {
-  const sure = window.confirm('Reset all your preferences to the defaults?')
-  if (!sure) {
-    return
-  }
+  askingReset.value = false
   prefs.activities = defaultPreferences.activities.slice()
   prefs.dietary = defaultPreferences.dietary.slice()
   prefs.budget = defaultPreferences.budget
@@ -478,7 +478,7 @@ async function confirmDelete() {
             v-if="!isSetup"
             type="button"
             class="btn btn-outline-primary btn-reset"
-            @click="resetPreferences"
+            @click="askingReset = true"
           >
             Reset preferences
           </button>
@@ -565,6 +565,14 @@ async function confirmDelete() {
         </div>
       </form>
     </section>
+    <ConfirmDialog
+      :open="askingReset"
+      title="Reset your preferences?"
+      text="Every choice goes back to the default. Nothing is saved until you press Save preferences."
+      button="Reset preferences"
+      @confirm="resetPreferences"
+      @cancel="askingReset = false"
+    />
   </main>
 </template>
 
@@ -737,39 +745,39 @@ async function confirmDelete() {
 }
 
 .chip--teal {
-  --chip-color: #0f9d91;
-  --chip-background: #dcefed;
-  --chip-ink: #155e59;
+  --chip-color: var(--fp-chip-teal);
+  --chip-background: var(--fp-chip-teal-tint);
+  --chip-ink: var(--fp-chip-teal-ink);
 }
 
 .chip--orange {
-  --chip-color: #f47721;
-  --chip-background: #fff0e6;
-  --chip-ink: #93410f;
+  --chip-color: var(--fp-chip-orange);
+  --chip-background: var(--fp-chip-orange-tint);
+  --chip-ink: var(--fp-chip-orange-ink);
 }
 
 .chip--blue {
-  --chip-color: #4b7bec;
-  --chip-background: #e5edff;
-  --chip-ink: #284eaa;
+  --chip-color: var(--fp-chip-blue);
+  --chip-background: var(--fp-chip-blue-tint);
+  --chip-ink: var(--fp-chip-blue-ink);
 }
 
 .chip--pink {
-  --chip-color: #df4b91;
-  --chip-background: #fbe5f0;
-  --chip-ink: #96305e;
+  --chip-color: var(--fp-chip-pink);
+  --chip-background: var(--fp-chip-pink-tint);
+  --chip-ink: var(--fp-chip-pink-ink);
 }
 
 .chip--green {
-  --chip-color: #39a75a;
-  --chip-background: #e2f2e6;
-  --chip-ink: #24703b;
+  --chip-color: var(--fp-chip-green);
+  --chip-background: var(--fp-chip-green-tint);
+  --chip-ink: var(--fp-chip-green-ink);
 }
 
 .chip--purple {
-  --chip-color: #8b62d9;
-  --chip-background: #eee8fb;
-  --chip-ink: #5d3c9e;
+  --chip-color: var(--fp-chip-purple);
+  --chip-background: var(--fp-chip-purple-tint);
+  --chip-ink: var(--fp-chip-purple-ink);
 }
 
 /* Budget */

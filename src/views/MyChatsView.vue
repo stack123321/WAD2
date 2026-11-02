@@ -1,4 +1,5 @@
 <script setup>
+// My chats
 // Owner: Ryan
 // my chats: one row per hangout and per one to one chat, search by chat or person name
 // (Eashvar) friend groups on top, each opening its own page (/groups/:id), and a "New group" button
@@ -10,7 +11,7 @@ import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
 import { getMyGroups } from '@/services/groups'
 import { planningLinks } from '@/utils/planningLinks'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -29,7 +30,7 @@ async function loadPlanning() {
       planning.value = { hangout: hangout, links: links }
     }
   } catch (err) {
-    console.log(err) // no banner, the list still works
+    console.error(err) // no banner, the list still works
   }
 }
 // each is { key, name, members, to }, hangout chats first and then one to one chats
@@ -84,7 +85,7 @@ onMounted(async () => {
       })
     }
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load your chats.'
   }
   loading.value = false

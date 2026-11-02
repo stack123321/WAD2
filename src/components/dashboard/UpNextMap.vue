@@ -4,7 +4,7 @@
 // and dashed lines between them (the map itself comes from createOneMap)
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet'
-import { createOneMap } from '@/components/map/oneMap'
+import { createOneMap } from '@/utils/mapSetup'
 import { avatarColor } from '@/utils/avatarColor'
 import { escapeHtml } from '@/utils/escapeHtml'
 
@@ -63,7 +63,7 @@ function draw() {
       title: m.display_name,
       icon: L.divIcon({
         className: '',
-        html: `<span class="member-dot" style="background:${background};color:#fff">${escapeHtml(m.display_name.charAt(0))}</span>`,
+        html: `<span class="member-dot" style="background:${background};color:var(--fp-white)">${escapeHtml(m.display_name.charAt(0))}</span>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       }),

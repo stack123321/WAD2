@@ -5,7 +5,7 @@
 // they leave and from where. Anything extra (the "not confirmed" note, the Done row) goes in the
 // default slot under the strip.
 import { computed } from 'vue'
-import { formatDateTime } from './voteHelpers'
+import { formatDateTime } from '@/utils/voteHelpers'
 
 const props = defineProps({
   spot: { type: Object, required: true },

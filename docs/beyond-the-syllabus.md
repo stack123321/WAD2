@@ -216,14 +216,22 @@ Mixes two colours, for example 10% teal into white to get a pale teal without pi
 ```css
 background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 ```
-Used in: [SpotHero.vue](../src/components/voting/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/start/HangoutChat.vue).
+Used in: [SpotHero.vue](../src/components/shared/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/chat/HangoutChat.vue).
 
 ### `:not(.class)`
 Selects elements that do not match. Here: every item in a stack except the first, which gets the gap above it.
 ```css
 .stack > :not(:first-child) { margin-top: 0.75rem; }
 ```
-Used in: [VoteResults.vue](../src/components/voting/VoteResults.vue), [CandidateCard.vue](../src/components/voting/CandidateCard.vue), [VoteView.vue](../src/views/VoteView.vue), and the Landing FAQ.
+Used in: [VoteResults.vue](../src/components/voting/VoteResults.vue), [CandidateCard.vue](../src/components/voting/CandidateCard.vue), [VoteView.vue](../src/views/VoteView.vue), the Landing FAQ, and [DashboardView.vue](../src/views/DashboardView.vue) to keep every card except the one with its ⋯ menu open faded.
+
+### `pointer-events: none` and `pointer-events: auto`
+`none` makes an element ignore the mouse: hovering or clicking it acts on whatever is underneath. Children inherit it, and `auto` switches it back on. Here the list ignores the mouse but its cards don't, so `.card-list:hover` is only true while the pointer is on a card, not in the gaps between them.
+```css
+.card-list { pointer-events: none; }
+.card-list .hangout { pointer-events: auto; }
+```
+Used in: [DashboardView.vue](../src/views/DashboardView.vue).
 
 ### `aspect-ratio: 16 / 9`
 Keeps a box at a fixed width-to-height shape, so a photo area keeps its shape while the card resizes.
@@ -244,7 +252,7 @@ In `<script setup>` a component's functions are private. `defineExpose` lets the
 ```js
 defineExpose({ selectTab })
 ```
-Used in: [MidpointSpots.vue](../src/components/midpoint/MidpointSpots.vue).
+Used in: [MidpointSpots.vue](../src/components/midpoint/MidpointSpots.vue), and [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) so 08 can put a dragged pin back when "Move the midpoint?" is cancelled.
 
 ## Vue Router
 
@@ -329,14 +337,6 @@ await request // proves moving the slider called the API
 Calls an API directly, without opening a page. Works like `axios.get`, but `res.ok()`, `res.status()` and `await res.json()` replace `response.data`.
 
 Used in: [api.spec.js](../tests/e2e/api.spec.js).
-
-### `page.once('dialog', (dialog) => dialog.accept())`
-When the page pops up `window.confirm(...)` ("Delete this hangout?"), Playwright clicks **Cancel** by default. This tells it to click **OK** on the next popup only. Set it up *before* the click that opens the popup.
-```js
-page.once('dialog', (dialog) => dialog.accept())
-await deleteButton.click() // the confirm popup opens and is accepted straight away
-```
-Used in: [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) to delete the test hangout at the end.
 
 ## Regular expressions
 

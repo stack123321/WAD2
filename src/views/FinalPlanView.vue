@@ -1,6 +1,6 @@
 <script setup>
 // 12 Final plan & itinerary
-// Owner: Eashvar (routes section: Nicole) · Vet by: Ryan
+// Owner: Eashvar (routes section: Nicole)
 // Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
 // a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
 // spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
@@ -14,10 +14,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { isMockHangout, markHangoutDone, reopenVote } from '@/services/votes'
-import SpotHero from '@/components/voting/SpotHero.vue'
-import TripTable from '@/components/voting/TripTable.vue'
+import SpotHero from '@/components/shared/SpotHero.vue'
+import TripTable from '@/components/shared/TripTable.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
   calendarUrl,
   countableVotes,
@@ -29,7 +30,7 @@ import {
   pickLeader,
   runnerUp,
   tripRange,
-} from '@/components/voting/voteHelpers'
+} from '@/utils/voteHelpers'
 
 const route = useRoute()
 const router = useRouter()
@@ -252,7 +253,6 @@ onUnmounted(() => clearInterval(timer))
             <div class="map-frame">
               <MembersMap :members="store.members" :highlight-id="myId" />
             </div>
-            <p class="small muted mt-2 mb-0">Step-by-step routes for everyone are coming soon.</p>
           </section>
 
           <WeatherCard
@@ -295,7 +295,11 @@ onUnmounted(() => clearInterval(timer))
                 :disabled="revoting || markingDone"
                 @click="startRevote"
               >
-                <span v-if="revoting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                <span
+                  v-if="revoting"
+                  class="spinner-border spinner-border-sm me-2"
+                  aria-hidden="true"
+                ></span>
                 Re-vote
               </button>
             </div>
@@ -331,34 +335,15 @@ onUnmounted(() => clearInterval(timer))
       </nav>
     </template>
 
-    <div
-      v-if="showRevoteModal"
-      class="revote-modal-backdrop"
-      role="presentation"
-      @click.self="showRevoteModal = false"
-    >
-      <section
-        class="revote-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="revote-modal-title"
-      >
-        <h2 id="revote-modal-title" class="h5 mb-2">Start a re-vote?</h2>
-        <p class="mb-4">
-          The current confirmed spot will be cleared and everyone can vote again.
-        </p>
-        <div class="revote-modal__actions">
-          <button
-            type="button"
-            class="btn btn-outline-secondary"
-            @click="showRevoteModal = false"
-          >
-            Cancel
-          </button>
-          <button type="button" class="btn btn-primary" @click="confirmRevote">OK</button>
-        </div>
-      </section>
-    </div>
+    <ConfirmDialog
+      :open="showRevoteModal"
+      title="Start a re-vote?"
+      text="The current confirmed spot will be cleared and everyone can vote again."
+      button="Start re-vote"
+      danger
+      @confirm="confirmRevote"
+      @cancel="showRevoteModal = false"
+    />
   </main>
 </template>
 
@@ -369,44 +354,6 @@ onUnmounted(() => clearInterval(timer))
   justify-content: center;
   gap: 0.35rem;
   min-height: 44px;
-}
-
-.revote-modal-backdrop {
-  position: fixed;
-  z-index: 1050;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(0 0 0 / 45%);
-}
-
-.revote-modal {
-  width: min(100%, 28rem);
-  padding: 1.5rem;
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  background: var(--fp-surface);
-  box-shadow: var(--fp-shadow);
-}
-
-.revote-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-.revote-modal__actions .btn {
-  min-width: 6rem;
-}
-
-.revote-modal__actions .btn-outline-secondary:hover,
-.revote-modal__actions .btn-outline-secondary:focus-visible,
-.revote-modal__actions .btn-primary:hover,
-.revote-modal__actions .btn-primary:focus-visible {
-  border-color: var(--fp-primary);
-  background: var(--fp-primary);
-  color: var(--fp-surface);
 }
 
 /* Phones: one column, cards in the order below (the columns step aside with display: contents).

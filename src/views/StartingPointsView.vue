@@ -1,6 +1,6 @@
 <script setup>
 // 06 Starting points
-// Owner: Surya · Vet by: Nicole
+// Owner: Surya
 // Figma frame "06". Each member searches for where they're coming from (MRT, address or postal
 // code, via OneMap) and everyone's pin shows on the shared map. Your own pin can be dragged.
 // Host mode: if the host switched off "Friends add their own starting point" on 05 Create hangout,
@@ -17,8 +17,8 @@ import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangout
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
-import HangoutChat from '@/components/start/HangoutChat.vue'
-import LatestMessage from '@/components/start/LatestMessage.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
+import LatestMessage from '@/components/chat/LatestMessage.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
 
@@ -254,10 +254,12 @@ function setStart(member, place) {
 
 const saveStatus = ref('') // '', 'saving', 'saved' or 'error'
 const failedMember = ref(null) // whose save failed, for "Try again"
+const startChanged = ref(false) // (Ryan) a start was saved this visit, so the midpoint may be out of date
 
 async function saveStart(member) {
   // The demo hangout isn't saved anywhere, so don't show "Saved"
   if (route.params.id === 'demo') {
+    startChanged.value = true
     return
   }
 
@@ -269,6 +271,7 @@ async function saveStart(member) {
       lng: member.start_lng,
     })
     saveStatus.value = 'saved'
+    startChanged.value = true
     failedMember.value = null
     setTimeout(() => {
       if (saveStatus.value === 'saved') {
@@ -545,6 +548,16 @@ const savedText = computed(() => {
           >
             Try again
           </button>
+        </p>
+        <!-- (Ryan) a new start can make another station fairer (not when the host has locked the midpoint) -->
+        <p
+          v-if="startChanged && store.hangout.midpoint_name && !store.hangout.midpoint_locked"
+          class="small mt-2 mb-0"
+        >
+          The fairest midpoint may have changed.
+          <RouterLink :to="{ name: 'midpoint', params: { id: route.params.id } }">
+            Check Midpoint →
+          </RouterLink>
         </p>
 
         <GroupList

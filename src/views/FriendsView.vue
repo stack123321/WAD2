@@ -1,4 +1,5 @@
 <script setup>
+// Friends
 // Owner: Ryan
 // friends: search, send and accept requests, see pending and my friends (data: services/friends.js)
 import { ref, computed, onMounted } from 'vue'
@@ -16,6 +17,7 @@ import {
 } from '@/services/friends'
 import { getOrCreateDirectChat } from '@/services/directChats'
 import AddToHangout from '@/components/friends/AddToHangout.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -39,7 +41,7 @@ async function loadFriendships() {
     pending.value = lists.pending
     requests.value = lists.requests
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load your friends.'
   }
 }
@@ -57,7 +59,7 @@ async function loadOpenHangouts() {
     )
   } catch (err) {
     // only the shortcut is lost: "Add to hangout" still starts a new hangout with them
-    console.log(err)
+    console.error(err)
   }
 }
 
@@ -89,7 +91,7 @@ async function search() {
     results.value = await searchPeople(query.value.trim()) // trim() drops spaces at either end
     searched.value = true
   } catch (err) {
-    console.log(err)
+    console.error(err)
     searchError.value = 'Could not search right now. Try again in a moment.'
   }
   searching.value = false
@@ -128,7 +130,7 @@ async function addFriend(person) {
     clearSearch()
     actionDone.value = `Friend request sent to ${person.display_name}.`
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't send a friend request to ${person.display_name}.`
   }
 }
@@ -144,7 +146,7 @@ async function accept(person) {
     if (results.value.some((r) => r.user_id === person.user_id)) clearSearch()
     actionDone.value = `You and ${person.display_name} are now friends.`
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't accept ${person.display_name}'s request.`
   }
 }
@@ -157,7 +159,7 @@ async function decline(person) {
     await loadFriendships()
     alerts.refresh(myId.value) // update the badge here too
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't decline ${person.display_name}'s request.`
   }
 }
@@ -169,7 +171,7 @@ async function openChat(person) {
     const chat = await getOrCreateDirectChat(person) // the existing chat, or a new one the first time
     router.push({ name: 'direct-chat', params: { chatId: chat.id } }) // go to it
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't open a chat with ${person.display_name}.`
   }
 }
@@ -184,21 +186,22 @@ async function addToHangout(person, hangout) {
     hangout.members.push({ user_id: person.user_id })
     actionDone.value = `Added ${person.display_name} to ${hangout.name}.`
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't add ${person.display_name} to ${hangout.name}.`
   }
 }
 
-const confirmingId = ref(null) // friend whose row shows "are you sure?"
+const confirming = ref(null) // the friend the pop-up is asking about
 
-async function remove(person) {
+async function remove() {
+  const person = confirming.value
+  confirming.value = null // close the pop-up first, so a double click can't run it twice
   actionError.value = ''
   try {
     await removeFriend(myId.value, person.user_id)
-    confirmingId.value = null // close the "are you sure?"
     await loadFriendships() // they disappear from my friends
   } catch (err) {
-    console.log(err)
+    console.error(err)
     actionError.value = `Couldn't remove ${person.display_name}.`
   }
 }
@@ -301,63 +304,52 @@ async function remove(person) {
         </p>
         <div v-for="f in friends" :key="f.user_id" class="person">
           <span class="name">{{ f.display_name }}</span>
-          <!-- after "remove friend" in the ⋯ menu, this row asks to confirm instead of showing its buttons -->
-          <template v-if="confirmingId === f.user_id">
-            <span class="ms-auto small">Are you sure?</span>
-            <button type="button" class="btn btn-danger btn-sm text-nowrap" @click="remove(f)">
-              Yes, remove
-            </button>
+          <AddToHangout class="ms-auto" :friend="f" :hangouts="openHangouts" @add="addToHangout" />
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            :aria-label="`Chat with ${f.display_name}`"
+            @click="openChat(f)"
+          >
+            Chat
+          </button>
+          <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
+          <div class="dropdown">
             <button
               type="button"
-              class="btn btn-outline-secondary btn-sm"
-              @click="confirmingId = null"
+              class="btn btn-link text-muted menu-btn"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              :aria-label="`More options for ${f.display_name}`"
             >
-              Cancel
+              ···
             </button>
-          </template>
-          <template v-else>
-            <AddToHangout
-              class="ms-auto"
-              :friend="f"
-              :hangouts="openHangouts"
-              @add="addToHangout"
-            />
-            <button
-              type="button"
-              class="btn btn-outline-primary btn-sm"
-              :aria-label="`Chat with ${f.display_name}`"
-              @click="openChat(f)"
-            >
-              Chat
-            </button>
-            <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
-            <div class="dropdown">
-              <button
-                type="button"
-                class="btn btn-link text-muted menu-btn"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                :aria-label="`More options for ${f.display_name}`"
-              >
-                ···
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                  <button
-                    type="button"
-                    class="dropdown-item text-danger"
-                    :aria-label="`Remove ${f.display_name} as a friend`"
-                    @click="confirmingId = f.user_id"
-                  >
-                    Remove friend
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </template>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item text-danger"
+                  :aria-label="`Remove ${f.display_name} as a friend`"
+                  @click="confirming = f"
+                >
+                  Remove friend
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
     </template>
+
+    <ConfirmDialog
+      :open="confirming !== null"
+      :title="confirming ? `Remove ${confirming.display_name}?` : ''"
+      text="They'll be taken off your friends list. You can add them again later."
+      button="Remove friend"
+      danger
+      @confirm="remove"
+      @cancel="confirming = null"
+    />
   </main>
 </template>
 

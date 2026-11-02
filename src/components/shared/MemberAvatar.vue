@@ -38,7 +38,7 @@ const background = computed(() => avatarColor(props.color, props.name))
   flex-shrink: 0;
   border-radius: 50%;
   border: 2px solid var(--fp-surface);
-  color: #fff;
+  color: var(--fp-white);
   font-weight: 700;
   line-height: 1;
 }

@@ -3,7 +3,7 @@
 // crowd heat map for 08 and /crowds: station circles, time slider, and on 08 the midpoint pin and starting points
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import L from 'leaflet' // the map library
-import { createOneMap } from '@/components/map/oneMap' // sets up the shared onemap map of singapore
+import { createOneMap } from '@/utils/mapSetup' // sets up the shared onemap map of singapore
 import { getCrowdLevels } from '@/services/crowd'
 import { avatarColor } from '@/utils/avatarColor'
 import { escapeHtml } from '@/utils/escapeHtml' // names go inside the pins' html
@@ -77,7 +77,7 @@ async function loadCrowd() {
     stations.value = await getCrowdLevels(slotToDate(slot.value))
     drawCircles()
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load crowd levels. Try again in a moment.'
   }
   loading.value = false
@@ -263,8 +263,22 @@ watch(
   { deep: true }, // also fires when something inside the object changes
 )
 
+// (Ryan) the host locked or unlocked the midpoint, so redraw the pin with dragging off or on
+watch(
+  () => props.draggable,
+  () => {
+    if (map) drawMidpoint()
+  },
+)
+
 // a member's start point or travel info changed, so redraw the pins and leave the zoom alone
 watch(() => props.members, drawMembers, { deep: true })
+
+// (Ryan) Cancel on the "Move the midpoint?" pop-up puts a dragged pin back where it was
+function resetPin() {
+  if (map) drawMidpoint()
+}
+defineExpose({ resetPin })
 </script>
 
 <template>
@@ -384,7 +398,7 @@ watch(() => props.members, drawMembers, { deep: true })
   border-radius: 50%;
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
-  color: #fff;
+  color: var(--fp-white);
   font-weight: 700;
   font-size: 0.8rem;
 }

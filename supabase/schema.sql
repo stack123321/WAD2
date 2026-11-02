@@ -42,6 +42,7 @@ create table public.hangouts (
   midpoint_lng       float8,
   avg_mins           integer,
   gap_mins           integer,
+  midpoint_locked    boolean not null default false, -- (Ryan) host locked it on 08: set_midpoint refuses
   vote_deadline      timestamptz,
   final_shortlist_id uuid, -- foreign key added below, after shortlist exists
   created_at         timestamptz not null default now()
@@ -199,19 +200,36 @@ drop function if exists public.set_midpoint(uuid, text, float8, float8, integer,
 -- Save the group's midpoint (07 "Find our midpoint", 08 dragging the pin). Any member may, not just
 -- the host, but only the midpoint columns change: renaming or deleting the hangout stays host-only.
 -- (Nicole) p_times also saves everyone's travel time and cost, for "Leave by" on 12.
+-- (Ryan) Refuses while the host has locked the midpoint. A different station clears the shortlist
+-- and its votes, and voting starts over.
 create function public.set_midpoint(
   p_hangout uuid, p_name text, p_lat float8, p_lng float8, p_avg integer, p_gap integer,
   p_times jsonb default '[]' -- [{ "user_id": ..., "mins": 32, "cost": 1.79 }], empty = no times
 ) returns void
 language plpgsql security definer set search_path = public as $$
+declare
+  locked boolean; -- the host has locked the midpoint
+  moved boolean;  -- true when this is a different station from before
 begin
   if not (public.is_member(p_hangout) or public.is_host(p_hangout)) then
     raise exception 'Only members of this hangout can set its midpoint';
+  end if;
+  select midpoint_locked, (midpoint_name is distinct from p_name) into locked, moved
+  from hangouts where id = p_hangout;
+  if locked then
+    raise exception 'The host has locked the midpoint';
   end if;
   update hangouts
   set midpoint_name = p_name, midpoint_lat = p_lat, midpoint_lng = p_lng,
       avg_mins = p_avg, gap_mins = p_gap
   where id = p_hangout;
+  -- a different station: its spots go, their votes with them (on delete cascade), and
+  -- final_shortlist_id empties itself (on delete set null), so voting starts over
+  if moved then
+    delete from shortlist where hangout_id = p_hangout;
+    update hangouts set status = 'collecting', vote_deadline = null
+    where id = p_hangout and status in ('voting', 'confirmed');
+  end if;
   -- each person's time and cost to the new midpoint (only people in this hangout)
   update hangout_members hm
   set travel_mins = round((t ->> 'mins')::numeric),

@@ -6,7 +6,7 @@
 // Usage: <GroupList :hangout="store.hangout" :my-id="myId" :editing-id="editingId"
 //          :host-mode="hostMode" @select="startEditing" />
 import { computed, ref } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import { sendMessage } from '@/services/chat'
 
 const props = defineProps({

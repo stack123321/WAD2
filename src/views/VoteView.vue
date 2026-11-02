@@ -1,6 +1,6 @@
 <script setup>
 // 11 Group voting
-// Owner: Eashvar · Vet by: Ryan
+// Owner: Eashvar
 // Figma frame "11". While the hangout is still collecting, the host starts the vote (members see
 // who they're waiting for). Then everyone votes for one shortlisted spot and can change it until
 // the deadline (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally
@@ -33,13 +33,14 @@ import { getHangout } from '@/services/hangouts'
 import { sendMessage } from '@/services/chat'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import StartPanel from '@/components/voting/StartPanel.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
 import SpinWheel from '@/components/voting/SpinWheel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
 import DeadlinePanel from '@/components/voting/DeadlinePanel.vue'
-import HangoutChat from '@/components/start/HangoutChat.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
   countableVotes,
   countVotes,
@@ -50,7 +51,7 @@ import {
   pickLeader,
   tiedLeaders,
   timeLeft,
-} from '@/components/voting/voteHelpers'
+} from '@/utils/voteHelpers'
 
 const SPIN_MS = 3200
 
@@ -74,8 +75,12 @@ const savingId = ref(null)
 const spinning = ref(false)
 const spinWinnerId = ref(null)
 const spinSpots = ref([])
+const spinWheelKey = ref(0)
+const showSpinResultModal = ref(false)
 const revoting = ref(false)
 const showRevoteModal = ref(false)
+const showCloseModal = ref(false)
+const pendingCloseId = ref(null)
 
 let nextEventId = 1
 let unsubscribe = () => {}
@@ -128,6 +133,9 @@ const waitingText = computed(() => {
 })
 
 const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+const spinWinner = computed(
+  () => store.shortlist.find((spot) => spot.id === spinWinnerId.value) ?? null,
+)
 
 function selectWinner(spotId) {
   manualWinnerId.value = spotId === leaderId.value ? null : spotId
@@ -239,11 +247,20 @@ async function onStart(deadlineIso) {
   }
 }
 
-async function onClose(spotId) {
+function onClose(spotId) {
   if (totalVotes.value === 0) {
     actionError.value = 'Nobody has voted yet, so the vote can’t be closed.'
     return
   }
+  pendingCloseId.value = spotId
+  showCloseModal.value = true
+}
+
+async function confirmClose() {
+  showCloseModal.value = false
+  const spotId = pendingCloseId.value
+  pendingCloseId.value = null
+  if (!spotId) return
   closing.value = true
   actionError.value = ''
   try {
@@ -272,6 +289,11 @@ async function confirmRevote() {
     store.hangout.status = 'voting'
     store.hangout.vote_deadline = null
     store.hangout.final_shortlist_id = null
+    spinning.value = false
+    spinWinnerId.value = null
+    spinSpots.value = []
+    spinWheelKey.value += 1
+    showSpinResultModal.value = false
   } catch (e) {
     actionError.value = `Couldn't start the re-vote: ${e.message}`
   } finally {
@@ -292,6 +314,7 @@ async function onSpin() {
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
     await announceWinner(winner)
+    showSpinResultModal.value = true
   } catch (e) {
     if (/already closed/i.test(e.message)) {
       actionError.value = 'Someone else has already spun the wheel.'
@@ -470,11 +493,11 @@ onUnmounted(() => {
             @start="onStart"
           />
           <SpinWheel
+            :key="spinWheelKey"
             v-if="isMember && (needsSpin || spinWinnerId)"
             :spots="spinWinnerId ? spinSpots : tiedSpots"
             :winner-id="spinWinnerId"
             :spinning="spinning"
-            :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
             @spin="onSpin"
           />
           <DeadlinePanel
@@ -504,34 +527,31 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div
-      v-if="showRevoteModal"
-      class="revote-modal-backdrop"
-      role="presentation"
-      @click.self="showRevoteModal = false"
-    >
-      <section
-        class="revote-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="vote-revote-modal-title"
-      >
-        <h2 id="vote-revote-modal-title" class="h5 mb-2">Start a re-vote?</h2>
-        <p class="mb-4">
-          The current confirmed spot will be cleared and everyone can vote again.
-        </p>
-        <div class="revote-modal__actions">
-          <button
-            type="button"
-            class="btn btn-outline-secondary"
-            @click="showRevoteModal = false"
-          >
-            Cancel
-          </button>
-          <button type="button" class="btn btn-primary" @click="confirmRevote">OK</button>
-        </div>
-      </section>
-    </div>
+    <ConfirmDialog
+      :open="showRevoteModal"
+      title="Start a re-vote?"
+      text="The current confirmed spot will be cleared and everyone can vote again."
+      button="Start re-vote"
+      danger
+      @confirm="confirmRevote"
+      @cancel="showRevoteModal = false"
+    />
+    <ConfirmDialog
+      :open="showCloseModal"
+      title="Close vote and confirm plan?"
+      :text="`This will confirm ${spotName(pendingCloseId)} as the plan for this hangout.`"
+      button="Confirm"
+      @confirm="confirmClose"
+      @cancel="showCloseModal = false"
+    />
+    <ConfirmDialog
+      :open="showSpinResultModal && !!spinWinner"
+      title="The wheel has picked a winner!"
+      :text="`Your group is going to ${spinWinner?.name}.`"
+      button="See final plan"
+      @confirm="router.push({ name: 'final-plan', params: { id: hangoutId } })"
+      @cancel="showSpinResultModal = false"
+    />
   </main>
 </template>
 
@@ -599,43 +619,5 @@ onUnmounted(() => {
 .revote-btn {
   min-width: 6.5rem;
   font-weight: 600;
-}
-
-.revote-modal-backdrop {
-  position: fixed;
-  z-index: 1050;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(0 0 0 / 45%);
-}
-
-.revote-modal {
-  width: min(100%, 28rem);
-  padding: 1.5rem;
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  background: var(--fp-surface);
-  box-shadow: var(--fp-shadow);
-}
-
-.revote-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-.revote-modal__actions .btn {
-  min-width: 6rem;
-}
-
-.revote-modal__actions .btn-outline-secondary:hover,
-.revote-modal__actions .btn-outline-secondary:focus-visible,
-.revote-modal__actions .btn-primary:hover,
-.revote-modal__actions .btn-primary:focus-visible {
-  border-color: var(--fp-primary);
-  background: var(--fp-primary);
-  color: var(--fp-surface);
 }
 </style>

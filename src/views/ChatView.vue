@@ -1,13 +1,14 @@
 <script setup>
+// Hangout chat
 // Owner: Ryan
-// one hangout's chat on its own page, opened from my chats (chat itself: components/start/HangoutChat.vue)
+// one hangout's chat on its own page, opened from my chats (chat itself: components/chat/HangoutChat.vue)
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getHangout } from '@/services/hangouts'
 import { isMockHangout } from '@/services/votes'
 import { planningLinks } from '@/utils/planningLinks'
-import HangoutChat from '@/components/start/HangoutChat.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -31,7 +32,7 @@ onMounted(async () => {
   try {
     hangout.value = await getHangout(route.params.hangoutId) // the id from the address, /chats/<id>
   } catch (err) {
-    console.log(err)
+    console.error(err)
     error.value = 'Could not load this chat.'
   }
 })

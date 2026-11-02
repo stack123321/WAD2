@@ -2,7 +2,7 @@
 // Views call these functions; they never call supabase or fetch directly.
 import { supabase, hasSupabase } from './supabase'
 import mockHangout from '@/mocks/hangout.json'
-import mockHangout2 from '@/mocks/hangout-2.json'
+import mockHangout2 from '@/mocks/hangout-collecting.json'
 
 // Two sample groups with different people, so switching between hangouts can be tried without keys
 const mockHangouts = [mockHangout, mockHangout2]
@@ -104,6 +104,25 @@ export async function updateHangoutDetails(id, fields) {
     .select('id')
   if (error) throw error
   if (data.length === 0) throw new Error('Only the host can change the hangout’s details.')
+}
+
+/**
+ * (Ryan) Lock or unlock the midpoint (08). Only the host can (the "hangouts: host edits" rule);
+ * .select() turns a non-host's update, which the rule skips without an error, into one.
+ * While it's locked, set_midpoint refuses to move it, for everyone.
+ * @param {string} id hangout uuid ("demo" is not saved)
+ * @param {boolean} locked
+ */
+export async function setMidpointLocked(id, locked) {
+  if (id.startsWith('demo') || !hasSupabase) return
+
+  const { data, error } = await supabase
+    .from('hangouts')
+    .update({ midpoint_locked: locked })
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (data.length === 0) throw new Error('Only the host can lock the midpoint.')
 }
 
 /**
@@ -321,6 +340,26 @@ export function subscribeToMembers(hangoutId, onChange) {
         table: 'hangout_members',
         filter: `hangout_id=eq.${hangoutId}`,
       },
+      (payload) => onChange(payload.new),
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
+ * (Ryan) Call onChange with the hangout's new row whenever it changes, e.g. the host locks the
+ * midpoint or someone moves it (Supabase Realtime; hangouts is in the publication in schema.sql).
+ * @returns {() => void} call this in onUnmounted to stop listening
+ */
+export function subscribeToHangout(hangoutId, onChange) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel(`hangout:${hangoutId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'hangouts', filter: `id=eq.${hangoutId}` },
       (payload) => onChange(payload.new),
     )
     .subscribe()
