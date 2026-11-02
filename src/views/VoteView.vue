@@ -40,6 +40,7 @@ import SpinWheel from '@/components/voting/SpinWheel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
 import DeadlinePanel from '@/components/voting/DeadlinePanel.vue'
 import HangoutChat from '@/components/chat/HangoutChat.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
   countableVotes,
   countVotes,
@@ -504,34 +505,15 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div
-      v-if="showRevoteModal"
-      class="revote-modal-backdrop"
-      role="presentation"
-      @click.self="showRevoteModal = false"
-    >
-      <section
-        class="revote-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="vote-revote-modal-title"
-      >
-        <h2 id="vote-revote-modal-title" class="h5 mb-2">Start a re-vote?</h2>
-        <p class="mb-4">
-          The current confirmed spot will be cleared and everyone can vote again.
-        </p>
-        <div class="revote-modal__actions">
-          <button
-            type="button"
-            class="btn btn-outline-secondary"
-            @click="showRevoteModal = false"
-          >
-            Cancel
-          </button>
-          <button type="button" class="btn btn-primary" @click="confirmRevote">OK</button>
-        </div>
-      </section>
-    </div>
+    <ConfirmDialog
+      :open="showRevoteModal"
+      title="Start a re-vote?"
+      text="The current confirmed spot will be cleared and everyone can vote again."
+      button="Start re-vote"
+      danger
+      @confirm="confirmRevote"
+      @cancel="showRevoteModal = false"
+    />
   </main>
 </template>
 
@@ -599,43 +581,5 @@ onUnmounted(() => {
 .revote-btn {
   min-width: 6.5rem;
   font-weight: 600;
-}
-
-.revote-modal-backdrop {
-  position: fixed;
-  z-index: 1050;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(0 0 0 / 45%);
-}
-
-.revote-modal {
-  width: min(100%, 28rem);
-  padding: 1.5rem;
-  border: 1px solid var(--fp-border);
-  border-radius: var(--fp-radius);
-  background: var(--fp-surface);
-  box-shadow: var(--fp-shadow);
-}
-
-.revote-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-.revote-modal__actions .btn {
-  min-width: 6rem;
-}
-
-.revote-modal__actions .btn-outline-secondary:hover,
-.revote-modal__actions .btn-outline-secondary:focus-visible,
-.revote-modal__actions .btn-primary:hover,
-.revote-modal__actions .btn-primary:focus-visible {
-  border-color: var(--fp-primary);
-  background: var(--fp-primary);
-  color: var(--fp-surface);
 }
 </style>

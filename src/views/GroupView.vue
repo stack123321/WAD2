@@ -24,6 +24,7 @@ import HangoutChat from '@/components/chat/HangoutChat.vue'
 import GroupHangoutRow from '@/components/groups/GroupHangoutRow.vue'
 import GroupPeople from '@/components/groups/GroupPeople.vue'
 import PeoplePicker from '@/components/groups/PeoplePicker.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -177,6 +178,7 @@ async function removeMember(member) {
 const confirmingEnd = ref(false)
 
 async function endGroup() {
+  confirmingEnd.value = false // close the pop-up first, so a double click can't run it twice
   actionError.value = ''
   try {
     if (isOwner.value) {
@@ -339,32 +341,30 @@ async function endGroup() {
 
           <div class="end">
             <button
-              v-if="!confirmingEnd"
               type="button"
               class="btn btn-link text-danger btn-tap"
               @click="confirmingEnd = true"
             >
               {{ isOwner ? 'Delete group' : 'Leave group' }}
             </button>
-            <div v-else class="end__confirm" role="group">
-              <span class="small">
-                {{
-                  isOwner
-                    ? 'Delete the group and its chat? Its hangouts stay.'
-                    : 'Leave this group? You stay in its hangouts.'
-                }}
-              </span>
-              <button type="button" class="btn btn-danger btn-tap" @click="endGroup">
-                {{ isOwner ? 'Delete' : 'Leave' }}
-              </button>
-              <button type="button" class="btn btn-link btn-tap" @click="confirmingEnd = false">
-                Cancel
-              </button>
-            </div>
           </div>
         </section>
       </div>
     </template>
+
+    <ConfirmDialog
+      :open="confirmingEnd"
+      :title="isOwner ? 'Delete this group?' : 'Leave this group?'"
+      :text="
+        isOwner
+          ? 'The group and its chat will be deleted. Its hangouts stay.'
+          : 'You stay in its hangouts.'
+      "
+      :button="isOwner ? 'Delete group' : 'Leave group'"
+      danger
+      @confirm="endGroup"
+      @cancel="confirmingEnd = false"
+    />
   </main>
 </template>
 
@@ -550,12 +550,5 @@ async function endGroup() {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--fp-border);
-}
-
-.end__confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
 }
 </style>

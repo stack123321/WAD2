@@ -8,6 +8,7 @@
 import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const props = defineProps({
   group: { type: Object, required: true },
@@ -70,10 +71,11 @@ function save() {
 }
 
 // Part (b) Taking someone out (owner only), asked once before it happens
-const confirmingId = ref(null)
+const confirming = ref(null) // the member the pop-up is asking about
 
-function remove(member) {
-  confirmingId.value = null
+function remove() {
+  const member = confirming.value
+  confirming.value = null // close the pop-up first, so a double click can't run it twice
   emit('remove', member)
 }
 </script>
@@ -104,23 +106,12 @@ function remove(member) {
           <span class="visually-hidden">your usual starting point</span>
         </button>
         <button
-          v-else-if="isOwner && m.user_id !== myId && confirmingId !== m.user_id"
+          v-else-if="isOwner && m.user_id !== myId"
           type="button"
           class="btn btn-link text-secondary btn-tap"
-          @click="confirmingId = m.user_id"
+          @click="confirming = m"
         >
           Remove <span class="visually-hidden">{{ m.display_name }}</span>
-        </button>
-      </div>
-
-      <!-- the owner taking someone out: one more tap to be sure -->
-      <div v-if="confirmingId === m.user_id" class="confirm" role="group">
-        <span class="small">Take {{ m.display_name }} out of the group?</span>
-        <button type="button" class="btn btn-outline-danger btn-tap" @click="remove(m)">
-          Remove
-        </button>
-        <button type="button" class="btn btn-link btn-tap" @click="confirmingId = null">
-          Cancel
         </button>
       </div>
 
@@ -169,6 +160,17 @@ function remove(member) {
       </div>
     </li>
   </ul>
+
+  <!-- the owner taking someone out: asked once before it happens -->
+  <ConfirmDialog
+    :open="confirming !== null"
+    :title="confirming ? `Take ${confirming.display_name} out of the group?` : ''"
+    text="They'll no longer be part of this group."
+    button="Remove"
+    danger
+    @confirm="remove"
+    @cancel="confirming = null"
+  />
 </template>
 
 <style scoped>
@@ -235,15 +237,6 @@ function remove(member) {
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-}
-
-.confirm {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding-left: calc(36px + 0.75rem);
 }
 
 .editor {
