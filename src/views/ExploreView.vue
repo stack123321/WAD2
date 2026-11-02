@@ -856,7 +856,9 @@ async function selectSpot(id) {
 }
 
 .mobile-vote-action {
-  display: none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .mobile-toggles {

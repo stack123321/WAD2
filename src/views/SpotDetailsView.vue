@@ -339,7 +339,7 @@ const reasons = computed(() =>
       <div class="d-flex flex-wrap gap-2">
         <a
           v-if="spot?.googleMapsUri"
-          class="btn btn-outline-primary btn-sm"
+          class="btn btn-outline-primary btn-sm d-inline-flex align-items-center justify-content-center"
           :href="spot.googleMapsUri"
           target="_blank"
           rel="noopener"
