@@ -4,14 +4,14 @@
 // that fit, found by /api/assistant (Gemini reads the request, Google Places finds the spots).
 // Follow-up buttons ("Cheaper", "Closer to the MRT") refine the last search, and when only a
 // few spots turn up it offers 08 Midpoint, where the group can preview other stations.
-// The group's dietary needs from 03 (e.g. someone eats halal) show as "Halal only" buttons that
-// start off: tap one to narrow the search, which also redoes the last one. Typing "halal" in the
-// message works too.
+// The group's dietary needs from 03 (e.g. someone eats halal) show as buttons that start off:
+// tap one to narrow the next search, and its label is added to (or removed from) the text box.
+// Typing "halal" in the message works too.
 // Each question uses one Google Places search, so it follows the same on/off switch as the page.
 // Usage: <AskSpots :hangout="store.hangout" :members="store.members" @found="askedSpots = $event" />
 //   found → camel-cased spots (as from loadSpots()) to show instead of the usual list, or null
 //   when the user goes back to all spots
-import { computed, reactive, ref, toRefs } from 'vue'
+import { computed, reactive, ref, toRefs, watch } from 'vue'
 import { askAssistant } from '@/services/assistant'
 import { cacheSpots, googlePlacesEnabled } from '@/services/places'
 import { isMockHangout } from '@/services/votes'
@@ -52,15 +52,34 @@ const needsText = computed(() => {
   return parts.join(' · ')
 })
 
-const dietLabel = (d) => `${d.charAt(0).toUpperCase()}${d.slice(1)} only`
+const DIET_LABELS = {halal: 'Halal', vegetarian: 'Vegetarian' }
+const dietLabel = (d) => DIET_LABELS[d] ?? `${d.charAt(0).toUpperCase()}${d.slice(1)} only`
 
 function toggleDiet(d) {
-  dietOn.value = dietOn.value.includes(d)
-    ? dietOn.value.filter((x) => x !== d)
-    : [...dietOn.value, d]
-  // Redo the last search with the new setting, as if it had been on from the start
-  if (lastTurn.value) ask(lastTurn.value.text, lastTurn.value.history)
+  const label = dietLabel(d)
+  const turningOn = !dietOn.value.includes(d)
+  dietOn.value = turningOn ? [...dietOn.value, d] : dietOn.value.filter((x) => x !== d)
+
+  // Mirror the toggle in the text box: add the label when switched on, take it out when off
+  const parts = message.value
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part && part !== label)
+  if (turningOn) parts.push(label)
+  message.value = parts.join(', ').slice(0, MAX_LENGTH)
 }
+
+// A toggle switches off as soon as its label is edited or removed from the text box.
+// Not while sending: a finished question clears the box but keeps the toggles on.
+let clearingAfterAsk = false
+watch(
+  message,
+  (text) => {
+    if (clearingAfterAsk) return
+    dietOn.value = dietOn.value.filter((d) => text.includes(dietLabel(d)))
+  },
+  { flush: 'sync' },
+)
 
 const canAsk = computed(() => googlePlacesEnabled.value && !loading.value)
 
@@ -93,7 +112,9 @@ async function ask(text, before = history.value) {
       query: answer.query,
       suggestOtherStations: answer.suggestOtherStations,
     }
+    clearingAfterAsk = true
     message.value = ''
+    clearingAfterAsk = false
     // An answer that isn't a search (e.g. "hi") leaves the list as it is
     if (answer.query || answer.sample) emit('found', cacheSpots(answer.places))
   } catch (err) {
@@ -166,6 +187,10 @@ defineExpose({ showAll })
         </button>
         <span class="ask__note">Someone in your group needs this</span>
       </div>
+      <p class="ask__note ask__disclaimer">
+        Verify with the restaurant if you have any dietary needs or allergies. Gemini is not
+        always correct.
+      </p>
     </form>
 
     <p v-if="error" class="ask__error text-danger" role="alert">{{ error }}</p>

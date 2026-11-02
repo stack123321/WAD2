@@ -35,8 +35,6 @@ const activityOptions = [
 const dietaryOptions = [
   { value: 'halal', label: 'Halal', emoji: '☪️', color: 'teal' },
   { value: 'vegetarian', label: 'Vegetarian', emoji: '🥬', color: 'green' },
-  { value: 'no_beef', label: 'No beef', emoji: '🚫', color: 'orange' },
-  { value: 'no_seafood', label: 'No seafood', emoji: '🐟', color: 'blue' },
 ]
 
 const budgetOptions = [
