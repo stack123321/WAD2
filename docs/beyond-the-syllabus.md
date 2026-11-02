@@ -223,7 +223,15 @@ Selects elements that do not match. Here: every item in a stack except the first
 ```css
 .stack > :not(:first-child) { margin-top: 0.75rem; }
 ```
-Used in: [VoteResults.vue](../src/components/voting/VoteResults.vue), [CandidateCard.vue](../src/components/voting/CandidateCard.vue), [VoteView.vue](../src/views/VoteView.vue), and the Landing FAQ.
+Used in: [VoteResults.vue](../src/components/voting/VoteResults.vue), [CandidateCard.vue](../src/components/voting/CandidateCard.vue), [VoteView.vue](../src/views/VoteView.vue), the Landing FAQ, and [DashboardView.vue](../src/views/DashboardView.vue) to keep every card except the one with its ⋯ menu open faded.
+
+### `pointer-events: none` and `pointer-events: auto`
+`none` makes an element ignore the mouse: hovering or clicking it acts on whatever is underneath. Children inherit it, and `auto` switches it back on. Here the list ignores the mouse but its cards don't, so `.card-list:hover` is only true while the pointer is on a card, not in the gaps between them.
+```css
+.card-list { pointer-events: none; }
+.card-list .hangout { pointer-events: auto; }
+```
+Used in: [DashboardView.vue](../src/views/DashboardView.vue).
 
 ### `aspect-ratio: 16 / 9`
 Keeps a box at a fixed width-to-height shape, so a photo area keeps its shape while the card resizes.
@@ -244,7 +252,7 @@ In `<script setup>` a component's functions are private. `defineExpose` lets the
 ```js
 defineExpose({ selectTab })
 ```
-Used in: [MidpointSpots.vue](../src/components/midpoint/MidpointSpots.vue).
+Used in: [MidpointSpots.vue](../src/components/midpoint/MidpointSpots.vue), and [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) so 08 can put a dragged pin back when "Move the midpoint?" is cancelled.
 
 ## Vue Router
 

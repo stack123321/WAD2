@@ -168,6 +168,17 @@ const sections = computed(() => {
   return result
 })
 
+// the card whose ⋯ menu is open, so the other cards stay faded until it closes
+const openMenuId = ref(null)
+
+function onMenu(hangout, open) {
+  if (open) {
+    openMenuId.value = hangout.id
+  } else if (openMenuId.value === hangout.id) {
+    openMenuId.value = null // only the open card can clear it: opening another card's menu closes this one first
+  }
+}
+
 // the pin changes on screen straight away and is saved in the background, so the page feels instant.
 // if saving fails, the pin is flipped back so the screen matches the database again.
 async function onTogglePin(hangout) {
@@ -465,7 +476,7 @@ onMounted(async () => {
       <!-- three loops from the sections computed: section, then day group, then hangout -->
       <PageDrop :key="tab" :play="toggled">
         <!-- one box around every card, so hovering any card can fade the others -->
-        <div class="card-list">
+        <div class="card-list" :class="{ 'has-open-menu': openMenuId !== null }">
           <section v-for="s in sections" :key="s.key" class="mb-4">
             <h2 class="section-label">
               {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
@@ -491,6 +502,7 @@ onMounted(async () => {
                   @delete="askDelete"
                   @leave="askLeave"
                   @toggle-pin="onTogglePin"
+                  @menu="onMenu(h, $event)"
                 />
               </div>
             </div>
@@ -521,12 +533,30 @@ onMounted(async () => {
 <style scoped>
 /* hovering a card: every card fades, then the one under the pointer comes back */
 @media (hover: hover) {
+  /* the gaps and headings between cards don't count as hovering the list, so the cards only fade
+     while the pointer is on a card */
+  .card-list {
+    pointer-events: none;
+  }
+  .card-list .hangout {
+    pointer-events: auto;
+  }
   .card-list:hover .hangout {
     opacity: 0.45;
   }
   .card-list .hangout:hover {
     opacity: 1;
   }
+}
+/* a card's ⋯ menu is open: the others stay faded and don't lift, so only that card is highlighted */
+.card-list.has-open-menu .hangout:not(.menu-open) {
+  opacity: 0.45;
+  transform: none;
+  box-shadow: none;
+}
+/* and the open card stays bright, even when the pointer is over another part of the list */
+.card-list.has-open-menu .hangout.menu-open {
+  opacity: 1;
 }
 .start-btn {
   min-height: 44px; /* easy to tap */

@@ -46,13 +46,20 @@ const shownPhotos = computed(() => props.photos.slice(0, 3))
 const morePhotos = computed(() => props.photos.length - 3)
 
 // the card can't change the dashboard's list itself, so it sends these up and the dashboard acts on them
-const emit = defineEmits(['delete', 'leave', 'toggle-pin'])
+const emit = defineEmits(['delete', 'leave', 'toggle-pin', 'menu'])
 
 // each card is its own layer, so an open menu hangs under the next card unless this card is lifted while a menu is open
 const card = ref(null)
 const menuOpen = ref(false)
-const openMenu = () => (menuOpen.value = true)
-const closeMenu = () => (menuOpen.value = false)
+// also tells the dashboard, so it can keep the other cards faded while this one's menu is open
+function openMenu() {
+  menuOpen.value = true
+  emit('menu', true)
+}
+function closeMenu() {
+  menuOpen.value = false
+  emit('menu', false)
+}
 
 // bootstrap fires these when the ⋯ menu or the "+N" member list opens and closes
 onMounted(() => {
@@ -387,9 +394,12 @@ async function copyInvite() {
     box-shadow 0.25s,
     opacity 0.25s;
 }
-/* lifted above the cards around it while its menu is open, so the menu isn't covered */
+/* while its menu is open: lifted above the cards around it (so the menu isn't covered), and
+   highlighted like a hovered card until the menu closes, on phones too */
 .hangout.menu-open {
   z-index: 3;
+  transform: translateY(-4px);
+  box-shadow: var(--fp-shadow-lift);
 }
 /* the card under the pointer rises a little */
 @media (hover: hover) {
