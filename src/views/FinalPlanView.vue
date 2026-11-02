@@ -189,7 +189,8 @@ onUnmounted(() => clearInterval(timer))
     </div>
 
     <div v-else-if="store.error" class="alert alert-danger" role="alert">
-      Couldn't load this hangout. {{ store.error.message }}
+      Couldn't load this hangout. Check the link, or go back to
+      <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
     </div>
 
     <div v-else-if="hangout && !spot" class="alert alert-info">

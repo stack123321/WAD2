@@ -402,7 +402,7 @@ const reasons = computed(() =>
             {{ row.mins }} min · {{ modeLabels[row.mode] }}
           </span>
           <span v-else-if="row.unavailable" class="text-secondary">
-            Add a starting point and transport mode
+            Starting point not yet chosen!
           </span>
           <span v-else-if="row.error" class="text-danger" role="status">{{ row.error }}</span>
           <span v-else class="text-secondary" role="status">Calculating…</span>
