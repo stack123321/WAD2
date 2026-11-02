@@ -352,13 +352,11 @@ async function copyInvite() {
             </li>
             <!-- a divider only when there's a red option below it -->
             <li v-if="canDelete || canLeave"><hr class="dropdown-divider" /></li>
-            <!-- the host can delete, everyone else can leave: data-bs-target opens the dashboard's confirm dialog -->
+            <!-- the host can delete, everyone else can leave: the dashboard asks "are you sure?" first -->
             <li v-if="canDelete">
               <button
                 type="button"
                 class="dropdown-item text-danger"
-                data-bs-toggle="modal"
-                data-bs-target="#confirm-modal"
                 @click="emit('delete', hangout)"
               >
                 Delete hangout
@@ -368,8 +366,6 @@ async function copyInvite() {
               <button
                 type="button"
                 class="dropdown-item text-danger"
-                data-bs-toggle="modal"
-                data-bs-target="#confirm-modal"
                 @click="emit('leave', hangout)"
               >
                 Leave hangout

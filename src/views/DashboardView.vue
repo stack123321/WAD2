@@ -8,6 +8,7 @@ import PageDrop from '@/components/ui/PageDrop.vue'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import WeekStrip from '@/components/dashboard/WeekStrip.vue'
 import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import { getHaze, getHourlyForecast } from '@/services/weather'
 import { getStationCrowd } from '@/services/crowd'
 import { getPhotos } from '@/services/photos'
@@ -225,8 +226,8 @@ async function doDelete(hangout) {
   }
 }
 
-// the card's menu item opens the confirm dialog (data-bs-toggle="modal") and tells us which one
-// there is one dialog for the whole page, so it needs to remember which hangout and which action it is asking about.
+// the card's menu item tells us which hangout and which action, and the pop-up asks about it
+// there is one pop-up for the whole page, so it needs to remember which hangout and which action it is asking about.
 const confirmAction = ref(null) // { kind: 'leave' | 'delete', hangout }
 
 function askLeave(hangout) {
@@ -505,38 +506,15 @@ onMounted(async () => {
     </aside>
 
     <!-- confirm leaving or deleting, opened by the card's menu item -->
-    <!-- bootstrap opens and closes it (data-bs-toggle and data-bs-dismiss), vue only fills in the words -->
-    <div
-      id="confirm-modal"
-      class="modal fade"
-      tabindex="-1"
-      aria-labelledby="confirm-title"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2 id="confirm-title" class="modal-title h5">{{ confirmCopy.title }}</h2>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-          </div>
-          <div class="modal-body">{{ confirmCopy.text }}</div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-              Cancel
-            </button>
-            <!-- closes the dialog and runs the action -->
-            <button
-              type="button"
-              class="btn btn-danger"
-              data-bs-dismiss="modal"
-              @click="confirmNow"
-            >
-              {{ confirmCopy.button }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      :open="confirmAction !== null"
+      :title="confirmCopy.title"
+      :text="confirmCopy.text"
+      :button="confirmCopy.button"
+      danger
+      @confirm="confirmNow"
+      @cancel="confirmAction = null"
+    />
   </main>
 </template>
 

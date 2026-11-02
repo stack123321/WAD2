@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
 import { defaultPreferences, getProfile, saveProfile } from '@/services/profiles'
 import { deleteMyAccount } from '@/services/account'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -135,12 +136,11 @@ function toggle(list, value) {
   else list.splice(i, 1)
 }
 
-// Ask first, then put every choice back to the defaults. Nothing is saved until they press Save preferences.
+const askingReset = ref(false) // true while the "Reset?" pop-up is showing
+
+// the pop-up asked first, so put every choice back to the defaults. Nothing is saved until they press Save preferences.
 function resetPreferences() {
-  const sure = window.confirm('Reset all your preferences to the defaults?')
-  if (!sure) {
-    return
-  }
+  askingReset.value = false
   prefs.activities = defaultPreferences.activities.slice()
   prefs.dietary = defaultPreferences.dietary.slice()
   prefs.budget = defaultPreferences.budget
@@ -480,7 +480,7 @@ async function confirmDelete() {
             v-if="!isSetup"
             type="button"
             class="btn btn-outline-primary btn-reset"
-            @click="resetPreferences"
+            @click="askingReset = true"
           >
             Reset preferences
           </button>
@@ -567,6 +567,14 @@ async function confirmDelete() {
         </div>
       </form>
     </section>
+    <ConfirmDialog
+      :open="askingReset"
+      title="Reset your preferences?"
+      text="Every choice goes back to the default. Nothing is saved until you press Save preferences."
+      button="Reset preferences"
+      @confirm="resetPreferences"
+      @cancel="askingReset = false"
+    />
   </main>
 </template>
 

@@ -17,6 +17,7 @@ import {
 } from '@/services/friends'
 import { getOrCreateDirectChat } from '@/services/directChats'
 import AddToHangout from '@/components/friends/AddToHangout.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -190,13 +191,14 @@ async function addToHangout(person, hangout) {
   }
 }
 
-const confirmingId = ref(null) // friend whose row shows "are you sure?"
+const confirming = ref(null) // the friend the pop-up is asking about
 
-async function remove(person) {
+async function remove() {
+  const person = confirming.value
+  confirming.value = null // close the pop-up first, so a double click can't run it twice
   actionError.value = ''
   try {
     await removeFriend(myId.value, person.user_id)
-    confirmingId.value = null // close the "are you sure?"
     await loadFriendships() // they disappear from my friends
   } catch (err) {
     console.error(err)
@@ -302,63 +304,52 @@ async function remove(person) {
         </p>
         <div v-for="f in friends" :key="f.user_id" class="person">
           <span class="name">{{ f.display_name }}</span>
-          <!-- after "remove friend" in the ⋯ menu, this row asks to confirm instead of showing its buttons -->
-          <template v-if="confirmingId === f.user_id">
-            <span class="ms-auto small">Are you sure?</span>
-            <button type="button" class="btn btn-danger btn-sm text-nowrap" @click="remove(f)">
-              Yes, remove
-            </button>
+          <AddToHangout class="ms-auto" :friend="f" :hangouts="openHangouts" @add="addToHangout" />
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            :aria-label="`Chat with ${f.display_name}`"
+            @click="openChat(f)"
+          >
+            Chat
+          </button>
+          <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
+          <div class="dropdown">
             <button
               type="button"
-              class="btn btn-outline-secondary btn-sm"
-              @click="confirmingId = null"
+              class="btn btn-link text-muted menu-btn"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              :aria-label="`More options for ${f.display_name}`"
             >
-              Cancel
+              ···
             </button>
-          </template>
-          <template v-else>
-            <AddToHangout
-              class="ms-auto"
-              :friend="f"
-              :hangouts="openHangouts"
-              @add="addToHangout"
-            />
-            <button
-              type="button"
-              class="btn btn-outline-primary btn-sm"
-              :aria-label="`Chat with ${f.display_name}`"
-              @click="openChat(f)"
-            >
-              Chat
-            </button>
-            <!-- removing is rare and can't be undone, so it sits in the ⋯ menu like on the dashboard cards -->
-            <div class="dropdown">
-              <button
-                type="button"
-                class="btn btn-link text-muted menu-btn"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                :aria-label="`More options for ${f.display_name}`"
-              >
-                ···
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                  <button
-                    type="button"
-                    class="dropdown-item text-danger"
-                    :aria-label="`Remove ${f.display_name} as a friend`"
-                    @click="confirmingId = f.user_id"
-                  >
-                    Remove friend
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </template>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item text-danger"
+                  :aria-label="`Remove ${f.display_name} as a friend`"
+                  @click="confirming = f"
+                >
+                  Remove friend
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
     </template>
+
+    <ConfirmDialog
+      :open="confirming !== null"
+      :title="confirming ? `Remove ${confirming.display_name}?` : ''"
+      text="They'll be taken off your friends list. You can add them again later."
+      button="Remove friend"
+      danger
+      @confirm="remove"
+      @cancel="confirming = null"
+    />
   </main>
 </template>
 

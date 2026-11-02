@@ -330,14 +330,6 @@ Calls an API directly, without opening a page. Works like `axios.get`, but `res.
 
 Used in: [api.spec.js](../tests/e2e/api.spec.js).
 
-### `page.once('dialog', (dialog) => dialog.accept())`
-When the page pops up `window.confirm(...)` ("Delete this hangout?"), Playwright clicks **Cancel** by default. This tells it to click **OK** on the next popup only. Set it up *before* the click that opens the popup.
-```js
-page.once('dialog', (dialog) => dialog.accept())
-await deleteButton.click() // the confirm popup opens and is accepted straight away
-```
-Used in: [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) to delete the test hangout at the end.
-
 ## Regular expressions
 
 ### `/pattern/`
