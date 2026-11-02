@@ -12,7 +12,7 @@ import { textSearch } from './_google.js'
 import { sampleReply } from './_mocks/assistant.js'
 
 const MAX_MESSAGE = 300
-const MAX_RESULTS = 50
+const MAX_RESULTS = 5
 const FEW_RESULTS = 3 // fewer than this and the page offers other stations
 const WALK_M_PER_MIN = 80
 
