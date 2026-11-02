@@ -14,6 +14,7 @@ async function finishTheHangout(page) {
   await setTime(page, HANGOUT_STARTED)
   await page.goto('/hangouts/demo/vote')
   await page.getByRole('button', { name: 'Close vote' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
   await page.getByRole('button', { name: 'Mark as done' }).click()
   await expect(page.getByText('✓ Done')).toBeVisible()
 }
