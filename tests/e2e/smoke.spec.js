@@ -14,7 +14,7 @@ const pages = [
   ['/hangouts/new', 'New hangout'],
   ['/hangouts/demo/start', 'Where is everyone coming from?'],
   ['/hangouts/demo/transport', 'How is everyone getting there?'],
-  ['/hangouts/demo/midpoint', 'Midpoint + crowd heat map'],
+  ['/hangouts/demo/midpoint', 'Midpoint + Crowd heat map'],
   ['/hangouts/demo/explore', 'Spots near Bishan'],
   ['/hangouts/demo/vote', 'Group voting'],
   ['/hangouts/demo/plan', 'Final plan & itinerary'],
@@ -42,7 +42,7 @@ test('new hangout: from the landing page to the final plan', async ({ page }) =>
   await page.getByRole('link', { name: 'Next: choose transport' }).click()
   await expect(h1).toHaveText('How is everyone getting there?')
   await page.getByRole('button', { name: 'Find our midpoint' }).click()
-  await expect(h1).toHaveText('Midpoint + crowd heat map')
+  await expect(h1).toHaveText('Midpoint + Crowd heat map')
   await page.getByRole('link', { name: 'See nearby spots' }).click()
   await expect(h1).toContainText('Spots near')
 
