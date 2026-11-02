@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
 
 test('moving the time slider shows that time', async ({ page }) => {
   await page.goto('/hangouts/demo/midpoint')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Midpoint + crowd heat map')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Midpoint + Crowd heat map')
 
   await page.getByLabel(/Time today/).fill('38') // slot 38 = 7:00 pm
 
