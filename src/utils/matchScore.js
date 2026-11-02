@@ -263,8 +263,8 @@ export function softVetoReasons(place, profiles = [], context = {}) {
   if (result.walkMins !== null && result.walkingMultiplier < 1) {
     reasons.push(
       result.walkingMultiplier >= 0.7
-        ? `Distant from the group's midpoint (~${result.walkMins} min)`
-        : `Far from the group's midpoint (~${result.walkMins} min walk)`,
+        ? `Distant (~${result.walkMins} min)`
+        : `Far (~${result.walkMins} min walk)`,
     )
   }
   if (result.closingSoon) {

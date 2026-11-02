@@ -195,6 +195,17 @@ const matchTone = computed(() => {
   overflow-wrap: anywhere;
 }
 
+@media (max-width: 767px) {
+  .spot-card__name {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .spot-card__rating {
   flex-shrink: 0;
   font-weight: 600;

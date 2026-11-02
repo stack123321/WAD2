@@ -1166,9 +1166,8 @@ async function selectSpot(id) {
   }
 
   .mobile-spots-controls {
-    position: absolute;
-    top: 3.5rem;
-    right: 1rem;
+    position: static;
+    align-self: flex-end;
     display: flex;
     gap: 0.5rem;
     pointer-events: auto;
