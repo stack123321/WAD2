@@ -75,8 +75,12 @@ const savingId = ref(null)
 const spinning = ref(false)
 const spinWinnerId = ref(null)
 const spinSpots = ref([])
+const spinWheelKey = ref(0)
+const showSpinResultModal = ref(false)
 const revoting = ref(false)
 const showRevoteModal = ref(false)
+const showCloseModal = ref(false)
+const pendingCloseId = ref(null)
 
 let nextEventId = 1
 let unsubscribe = () => {}
@@ -129,6 +133,9 @@ const waitingText = computed(() => {
 })
 
 const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+const spinWinner = computed(
+  () => store.shortlist.find((spot) => spot.id === spinWinnerId.value) ?? null,
+)
 
 function selectWinner(spotId) {
   manualWinnerId.value = spotId === leaderId.value ? null : spotId
@@ -240,11 +247,20 @@ async function onStart(deadlineIso) {
   }
 }
 
-async function onClose(spotId) {
+function onClose(spotId) {
   if (totalVotes.value === 0) {
     actionError.value = 'Nobody has voted yet, so the vote can’t be closed.'
     return
   }
+  pendingCloseId.value = spotId
+  showCloseModal.value = true
+}
+
+async function confirmClose() {
+  showCloseModal.value = false
+  const spotId = pendingCloseId.value
+  pendingCloseId.value = null
+  if (!spotId) return
   closing.value = true
   actionError.value = ''
   try {
@@ -273,6 +289,11 @@ async function confirmRevote() {
     store.hangout.status = 'voting'
     store.hangout.vote_deadline = null
     store.hangout.final_shortlist_id = null
+    spinning.value = false
+    spinWinnerId.value = null
+    spinSpots.value = []
+    spinWheelKey.value += 1
+    showSpinResultModal.value = false
   } catch (e) {
     actionError.value = `Couldn't start the re-vote: ${e.message}`
   } finally {
@@ -293,6 +314,7 @@ async function onSpin() {
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
     await announceWinner(winner)
+    showSpinResultModal.value = true
   } catch (e) {
     if (/already closed/i.test(e.message)) {
       actionError.value = 'Someone else has already spun the wheel.'
@@ -471,11 +493,11 @@ onUnmounted(() => {
             @start="onStart"
           />
           <SpinWheel
+            :key="spinWheelKey"
             v-if="isMember && (needsSpin || spinWinnerId)"
             :spots="spinWinnerId ? spinSpots : tiedSpots"
             :winner-id="spinWinnerId"
             :spinning="spinning"
-            :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
             @spin="onSpin"
           />
           <DeadlinePanel
@@ -513,6 +535,22 @@ onUnmounted(() => {
       danger
       @confirm="confirmRevote"
       @cancel="showRevoteModal = false"
+    />
+    <ConfirmDialog
+      :open="showCloseModal"
+      title="Close vote and confirm plan?"
+      :text="`This will confirm ${spotName(pendingCloseId)} as the plan for this hangout.`"
+      button="Confirm"
+      @confirm="confirmClose"
+      @cancel="showCloseModal = false"
+    />
+    <ConfirmDialog
+      :open="showSpinResultModal && !!spinWinner"
+      title="The wheel has picked a winner!"
+      :text="`Your group is going to ${spinWinner?.name}.`"
+      button="See final plan"
+      @confirm="router.push({ name: 'final-plan', params: { id: hangoutId } })"
+      @cancel="showSpinResultModal = false"
     />
   </main>
 </template>
