@@ -10,6 +10,7 @@
   import {
     getMyHangouts,
     saveMidpoint,
+    subscribeToHangout,
     subscribeToMembers,
     updateMemberMode,
   } from '@/services/hangouts'
@@ -76,9 +77,16 @@
   const midpointLocked = computed(
     () => store.hangout !== null && store.hangout.midpoint_locked === true,
   )
+  // "Ryan locked the midpoint at Farrer Road.", or for the host how to undo it
+  const lockedNote = computed(() => {
+    const station = store.hangout.midpoint_name
+    if (store.hangout.host_id === myId.value) {
+      return `You locked the midpoint at ${station}. Unlock it on Midpoint to change it.`
+    }
+    return `${store.hostName} locked the midpoint at ${station}.`
+  })
 
   function onFindMidpoint() {
-    if (midpointLocked.value) return
     const best = ranked.value[0]
     if (!best) return
     if (best.name !== store.hangout.midpoint_name && store.shortlist.length > 0) {
@@ -197,6 +205,7 @@
   // Live updates: when a friend picks their mode (or changes their starting point), copy it into
   // our store and re-rank, so everyone sees the same thing without refreshing
   let stopListening = () => {}
+  let stopHangout = () => {}
 
   function onMemberChanged(row) {
     const member = store.members.find((m) => m.user_id === row.user_id)
@@ -214,6 +223,7 @@
     await useUsualMode()
     await scoreAreas()
     stopListening = subscribeToMembers(route.params.id, onMemberChanged)
+    stopHangout = subscribeToHangout(route.params.id, store.applyChange) // (Ryan) e.g. the host locks it on 08
   })
 
   // (Surya) Remember my usual mode: if I haven't picked one here yet, pick the mode I used in my
@@ -266,7 +276,10 @@
     return me !== undefined && Boolean(me.mode)
   })
 
-  onUnmounted(() => stopListening())
+  onUnmounted(() => {
+    stopListening()
+    stopHangout()
+  })
   watch(optimiseFor, scoreAreas)
 
 
@@ -338,22 +351,26 @@
             <!-- Works once YOU have picked a mode; friends who haven't count as MRT for now.
                  Waits while the times are being worked out, so we never save a station that's
                  about to change -->
+            <!-- (Ryan) locked on 08: there's nothing to find here, so the next step is to look at it -->
+            <router-link
+              v-if="midpointLocked"
+              :to="{ name: 'midpoint', params: { id: route.params.id } }"
+              class="btn btn-primary btn-lg w-100"
+            >
+              See the midpoint →
+            </router-link>
             <button
+              v-else
               type="button"
               class="btn btn-primary btn-lg w-100"
-              :disabled="saving || working || ranked.length === 0 || !myModePicked || midpointLocked"
+              :disabled="saving || working || ranked.length === 0 || !myModePicked"
               @click="onFindMidpoint()"
             >
               <span v-if="saving">Saving…</span>
               <span v-else>Find our midpoint →</span>
             </button>
-            <p v-if="midpointLocked" class="footnote">
-              🔒 The host has locked the midpoint.
-              <router-link :to="{ name: 'midpoint', params: { id: route.params.id } }">
-                See it on Midpoint →
-              </router-link>
-            </p>
-            <p v-if="!myModePicked" class="footnote">Pick how you’re getting there first.</p>
+            <p v-if="midpointLocked" class="footnote">🔒 {{ lockedNote }}</p>
+            <p v-else-if="!myModePicked" class="footnote">Pick how you’re getting there first.</p>
             <p v-else-if="missingMode.length > 0" class="footnote">{{ waitingNote }}</p>
             <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
           </section>

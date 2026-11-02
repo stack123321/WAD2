@@ -2,13 +2,13 @@
 // 08 Midpoint + crowd heat map
 // Owner: Ryan (heat map) + Surya (weather card, midpoint dragging)
 // midpoint (fairest mrt station, saved on 07) on a map with live crowds and weather, dragging the pin snaps to the nearest station and re-saves it
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { nearestStations, timesFor } from '@/utils/midpoint'
 import { rankStations, scoreStation } from '@/services/routing'
-import { saveMidpoint, setMidpointLocked } from '@/services/hangouts'
+import { saveMidpoint, setMidpointLocked, subscribeToHangout } from '@/services/hangouts'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
 import TravelTimePanel from '@/components/transport/TravelTimePanel.vue'
@@ -19,10 +19,19 @@ const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
 
+let stopListening = () => {}
+
 onMounted(async () => {
   await store.load(route.params.id)
   await loadRanking()
+  // (Ryan) someone else locks, unlocks or moves the midpoint: show it straight away, without a refresh
+  stopListening = subscribeToHangout(route.params.id, (row) => {
+    store.applyChange(row)
+    if (locked.value && pendingMove.value) cancelMove() // locked while "Move the midpoint?" was open
+  })
 })
+
+onUnmounted(() => stopListening())
 
 // (Surya) Why this station? Rank the 8 stations near the middle again (the same way 07 does), so
 // we can explain the choice and offer the next best ones. Anyone who hasn't picked a mode counts
@@ -65,12 +74,6 @@ const isFairest = computed(() => ranked.value.length > 0 && current.value === ra
 const isHost = computed(() => {
   if (route.params.id === 'demo') return true
   return auth.user !== null && store.hangout !== null && store.hangout.host_id === auth.user.id
-})
-
-const hostName = computed(() => {
-  if (!store.hangout) return 'the host'
-  const host = store.members.find((m) => m.user_id === store.hangout.host_id)
-  return host ? host.display_name : 'the host'
 })
 
 const locked = computed(() => store.hangout !== null && store.hangout.midpoint_locked === true)
@@ -295,7 +298,10 @@ async function moveToStation(station) {
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
     console.error(err)
-    moveError.value = `Moved to ${station.name} MRT on your screen, but couldn't save it for the group.`
+    await store.load(route.params.id) // it didn't save: put back what the group really has
+    moveError.value = locked.value
+      ? "The host has locked the midpoint, so it wasn't moved."
+      : "Couldn't move the midpoint. Try again."
   }
 }
 
@@ -366,7 +372,10 @@ async function moveToDropped(station) {
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
     console.error(err)
-    moveError.value = `Moved to ${station.name} MRT on your screen, but couldn't save it for the group.`
+    await store.load(route.params.id) // it didn't save: put back what the group really has
+    moveError.value = locked.value
+      ? "The host has locked the midpoint, so it wasn't moved."
+      : "Couldn't move the midpoint. Try again."
   }
   moving.value = false
 }
@@ -403,7 +412,9 @@ async function moveToDropped(station) {
         >
           <span class="me-auto">
             {{ fairerStation.name }} is now the fairest station for everyone's starting points.
-            <span v-if="!isHost">{{ hostName }} can choose whether to move the midpoint.</span>
+            <span v-if="!isHost">
+              {{ store.hostName }} can choose whether to move the midpoint.
+            </span>
           </span>
           <template v-if="isHost">
             <button
@@ -463,7 +474,7 @@ async function moveToDropped(station) {
                 </p>
                 <!-- (Ryan) locked: nobody can move it until the host unlocks -->
                 <p v-if="locked" class="small mt-2 mb-0">
-                  🔒 Locked by {{ isHost ? 'you' : hostName }}, so it can't be moved.
+                  🔒 Locked by {{ isHost ? 'you' : store.hostName }}, so it can't be moved.
                 </p>
                 <p v-else class="small mt-2 mb-0">
                   <strong>Tip:</strong> drag the pin on the map to move the midpoint to another MRT
