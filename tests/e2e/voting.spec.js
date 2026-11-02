@@ -75,9 +75,15 @@ test('a tie when voting ends is settled by spinning the wheel', async ({ page })
 
   await page.getByRole('button', { name: 'Spin the wheel' }).click()
 
-  // the wheel spins for about 3 seconds before it picks
-  await expect(page.getByText('The wheel picked')).toBeVisible({ timeout: 10000 })
-  await page.getByRole('dialog').getByRole('button', { name: 'See final plan' }).click()
+  // the wheel spins for about 3 seconds before it picks, then a pop-up says which spot won
+  await expect(page.getByRole('dialog')).toContainText('The wheel has picked a winner!', {
+    timeout: 10000,
+  })
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+
+  // the host's Winner card stays, so they can still change the winner
+  await expect(page.getByRole('button', { name: 'Change the winner' })).toBeDisabled()
+  await page.getByRole('link', { name: 'See the final plan' }).click()
   await expect(page.getByText('Confirmed spot')).toBeVisible()
 })
 

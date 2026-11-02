@@ -3,13 +3,15 @@
 // one "are you sure?" pop-up for the whole app, so every confirm looks the same (started as the re-vote pop-up on 12)
 // Usage: <ConfirmDialog :open="asking" title="Delete it?" text="This can't be undone." button="Delete" danger @confirm="doIt" @cancel="asking = false" />
 // the page decides when it shows (open) and closes it again in its own confirm and cancel handlers
+// (Eashvar) with no button it just tells you something, e.g. cancel="Close" for the wheel's result on 11
 import { nextTick, ref, watch } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false }, // shows the pop-up while true
   title: { type: String, required: true }, // the question, e.g. 'Delete "Sunday chill"?'
   text: { type: String, required: true }, // what will happen, under the question
-  button: { type: String, required: true }, // the words on the action button
+  button: { type: String, default: '' }, // the words on the action button (none: only the cancel button shows)
+  cancel: { type: String, default: 'Cancel' }, // the words on the cancel button
   danger: { type: Boolean, default: false }, // red action button, for things that remove something
 })
 const emit = defineEmits(['confirm', 'cancel'])
@@ -52,9 +54,10 @@ watch(
           class="btn btn-outline-secondary"
           @click="emit('cancel')"
         >
-          Cancel
+          {{ cancel }}
         </button>
         <button
+          v-if="button"
           type="button"
           class="btn"
           :class="danger ? 'btn-danger' : 'btn-primary'"

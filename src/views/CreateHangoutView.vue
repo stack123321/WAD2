@@ -1332,7 +1332,7 @@ legend.form-label {
 @media (min-width: 768px) {
   .summary {
     position: sticky;
-    top: 1rem;
+    top: var(--fp-sticky-top, 5rem); /* (Surya) below the top bars, which now stay on screen */
   }
 }
 

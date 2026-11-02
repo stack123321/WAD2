@@ -130,13 +130,19 @@ const waitingText = computed(() => {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 })
 
-const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+// the Winner card starts on the leading spot, or once the vote is closed, on the confirmed spot
+const defaultWinnerId = computed(() =>
+  status.value === 'confirmed'
+    ? (hangout.value?.final_shortlist_id ?? null)
+    : (leader.value?.spot.id ?? null),
+)
+const winnerId = computed(() => manualWinnerId.value ?? defaultWinnerId.value)
 const spinWinner = computed(
   () => store.shortlist.find((spot) => spot.id === spinWinnerId.value) ?? null,
 )
 
 function selectWinner(spotId) {
-  manualWinnerId.value = spotId === leaderId.value ? null : spotId
+  manualWinnerId.value = spotId === defaultWinnerId.value ? null : spotId
 }
 
 const deadline = computed(() => hangout.value?.vote_deadline ?? null)
@@ -266,6 +272,7 @@ async function confirmClose() {
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = spotId
     store.hangout.votes = votes.value
+    manualWinnerId.value = null
     router.push({ name: 'final-plan', params: { id: hangoutId } })
   } catch (e) {
     actionError.value = `Couldn't close the vote: ${e.message}`
@@ -287,6 +294,7 @@ async function confirmRevote() {
     store.hangout.status = 'voting'
     store.hangout.vote_deadline = null
     store.hangout.final_shortlist_id = null
+    manualWinnerId.value = null
     spinning.value = false
     spinWinnerId.value = null
     spinSpots.value = []
@@ -311,6 +319,7 @@ async function onSpin() {
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
+    manualWinnerId.value = null
     // (Ryan) listed in Group activity, not posted in the group chat
     history.value.push({
       id: nextEventId++,
@@ -408,14 +417,15 @@ onUnmounted(() => {
           </div>
           <div
             v-else-if="status === 'confirmed' || status === 'done'"
-            class="alert alert-info d-flex align-items-center gap-2"
+            class="alert alert-info d-flex align-items-center flex-wrap gap-2"
           >
-            <span>
-              Voting is closed.
-              <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }">
-                See the final plan
-              </RouterLink>
-            </span>
+            <span>Voting is closed.</span>
+            <RouterLink
+              class="btn btn-primary final-plan-btn"
+              :to="{ name: 'final-plan', params: { id: hangoutId } }"
+            >
+              See the final plan <span aria-hidden="true">→</span>
+            </RouterLink>
             <button
               v-if="isHost && status === 'confirmed'"
               type="button"
@@ -506,15 +516,18 @@ onUnmounted(() => {
             @change="onChangeDeadline"
           />
           <!-- Host controls first, so on phones and tablets (one column) closing the vote isn't
-               below the activity feed -->
+               below the activity feed. After closing (or the wheel), it stays so the host can
+               change the winner. -->
           <ClosePanel
-            v-if="isHost && status === 'voting' && !needsSpin"
+            v-if="isHost && ((status === 'voting' && !needsSpin) || status === 'confirmed')"
             :shortlist="store.shortlist"
             :leader-id="leaderId"
             :selected-id="winnerId"
             :vote-count="totalVotes"
             :deadline-text="deadline ? formatDateTime(deadline) : null"
             :closing="closing"
+            :closed="status === 'confirmed'"
+            :current-id="hangout.final_shortlist_id"
             @select="selectWinner"
             @close="onClose"
           />
@@ -534,7 +547,7 @@ onUnmounted(() => {
     />
     <ConfirmDialog
       :open="showCloseModal"
-      title="Close vote and confirm plan?"
+      :title="status === 'confirmed' ? 'Change the winner?' : 'Close vote and confirm plan?'"
       :text="`This will confirm ${spotName(pendingCloseId)} as the plan for this hangout.`"
       button="Confirm"
       @confirm="confirmClose"
@@ -544,8 +557,7 @@ onUnmounted(() => {
       :open="showSpinResultModal && !!spinWinner"
       title="The wheel has picked a winner!"
       :text="`Your group is going to ${spinWinner?.name}.`"
-      button="See final plan"
-      @confirm="router.push({ name: 'final-plan', params: { id: hangoutId } })"
+      cancel="Close"
       @cancel="showSpinResultModal = false"
     />
   </main>
@@ -614,6 +626,10 @@ onUnmounted(() => {
 
 .revote-btn {
   min-width: 6.5rem;
+  font-weight: 600;
+}
+
+.final-plan-btn {
   font-weight: 600;
 }
 </style>
