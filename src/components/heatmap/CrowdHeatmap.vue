@@ -263,8 +263,22 @@ watch(
   { deep: true }, // also fires when something inside the object changes
 )
 
+// (Ryan) the host locked or unlocked the midpoint, so redraw the pin with dragging off or on
+watch(
+  () => props.draggable,
+  () => {
+    if (map) drawMidpoint()
+  },
+)
+
 // a member's start point or travel info changed, so redraw the pins and leave the zoom alone
 watch(() => props.members, drawMembers, { deep: true })
+
+// (Ryan) Cancel on the "Move the midpoint?" pop-up puts a dragged pin back where it was
+function resetPin() {
+  if (map) drawMidpoint()
+}
+defineExpose({ resetPin })
 </script>
 
 <template>

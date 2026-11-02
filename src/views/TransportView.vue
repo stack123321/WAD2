@@ -16,6 +16,7 @@
   import { sendMessage } from '@/services/chat'
   import { hasSupabase } from '@/services/supabase'
   import PersonModeRow from '@/components/transport/PersonModeRow.vue'
+  import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -68,6 +69,30 @@
   const saving = ref(false)
   const saveError = ref('')
 
+  // (Ryan) a different station clears the shortlist and its votes, so ask first when there are spots to lose
+  const askingMove = ref(false)
+
+  // (Ryan) the host has locked the midpoint on 08, so it can't be found again here
+  const midpointLocked = computed(
+    () => store.hangout !== null && store.hangout.midpoint_locked === true,
+  )
+
+  function onFindMidpoint() {
+    if (midpointLocked.value) return
+    const best = ranked.value[0]
+    if (!best) return
+    if (best.name !== store.hangout.midpoint_name && store.shortlist.length > 0) {
+      askingMove.value = true
+      return
+    }
+    findMidpoint()
+  }
+
+  function confirmFind() {
+    askingMove.value = false
+    findMidpoint()
+  }
+
   async function findMidpoint() {
     const best = ranked.value[0]
     if (!best) return
@@ -85,6 +110,7 @@
     }
     try {
       await saveMidpoint(route.params.id, midpoint)
+      if (midpoint.name !== store.hangout.midpoint_name) store.clearSpots() // checked before the name changes below
       // Page 08 reads it from the store straight away
       store.hangout.midpoint_name = midpoint.name
       store.hangout.midpoint_lat = midpoint.lat
@@ -315,12 +341,18 @@
             <button
               type="button"
               class="btn btn-primary btn-lg w-100"
-              :disabled="saving || working || ranked.length === 0 || !myModePicked"
-              @click="findMidpoint()"
+              :disabled="saving || working || ranked.length === 0 || !myModePicked || midpointLocked"
+              @click="onFindMidpoint()"
             >
               <span v-if="saving">Saving…</span>
               <span v-else>Find our midpoint →</span>
             </button>
+            <p v-if="midpointLocked" class="footnote">
+              🔒 The host has locked the midpoint.
+              <router-link :to="{ name: 'midpoint', params: { id: route.params.id } }">
+                See it on Midpoint →
+              </router-link>
+            </p>
             <p v-if="!myModePicked" class="footnote">Pick how you’re getting there first.</p>
             <p v-else-if="missingMode.length > 0" class="footnote">{{ waitingNote }}</p>
             <p v-if="saveError" class="footnote text-danger" role="alert">{{ saveError }}</p>
@@ -328,6 +360,16 @@
           <p class="footnote">Travel times via OneMap routing + LTA DataMall</p>
         </div>
       </div>
+
+      <ConfirmDialog
+        :open="askingMove"
+        :title="ranked[0] ? `Move the midpoint to ${ranked[0].name} MRT?` : ''"
+        text="The shortlisted spots and any votes on them will be cleared, so the group picks spots near the new midpoint."
+        button="Move midpoint"
+        danger
+        @confirm="confirmFind"
+        @cancel="askingMove = false"
+      />
     </section>
   </template>
 

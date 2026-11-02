@@ -30,6 +30,8 @@ test('Find our midpoint opens 08', async ({ page }) => {
   await page.goto('/hangouts/demo/transport')
 
   await page.getByRole('button', { name: 'Find our midpoint' }).click()
+  // the sample hangout has spots shortlisted near Bishan, so a different station asks first
+  await page.getByRole('dialog').getByRole('button', { name: 'Move midpoint' }).click()
 
   await expect(page).toHaveURL('/hangouts/demo/midpoint')
 })

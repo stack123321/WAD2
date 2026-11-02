@@ -42,5 +42,18 @@ export const useHangoutStore = defineStore('hangout', () => {
     if (wantedId === id) loading.value = false // a newer load still running keeps its own loading state
   }
 
-  return { hangout, loading, error, members, shortlist, votes, load }
+  // (Ryan) a new midpoint: the old spots and their votes go, and voting starts over.
+  // set_midpoint does the same in the database; this keeps the screen (and the demo hangout) in step
+  function clearSpots() {
+    if (!hangout.value) return
+    hangout.value.shortlist = []
+    hangout.value.votes = []
+    hangout.value.final_shortlist_id = null
+    if (hangout.value.status === 'voting' || hangout.value.status === 'confirmed') {
+      hangout.value.status = 'collecting'
+      hangout.value.vote_deadline = null
+    }
+  }
+
+  return { hangout, loading, error, members, shortlist, votes, load, clearSpots }
 })

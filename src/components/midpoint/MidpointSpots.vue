@@ -22,7 +22,7 @@ const props = defineProps({
   stations: { type: Array, required: true },
   vibes: { type: Array, default: () => [] }, // e.g. ['chill', 'food']
   hangoutId: { type: String, required: true },
-  busy: { type: Boolean, default: false }, // the page is saving a new midpoint
+  busy: { type: Boolean, default: false }, // the page is saving a new midpoint, or (Ryan) it's locked
 })
 
 const emit = defineEmits(['choose', 'preview'])

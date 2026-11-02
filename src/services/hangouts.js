@@ -107,6 +107,25 @@ export async function updateHangoutDetails(id, fields) {
 }
 
 /**
+ * (Ryan) Lock or unlock the midpoint (08). Only the host can (the "hangouts: host edits" rule);
+ * .select() turns a non-host's update, which the rule skips without an error, into one.
+ * While it's locked, set_midpoint refuses to move it, for everyone.
+ * @param {string} id hangout uuid ("demo" is not saved)
+ * @param {boolean} locked
+ */
+export async function setMidpointLocked(id, locked) {
+  if (id.startsWith('demo') || !hasSupabase) return
+
+  const { data, error } = await supabase
+    .from('hangouts')
+    .update({ midpoint_locked: locked })
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (data.length === 0) throw new Error('Only the host can lock the midpoint.')
+}
+
+/**
  * Save one member's starting point. Used by 06 Starting points (Surya).
  * You can save your own; in host mode the host can save anyone's. The security rules in
  * supabase/schema.sql ("members: edit own row") enforce that, not this function.
