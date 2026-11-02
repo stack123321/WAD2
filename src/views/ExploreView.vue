@@ -149,6 +149,7 @@
       :class="{ 'is-mobile-visible': showMobileAsk }"
       :hangout="hangout.hangout"
       :members="hangout.members"
+      :memory="remembered.ask"
       @found="onAskFound"
     />
     <div
@@ -366,7 +367,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
@@ -380,6 +381,7 @@ import {
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { useShortlist } from '@/composables/useShortlist'
+import { useExploreMemory } from '@/composables/useExploreMemory'
 import {
   hardVetoReason,
   matchScore,
@@ -393,6 +395,9 @@ const route = useRoute()
 const auth = useAuthStore()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
+
+// Filters, sort and Ask results are kept until a different hangout is opened
+const remembered = useExploreMemory(route.params.id)
 
 const spots = ref([])
 const loadError = ref('')
@@ -540,8 +545,8 @@ const filters = [
   { label: 'Fitness', value: 'fitness' },
   { label: 'Shopping', value: 'shopping' },
 ]
-const activeFilter = ref('all')
-const hideZeroMatches = ref(false)
+const activeFilter = toRef(remembered, 'activeFilter')
+const hideZeroMatches = toRef(remembered, 'hideZeroMatches')
 const showMobileFilters = ref(false)
 const showDesktopFilters = ref(false)
 const showMobileAsk = ref(false)
@@ -641,7 +646,7 @@ function matchesFilter(spot) {
   return spot.category === activeFilter.value
 }
 
-const radiusKm = ref(1)
+const radiusKm = toRef(remembered, 'radiusKm')
 
 function distanceFromMidpointKm(spot) {
   const toRad = (deg) => (deg * Math.PI) / 180
@@ -672,7 +677,7 @@ const sortOptions = [
   { label: 'Distance from station', value: 'distance' },
   { label: 'Crowd level', value: 'crowd' },
 ]
-const sortBy = ref('match')
+const sortBy = toRef(remembered, 'sortBy')
 
 // Every sort keeps vibe-compatible spots first, then applies its selected criterion.
 // Crowd level sorts quietest first.
@@ -695,7 +700,7 @@ const comparators = {
   crowd: prioritiseVibeMatch((a, b) => a.crowdLevel - b.crowdLevel),
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
-const askedSpots = ref(null)
+const askedSpots = toRef(remembered, 'askedSpots')
 const shownSpots = computed(() =>
   askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
 )

@@ -11,7 +11,7 @@
 // Usage: <AskSpots :hangout="store.hangout" :members="store.members" @found="askedSpots = $event" />
 //   found → camel-cased spots (as from loadSpots()) to show instead of the usual list, or null
 //   when the user goes back to all spots
-import { computed, ref } from 'vue'
+import { computed, reactive, ref, toRefs } from 'vue'
 import { askAssistant } from '@/services/assistant'
 import { cacheSpots, googlePlacesEnabled } from '@/services/places'
 import { isMockHangout } from '@/services/votes'
@@ -20,6 +20,9 @@ import { groupNeeds } from './groupNeeds'
 const props = defineProps({
   hangout: { type: Object, required: true },
   members: { type: Array, default: () => [] },
+  // Optional reactive { message, history, result, lastTurn, dietOn } kept by the parent, so the
+  // last question and answer survive leaving the page
+  memory: { type: Object, default: null },
 })
 const emit = defineEmits(['found'])
 
@@ -27,13 +30,13 @@ const MAX_LENGTH = 300
 const FOLLOW_UPS = ['Cheaper', 'Closer to the MRT', 'Something else']
 const BUDGET_TEXT = { 1: 'under $15 each', 2: '$15–30 each', 3: '$30+ each' }
 
-const message = ref('')
-const history = ref([]) // [{ role: 'user' | 'model', text }], for follow-ups
+// message; history [{ role: 'user' | 'model', text }] for follow-ups; result { reply, query,
+// suggestOtherStations }; lastTurn { text, history } to redo it; dietOn e.g. ['halal']
+const { message, history, result, lastTurn, dietOn } = toRefs(
+  props.memory ?? reactive({ message: '', history: [], result: null, lastTurn: null, dietOn: [] }),
+)
 const loading = ref(false)
 const error = ref('')
-const result = ref(null) // { reply, query, suggestOtherStations }
-const lastTurn = ref(null) // { text, history } of the last question, to redo it
-const dietOn = ref([]) // the group's dietary needs the user switched on, e.g. ['halal']
 
 const groupHas = computed(() => groupNeeds(props.members))
 // What's sent: everyone's size and budget, but only the dietary needs that are switched on
