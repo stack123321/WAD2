@@ -327,12 +327,14 @@
           <!-- Says where the reminder went (the prof asked "how is the reminder sent?") -->
           <p v-if="remindStatus === 'Sent ✓'" class="small remind-note" role="status">
             Posted in the group chat ·
-            <!-- from=transport: the chat page then offers "← Back to Transport" -->
-            <RouterLink
-              :to="{ name: 'chat', params: { hangoutId: route.params.id }, query: { from: 'transport' } }"
+            <!-- (Ryan) opens the chat on top of this page, like 💬 in the step bar -->
+            <button
+              type="button"
+              class="btn btn-link btn-sm p-0 align-baseline"
+              @click="store.chatOpen = true"
             >
               Open chat →
-            </RouterLink>
+            </button>
           </p>
           <p v-else-if="remindStatus === 'Copied ✓'" class="small remind-note" role="status">
             Copied the reminder. Paste it to them (the demo hangout has no group chat).

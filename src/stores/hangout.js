@@ -10,6 +10,7 @@ export const useHangoutStore = defineStore('hangout', () => {
   const hangout = ref(null) // the hangout on screen, null before the first load
   const loading = ref(false)
   const error = ref(null)
+  const chatOpen = ref(false) // (Ryan) the group chat is open on top of the page (💬 in the step bar)
 
   // shortcuts, empty lists before a hangout loads so pages can loop over them safely
   const members = computed(() => (hangout.value ? hangout.value.members : []))
@@ -37,6 +38,7 @@ export const useHangoutStore = defineStore('hangout', () => {
     if (!cached) {
       loading.value = true
       error.value = null
+      chatOpen.value = false // a different hangout: don't open its chat just because the last one was open
     }
     try {
       const fresh = await getHangout(id)
@@ -74,6 +76,7 @@ export const useHangoutStore = defineStore('hangout', () => {
     hangout,
     loading,
     error,
+    chatOpen,
     members,
     shortlist,
     votes,
