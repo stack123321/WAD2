@@ -189,6 +189,11 @@ async function removeOpen() {
 </template>
 
 <style scoped>
+/* (Surya) when the page scrolls to the photos, stop below the top bars (taller on phones) */
+#photos {
+  scroll-margin-top: calc(var(--fp-sticky-top, 5rem) + 2rem);
+}
+
 .add-btn {
   min-height: 44px;
   font-weight: 600;

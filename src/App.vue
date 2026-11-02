@@ -2,7 +2,7 @@
 // Nobody needs to edit this file. Add your page in src/views/ and its route in src/router/index.js.
 // Pages inside a hangout (06–12, URLs /hangouts/:id/...) also get the step bar (HangoutBar) under
 // the navbar, so you can move between steps from any of them.
-import { computed, watch } from 'vue'
+import { computed, watch, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import NavBar from '@/components/ui/NavBar.vue'
 import HangoutBar from '@/components/hangout/HangoutBar.vue'
@@ -30,18 +30,36 @@ const showHangoutBar = computed(() => {
   }
   return store.hangout.id === route.params.id
 })
+
+// (Surya) How far down the screen the two bars reach, so panels that stay on screen while you
+// scroll (and the jump to the photos) stop just below them instead of hiding under them
+watchEffect(() => {
+  const top = showHangoutBar.value ? '9rem' : '5rem'
+  document.documentElement.style.setProperty('--fp-sticky-top', top)
+})
 </script>
 
 <template>
-  <NavBar />
-  <HangoutBar
-    v-if="showHangoutBar"
-    :hangout="store.hangout"
-    :members="store.members"
-    :current="route.name"
-  />
+  <!-- (Surya) the navbar and the step bar stay at the top of the screen while the page scrolls -->
+  <div class="top-bars">
+    <NavBar />
+    <HangoutBar
+      v-if="showHangoutBar"
+      :hangout="store.hangout"
+      :members="store.members"
+      :current="route.name"
+    />
+  </div>
   <!-- each kind of page drops in from above when you go to it -->
   <PageDrop :key="route.name">
     <RouterView />
   </PageDrop>
 </template>
+
+<style scoped>
+.top-bars {
+  position: sticky;
+  top: 0;
+  z-index: 1020; /* above the page, below the phone tab bar and pop-ups */
+}
+</style>

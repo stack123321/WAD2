@@ -640,7 +640,7 @@ onMounted(async () => {
     flex-direction: column;
     gap: 1rem;
     position: sticky; /* stays in view while the list scrolls */
-    top: 1rem;
+    top: var(--fp-sticky-top, 5rem); /* (Surya) below the top bars, which now stay on screen */
     align-self: start; /* needed for sticky inside a grid */
   }
 }
