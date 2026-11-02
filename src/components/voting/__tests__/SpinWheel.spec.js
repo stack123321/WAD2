@@ -1,6 +1,4 @@
 // Owner: Eashvar (testing). Component test for SpinWheel (Week 10b): the tie-break wheel on 11.
-// RouterLink (the "See the final plan" button) is replaced with a stub, since there's no router
-// in a component test.
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpinWheel from '../SpinWheel.vue'
@@ -12,8 +10,7 @@ const spots = [
 
 function mountWheel(props) {
   return mount(SpinWheel, {
-    props: { spots, planTo: { name: 'final-plan' }, ...props },
-    global: { stubs: { RouterLink: true } },
+    props: { spots, ...props },
   })
 }
 

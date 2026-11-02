@@ -11,7 +11,6 @@ const props = defineProps({
   winnerId: { type: String, default: null },
   spinning: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
-  planTo: { type: Object, required: true },
 })
 
 const emit = defineEmits(['spin'])
@@ -89,9 +88,6 @@ const decided = computed(() => winner.value !== null && !props.spinning)
       </template>
       <template v-else-if="winner">Spinning…</template>
     </p>
-    <RouterLink v-if="decided" class="btn btn-primary w-100 fw-semibold mt-3" :to="planTo">
-      See the final plan <span aria-hidden="true">→</span>
-    </RouterLink>
   </section>
 </template>
 
