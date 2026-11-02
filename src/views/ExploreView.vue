@@ -55,6 +55,15 @@
           Filters
         </button>
         <button
+          v-if="askedSpots"
+          type="button"
+          class="mobile-ask-reset"
+          aria-label="Reset Ask results"
+          @click="resetAskResults"
+        >
+          Reset
+        </button>
+        <button
           v-if="hasMidpoint"
           type="button"
           class="mobile-ask-toggle"
@@ -133,6 +142,7 @@
       </div>
     </div>
     <AskSpots
+      ref="askSpots"
       v-if="hasMidpoint"
       id="explore-ask"
       class="ask-panel"
@@ -537,6 +547,11 @@ const showDesktopFilters = ref(false)
 const showMobileAsk = ref(false)
 const showMobileToggles = ref(false)
 const activeMobileView = ref('spots')
+const askSpots = ref(null)
+
+function resetAskResults() {
+  askSpots.value?.showAll()
+}
 
 function toggleMobilePanel(panel) {
   const open = panel === 'ask' ? !showMobileAsk.value : !showMobileFilters.value
@@ -1210,6 +1225,7 @@ async function selectSpot(id) {
   }
 
   .mobile-filter-toggle,
+  .mobile-ask-reset,
   .mobile-ask-toggle,
   .mobile-view-toggle {
     display: grid;

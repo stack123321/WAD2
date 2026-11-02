@@ -107,6 +107,8 @@ function showAll() {
   error.value = ''
   emit('found', null)
 }
+
+defineExpose({ showAll })
 </script>
 
 <template>
@@ -188,8 +190,12 @@ function showAll() {
           >
             Try another station
           </RouterLink>
-          <button type="button" class="btn btn-link ask__chip ask__reset" @click="showAll">
-            Show all spots
+          <button
+            type="button"
+            class="btn btn-link ask__chip ask__reset"
+            @click="showAll"
+          >
+            Reset
           </button>
         </div>
       </div>
@@ -278,5 +284,11 @@ function showAll() {
 
 .ask__reset {
   color: var(--fp-muted);
+}
+
+@media (max-width: 767px) {
+  .ask__reset {
+    display: none;
+  }
 }
 </style>
