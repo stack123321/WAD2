@@ -52,7 +52,7 @@ export const useAlertsStore = defineStore('alerts', () => {
       summary.value = chats // red badge on chats, and the counts on my chats
     } catch (err) {
       // the badges are a nice extra: if this fails, keep the numbers we had
-      console.log(err)
+      console.error(err)
     }
   }
 

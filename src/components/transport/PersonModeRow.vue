@@ -4,7 +4,7 @@
 // picking a mode emits "pick" and the page saves it. A friend who hasn't added a starting point
 // or picked a mode gets a Remind button, which emits "remind" and the page sends the reminder.
 import { computed } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   member: { type: Object, required: true },

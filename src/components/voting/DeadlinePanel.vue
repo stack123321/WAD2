@@ -4,7 +4,7 @@
 // are still ahead (in 30 minutes up to when the hangout starts). Moving a passed deadline into the
 // future opens voting again. Emits change(deadline ISO).
 import { ref, watch } from 'vue'
-import { formatDateTime } from './voteHelpers'
+import { formatDateTime } from '@/utils/voteHelpers'
 
 const props = defineProps({
   deadline: { type: String, default: null }, // the hangout's current vote_deadline

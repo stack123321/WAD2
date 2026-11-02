@@ -32,13 +32,13 @@ test('Add to hangout opens page 05 with that friend', async ({ page }) => {
   await expect(page.getByText('Hanging out with Ryan')).toBeVisible()
 })
 
-test('removing a friend asks "Are you sure?" first', async ({ page }) => {
+test('removing a friend asks first', async ({ page }) => {
   await page.goto('/friends')
   await page.getByRole('button', { name: 'More options for Ryan' }).click()
   await page.getByRole('button', { name: 'Remove Ryan as a friend' }).click()
-  await expect(page.getByText('Are you sure?')).toBeVisible()
+  await expect(page.getByRole('dialog')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Yes, remove' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove friend' }).click()
 
   await expect(page.getByRole('button', { name: 'Chat with Ryan' })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Chat with Nicole' })).toBeVisible()

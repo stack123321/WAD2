@@ -5,7 +5,7 @@
 //   people → [{ user_id, display_name, avatar_color }]; picked → the ticked user_ids
 //   toggle → the user_id that was ticked or unticked (the page changes its own list)
 import { computed, ref } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   people: { type: Array, required: true },

@@ -2,8 +2,8 @@
 // Owner: Ryan
 // one hangout on 04 dashboard: a compact row, or the big UP NEXT card with a map when `featured`
 // the whole card opens the hangout (the title is a stretched link), the button and the ⋯ menu keep their own clicks
-import { computed, ref } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import PinIcon from '@/components/dashboard/PinIcon.vue'
 import UpNextMap from '@/components/dashboard/UpNextMap.vue'
 import WeatherLineIcon from '@/components/dashboard/WeatherLineIcon.vue'
@@ -47,6 +47,22 @@ const morePhotos = computed(() => props.photos.length - 3)
 
 // the card can't change the dashboard's list itself, so it sends these up and the dashboard acts on them
 const emit = defineEmits(['delete', 'leave', 'toggle-pin'])
+
+// each card is its own layer, so an open menu hangs under the next card unless this card is lifted while a menu is open
+const card = ref(null)
+const menuOpen = ref(false)
+const openMenu = () => (menuOpen.value = true)
+const closeMenu = () => (menuOpen.value = false)
+
+// bootstrap fires these when the ⋯ menu or the "+N" member list opens and closes
+onMounted(() => {
+  card.value.addEventListener('show.bs.dropdown', openMenu)
+  card.value.addEventListener('hide.bs.dropdown', closeMenu)
+})
+onBeforeUnmount(() => {
+  card.value.removeEventListener('show.bs.dropdown', openMenu)
+  card.value.removeEventListener('hide.bs.dropdown', closeMenu)
+})
 
 const startsAt = computed(() => new Date(props.hangout.starts_at)) // the start time as a date, used below
 
@@ -171,7 +187,11 @@ async function copyInvite() {
 
 <template>
   <!-- the tone class colours the left edge, featured makes it the big up next card, compact is the plain row -->
-  <article class="card hangout" :class="[tone.edge, featured ? 'featured' : 'compact']">
+  <article
+    ref="card"
+    class="card hangout"
+    :class="[tone.edge, featured ? 'featured' : 'compact', { 'menu-open': menuOpen }]"
+  >
     <!-- with a map: map and content side by side (map on the right from 768px), without: just the content -->
     <div :class="showMap ? 'd-flex flex-column flex-md-row-reverse' : ''">
       <UpNextMap
@@ -332,13 +352,11 @@ async function copyInvite() {
             </li>
             <!-- a divider only when there's a red option below it -->
             <li v-if="canDelete || canLeave"><hr class="dropdown-divider" /></li>
-            <!-- the host can delete, everyone else can leave: data-bs-target opens the dashboard's confirm dialog -->
+            <!-- the host can delete, everyone else can leave: the dashboard asks "are you sure?" first -->
             <li v-if="canDelete">
               <button
                 type="button"
                 class="dropdown-item text-danger"
-                data-bs-toggle="modal"
-                data-bs-target="#confirm-modal"
                 @click="emit('delete', hangout)"
               >
                 Delete hangout
@@ -348,8 +366,6 @@ async function copyInvite() {
               <button
                 type="button"
                 class="dropdown-item text-danger"
-                data-bs-toggle="modal"
-                data-bs-target="#confirm-modal"
                 @click="emit('leave', hangout)"
               >
                 Leave hangout
@@ -370,6 +386,10 @@ async function copyInvite() {
     transform 0.25s,
     box-shadow 0.25s,
     opacity 0.25s;
+}
+/* lifted above the cards around it while its menu is open, so the menu isn't covered */
+.hangout.menu-open {
+  z-index: 3;
 }
 /* the card under the pointer rises a little */
 @media (hover: hover) {

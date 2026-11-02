@@ -1,7 +1,8 @@
 // Owner: Eashvar (testing; from Ryan's tests). Unit tests for avatarColor (Week 10a): white text
 // must be readable on every palette colour, a saved colour wins, and names spread over the palette.
 import { describe, it, expect } from 'vitest'
-import { AVATAR_COLORS, avatarColor } from '../avatarColor.js'
+import { avatarColor } from '../avatarColor.js'
+import { AVATAR_COLORS } from '../palette.js'
 
 // How readable white text is on a colour like '#0E7C6B' (the WCAG contrast ratio; 4.5 or more is
 // readable). Each pair of hex digits is one channel: red, green, blue.

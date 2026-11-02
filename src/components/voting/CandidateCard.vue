@@ -4,7 +4,7 @@
 // and a vote button that shows "✓ Your vote" when it's my choice and "Saving…" while this vote is
 // being saved. Emits vote(spotId).
 import { computed } from 'vue'
-import MemberAvatar from './MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   spot: { type: Object, required: true },

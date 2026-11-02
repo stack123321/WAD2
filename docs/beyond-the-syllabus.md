@@ -216,7 +216,7 @@ Mixes two colours, for example 10% teal into white to get a pale teal without pi
 ```css
 background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 ```
-Used in: [SpotHero.vue](../src/components/voting/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/start/HangoutChat.vue).
+Used in: [SpotHero.vue](../src/components/shared/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/chat/HangoutChat.vue).
 
 ### `:not(.class)`
 Selects elements that do not match. Here: every item in a stack except the first, which gets the gap above it.
@@ -329,14 +329,6 @@ await request // proves moving the slider called the API
 Calls an API directly, without opening a page. Works like `axios.get`, but `res.ok()`, `res.status()` and `await res.json()` replace `response.data`.
 
 Used in: [api.spec.js](../tests/e2e/api.spec.js).
-
-### `page.once('dialog', (dialog) => dialog.accept())`
-When the page pops up `window.confirm(...)` ("Delete this hangout?"), Playwright clicks **Cancel** by default. This tells it to click **OK** on the next popup only. Set it up *before* the click that opens the popup.
-```js
-page.once('dialog', (dialog) => dialog.accept())
-await deleteButton.click() // the confirm popup opens and is accepted straight away
-```
-Used in: [tests/live/dashboard.spec.js](../tests/live/dashboard.spec.js) to delete the test hangout at the end.
 
 ## Regular expressions
 

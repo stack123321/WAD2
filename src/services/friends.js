@@ -3,7 +3,7 @@
 import { supabase, hasSupabase } from './supabase'
 import { addMember } from './hangouts'
 import mockHangout from '@/mocks/hangout.json'
-import mockHangout2 from '@/mocks/hangout-2.json'
+import mockHangout2 from '@/mocks/hangout-collecting.json'
 
 // every function below has two halves: the demo (no supabase) works on lists kept in memory, the real app asks the database.
 // in the demo (no supabase) you're surya, like on 06 and 07

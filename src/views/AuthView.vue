@@ -1,6 +1,6 @@
 <script setup>
 // 02 Log in / Sign up
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "02". Split screen: brand panel with a map preview on the left, auth card on the right.
 // ?mode=signup opens Sign up; ?redirect=/path is where to go after logging in;
 // ?invite=CODE (the link from 05 Create hangout) joins that hangout once logged in;
@@ -596,11 +596,11 @@ const avatars = [
 <style scoped>
 .auth {
   /* Illustration-only colours for the map preview and avatars */
-  --auth-pink: #d6528f;
-  --auth-blue: #4a7fe8;
-  --auth-purple: #7056e0;
-  --auth-amber: #f2b33d;
-  --auth-panel: #275b4f;
+  --auth-pink: var(--fp-pink);
+  --auth-blue: var(--fp-blue);
+  --auth-purple: var(--fp-purple);
+  --auth-amber: var(--fp-amber);
+  --auth-panel: var(--fp-panel-dark);
 
   display: grid;
   grid-template-columns: minmax(0, 43fr) minmax(0, 57fr);
@@ -686,15 +686,15 @@ const avatars = [
 }
 
 .map__ground {
-  fill: #e9ece4;
+  fill: var(--fp-map-land);
 }
 
 .map__water {
-  fill: #cfdfe6;
+  fill: var(--fp-map-water);
 }
 
 .map__park {
-  fill: #cfe0c3;
+  fill: var(--fp-map-park);
   opacity: 0.8;
 }
 
@@ -705,7 +705,7 @@ const avatars = [
 }
 
 .map__road--major path {
-  stroke: #f2d48f;
+  stroke: var(--fp-map-road);
   stroke-width: 6;
 }
 

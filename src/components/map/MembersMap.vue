@@ -5,7 +5,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import { isInSingapore } from '@/services/onemap'
-import { createOneMap } from './oneMap'
+import { createOneMap } from '@/utils/mapSetup'
 import { avatarColor } from '@/utils/avatarColor'
 
 const props = defineProps({
@@ -229,7 +229,7 @@ function escapeHtml(text) {
   border-radius: 50%;
   border: 3px solid var(--fp-surface);
   box-shadow: var(--fp-shadow);
-  color: #fff;
+  color: var(--fp-white);
   font-weight: 700;
   font-size: 0.85rem;
 }

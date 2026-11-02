@@ -371,7 +371,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } fro
 import { useRoute } from 'vue-router'
 import SpotCard from '@/components/spots/SpotCard.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
 import {
@@ -926,7 +926,7 @@ async function selectSpot(id) {
 .shortlist {
   align-self: start;
   padding: 12px 16px;
-  background: #fff;
+  background: var(--fp-white);
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
@@ -938,7 +938,7 @@ async function selectSpot(id) {
   z-index: 1;
   width: 280px;
   padding: 10px;
-  background: #f6f4ef;
+  background: var(--fp-bg);
   border-radius: 10px;
 }
 
@@ -977,7 +977,7 @@ async function selectSpot(id) {
   padding: 0 6px;
   border: 0;
   background: none;
-  color: #dc3545;
+  color: var(--fp-error);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
@@ -996,7 +996,7 @@ async function selectSpot(id) {
   height: 40px;
   border-radius: 6px;
   object-fit: cover;
-  background: #e0e0e0;
+  background: var(--fp-skeleton);
 }
 
 @media (min-width: 768px) {
@@ -1164,7 +1164,7 @@ async function selectSpot(id) {
 
   .cards-title {
     max-width: calc(100% - 5rem);
-    color: #fff;
+    color: var(--fp-white);
     font-size: 1.25rem;
     text-align: right;
     text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
@@ -1202,7 +1202,7 @@ async function selectSpot(id) {
     border: 0;
     border-radius: 50%;
     background: rgb(0 0 0 / 45%);
-    color: #fff;
+    color: var(--fp-white);
     cursor: pointer;
   }
 
@@ -1242,7 +1242,7 @@ async function selectSpot(id) {
     border: 0;
     border-radius: 999px;
     background: rgb(0 0 0 / 45%);
-    color: #fff;
+    color: var(--fp-white);
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;

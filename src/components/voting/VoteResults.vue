@@ -2,7 +2,7 @@
 // Owner: Eashvar. The final vote on the debrief: one row per shortlisted spot, most votes first,
 // with a bar, the count and who voted for it. The spot the group went to is marked "Picked".
 import { computed } from 'vue'
-import MemberAvatar from './MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   rows: { type: Array, required: true }, // [{ spot, count }] from countVotes()

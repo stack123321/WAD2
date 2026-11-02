@@ -1,6 +1,6 @@
 <script setup>
 // 01 Landing
-// Owner: Matrix · Vet by: Hugo
+// Owner: Matrix
 // Figma frame "01". Explains what Fairpoint is, Netflix-style: a hero with one button, then
 // full-width sections down the page (how it works, features, FAQ, a final button).
 // Logged-in users see their next hangout instead of the "how it works" steps.
@@ -531,11 +531,11 @@ function continueRoute(hangout) {
 <style scoped>
 .landing {
   /* Illustration-only colours for the map preview */
-  --landing-pink: #d6528f;
-  --landing-blue: #4a7fe8;
-  --landing-purple: #7056e0;
-  --landing-amber: #f2b33d;
-  --landing-cloud: #d5dbe6;
+  --landing-pink: var(--fp-pink);
+  --landing-blue: var(--fp-blue);
+  --landing-purple: var(--fp-purple);
+  --landing-amber: var(--fp-amber);
+  --landing-cloud: var(--fp-cloud);
 }
 
 /* Every section gets plenty of space, like Netflix's landing page */
@@ -645,7 +645,7 @@ function continueRoute(hangout) {
   border-radius: calc(var(--fp-radius) * 1.5);
   overflow: hidden;
   box-shadow: 0 20px 50px rgb(0 0 0 / 0.1);
-  background: #e9ece4;
+  background: var(--fp-map-land);
 }
 
 .map {
@@ -655,11 +655,11 @@ function continueRoute(hangout) {
 }
 
 .map__water {
-  fill: #cfdfe6;
+  fill: var(--fp-map-water);
 }
 
 .map__park {
-  fill: #cfe0c3;
+  fill: var(--fp-map-park);
   opacity: 0.8;
 }
 
@@ -670,7 +670,7 @@ function continueRoute(hangout) {
 }
 
 .map__road--major path {
-  stroke: #f2d48f;
+  stroke: var(--fp-map-road);
   stroke-width: 8;
 }
 

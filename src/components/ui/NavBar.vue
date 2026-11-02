@@ -1,11 +1,12 @@
 <script setup>
 // Owner: Hugo (UI kit). Basic version so the app runs; restyle to match Figma.
 // Ryan: top links and a profile menu from 768px, a bottom tab bar with a centre "+" below that.
-import { computed, watch, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAlertsStore } from '@/stores/alerts'
 import { subscribeToAlerts } from '@/services/unread'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -56,12 +57,11 @@ function badgeText(n) {
   return n
 }
 
-// Ask first, then log out and leave the app for the landing page
+const askingLogOut = ref(false) // true while the "Log out?" pop-up is showing
+
+// the pop-up asked first, so log out and leave the app for the landing page
 async function logOut() {
-  const sure = window.confirm('Log out of Fairpoint?')
-  if (!sure) {
-    return
-  }
+  askingLogOut.value = false
   await auth.signOut()
   router.push({ name: 'landing' })
 }
@@ -112,7 +112,11 @@ async function logOut() {
                 </RouterLink>
               </li>
               <li><hr class="dropdown-divider" /></li>
-              <li><button type="button" class="dropdown-item" @click="logOut">Log out</button></li>
+              <li>
+                <button type="button" class="dropdown-item" @click="askingLogOut = true">
+                  Log out
+                </button>
+              </li>
             </ul>
           </li>
         </ul>
@@ -213,10 +217,21 @@ async function logOut() {
           <RouterLink class="dropdown-item" :to="{ name: 'preferences' }">Preferences</RouterLink>
         </li>
         <li><hr class="dropdown-divider" /></li>
-        <li><button type="button" class="dropdown-item" @click="logOut">Log out</button></li>
+        <li>
+          <button type="button" class="dropdown-item" @click="askingLogOut = true">Log out</button>
+        </li>
       </ul>
     </div>
   </nav>
+
+  <ConfirmDialog
+    :open="askingLogOut"
+    title="Log out of Fairpoint?"
+    text="You'll need to log in again to see your hangouts."
+    button="Log out"
+    @confirm="logOut"
+    @cancel="askingLogOut = false"
+  />
 </template>
 
 <style scoped>

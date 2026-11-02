@@ -3,7 +3,7 @@
 // coming and where it's up to. The status and the step it opens come from utils/hangoutStatus.js,
 // the same as the dashboard's cards, so the two never disagree.
 import { computed } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import { getStatus } from '@/utils/hangoutStatus'
 
 const props = defineProps({

@@ -78,7 +78,7 @@ defineExpose({ scrollToIndex })
 }
 
 .cards > :deep(.is-selected) {
-  outline: 2px solid #0e7c6b;
+  outline: 2px solid var(--fp-primary);
   outline-offset: 2px;
 }
 
@@ -143,7 +143,7 @@ defineExpose({ scrollToIndex })
     border: 0;
     border-radius: 50%;
     background: rgb(0 0 0 / 48%);
-    color: #fff;
+    color: var(--fp-white);
     font-size: 2rem;
     line-height: 1;
   }
@@ -177,7 +177,7 @@ defineExpose({ scrollToIndex })
     height: 100%;
     border: 0;
     border-radius: 0;
-    background: #111;
+    background: var(--fp-black);
   }
 
   :deep(.spot-card__image) {
@@ -214,7 +214,7 @@ defineExpose({ scrollToIndex })
     max-height: 72%;
     padding: rem 1rem 1.5rem;
     background: linear-gradient(to bottom, rgba(30, 29, 29, 0), rgba(63, 63, 63, 0.58));
-    color: #fff;
+    color: var(--fp-white);
     text-shadow: 0 1px 4px rgb(0 0 0 / 85%);
   }
 
@@ -234,7 +234,7 @@ defineExpose({ scrollToIndex })
   :deep(.spot-card__rating),
   :deep(.spot-card__meta),
   :deep(.spot-card__price) {
-    color: #fff;
+    color: var(--fp-white);
   }
 
   :deep(.spot-card__match) {
@@ -255,7 +255,7 @@ defineExpose({ scrollToIndex })
   :deep(.spot-card__tag) {
     border-color: rgb(255 255 255 / 70%);
     background: transparent;
-    color: #fff;
+    color: var(--fp-white);
     text-shadow: none;
   }
 

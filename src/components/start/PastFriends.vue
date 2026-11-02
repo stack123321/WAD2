@@ -7,7 +7,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { addMember, getPastFriends } from '@/services/hangouts'
 import { getFriendships } from '@/services/friends'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs id, members

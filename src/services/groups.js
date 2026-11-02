@@ -9,7 +9,7 @@ import { getPastFriends, updateMemberMode, updateMemberStart } from './hangouts'
 import { getFriendships } from './friends'
 import mockGroups from '@/mocks/groups.json'
 import mockHangout from '@/mocks/hangout.json'
-import mockHangout2 from '@/mocks/hangout-2.json'
+import mockHangout2 from '@/mocks/hangout-collecting.json'
 
 // in the demo (no supabase) you're Surya, like on 06, 07 and the Friends page
 export const DEMO_ME = 'u-surya'

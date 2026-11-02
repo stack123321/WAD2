@@ -9,12 +9,6 @@ const supabaseKey =
 // True once .env.local has the Supabase URL and key. Until then, services fall back to mock data.
 export const hasSupabase = Boolean(supabaseUrl && supabaseKey)
 
-if (!hasSupabase) {
-  console.info(
-    '[fairpoint] No Supabase keys in .env.local: using mock data from src/mocks/hangout.json',
-  )
-}
-
 // The publishable key is safe in the browser only because Row Level Security is on for every table.
 // Never put the secret (service-role) key in front-end code.
 export const supabase = hasSupabase ? createClient(supabaseUrl, supabaseKey) : null
