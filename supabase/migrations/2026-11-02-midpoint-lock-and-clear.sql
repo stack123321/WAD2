@@ -2,6 +2,14 @@
 -- the votes on it) so voting starts over, because the old spots are near the old station.
 -- Run once in the Supabase SQL editor. Same SQL as supabase/schema.sql.
 
+-- (Ryan) the hangout sends live updates, so 07 and 08 see the lock and a moved midpoint without a
+-- refresh (schema.sql lists it, but no migration ever added it)
+do $$
+begin
+  alter publication supabase_realtime add table public.hangouts;
+exception when duplicate_object then null;
+end $$;
+
 -- false = any member can move the midpoint, true = nobody can until the host unlocks it.
 -- The host turns it on and off with a normal update ("hangouts: host edits").
 alter table public.hangouts add column if not exists midpoint_locked boolean not null default false;

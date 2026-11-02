@@ -347,6 +347,26 @@ export function subscribeToMembers(hangoutId, onChange) {
 }
 
 /**
+ * (Ryan) Call onChange with the hangout's new row whenever it changes, e.g. the host locks the
+ * midpoint or someone moves it (Supabase Realtime; hangouts is in the publication in schema.sql).
+ * @returns {() => void} call this in onUnmounted to stop listening
+ */
+export function subscribeToHangout(hangoutId, onChange) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel(`hangout:${hangoutId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'hangouts', filter: `id=eq.${hangoutId}` },
+      (payload) => onChange(payload.new),
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
  * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
  * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
  * @param {string} hangoutId
