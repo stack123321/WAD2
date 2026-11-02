@@ -74,8 +74,12 @@ const savingId = ref(null)
 const spinning = ref(false)
 const spinWinnerId = ref(null)
 const spinSpots = ref([])
+const spinWheelKey = ref(0)
+const showSpinResultModal = ref(false)
 const revoting = ref(false)
 const showRevoteModal = ref(false)
+const showCloseModal = ref(false)
+const pendingCloseId = ref(null)
 
 let nextEventId = 1
 let unsubscribe = () => {}
@@ -128,6 +132,9 @@ const waitingText = computed(() => {
 })
 
 const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+const spinWinner = computed(
+  () => store.shortlist.find((spot) => spot.id === spinWinnerId.value) ?? null,
+)
 
 function selectWinner(spotId) {
   manualWinnerId.value = spotId === leaderId.value ? null : spotId
@@ -239,11 +246,20 @@ async function onStart(deadlineIso) {
   }
 }
 
-async function onClose(spotId) {
+function onClose(spotId) {
   if (totalVotes.value === 0) {
     actionError.value = 'Nobody has voted yet, so the vote can’t be closed.'
     return
   }
+  pendingCloseId.value = spotId
+  showCloseModal.value = true
+}
+
+async function confirmClose() {
+  showCloseModal.value = false
+  const spotId = pendingCloseId.value
+  pendingCloseId.value = null
+  if (!spotId) return
   closing.value = true
   actionError.value = ''
   try {
@@ -272,6 +288,11 @@ async function confirmRevote() {
     store.hangout.status = 'voting'
     store.hangout.vote_deadline = null
     store.hangout.final_shortlist_id = null
+    spinning.value = false
+    spinWinnerId.value = null
+    spinSpots.value = []
+    spinWheelKey.value += 1
+    showSpinResultModal.value = false
   } catch (e) {
     actionError.value = `Couldn't start the re-vote: ${e.message}`
   } finally {
@@ -292,6 +313,7 @@ async function onSpin() {
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
     await announceWinner(winner)
+    showSpinResultModal.value = true
   } catch (e) {
     if (/already closed/i.test(e.message)) {
       actionError.value = 'Someone else has already spun the wheel.'
@@ -390,22 +412,25 @@ onUnmounted(() => {
             v-else-if="status === 'confirmed' || status === 'done'"
             class="alert alert-info d-flex align-items-center gap-2"
           >
-            <span>
-              Voting is closed.
-              <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }">
-                See the final plan
+            <span>Voting is closed.</span>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+              <RouterLink
+                class="btn btn-outline-primary final-plan-btn fw-semibold"
+                :to="{ name: 'final-plan', params: { id: hangoutId } }"
+              >
+                See final plan
               </RouterLink>
-            </span>
-            <button
-              v-if="isHost && status === 'confirmed'"
-              type="button"
-              class="btn btn-outline-danger revote-btn ms-auto"
-              :disabled="revoting"
-              @click="startRevote"
-            >
-              <span v-if="revoting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-              Re-vote
-            </button>
+              <button
+                v-if="isHost && status === 'confirmed'"
+                type="button"
+                class="btn btn-outline-danger revote-btn"
+                :disabled="revoting"
+                @click="startRevote"
+              >
+                <span v-if="revoting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                Re-vote
+              </button>
+            </div>
           </div>
           <div v-else-if="needsSpin" class="alert alert-info">
             Voting is over and it's a tie. Anyone in the group can spin the wheel to pick the
@@ -470,11 +495,11 @@ onUnmounted(() => {
             @start="onStart"
           />
           <SpinWheel
+            :key="spinWheelKey"
             v-if="isMember && (needsSpin || spinWinnerId)"
             :spots="spinWinnerId ? spinSpots : tiedSpots"
             :winner-id="spinWinnerId"
             :spinning="spinning"
-            :plan-to="{ name: 'final-plan', params: { id: hangoutId } }"
             @spin="onSpin"
           />
           <DeadlinePanel
@@ -529,6 +554,71 @@ onUnmounted(() => {
             Cancel
           </button>
           <button type="button" class="btn btn-primary" @click="confirmRevote">OK</button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showCloseModal"
+      class="revote-modal-backdrop"
+      role="presentation"
+      @click.self="showCloseModal = false"
+    >
+      <section
+        class="revote-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="close-vote-modal-title"
+      >
+        <h2 id="close-vote-modal-title" class="h5 mb-2">Close vote and confirm plan?</h2>
+        <p class="mb-4">
+          This will confirm <strong>{{ spotName(pendingCloseId) }}</strong> as the plan for this
+          hangout.
+        </p>
+        <div class="revote-modal__actions">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="showCloseModal = false"
+          >
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" @click="confirmClose">Confirm</button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showSpinResultModal && spinWinner"
+      class="revote-modal-backdrop"
+      role="presentation"
+      @click.self="showSpinResultModal = false"
+    >
+      <section
+        class="revote-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="spin-result-modal-title"
+      >
+        <h2 id="spin-result-modal-title" class="h5 mb-2">The wheel has picked a winner!</h2>
+        <p class="mb-4">
+          Your group is going to <strong>{{ spinWinner.name }}</strong>.
+        </p>
+        <div class="revote-modal__actions">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="showSpinResultModal = false"
+          >
+            Close
+          </button>
+          <RouterLink
+            class="btn btn-primary"
+            :to="{ name: 'final-plan', params: { id: hangoutId } }"
+            @click="showSpinResultModal = false"
+          >
+            See final plan
+          </RouterLink>
         </div>
       </section>
     </div>
