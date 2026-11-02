@@ -1,7 +1,4 @@
-// Owner: Eashvar (testing; for Hugo's 09 Nearby spots). Component test for SpotCard (Week 10b):
-// one spot on 09, with its rating, match %, distance, price and any reasons it doesn't suit the
-// group, and the "Add to vote" button.
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpotCard from '../SpotCard.vue'
 
@@ -15,46 +12,103 @@ const cafe = {
   nearestStationName: 'Bishan',
 }
 
-describe('TestSuite: SpotCard', () => {
-  it('Test1: shows the spot’s name, rating, match %, price and walk from the station', () => {
-    const wrapper = mount(SpotCard, { props: cafe })
-    expect(wrapper.text()).toContain('Quiet Corner Cafe')
-    expect(wrapper.text()).toContain('⭐ 4.5')
-    expect(wrapper.text()).toContain('84% match')
-    expect(wrapper.text()).toContain('$$')
-    expect(wrapper.text()).toContain('250 m from Bishan')
-    expect(wrapper.text()).toContain('3 min walk') // 250 m at 80 m a minute
+function mountCard(props = {}) {
+  return mount(SpotCard, {
+    props: { ...cafe, ...props },
+    global: {
+      stubs: {
+        RouterLink: {
+          props: ['to'],
+          template: '<a :href="typeof to === \'string\' ? to : to.name"><slot /></a>',
+        },
+      },
+    },
+  })
+}
+
+describe('SpotCard', () => {
+  it('renders the spot information and derived travel details', () => {
+    const wrapper = mountCard()
+
+    expect(wrapper.get('.spot-card__name').text()).toContain('Quiet Corner Cafe')
+    expect(wrapper.get('.spot-card__rating').text()).toBe('⭐ 4.5')
+    expect(wrapper.get('.spot-card__match').text()).toBe('84% match')
+    expect(wrapper.get('.spot-card__meta').text()).toContain('250 m from Bishan')
+    expect(wrapper.get('.spot-card__meta').text()).toContain('3 min walk')
+    expect(wrapper.get('.spot-card__price').text()).toBe('$$')
   })
 
-  it('Test2: a kilometre or more is shown in km, and price level 0 as Free', () => {
-    const wrapper = mount(SpotCard, { props: { ...cafe, stationDistanceM: 1200, priceLevel: 0 } })
-    expect(wrapper.text()).toContain('1.2 km from Bishan')
-    expect(wrapper.text()).toContain('Free')
+  it('formats kilometre distances and free price', () => {
+    const wrapper = mountCard({ stationDistanceM: 1200, priceLevel: 0 })
+
+    expect(wrapper.get('.spot-card__meta').text()).toContain('1.2 km from Bishan')
+    expect(wrapper.get('.spot-card__price').text()).toBe('Free')
   })
 
-  it('Test3: clicking "Add to vote" emits add', async () => {
-    const wrapper = mount(SpotCard, { props: cafe })
-    await wrapper.find('button').trigger('click')
+  it('renders a link and image alternative text when supplied', () => {
+    const wrapper = mountCard({
+      imageUrl: '/cafe.jpg',
+      to: { name: 'spot-details', params: { spotId: 'quiet-cafe' } },
+    })
+
+    expect(wrapper.get('.spot-card__image').attributes('href')).toBe('spot-details')
+    expect(wrapper.get('.spot-card__image img').attributes('alt')).toBe(cafe.name)
+    expect(wrapper.get('.spot-card__link').text()).toBe(cafe.name)
+  })
+
+  it('emits add when the spot is not shortlisted', async () => {
+    const wrapper = mountCard()
+
+    await wrapper.get('.spot-card__action').trigger('click')
+
     expect(wrapper.emitted('add')).toHaveLength(1)
+    expect(wrapper.emitted('remove')).toBeUndefined()
   })
 
-  it('Test4: once added, the button says "Added to vote" and can’t be clicked again', () => {
-    const wrapper = mount(SpotCard, { props: { ...cafe, added: true } })
-    const button = wrapper.find('button')
-    expect(button.text()).toBe('Added to vote')
-    expect(button.attributes('disabled')).toBeDefined()
+  it('disables the already-added action when the user cannot remove it', async () => {
+    const wrapper = mountCard({ added: true })
+    const action = wrapper.get('.spot-card__action')
+
+    expect(action.text()).toBe('Added to vote')
+    expect(action.attributes()).toHaveProperty('disabled')
+    await action.trigger('click')
+    expect(wrapper.emitted('remove')).toBeUndefined()
   })
 
-  it('Test5: a 0% match shows why it doesn’t suit the group', () => {
-    const closed = { ...cafe, matchPct: 0, vetoReason: "Closed during your hangout's time" }
-    const wrapper = mount(SpotCard, { props: closed })
-    expect(wrapper.text()).toContain('0% match')
-    expect(wrapper.text()).toContain("Closed during your hangout's time")
+  it('emits remove when the current user can remove an added spot', async () => {
+    const wrapper = mountCard({ added: true, removable: true })
+
+    await wrapper.get('.spot-card__action').trigger('click')
+
+    expect(wrapper.emitted('remove')).toHaveLength(1)
   })
 
-  it('Test6: smaller problems that lower the match are listed too', () => {
-    const far = { ...cafe, softVetoReasons: ["Far from the group's midpoint (~30 min walk)"] }
-    const wrapper = mount(SpotCard, { props: far })
-    expect(wrapper.text()).toContain("Far from the group's midpoint (~30 min walk)")
+  it('shows hard and soft match explanations as tags', () => {
+    const wrapper = mountCard({
+      matchPct: 0,
+      vetoReason: 'Closed during your hangout',
+      softVetoReasons: ['Far from the midpoint'],
+      tags: ['Outdoor seating'],
+    })
+
+    expect(wrapper.find('.spot-card__tag--veto').text()).toBe('Closed during your hangout')
+    expect(wrapper.find('.spot-card__tag--soft-veto').text()).toBe('Far from the midpoint')
+    expect(wrapper.findAll('.spot-card__tag').map((tag) => tag.text())).toContain(
+      'Outdoor seating',
+    )
+  })
+
+  it('does not render optional metadata when unavailable', () => {
+    const wrapper = mountCard({
+      rating: null,
+      matchPct: null,
+      priceLevel: null,
+      stationDistanceM: null,
+    })
+
+    expect(wrapper.find('.spot-card__rating').exists()).toBe(false)
+    expect(wrapper.find('.spot-card__match').exists()).toBe(false)
+    expect(wrapper.find('.spot-card__price').exists()).toBe(false)
+    expect(wrapper.find('.spot-card__tags').exists()).toBe(true)
   })
 })

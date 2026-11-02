@@ -5,7 +5,7 @@ import { isMockHangout } from './votes'
 
 const GOOGLE_PLACES_ENABLED_KEY = 'fairpoint.googlePlacesEnabled'
 export const googlePlacesEnabled = ref(
-  typeof window !== 'undefined' && window.localStorage.getItem(GOOGLE_PLACES_ENABLED_KEY) === 'true',
+  typeof window === 'undefined' || window.localStorage.getItem(GOOGLE_PLACES_ENABLED_KEY) !== 'false',
 )
 
 export function setGooglePlacesEnabled(enabled) {

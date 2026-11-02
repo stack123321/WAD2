@@ -42,8 +42,3 @@ export async function stubPlaces(page, places) {
       : route.fulfill({ status: 502, json: { error: 'Google Places 404: not found' } })
   })
 }
-
-// Google Places calls are off until the user turns them on (the switch on 09)
-export async function turnOnGooglePlaces(page) {
-  await page.getByRole('switch', { name: 'Google Places calls' }).click()
-}

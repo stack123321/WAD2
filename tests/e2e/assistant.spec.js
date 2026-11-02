@@ -6,23 +6,18 @@
 // src/components/assistant/__tests__.
 import { test, expect } from '@playwright/test'
 import { setTime, VOTING_OPEN } from './helpers/clock.js'
-import { place, stubPlaces, turnOnGooglePlaces } from './helpers/places.js'
+import { place, stubPlaces } from './helpers/places.js'
 
 const askBox = (page) => page.getByRole('textbox', { name: 'Ask for something specific' })
 const reply = 'Sample results for "prata for dinner" near Bishan'
 
 test.beforeEach(async ({ page }, testInfo) => {
-  const isPhoneTest = testInfo.title.startsWith('on a phone')
-  if (isPhoneTest) {
+  if (testInfo.title.includes('phone')) {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.addInitScript(() =>
-      window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),
-    )
   }
   await setTime(page, VOTING_OPEN)
   await stubPlaces(page, [place('test-cafe', 'Test Cafe')])
   await page.goto('/hangouts/demo/explore')
-  if (!isPhoneTest) await turnOnGooglePlaces(page)
 })
 
 test('asking shows a reply for the request', async ({ page }) => {
@@ -72,4 +67,33 @@ test('on a phone the Ask toggle opens over the cards and closes after a search',
   await page.getByRole('button', { name: 'Show all spots' }).click()
   await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible()
+})
+
+test('on a phone an Ask result returns the carousel to its first card', async ({ page }) => {
+  await stubPlaces(page, [
+    place('test-cafe', 'Test Cafe'),
+    place('second-cafe', 'Second Cafe', {}, 250),
+  ])
+  await page.route('**/api/assistant', (route) =>
+    route.fulfill({
+      json: {
+        reply,
+        query: 'prata',
+        places: [place('ask-cafe-one', 'Ask Cafe One'), place('ask-cafe-two', 'Ask Cafe Two')],
+        suggestOtherStations: false,
+      },
+    }),
+  )
+
+  const toggle = page.getByRole('button', { name: 'Ask for something specific' })
+  const previous = page.getByRole('button', { name: 'Previous spot' })
+  await page.getByRole('button', { name: 'Next spot' }).click()
+  await expect(previous).toBeVisible()
+
+  await toggle.click()
+  await askBox(page).fill('prata for dinner')
+  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+
+  await expect(page.locator('.cards article')).toHaveCount(2)
+  await expect(previous).toBeHidden()
 })
