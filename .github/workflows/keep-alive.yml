@@ -1,0 +1,38 @@
+# Owner: Surya. Keep the Supabase project awake until the end of the course.
+# Supabase's free plan pauses a project after 7 days with no use, and then the live site can't log
+# in or load anything. This asks the database for one row every 3 days, which counts as use.
+# Secrets (GitHub → Settings → Secrets and variables → Actions), the same names as .env.local:
+#   VITE_SUPABASE_URL              the project URL (https://....supabase.co)
+#   VITE_SUPABASE_PUBLISHABLE_KEY  the publishable key (sb_publishable_...), public anyway
+# If a run fails (red ✗ on the Actions tab), open it to see the status code; a paused project
+# is woken up from the Supabase dashboard.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    # 9am Singapore time (01:00 UTC) every 3rd day of the month
+    - cron: '0 1 */3 * *'
+  # also a "Run workflow" button on the Actions tab, to check it works
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Supabase for one row
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "Add the VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY secrets first."
+            exit 1
+          fi
+          # A publishable key goes in the apikey header only (it isn't a JWT, so no Bearer)
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --header "apikey: $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1")
+          echo "Supabase answered $status"
+          if [ "$status" != "200" ]; then
+            exit 1
+          fi

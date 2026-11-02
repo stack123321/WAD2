@@ -643,6 +643,7 @@ async function submit() {
       vibe: form.vibe,
       vote_deadline: null,
       invite_code: inviteCode,
+      friends_add_start: form.friendsAddStart,
     }
     // (Eashvar) tagged with the friend group, so it shows on the group's page
     if (planGroup.value) {
@@ -667,7 +668,6 @@ async function submit() {
     router.push({
       name: 'starting-points',
       params: { id: hangout.id },
-      // TODO(Matrix): save this on the hangout once the schema has a column for it
       query: form.friendsAddStart ? {} : { entry: 'host' },
     })
   } catch (e) {
@@ -684,7 +684,7 @@ async function submit() {
     <RouterLink v-else class="back" :to="{ name: 'dashboard' }">&larr; My hangouts</RouterLink>
 
     <header class="create__header">
-      <h1 class="create__title">{{ isEdit ? 'Hangout details' : 'New hangout' }}</h1>
+      <h1 class="create__title page-title">{{ isEdit ? 'Hangout details' : 'New hangout' }}</h1>
       <p v-if="isEdit" class="create__sub">
         Change the name, date or vibe. Everyone in the hangout sees the change.
       </p>
@@ -1026,7 +1026,6 @@ async function submit() {
 
 <style scoped>
 .create {
-  max-width: 1060px;
   padding-block: 2rem 4rem;
 }
 
@@ -1050,9 +1049,6 @@ async function submit() {
 
 .create__title {
   margin-bottom: 0.4rem;
-  font-size: 1.85rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 .create__sub {

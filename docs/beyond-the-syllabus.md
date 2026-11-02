@@ -146,6 +146,43 @@ watcher.observe(document.getElementById('crowd-map'))
 ```
 Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue), copied from Surya's [MembersMap.vue](../src/components/map/MembersMap.vue) on 06.
 
+### `setTimeout(fn, ms)`
+Runs `fn` once after `ms` milliseconds. "Seen": it appears in the lab-test snippets but isn't explained. We use it to wait one beat before starting a CSS transition, and to pause during the tie-break wheel.
+```js
+setTimeout(() => (entered.value = true), 20) // let the page paint first, then fade it in
+```
+Used in: [PageDrop.vue](../src/components/ui/PageDrop.vue), [VoteView.vue](../src/views/VoteView.vue).
+
+### `Promise.all([...])`
+Starts several requests at the same time and waits until all of them are done, instead of waiting for one before starting the next. The result is a list in the same order.
+```js
+const routes = await Promise.all(people.map((person) => getRoute(person, midpoint)))
+```
+Used in: [routing.js](../src/services/routing.js).
+
+### `new AbortController()`
+Lets us cancel a request that is no longer wanted, for example when the user opens another spot before the first one has loaded. `controller.abort()` cancels it and `controller.signal` is passed to the request.
+```js
+const controller = new AbortController()
+onCleanup(() => controller.abort()) // watch() calls this before running again
+```
+Used in: [SpotDetailsView.vue](../src/views/SpotDetailsView.vue), [ExploreView.vue](../src/views/ExploreView.vue).
+
+### `window.matchMedia(query)`
+Asks the browser whether a CSS media query matches right now, from JavaScript. We use it to know when the screen is phone-sized so the page can show a different layout.
+```js
+const mql = window.matchMedia('(max-width: 767px)') // mql.matches is true or false
+```
+Used in: [useMediaQuery.js](../src/composables/useMediaQuery.js).
+
+### `navigator.clipboard.writeText(text)` and `navigator.geolocation.getCurrentPosition(...)`
+Two browser features: copying text to the clipboard (the invite link) and asking for the user's location (the "Use my current location" button). The browser asks the user for permission for location.
+```js
+await navigator.clipboard.writeText(link)
+navigator.geolocation.getCurrentPosition(onLocationFound, onLocationError)
+```
+Used in: [HangoutBar.vue](../src/components/hangout/HangoutBar.vue), [PlaceSearch.vue](../src/components/map/PlaceSearch.vue).
+
 ## CSS
 
 ### `:deep(.class)` in `<style scoped>`
@@ -165,6 +202,49 @@ Selects an element that comes straight after another one, inside the same parent
 }
 ```
 Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the overlapping member circles.
+
+### `var(--name)` and `:root { --name: value }` (CSS custom properties)
+Gives a value a name once, then uses it everywhere. "Seen": the Vue starter project we were given (`base.css`) defines its palette this way. Ours is `src/styles/tokens.css`, so the teal, radius and shadow are written in one place and every page matches.
+```css
+:root { --fp-primary: #0e7c6b; }
+.btn-save { background: var(--fp-primary); }
+```
+Used in: [tokens.css](../src/styles/tokens.css) and almost every component.
+
+### `color-mix(in srgb, colour percent, colour)`
+Mixes two colours, for example 10% teal into white to get a pale teal without picking another hex code. Only "seen" in the lab-test snippets.
+```css
+background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
+```
+Used in: [SpotHero.vue](../src/components/voting/SpotHero.vue), [VoteResults.vue](../src/components/voting/VoteResults.vue), [HangoutChat.vue](../src/components/start/HangoutChat.vue).
+
+### `:not(.class)`
+Selects elements that do not match. Here: every item in a stack except the first, which gets the gap above it.
+```css
+.stack > :not(:first-child) { margin-top: 0.75rem; }
+```
+Used in: [VoteResults.vue](../src/components/voting/VoteResults.vue), [CandidateCard.vue](../src/components/voting/CandidateCard.vue), [VoteView.vue](../src/views/VoteView.vue), and the Landing FAQ.
+
+### `aspect-ratio: 16 / 9`
+Keeps a box at a fixed width-to-height shape, so a photo area keeps its shape while the card resizes.
+Used in: [SpotCard.vue](../src/components/spots/SpotCard.vue), [HangoutPhotos.vue](../src/components/debrief/HangoutPhotos.vue).
+
+### `100dvh` and `env(safe-area-inset-bottom)`
+`dvh` is the screen height that excludes a phone browser's moving address bar, so a full-height page doesn't get cut off. `env(safe-area-inset-bottom)` is the space a phone keeps free at the bottom (the home bar), so the tab bar isn't covered.
+```css
+height: calc(100dvh - 57px - 108px); /* screen minus the navbar and the hangout bar */
+padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+```
+Used in: [ExploreView.vue](../src/views/ExploreView.vue), [NavBar.vue](../src/components/ui/NavBar.vue), [tokens.css](../src/styles/tokens.css).
+
+## Vue
+
+### `defineExpose({ ... })`
+In `<script setup>` a component's functions are private. `defineExpose` lets the parent call one through a template ref, here so the page can switch the spot tab from outside.
+```js
+defineExpose({ selectTab })
+```
+Used in: [MidpointSpots.vue](../src/components/midpoint/MidpointSpots.vue).
 
 ## Vue Router
 

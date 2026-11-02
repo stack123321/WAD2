@@ -59,7 +59,7 @@ defineExpose({ selectTab })
 
 // Spots already loaded for each station, so switching back to a tab doesn't call Google again
 // (key: station name)
-const cache = new Map()
+const cache = {}
 
 const MAX_SPOTS = 6
 const spots = ref([])
@@ -82,8 +82,8 @@ async function loadSpots() {
     return
   }
   const name = station.value.name
-  if (cache.has(name)) {
-    showSpots(cache.get(name))
+  if (cache[name] !== undefined) {
+    showSpots(cache[name])
     return
   }
   loading.value = true
@@ -93,7 +93,7 @@ async function loadSpots() {
       { lat: station.value.lat, lng: station.value.lng },
       { radiusM: 800, categories: categoriesForVibes(props.vibes) },
     )
-    cache.set(name, found)
+    cache[name] = found
     // only show it if this tab is still the open one (you might have tapped another meanwhile)
     if (station.value.name === name) {
       showSpots(found)
@@ -203,7 +203,7 @@ function priceLabel(spot) {
       </p>
 
       <template v-else>
-        <ul class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 list-unstyled mb-0">
+        <ul class="spot-list row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 list-unstyled mb-0">
           <li v-for="s in spots" :key="s.source_place_id" class="col">
             <!-- the whole card opens the spot's page (10) -->
             <RouterLink
@@ -315,10 +315,22 @@ function priceLabel(spot) {
   background: var(--fp-surface);
   color: var(--fp-ink);
   text-decoration: none;
+  transition:
+    transform 0.25s,
+    box-shadow 0.25s,
+    opacity 0.25s;
 }
 
-.spot:hover {
-  border-color: var(--fp-primary);
+/* like the dashboard cards: the spot under the pointer rises and the others fade */
+@media (hover: hover) {
+  .spot-list:hover .spot {
+    opacity: 0.45;
+  }
+  .spot-list .spot:hover {
+    opacity: 1;
+    transform: translateY(-4px);
+    box-shadow: var(--fp-shadow-lift);
+  }
 }
 
 .spot__img {

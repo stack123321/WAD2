@@ -49,7 +49,7 @@ onMounted(async () => {
 
     <p v-if="error" class="text-danger mt-3">{{ error }}</p>
     <template v-else-if="hangout">
-      <h1 class="h3 mt-2 mb-3">{{ hangout.name }}</h1>
+      <h1 class="page-title mt-2 mb-3">{{ hangout.name }}</h1>
       <!-- the chat box itself is surya's component, this page only checks i'm allowed to see it -->
       <HangoutChat v-if="isMember" :hangout="hangout" :height="420" title="Chat" />
       <p v-else class="text-muted">Only people in this hangout can see its chat.</p>

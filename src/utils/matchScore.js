@@ -57,13 +57,15 @@ function minsUntilClose(ranges, weekMin) {
 
 /** Whether any of a place's Google types or broad category fits a hangout vibe. */
 export function matchesHangoutVibe(place, vibes = []) {
+  if (vibes.length === 0) return true
+
   const types = Array.isArray(place.types) ? place.types : []
-  const placeTypes = new Set([...types, place.primaryType].filter(Boolean))
+  const placeTypes = [...types, place.primaryType].filter(Boolean)
 
   return vibes.some((vibe) => {
     if (place.category === vibe) return true
     const acceptedTypes = vibeTypes[vibe] ?? []
-    return [...placeTypes].some((type) => acceptedTypes.includes(type))
+    return placeTypes.some((type) => acceptedTypes.includes(type))
   })
 }
 
@@ -94,7 +96,7 @@ function closesSoon(openingHours, at, withinMins) {
  * @param {object} place a spot shaped like src/services/places.js's toSpot(): category, types,
  *   priceLevel, lat, lng, openingHours ({ periods } | null), wheelchairAccessible (boolean | null)
  * @param {Array<object>} profiles members' preference rows from the profiles table (activities,
- *   budget, indoor_if_rain, step_free, vote_history)
+ *   budget, max_travel_mins, indoor_if_rain, avoid_crowds, step_free, vote_history)
  * @param {object} [context] live/group conditions
  * @param {string[]} [context.vibes] the hangout's vibe tags, e.g. hangout.vibe
  * @param {string|Date} [context.startAt] hangout start, e.g. hangout.starts_at
@@ -123,7 +125,7 @@ function evaluate(place, profiles = [], context = {}) {
   if (profiles.some((p) => p.step_free) && place.wheelchairAccessible === false) {
     return {
       score: 0,
-      vetoReason: 'Not wheelchair accessible, and someone in the group needs step-free access',
+      vetoReason: 'Not step-free accessible for a group member',
     }
   }
   const isOutdoor = types.some((t) => outdoorTypes.includes(t))
@@ -131,7 +133,7 @@ function evaluate(place, profiles = [], context = {}) {
     return {
       score: 0,
       vetoReason:
-        "It's an outdoor spot, rain is forecast, and someone in the group prefers to stay indoors when it rains",
+        "Outdoors, but rain is forecast",
     }
   }
 
@@ -155,7 +157,11 @@ function evaluate(place, profiles = [], context = {}) {
     const idx = sorted.findIndex(([t]) => t === primaryType)
     return idx === -1 ? DEFAULT_RANK : idx + 1
   })
-  const avgRank = ranks.reduce((sum, r) => sum + r, 0) / (ranks.length || 1)
+  let rankTotal = 0
+  for (const r of ranks) {
+    rankTotal += r
+  }
+  const avgRank = rankTotal / (ranks.length || 1)
   const rankStep = Math.floor(avgRank / 5)
   const scoreC = Math.max(0, (1 - 0.1 * rankStep) * 16)
 
@@ -166,7 +172,26 @@ function evaluate(place, profiles = [], context = {}) {
   }).length
   const scoreD = (withinBudget / y) * 33
 
-  const base = scoreA + scoreB + scoreC + scoreD
+  // E. Dietary fit is only scored when the place advertises a matching signal. Unknown
+  // dietary information stays neutral rather than penalising every place.
+  const placeText = [place.name, place.category, ...(place.types ?? []), ...(place.tags ?? [])]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  const dietaryMatches = profiles.filter((p) => {
+    const needs = p.dietary ?? []
+    if (needs.length === 0) return true
+    return needs.some((need) => {
+      const value = String(need).toLowerCase()
+      return placeText.includes(value) || (value === 'vegetarian' && placeText.includes('vegetarian'))
+    })
+  }).length
+  const dietaryKnown =
+    profiles.some((p) => (p.dietary ?? []).length > 0) &&
+    /(halal|vegetarian|vegan|kosher|gluten[- ]free)/.test(placeText)
+  const scoreE = dietaryKnown ? (dietaryMatches / y) * 5 : 0
+
+  const base = scoreA + scoreB + scoreC + scoreD + scoreE
 
   // ── 3. Soft veto multipliers ──
   let walkingMultiplier = 1
@@ -182,9 +207,20 @@ function evaluate(place, profiles = [], context = {}) {
       (endAt && closesSoon(place.openingHours, endAt, 60)),
   )
   const closingMultiplier = closingSoon ? 0.5 : 1
+  const travelLimitMembers = profiles.filter(
+    (p) => p.max_travel_mins != null && p.travel_mins != null,
+  )
+  const withinTravelLimit = travelLimitMembers.filter(
+    (p) => p.travel_mins <= p.max_travel_mins,
+  ).length
+  const travelMultiplier =
+    travelLimitMembers.length > 0 ? 0.7 + 0.3 * (withinTravelLimit / travelLimitMembers.length) : 1
+  const crowdLevel = place.crowdLevel ?? context.crowdLevel
+  const crowdMultiplier =
+    profiles.some((p) => p.avoid_crowds) && (crowdLevel === 'h' || crowdLevel >= 2) ? 0.7 : 1
 
   // ── 4. Final score ──
-  const final = base * walkingMultiplier * closingMultiplier
+  const final = base * walkingMultiplier * closingMultiplier * travelMultiplier * crowdMultiplier
   const score = Math.min(100, Math.max(0, Math.round(final)))
 
   return {
@@ -195,9 +231,13 @@ function evaluate(place, profiles = [], context = {}) {
     preference: { matches: preferenceMatches, of: y },
     voteHistory: { avgRank, rankStep },
     budget: { matches: withinBudget, of: y },
+    dietary: { matches: dietaryMatches, of: y, known: dietaryKnown },
+    travel: { within: withinTravelLimit, of: travelLimitMembers.length },
+    crowd: { level: crowdLevel, multiplier: crowdMultiplier },
     walkMins,
     walkingMultiplier,
     closingSoon,
+    travelMultiplier,
   }
 }
 
@@ -212,6 +252,25 @@ export function matchScore(place, profiles = [], context = {}) {
 /** The hard-veto explanation, or null when a zero score came from normal scoring. */
 export function hardVetoReason(place, profiles = [], context = {}) {
   return evaluate(place, profiles, context).vetoReason
+}
+
+/** Explanations for soft penalties that reduce a place's score without forcing it to 0%. */
+export function softVetoReasons(place, profiles = [], context = {}) {
+  const result = evaluate(place, profiles, context)
+  if (result.vetoReason) return []
+
+  const reasons = []
+  if (result.walkMins !== null && result.walkingMultiplier < 1) {
+    reasons.push(
+      result.walkingMultiplier >= 0.7
+        ? `Distant from the group's midpoint (~${result.walkMins} min)`
+        : `Far from the group's midpoint (~${result.walkMins} min walk)`,
+    )
+  }
+  if (result.closingSoon) {
+    reasons.push('Closes within an hour of your hangout starting')
+  }
+  return reasons
 }
 
 /**
@@ -266,6 +325,21 @@ export function matchReasons(place, profiles = [], context = {}) {
     reasons.push({ tone: 'bad', text: 'Over budget for everyone in the group' })
   } else {
     reasons.push({ tone: 'warn', text: `Within budget for ${budgetMatches} of ${y} members` })
+  }
+
+  if (result.dietary.known) {
+    const { matches: dietaryMatches } = result.dietary
+    if (dietaryMatches === y) {
+      reasons.push({ tone: 'good', text: 'Dietary needs are catered for' })
+    } else {
+      reasons.push({ tone: 'warn', text: `Dietary needs are catered for ${dietaryMatches} of ${y} members` })
+    }
+  }
+  if (result.travel.of > 0 && result.travel.within < result.travel.of) {
+    reasons.push({ tone: 'warn', text: `${result.travel.within} of ${result.travel.of} members are within their travel limit` })
+  }
+  if (result.crowd.multiplier < 1) {
+    reasons.push({ tone: 'warn', text: 'Usually busy, which may not suit members avoiding crowds' })
   }
 
   // Soft penalties, only mentioned when they actually bite

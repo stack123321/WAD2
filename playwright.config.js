@@ -90,14 +90,22 @@ export default defineConfig({
   // outputDir: 'test-results/',
 
   /* Eashvar: the tests start their own dev server on 5198 (never your own on 5173), always without
-     the Supabase keys, so they use the sample hangouts on every machine and on GitHub. The dev
-     server, not `npm run preview`, because only it runs the api/ functions (scripts/dev-api.js).
-     Other keys in .env.local (Google, OneMap) still load locally; tests stub those calls or skip
-     when a key is missing. */
+     any keys, so on every machine and on GitHub they use the sample hangouts and the api/
+     functions' sample data (routes, crowds, addresses, the Ask box). An empty key here stops
+     .env.local's from being used. The dev server, not `npm run preview`, because only it runs
+     the api/ functions (scripts/dev-api.js). */
   webServer: {
     command: 'npx vite --port 5198 --strictPort',
     port: 5198,
     reuseExistingServer: false,
-    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' },
+    env: {
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_PUBLISHABLE_KEY: '',
+      GOOGLE_PLACES_API_KEY: '',
+      GEMINI_API_KEY: '',
+      LTA_ACCOUNT_KEY: '',
+      ONEMAP_EMAIL: '',
+      ONEMAP_PASSWORD: '',
+    },
   },
 })

@@ -6,7 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
-import { nearestStations } from '@/utils/midpoint'
+import { nearestStations, timesFor } from '@/utils/midpoint'
 import { rankStations, scoreStation } from '@/services/routing'
 import { saveMidpoint } from '@/services/hangouts'
 import CrowdHeatmap from '@/components/heatmap/CrowdHeatmap.vue'
@@ -218,6 +218,7 @@ async function chooseStation(station) {
       lng: station.lng,
       avgMins: station.average,
       gapMins: station.gap,
+      times: timesFor(rankedFor.value, station),
     })
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
@@ -252,12 +253,14 @@ async function onMidpointMoved(position) {
   // everyone's travel time to the new station, if we know how they're travelling (from 07)
   let avgMins = null
   let gapMins = null
+  let times = []
   const travellers = store.members.filter((m) => m.mode && m.start_lat != null)
   if (travellers.length > 0) {
     try {
       const scored = await scoreStation(travellers, station)
       avgMins = scored.average
       gapMins = scored.gap
+      times = timesFor(travellers, scored)
       travellers.forEach((m, i) => {
         m.travel_mins = scored.travelMins[i]
         m.travel_cost = scored.travelCosts[i]
@@ -281,6 +284,7 @@ async function onMidpointMoved(position) {
       lng: station.lng,
       avgMins: avgMins,
       gapMins: gapMins,
+      times: times,
     })
     moveMessage.value = `Moved to ${station.name} MRT.`
   } catch (err) {
@@ -311,7 +315,7 @@ async function onMidpointMoved(position) {
   <div v-else-if="store.hangout">
     <!-- the step bar comes from App.vue, which adds it to every hangout page -->
     <main class="container py-4">
-      <h1 class="h3 mb-3">Midpoint + crowd heat map</h1>
+      <h1 class="page-title mb-3">Midpoint + Crowd heat map</h1>
 
       <template v-if="midpoint">
         <!-- (Surya) What you can do near the midpoint, before choosing spots -->

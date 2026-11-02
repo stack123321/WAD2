@@ -3,7 +3,8 @@
 //   E2E_EMAIL / E2E_PASSWORD        the first test account (the host)
 //   E2E_EMAIL_2 / E2E_PASSWORD_2    a second test account (a friend), for tests with two people
 // Every hangout a test makes is named "E2E test …" and deleted at the end, so the shared
-// database doesn't fill up with test data.
+// database doesn't fill up with test data. Fields are found by their label and buttons by their
+// name, as in the course (Week 10c).
 import process from 'node:process'
 import { expect } from '@playwright/test'
 
@@ -14,9 +15,10 @@ export const hasFriend = Boolean(friend.email && friend.password)
 /** Logs in through 02 and waits until the page it was sent to (default My hangouts) opens. */
 export async function logIn(page, account, redirect = '/dashboard') {
   await page.goto(`/login?redirect=${encodeURIComponent(redirect)}`)
-  await page.locator('#auth-email').fill(account.email)
-  await page.locator('#auth-password').fill(account.password)
-  await page.locator('button[type="submit"]').click()
+  await page.getByLabel('Email').fill(account.email)
+  await page.getByLabel('Password', { exact: true }).fill(account.password)
+  // the second "Log in" button is the form's (the first switches the form to Log in)
+  await page.getByRole('button', { name: 'Log in', exact: true }).last().click()
   await expect(page).toHaveURL(redirect)
 }
 
@@ -24,10 +26,10 @@ export async function logIn(page, account, redirect = '/dashboard') {
 export async function createHangout(page) {
   const name = `E2E test ${Date.now()}`
   await page.goto('/hangouts/new')
-  await page.locator('#hangout-name').fill(name)
-  await page.locator('#hangout-date').fill('2030-01-15')
-  await page.locator('#hangout-time').fill('19:00')
-  await page.locator('button[type="submit"]').click()
+  await page.getByLabel(/Hangout name/).fill(name)
+  await page.getByLabel('Date').fill('2030-01-15')
+  await page.getByLabel('Time').fill('19:00')
+  await page.getByRole('button', { name: 'Create & add starting points' }).click()
   await expect(page).toHaveURL(/\/hangouts\/[^/]+\/start$/)
   const id = new URL(page.url()).pathname.split('/')[2]
   return { name, id }
@@ -36,28 +38,34 @@ export async function createHangout(page) {
 /** Deletes a hangout through its ⋯ menu on My hangouts (the host only). */
 export async function deleteHangout(page, name) {
   await page.goto('/dashboard')
-  const menuButton = page.locator(`button[aria-label="More options for ${name}"]`)
+  const menuButton = page.getByRole('button', { name: `More options for ${name}` })
   await menuButton.click()
-  await page.locator('.dropdown-menu.show').getByRole('button', { name: 'Delete hangout' }).click()
-  await page.locator('#confirm-modal').getByRole('button', { name: 'Delete hangout' }).click()
-  await expect(menuButton).toHaveCount(0)
+  await page.getByRole('button', { name: 'Delete hangout' }).click()
+  // then the same button again in the "Are you sure?" dialog
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete hangout' }).click()
+  await expect(menuButton).toBeHidden()
 }
 
-/** The hangout's invite link, from "Copy invite link" in its ⋯ menu on My hangouts. */
+/**
+ * The hangout's invite link, from "Copy invite link" in its ⋯ menu on My hangouts. The app never
+ * shows the link on screen, only copies it, so this reads it back from the clipboard
+ * (grantPermissions and page.evaluate aren't covered in the course).
+ */
 export async function copyInviteLink(page, context, name) {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.goto('/dashboard')
-  await page.locator(`button[aria-label="More options for ${name}"]`).click()
-  await page
-    .locator('.dropdown-menu.show')
-    .getByRole('button', { name: 'Copy invite link' })
-    .click()
+  await page.getByRole('button', { name: `More options for ${name}` }).click()
+  await page.getByRole('button', { name: 'Copy invite link' }).click()
   const link = await page.evaluate(() => navigator.clipboard.readText())
   expect(link).toContain('/login?invite=')
   return new URL(link).pathname + new URL(link).search
 }
 
-/** Fake Google Places answers, so spots can go on a real shortlist without calling Google. */
+/**
+ * Fake Google Places answers, so spots can go on a real shortlist without calling Google. A new
+ * hangout has no midpoint yet, so 09's "Google Places calls" switch isn't shown; addInitScript
+ * turns it on before the page loads instead. Like page.route, it isn't covered in the course.
+ */
 export async function stubSpots(page, spots) {
   await page.addInitScript(() =>
     window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),

@@ -5,7 +5,7 @@ import { isMockHangout } from './votes'
 
 const GOOGLE_PLACES_ENABLED_KEY = 'fairpoint.googlePlacesEnabled'
 export const googlePlacesEnabled = ref(
-  typeof window !== 'undefined' && window.localStorage.getItem(GOOGLE_PLACES_ENABLED_KEY) === 'true',
+  typeof window === 'undefined' || window.localStorage.getItem(GOOGLE_PLACES_ENABLED_KEY) !== 'false',
 )
 
 export function setGooglePlacesEnabled(enabled) {
@@ -37,7 +37,7 @@ export async function searchNearby(centre, { radiusM = 3000, categories = [], si
   return res.json()
 }
 
-const spotCache = new Map()
+const spotCache = {}
 
 /** Camel-cased shape used by SpotCard, matchScore() and the spot pages. */
 function toSpot(p) {
@@ -71,7 +71,7 @@ function toSpot(p) {
 /** Places from the API (e.g. /api/assistant's) as spot cards, remembered for 10 Spot details. */
 export function cacheSpots(places) {
   const spots = places.map(toSpot)
-  for (const s of spots) spotCache.set(s.id, s)
+  for (const s of spots) spotCache[s.id] = s
   return spots
 }
 
@@ -113,16 +113,16 @@ export async function loadSpots(centre, options = { radiusM: 3000 }) {
     spots = (await searchNearby(centre, options)).map(toSpot)
     writeSearchCache(key, spots)
   }
-  for (const s of spots) spotCache.set(s.id, s)
+  for (const s of spots) spotCache[s.id] = s
   return spots
 }
 
-const summaryCache = new Map()
+const summaryCache = {}
 
 /** Google's AI summary for a place ({ text, disclosure }), or null if there isn't one. */
 export async function loadSpotSummary(id, { signal } = {}) {
   if (!googlePlacesEnabled.value) return null
-  if (summaryCache.has(id)) return summaryCache.get(id)
+  if (summaryCache[id] !== undefined) return summaryCache[id]
   const key = `${SEARCH_CACHE_PREFIX}summary.${id}`
   const cached = readSearchCache(key)
   let summary
@@ -135,18 +135,18 @@ export async function loadSpotSummary(id, { signal } = {}) {
     // wrapped in an array so "no summary" (null) is cached too
     writeSearchCache(key, [summary])
   }
-  summaryCache.set(id, summary)
+  summaryCache[id] = summary
   return summary
 }
 
 /** One spot by Google place id, from the cache when Explore already loaded it. */
 export async function loadSpot(id, { signal, force = false } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
-  if (!force && spotCache.has(id)) return spotCache.get(id)
+  if (!force && spotCache[id] !== undefined) return spotCache[id]
   const res = await fetch(`/api/places?id=${encodeURIComponent(id)}`, { signal })
   if (!res.ok) throw new Error(`place failed: ${res.status}`)
   const spot = toSpot(await res.json())
-  spotCache.set(id, spot)
+  spotCache[id] = spot
   return spot
 }
 

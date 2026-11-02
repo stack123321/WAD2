@@ -4,6 +4,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
+import PageDrop from '@/components/ui/PageDrop.vue'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
 import WeekStrip from '@/components/dashboard/WeekStrip.vue'
 import NeedsInputCard from '@/components/dashboard/NeedsInputCard.vue'
@@ -19,6 +20,12 @@ const haze = ref(null) // today's haze reading, for the banner
 const loading = ref(false) // true while the hangouts are loading, shows "Loading your hangouts…"
 const error = ref('') // shown in red if the hangouts couldn't load
 const tab = ref('upcoming') // which list is showing, 'upcoming' or 'past'
+const toggled = ref(false) // true once someone has pressed Upcoming or Past, so the list only drops in then
+
+function showTab(name) {
+  tab.value = name
+  toggled.value = true
+}
 const auth = useAuthStore() // who is logged in
 
 // "Good morning", "Good afternoon" or "Good evening" from the hour on this device
@@ -360,12 +367,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container-fluid px-3 py-4 page">
+  <main class="container py-4 page">
     <div class="content">
       <!-- header: greeting, start button, counts and the upcoming/past toggle -->
       <div class="mb-3">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <h1 class="h2 fw-semibold mb-0">{{ heading }}</h1>
+          <h1 class="page-title mb-0">{{ heading }}</h1>
           <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
           <router-link
             :to="{ name: 'create-hangout' }"
@@ -399,7 +406,7 @@ onMounted(async () => {
               class="btn toggle-btn"
               :class="tab === 'upcoming' ? 'btn-primary' : 'btn-outline-secondary'"
               :aria-pressed="tab === 'upcoming'"
-              @click="tab = 'upcoming'"
+              @click="showTab('upcoming')"
             >
               Upcoming
             </button>
@@ -408,7 +415,7 @@ onMounted(async () => {
               class="btn toggle-btn"
               :class="tab === 'past' ? 'btn-primary' : 'btn-outline-secondary'"
               :aria-pressed="tab === 'past'"
-              @click="tab = 'past'"
+              @click="showTab('past')"
             >
               Past
             </button>
@@ -455,35 +462,40 @@ onMounted(async () => {
       <p v-if="pinError" class="text-danger" role="alert">{{ pinError }}</p>
 
       <!-- three loops from the sections computed: section, then day group, then hangout -->
-      <section v-for="s in sections" :key="s.key" class="mb-4">
-        <h2 class="section-label">
-          {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
-        </h2>
-        <div v-for="g in s.groups" :key="g.key" class="mb-3">
-          <!-- day heading, e.g. "Tomorrow Thu 22 Oct", left out for up next and pinned -->
-          <h3 v-if="g.main" class="day-label">
-            <strong>{{ g.main }}</strong> <span class="text-muted">{{ g.sub }}</span>
-          </h3>
-          <div v-for="h in g.items" :key="h.id" class="mb-2">
-            <!-- the card gets everything it shows as props, and tells this page about menu clicks with events -->
-            <HangoutCard
-              :hangout="h"
-              :show-date="s.showDate"
-              :featured="s.featured"
-              :my-id="myId"
-              :hours="hours"
-              :crowd="crowds[h.id] ?? null"
-              :can-delete="isHost(h)"
-              :can-leave="canLeave(h)"
-              :past="tab === 'past'"
-              :photos="photos[h.id] ?? []"
-              @delete="askDelete"
-              @leave="askLeave"
-              @toggle-pin="onTogglePin"
-            />
-          </div>
+      <PageDrop :key="tab" :play="toggled">
+        <!-- one box around every card, so hovering any card can fade the others -->
+        <div class="card-list">
+          <section v-for="s in sections" :key="s.key" class="mb-4">
+            <h2 class="section-label">
+              {{ s.title }} <span v-if="s.count">{{ s.count }}</span>
+            </h2>
+            <div v-for="g in s.groups" :key="g.key" class="mb-3">
+              <!-- day heading, e.g. "Tomorrow Thu 22 Oct", left out for up next and pinned -->
+              <h3 v-if="g.main" class="day-label">
+                <strong>{{ g.main }}</strong> <span class="text-muted">{{ g.sub }}</span>
+              </h3>
+              <div v-for="h in g.items" :key="h.id" class="mb-2">
+                <!-- the card gets everything it shows as props, and tells this page about menu clicks with events -->
+                <HangoutCard
+                  :hangout="h"
+                  :show-date="s.showDate"
+                  :featured="s.featured"
+                  :my-id="myId"
+                  :hours="hours"
+                  :crowd="crowds[h.id] ?? null"
+                  :can-delete="isHost(h)"
+                  :can-leave="canLeave(h)"
+                  :past="tab === 'past'"
+                  :photos="photos[h.id] ?? []"
+                  @delete="askDelete"
+                  @leave="askLeave"
+                  @toggle-pin="onTogglePin"
+                />
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
+      </PageDrop>
     </div>
 
     <!-- wide screens only: the week and what needs you, beside the list -->
@@ -529,9 +541,14 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.content {
-  max-width: 1040px; /* rows never stretch wider than this */
-  margin: 0 auto; /* centred */
+/* hovering a card: every card fades, then the one under the pointer comes back */
+@media (hover: hover) {
+  .card-list:hover .hangout {
+    opacity: 0.45;
+  }
+  .card-list .hangout:hover {
+    opacity: 1;
+  }
 }
 .start-btn {
   min-height: 44px; /* easy to tap */
@@ -556,7 +573,10 @@ onMounted(async () => {
 .need-chip::after {
   content: '';
   position: absolute;
-  inset: -6px -2px; /* a 44px tap area around the 32px chip */
+  top: -6px;
+  right: -2px;
+  bottom: -6px;
+  left: -2px; /* a 44px tap area around the 32px chip */
 }
 /* while the filter is on, the chip turns solid amber */
 .need-chip[aria-pressed='true'] {

@@ -1,70 +1,35 @@
-// Owner: Eashvar (testing). Page 07 Transport reminders, from the prof's feedback ("I have to go
-// back 1 step to send reminders"): friends who haven't added a starting point or picked a mode get
-// a Remind button on 07, and a friend with no starting point says "No starting point yet" instead
-// of an empty "From". The sample hangouts give everyone a start and a mode, so these tests serve
-// page 07 a copy of the Saturday sample (demo-2) with Matrix missing his starting point and Hugo
-// missing his mode. Without a group chat, the demo copies the reminder instead of posting it.
+// Owner: Eashvar (testing). E2E tests (Week 10c) for 07 Transport on the Friday sample hangout
+// (you're Surya, coming from Woodlands by bus): everyone is listed with where they're coming
+// from, picking your own mode updates your travel time, and "Find our midpoint" saves the fairest
+// station and opens 08. Travel times come from api/route.js's sample routes, since the tests run
+// without OneMap keys. Each row on its own (Remind, whose row can pick) has a component test in
+// src/components/transport/__tests__.
 import { test, expect } from '@playwright/test'
-import saturday from '../../src/mocks/hangout-2.json' with { type: 'json' }
 
-// Serve the Saturday sample with one friend missing a start and one missing a mode
-async function withFriendsToRemind(page) {
-  const hangout = structuredClone(saturday)
-  for (const m of hangout.members) {
-    if (m.display_name === 'Matrix') {
-      Object.assign(m, { start_label: null, start_lat: null, start_lng: null, mode: null })
-      Object.assign(m, { travel_mins: null, travel_cost: null })
-    }
-    if (m.display_name === 'Hugo') {
-      Object.assign(m, { mode: null })
-    }
-  }
-  await page.route('**/src/mocks/hangout-2.json*', (route) =>
-    route.fulfill({
-      contentType: 'application/javascript',
-      body: `export default ${JSON.stringify(hangout)}`,
-    }),
-  )
-}
+test('lists everyone with where they’re coming from', async ({ page }) => {
+  await page.goto('/hangouts/demo/transport')
 
-const row = (page, name) => page.locator('.person', { hasText: name })
-
-test.beforeEach(async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-  await withFriendsToRemind(page)
-  await page.goto('/hangouts/demo-2/transport')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('How is everyone getting there?')
+  await expect(page.getByText('From Tampines', { exact: false })).toBeVisible()
+  await expect(page.getByText('From Punggol', { exact: false })).toBeVisible()
 })
 
-test('a friend with no starting point says so and can be reminded', async ({ page }) => {
-  await expect(row(page, 'Matrix').getByText('No starting point yet')).toBeVisible()
-  await expect(row(page, 'Matrix').getByText('From', { exact: false })).toHaveCount(0)
-  await expect(row(page, 'Matrix').getByRole('button', { name: 'Remind' })).toBeVisible()
+test('picking my mode updates my travel time', async ({ page }) => {
+  await page.goto('/hangouts/demo/transport')
+  await expect(page.getByText('$1.69 one way')).toBeVisible() // my bus fare
+
+  // only my own row's buttons can be clicked, so this is my MRT button
+  await page.getByRole('button', { name: 'MRT', disabled: false }).click()
+
+  await expect(page.getByText('$2.05 one way')).toBeVisible() // my MRT fare
+  await expect(page.getByText('$1.69 one way')).toBeHidden()
+  await expect(page.getByText('4 of 4 have picked how they’re getting there.')).toBeVisible()
 })
 
-test('Remind copies a message asking them to add where they’re coming from', async ({ page }) => {
-  await row(page, 'Matrix').getByRole('button', { name: 'Remind' }).click()
+test('Find our midpoint opens 08', async ({ page }) => {
+  await page.goto('/hangouts/demo/transport')
 
-  await expect(row(page, 'Matrix').getByRole('button', { name: 'Copied ✓' })).toBeDisabled()
-  await expect(page.getByText('Copied the reminder. Paste it to them')).toBeVisible()
-  const copied = await page.evaluate(() => navigator.clipboard.readText())
-  expect(copied).toContain(
-    '@Matrix, please add where you\'re coming from for "Saturday study session"',
-  )
-  expect(copied).toContain('/login?invite=')
-})
+  await page.getByRole('button', { name: 'Find our midpoint' }).click()
 
-test('a friend with a start but no mode is reminded to pick one', async ({ page }) => {
-  await expect(row(page, 'Hugo').getByText('From Punggol', { exact: false })).toBeVisible()
-  await row(page, 'Hugo').getByRole('button', { name: 'Remind' }).click()
-
-  const copied = await page.evaluate(() => navigator.clipboard.readText())
-  expect(copied).toContain(
-    '@Hugo, please pick how you\'re getting there for "Saturday study session"',
-  )
-})
-
-test('nobody who is all set gets a Remind button', async ({ page }) => {
-  // Eashvar has both a start and a mode, so only Matrix and Hugo can be reminded
-  await expect(row(page, 'Eashvar').getByRole('button', { name: 'Remind' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Remind' })).toHaveCount(2)
+  await expect(page).toHaveURL('/hangouts/demo/midpoint')
 })

@@ -170,8 +170,8 @@ async function copyInvite() {
 </script>
 
 <template>
-  <!-- the tone class colours the left edge, featured makes it the big up next card -->
-  <article class="card hangout" :class="[tone.edge, { featured }]">
+  <!-- the tone class colours the left edge, featured makes it the big up next card, compact is the plain row -->
+  <article class="card hangout" :class="[tone.edge, featured ? 'featured' : 'compact']">
     <!-- with a map: map and content side by side (map on the right from 768px), without: just the content -->
     <div :class="showMap ? 'd-flex flex-column flex-md-row-reverse' : ''">
       <UpNextMap
@@ -366,6 +366,17 @@ async function copyInvite() {
 /* the coloured left edge: amber = your turn, grey = waiting on others, green = confirmed */
 .hangout {
   border-left-width: 4px;
+  transition:
+    transform 0.25s,
+    box-shadow 0.25s,
+    opacity 0.25s;
+}
+/* the card under the pointer rises a little */
+@media (hover: hover) {
+  .hangout:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--fp-shadow-lift);
+  }
 }
 .edge-amber {
   border-left-color: var(--bs-warning);
@@ -451,7 +462,10 @@ async function copyInvite() {
 .members-more::after {
   content: '';
   position: absolute;
-  inset: -8px -4px; /* a bigger tap area than the small pill */
+  top: -8px;
+  right: -4px;
+  bottom: -8px;
+  left: -4px; /* a bigger tap area than the small pill */
 }
 .members-more {
   position: relative;
@@ -661,7 +675,7 @@ async function copyInvite() {
   .featured .title {
     font-size: 1.5rem;
   }
-  .hangout:not(.featured) .body {
+  .hangout.compact .body {
     display: grid;
     /* fixed widths so every row's columns line up */
     grid-template-columns: minmax(0, 1fr) 190px 200px 170px 44px;
@@ -669,36 +683,36 @@ async function copyInvite() {
     column-gap: 1.5rem;
     padding: 0.875rem 1rem;
   }
-  .hangout:not(.featured) .stage {
+  .hangout.compact .stage {
     display: block;
   }
   /* contents removes the foot's own box, so its children become grid columns */
-  .hangout:not(.featured) .foot {
+  .hangout.compact .foot {
     display: contents;
   }
-  .hangout:not(.featured) .people {
+  .hangout.compact .people {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
   }
-  .hangout:not(.featured) .status {
+  .hangout.compact .status {
     white-space: nowrap;
   }
-  .hangout:not(.featured) .act {
+  .hangout.compact .act {
     justify-self: center;
   }
-  .hangout:not(.featured) .act--again {
+  .hangout.compact .act--again {
     flex-direction: column;
   }
-  .hangout:not(.featured) .act .btn {
+  .hangout.compact .act .btn {
     min-width: 150px;
     min-height: 44px;
   }
   /* the ⋯ menu becomes the last grid column instead of floating in the corner */
-  .hangout:not(.featured) .more {
+  .hangout.compact .more {
     position: static;
   }
-  .hangout:not(.featured) .menu-btn {
+  .hangout.compact .menu-btn {
     width: 44px;
     min-height: 44px;
   }

@@ -64,7 +64,7 @@ const isMock = isMockHangout(hangoutId)
 const votes = ref([])
 const history = ref([])
 const now = ref(Date.now())
-const pickedWinnerId = ref(null)
+const manualWinnerId = ref(null)
 const actionError = ref('')
 const closing = ref(false)
 const starting = ref(false)
@@ -124,7 +124,11 @@ const waitingText = computed(() => {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 })
 
-const winnerId = computed(() => pickedWinnerId.value ?? leader.value?.spot.id ?? null)
+const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+
+function selectWinner(spotId) {
+  manualWinnerId.value = spotId === leaderId.value ? null : spotId
+}
 
 const deadline = computed(() => hangout.value?.vote_deadline ?? null)
 const timeLeftText = computed(() => (deadline.value ? timeLeft(deadline.value, now.value) : null))
@@ -260,8 +264,7 @@ async function onSpin() {
   try {
     const winner = await spinTiebreak(hangoutId, tiedIds.value)
     spinWinnerId.value = winner
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 0 : SPIN_MS))
+    await new Promise((resolve) => setTimeout(resolve, SPIN_MS))
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
@@ -315,7 +318,7 @@ onUnmounted(() => {
       <div class="col-12 col-lg-8">
         <header class="mb-3">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
-            <h1 class="h3 fw-bold mb-0">Group voting</h1>
+            <h1 class="page-title mb-0">Group voting</h1>
             <p
               v-if="hangout && (deadline || status === 'collecting')"
               class="deadline small mb-0"
@@ -346,7 +349,8 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="store.error" class="alert alert-danger" role="alert">
-          Couldn't load this hangout. {{ store.error.message }}
+          Couldn't load this hangout. Check the link, or go back to
+      <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
         </div>
 
         <template v-else-if="hangout">
@@ -448,11 +452,12 @@ onUnmounted(() => {
           <ClosePanel
             v-if="isHost && status === 'voting' && !needsSpin"
             :shortlist="store.shortlist"
+            :leader-id="leaderId"
             :selected-id="winnerId"
             :vote-count="totalVotes"
             :deadline-text="deadline ? formatDateTime(deadline) : null"
             :closing="closing"
-            @select="pickedWinnerId = $event"
+            @select="selectWinner"
             @close="onClose"
           />
           <ActivityFeed :items="feedItems" />
@@ -506,8 +511,12 @@ onUnmounted(() => {
   padding: 0.75rem 1rem;
 }
 
-.stack > :not(:first-child) {
+.stack > * {
   margin-left: -6px;
+}
+
+.stack > :first-child {
+  margin-left: 0;
 }
 
 .suggest {

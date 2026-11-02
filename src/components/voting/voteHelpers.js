@@ -111,7 +111,10 @@ export function runnerUp(rows, excludeId) {
 export function decisionSummary(rows, finalId) {
   const winner = rows.find((row) => row.spot.id === finalId)
   if (!winner) return null
-  const total = rows.reduce((sum, row) => sum + row.count, 0)
+  let total = 0
+  for (const row of rows) {
+    total += row.count
+  }
   const top = Math.max(...rows.map((row) => row.count))
   const tied = rows.filter((row) => row.count === top)
   const votes = (n) => `${n} ${n === 1 ? 'vote' : 'votes'}`
