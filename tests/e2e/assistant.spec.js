@@ -16,7 +16,12 @@ test.beforeEach(async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 375, height: 812 })
   }
   await setTime(page, VOTING_OPEN)
-  await stubPlaces(page, [place('test-cafe', 'Test Cafe')])
+  // two spots, so the phone carousel has a "Next spot" button. They're set before 09 opens,
+  // because 09 keeps the spots it loads (sessionStorage) and wouldn't ask again.
+  await stubPlaces(page, [
+    place('test-cafe', 'Test Cafe'),
+    place('second-cafe', 'Second Cafe', {}, 250),
+  ])
   await page.goto('/hangouts/demo/explore')
 })
 
@@ -70,10 +75,6 @@ test('on a phone the Ask toggle opens over the cards and closes after a search',
 })
 
 test('on a phone an Ask result returns the carousel to its first card', async ({ page }) => {
-  await stubPlaces(page, [
-    place('test-cafe', 'Test Cafe'),
-    place('second-cafe', 'Second Cafe', {}, 250),
-  ])
   await page.route('**/api/assistant', (route) =>
     route.fulfill({
       json: {

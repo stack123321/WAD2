@@ -3,6 +3,7 @@
 // appear live for everyone (Supabase Realtime). Drop it into any hangout page (06, 09, 11, 12):
 // Usage: <HangoutChat :hangout="store.hangout" />
 //   or a one to one chat: <HangoutChat :direct="chat" /> (/chats/direct/:chatId)
+//   or a friend group's chat: <HangoutChat :group="group" /> (/groups/:id, Eashvar)
 //   optional: :my-id (defaults to the logged-in user), title, :height (px of the message list)
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
@@ -14,6 +15,7 @@ import MemberAvatar from '@/components/voting/MemberAvatar.vue'
 const props = defineProps({
   hangout: { type: Object, default: null }, // needs id, members
   direct: { type: Object, default: null }, // or a one to one chat: needs id, members
+  group: { type: Object, default: null }, // or a friend group: needs id, members
   myId: { type: String, default: null },
   title: { type: String, default: 'Group chat' },
   height: { type: Number, default: 260 },
@@ -31,9 +33,14 @@ const me = computed(() => {
   return null
 })
 
-// the chat is for a one to one chat if one is given, otherwise for the hangout
-const kind = props.direct ? 'direct' : 'hangout'
-const room = computed(() => props.direct || props.hangout)
+// the chat is for a one to one chat or a group if one is given, otherwise for the hangout
+let kind = 'hangout'
+if (props.direct) {
+  kind = 'direct'
+} else if (props.group) {
+  kind = 'group'
+}
+const room = computed(() => props.direct || props.group || props.hangout)
 
 const messages = ref([])
 const draft = ref('')
@@ -41,7 +48,7 @@ const loading = ref(true)
 const sending = ref(false)
 const error = ref('')
 const listEl = ref(null) // the scrolling message list
-const isDemo = room.value.id === 'demo' || room.value.id.startsWith('demo-direct')
+const isDemo = room.value.id.startsWith('demo') // the samples: demo, demo-2, demo-direct-…, demo-group-…
 
 // Part (a) Load the messages, then listen for new ones
 let stopListening = () => {}
@@ -140,6 +147,17 @@ function isForMe(message) {
   return message.body.includes(`@${myRow.display_name}`)
 }
 
+// who can read this chat, next to the title
+const whoSees = computed(() => {
+  if (kind === 'direct') {
+    return 'Just the two of you'
+  }
+  if (kind === 'group') {
+    return 'Everyone in this group'
+  }
+  return 'Everyone in this hangout'
+})
+
 // "7:05 PM"
 function timeLabel(message) {
   return new Date(message.created_at).toLocaleTimeString('en-SG', {
@@ -153,13 +171,15 @@ function timeLabel(message) {
   <section class="chat">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
       <h2 class="h6 fw-bold mb-0">{{ title }}</h2>
-      <span class="small text-secondary">{{
-        kind === 'direct' ? 'Just the two of you' : 'Everyone in this hangout'
-      }}</span>
+      <span class="small text-secondary">{{ whoSees }}</span>
     </div>
 
     <p v-if="isDemo" class="small text-secondary mb-0">
-      Chat works in real hangouts. Create one from My hangouts to try it.
+      {{
+        kind === 'group'
+          ? 'Chat works in real groups. Make one from My Chats to try it.'
+          : 'Chat works in real hangouts. Create one from My hangouts to try it.'
+      }}
     </p>
 
     <template v-else>
