@@ -1,5 +1,5 @@
 // Owner: Eashvar (testing). E2E tests (Week 10c) for the Ask box on 09 Nearby spots ("prata for
-// dinner, one of us is halal"): asking shows a reply for the request, and "Show all spots" goes
+// dinner, one of us is halal"): asking shows a reply for the request, and "Reset" goes
 // back to the usual list. The tests run without Gemini or Google keys, so /api/assistant answers
 // with its sample reply. The usual list comes from the fake Google Places answers
 // (helpers/places.js). How the group's needs are worked out has unit tests in
@@ -16,7 +16,12 @@ test.beforeEach(async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 375, height: 812 })
   }
   await setTime(page, VOTING_OPEN)
-  await stubPlaces(page, [place('test-cafe', 'Test Cafe')])
+  // two spots, so the phone carousel has a "Next spot" button. They're set before 09 opens,
+  // because 09 keeps the spots it loads (sessionStorage) and wouldn't ask again.
+  await stubPlaces(page, [
+    place('test-cafe', 'Test Cafe'),
+    place('second-cafe', 'Second Cafe', {}, 250),
+  ])
   await page.goto('/hangouts/demo/explore')
 })
 
@@ -26,15 +31,15 @@ test('asking shows a reply for the request', async ({ page }) => {
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
 
   await expect(page.getByText(reply)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Show all spots' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reset', exact: true })).toBeVisible()
 })
 
-test('"Show all spots" goes back to the usual list', async ({ page }) => {
+test('"Reset" goes back to the usual list', async ({ page }) => {
   await askBox(page).fill('prata for dinner')
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
   await expect(page.getByText(reply)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Show all spots' }).click()
+  await page.getByRole('button', { name: 'Reset', exact: true }).click()
 
   await expect(page.getByText(reply)).toBeHidden()
   await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
@@ -53,27 +58,23 @@ test('on a phone the Ask toggle opens over the cards and closes after a search',
 
   await expect(askBox(page)).toBeHidden()
   await expect(toggle).toContainText('Ask ·')
-  await toggle.click()
-  await expect(page.getByText(reply)).toBeVisible()
 
-  expect(
-    Math.round(
-      await page.getByRole('button', { name: 'Show all spots' }).evaluate((el) =>
-        el.getBoundingClientRect().height,
-      ),
-    ),
-  ).toBeGreaterThanOrEqual(44)
+  const reset = page.getByRole('button', { name: 'Reset Ask results' })
+  await expect(reset).toBeVisible()
+  const [resetBounds, toggleBounds] = await Promise.all([
+    reset.boundingBox(),
+    toggle.boundingBox(),
+  ])
+  expect(resetBounds.height).toBeGreaterThanOrEqual(44)
+  expect(resetBounds.x + resetBounds.width).toBeLessThan(toggleBounds.x)
 
-  await page.getByRole('button', { name: 'Show all spots' }).click()
+  await reset.click()
+  await expect(page.getByText(reply)).toBeHidden()
   await expect(page.getByRole('link', { name: 'Test Cafe', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible()
 })
 
 test('on a phone an Ask result returns the carousel to its first card', async ({ page }) => {
-  await stubPlaces(page, [
-    place('test-cafe', 'Test Cafe'),
-    place('second-cafe', 'Second Cafe', {}, 250),
-  ])
   await page.route('**/api/assistant', (route) =>
     route.fulfill({
       json: {

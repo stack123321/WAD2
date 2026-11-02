@@ -53,6 +53,18 @@ const routes = [
     meta: { requiresAuth: true },
   }, // Ryan: one to one chat with a friend
   {
+    path: '/groups/new',
+    name: 'new-group',
+    component: () => import('@/views/NewGroupView.vue'),
+    meta: { requiresAuth: true },
+  }, // Eashvar: make a friend group, from My Chats
+  {
+    path: '/groups/:groupId',
+    name: 'group',
+    component: () => import('@/views/GroupView.vue'),
+    meta: { requiresAuth: true },
+  }, // Eashvar: one friend group: its chat, its hangouts and everyone's usual starting point
+  {
     path: '/hangouts/new',
     name: 'create-hangout',
     component: () => import('@/views/CreateHangoutView.vue'),
