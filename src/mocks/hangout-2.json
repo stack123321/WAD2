@@ -14,6 +14,7 @@
   "gap_mins": 8,
   "vote_deadline": null,
   "final_shortlist_id": null,
+  "group_id": null,
   "members": [
     {
       "user_id": "u-eashvar",
