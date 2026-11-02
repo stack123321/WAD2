@@ -19,8 +19,8 @@ import {
   usualTrips,
 } from '@/services/groups'
 import { sgDate } from '@/utils/dates'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
-import HangoutChat from '@/components/start/HangoutChat.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
+import HangoutChat from '@/components/chat/HangoutChat.vue'
 import GroupHangoutRow from '@/components/groups/GroupHangoutRow.vue'
 import GroupPeople from '@/components/groups/GroupPeople.vue'
 import PeoplePicker from '@/components/groups/PeoplePicker.vue'

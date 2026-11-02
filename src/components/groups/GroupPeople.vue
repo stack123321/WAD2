@@ -6,7 +6,7 @@
 //   trips → from usualTrips() in services/groups.js (a usual start, or the last one they used)
 //   save-start → { place: { label, lat, lng }, mode }; remove → the member
 import { computed, ref } from 'vue'
-import MemberAvatar from '@/components/voting/MemberAvatar.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 
 const props = defineProps({
