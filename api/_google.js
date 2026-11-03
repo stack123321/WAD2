@@ -49,6 +49,22 @@ const FIELDS = [
   'reservable',
 ]
 
+/**
+ * (Eashvar) What to tell people when Google turns a request down, instead of Google's raw reply.
+ * status is the HTTP status Google answered with, body its reply as text.
+ */
+export function googleErrorMessage(status, body = '') {
+  if (status === 429) {
+    return "Google's daily limit for spot searches has been reached. Try again tomorrow."
+  }
+  if (status === 403 && /billing/i.test(body)) {
+    return "Spots from Google aren't available right now. Try again later."
+  }
+  if (status === 403) return "Google didn't allow this request. Try again later."
+  if (status === 404) return "Google couldn't find this place."
+  return "Google Places isn't responding right now. Try again in a minute."
+}
+
 async function google(path, key, { body, fields }) {
   const res = await fetch(`${BASE}${path}`, {
     method: body ? 'POST' : 'GET',
@@ -59,7 +75,11 @@ async function google(path, key, { body, fields }) {
     },
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) throw new Error(`Google Places ${res.status}: ${await res.text()}`)
+  if (!res.ok) {
+    const text = await res.text()
+    console.error(`Google Places ${res.status}: ${text}`) // the full reply, for the server log
+    throw new Error(googleErrorMessage(res.status, text))
+  }
   return res.json()
 }
 
@@ -131,7 +151,9 @@ export async function nearbyPlaces(key, centre, radiusM, categories) {
   // Each request is capped at 20 results, so one request per type, ranked by distance, keeps the
   // results dense around the centre instead of spread thinly over the whole radius.
   const queries = cats.flatMap((cat) => CATEGORY_TYPES[cat].map((type) => ({ cat, type })))
-  const results = await Promise.all(
+  // (Eashvar) allSettled: if some searches fail (e.g. the daily limit runs out part way), the spots
+  // from the ones that worked still show. Only when every search fails is it an error.
+  const settled = await Promise.allSettled(
     queries.map(async ({ cat, type }) => {
       const data = await google('/places:searchNearby', key, {
         fields: FIELDS.map((f) => `places.${f}`).join(','),
@@ -150,6 +172,8 @@ export async function nearbyPlaces(key, centre, radiusM, categories) {
       return (data.places ?? []).map((p) => toPlace(p, centre, cat))
     }),
   )
+  const results = settled.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+  if (results.length === 0) throw settled[0].reason
   const seen = new Set()
   return results
     .flat()
