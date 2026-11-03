@@ -32,6 +32,7 @@ import {
 } from '@/services/groups'
 import { isMockHangout } from '@/services/votes'
 import {
+  acceptFriendRequest,
   addFriendToHangout,
   getFriend,
   getFriendships,
@@ -146,6 +147,9 @@ async function loadFriends() {
       myId = auth.user.id
     }
     const lists = await getFriendships(myId)
+    // (Surya) requests from before this visit: ones you sent show "Requested", ones sent to you "Accept"
+    requestedIds.value = lists.pending.map((p) => p.user_id)
+    askedYouIds.value = lists.requests.map((p) => p.user_id)
     const past = await getPastFriends(myId)
 
     // together = how many hangouts you've had with them (0 for friends you haven't met up with yet)
@@ -419,7 +423,8 @@ const peopleResults = ref([])
 const searchedText = ref('') // what the results are for, so old results hide when you type again
 const searchingPeople = ref(false)
 const peopleError = ref('')
-const requestedIds = ref([]) // people you just sent a friend request to
+const requestedIds = ref([]) // people you sent a friend request to (still waiting on them)
+const askedYouIds = ref([]) // people who sent you a friend request
 
 async function searchEveryone() {
   const text = friendSearch.value.trim()
@@ -473,7 +478,32 @@ async function requestFriend(person) {
     requestedIds.value.push(person.user_id)
   } catch (error) {
     console.error(error)
+    // (Surya) 23505 = the database already has a request between you two (one per pair)
+    if (error.code === '23505') {
+      peopleError.value = 'Friend request already sent.'
+      requestedIds.value.push(person.user_id)
+      return
+    }
     peopleError.value = `Couldn’t send a friend request to ${person.display_name}.`
+  }
+}
+
+// (Surya) They already sent you a request: accept it here, and they move up to "Your friends"
+// (the search still matches them) so you can tick them straight away
+async function acceptRequest(person) {
+  peopleError.value = ''
+  try {
+    let myId = null
+    if (auth.user) {
+      myId = auth.user.id
+    }
+    await acceptFriendRequest(myId, person.user_id)
+    friends.value.push({ ...person, together: 0 })
+    askedYouIds.value = askedYouIds.value.filter((id) => id !== person.user_id)
+    peopleResults.value = peopleResults.value.filter((p) => p.user_id !== person.user_id)
+  } catch (error) {
+    console.error(error)
+    peopleError.value = `Couldn’t accept ${person.display_name}’s request. Try again.`
   }
 }
 
@@ -955,6 +985,16 @@ async function submit() {
                     <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
                     <span class="person__name">{{ p.display_name }}</span>
                     <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
+                    <!-- (Surya) they asked you first: one tap makes you friends -->
+                    <button
+                      v-else-if="askedYouIds.includes(p.user_id)"
+                      type="button"
+                      class="btn btn-primary btn-sm request-btn"
+                      :aria-label="`Accept ${p.display_name}'s friend request`"
+                      @click="acceptRequest(p)"
+                    >
+                      Accept
+                    </button>
                     <button
                       v-else
                       type="button"
