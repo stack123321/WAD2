@@ -3,7 +3,7 @@
 // Owner: Matrix
 // Figma frame "05". Left: hangout details (with quick date buttons and a name idea).
 // Right: "Who's coming?" (tick friends to add them straight away) and a live summary.
-// Anyone else can be invited with the Invite button in the step bar once the hangout exists.
+// Anyone else can join with "Copy invite link" in the hangout's ⋯ menu on My hangouts.
 // (Surya, improve/user-friendly-customised: friends list with search, quick dates, optional name
 // with a suggestion, short "why" notes, a remembered switch, a summary, and a hint saying what's
 // missing when Create is greyed out. "Voting closes" moved to 11 Vote, where the host starts it.)
