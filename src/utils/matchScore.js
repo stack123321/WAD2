@@ -330,7 +330,7 @@ export function matchReasons(place, profiles = [], context = {}) {
     }
   }
   if (result.travel.of > 0 && result.travel.within < result.travel.of) {
-    reasons.push({ tone: 'warn', text: `${result.travel.within} of ${result.travel.of} members are within their travel limit` })
+    reasons.push({ tone: 'warn', text: `${result.travel.within} of ${result.travel.of} members are within their preferred travel time` })
   }
   if (result.crowd.multiplier < 1) {
     reasons.push({ tone: 'warn', text: 'Usually busy, which may not suit members avoiding crowds' })

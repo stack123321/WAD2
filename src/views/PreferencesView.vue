@@ -429,7 +429,7 @@ async function confirmDelete() {
             <h2 class="panel__title mb-3">Travel &amp; comfort</h2>
 
             <div class="travel">
-              <label for="prefs-travel" class="travel__label">Max travel time</label>
+              <label for="prefs-travel" class="travel__label">Preferred travel time</label>
               <span class="travel__value">{{ prefs.max_travel_mins }} min</span>
             </div>
             <input
