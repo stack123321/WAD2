@@ -2,7 +2,7 @@
 // Owner: Surya. "Things to do near Bishan" on 08 Midpoint: photo cards of spots near a station
 // that match the hangout's vibe, so the group knows what they can do there before choosing.
 // Station tabs on top: tap another nearby station to PREVIEW its spots (nothing changes for the
-// group), see everyone's trip time there as chips ("Ryan 39 min ▲1"), and tap "Make ___ our
+// group), see everyone's trip time there as chips ("Ryan 39 min"), and tap "Make ___ our
 // midpoint" to switch. Each card opens the spot's page (10). "See all spots" goes to 09.
 // Uses Hugo's searchNearby() (Google Places, 800 m around the station). Google Places calls are
 // off until someone switches them on (they count towards a free quota), so the switch is shown
@@ -10,7 +10,7 @@
 // Usage: <MidpointSpots :stations="tabs" :vibes="hangout.vibe" :hangout-id="hangout.id"
 //          @choose="chooseStation" />
 //   stations = [{ name, lat, lng, chosen, tag, compare, station }], the chosen midpoint first
-//   compare = { people: [{ id, name, color, mins, change }], fairness } (null on the midpoint's tab)
+//   compare = { people: [{ id, name, color, mins }] } (null on the midpoint's tab)
 //   choose → the ranked station to make the midpoint
 //   preview → { name, lat, lng } of the station being previewed (the map moves there), or null
 //   The page can call selectTab(name) (through a template ref) to go back to the midpoint's tab.
@@ -162,7 +162,7 @@ function priceLabel(spot) {
       </div>
 
       <!-- Previewing another station: the trade-off, and the button to switch -->
-      <!-- (Surya) one chip per person: their trip there, and ▲ longer / ▼ shorter than now -->
+      <!-- (Surya) one chip per person: their trip time there -->
       <div v-if="!station.chosen && station.compare" class="preview-bar">
         <p class="preview-title">Trip times if you meet at {{ station.name }}</p>
         <ul class="trip-chips">
@@ -170,21 +170,8 @@ function priceLabel(spot) {
             <MemberAvatar :name="p.name" :color="p.color" :size="22" />
             <span class="trip-chip__name">{{ p.name }}</span>
             <strong>{{ p.mins }} min</strong>
-            <span v-if="p.change > 0" class="trip-chip__change is-up">
-              <span aria-hidden="true">▲{{ p.change }}</span>
-              <span class="visually-hidden">{{ p.change }} min longer than now</span>
-            </span>
-            <span v-else-if="p.change < 0" class="trip-chip__change is-down">
-              <span aria-hidden="true">▼{{ -p.change }}</span>
-              <span class="visually-hidden">{{ -p.change }} min shorter than now</span>
-            </span>
-            <span v-else-if="p.change === 0" class="trip-chip__change">same</span>
           </li>
         </ul>
-        <p class="small mb-2">
-          {{ station.compare.fairness }}
-          <span class="text-secondary">Shown on the map below.</span>
-        </p>
         <button
           type="button"
           class="btn btn-primary btn-sm make-btn"
@@ -321,7 +308,7 @@ function priceLabel(spot) {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.75rem;
   padding: 0;
   list-style: none;
 }
@@ -346,20 +333,6 @@ function priceLabel(spot) {
   color: var(--fp-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.trip-chip__change {
-  color: var(--fp-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.trip-chip__change.is-up {
-  color: var(--fp-danger); /* longer trip than now */
-}
-
-.trip-chip__change.is-down {
-  color: var(--fp-primary); /* shorter trip than now */
 }
 
 .make-btn {
