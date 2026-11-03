@@ -1,11 +1,10 @@
 // Owner: Eashvar. Plain helper functions (no Vue, no API calls) for 11 Group voting and
 // 12 Final plan: keeping one vote per current member (their latest; votes from people who left
 // the hangout don't count), counting votes and ranking them (equal counts are listed by higher
-// match_pct), the spots tied for the most votes (for the tie-break wheel), turning vote changes
-// into activity events, Singapore-time formatting, the deadline
-// countdown, the choices for when voting closes (picked by the host when they start the vote on 11,
-// since 05 no longer sets it), the longest/shortest trip and gap, leave-by times, costs (driving
-// is hourly parking), and the Google Calendar link.
+// match_pct), the spots tied for the most votes (for the tie-break wheel), Singapore-time
+// formatting, the deadline countdown, the choices for when voting closes (picked by the host when
+// they start the vote on 11, since 05 no longer sets it), the longest/shortest trip and gap,
+// leave-by times, costs (driving is hourly parking), and the Google Calendar link.
 
 const SGT = 'Asia/Singapore'
 
@@ -128,42 +127,6 @@ export function decisionSummary(rows, finalId) {
   return `${winner.spot.name} got the most votes: ${winner.count} of ${total}.`
 }
 
-export function diffVotes(before, after, nowIso) {
-  const events = []
-  for (const vote of after) {
-    const old = before.find((v) => v.user_id === vote.user_id)
-    if (!old) {
-      events.push({
-        kind: 'voted',
-        userId: vote.user_id,
-        toId: vote.shortlist_id,
-        fromId: null,
-        at: vote.voted_at,
-      })
-    } else if (old.shortlist_id !== vote.shortlist_id) {
-      events.push({
-        kind: 'changed',
-        userId: vote.user_id,
-        toId: vote.shortlist_id,
-        fromId: old.shortlist_id,
-        at: vote.voted_at,
-      })
-    }
-  }
-  for (const old of before) {
-    if (!after.some((v) => v.user_id === old.user_id)) {
-      events.push({
-        kind: 'removed',
-        userId: old.user_id,
-        toId: null,
-        fromId: old.shortlist_id,
-        at: nowIso,
-      })
-    }
-  }
-  return events
-}
-
 export function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('en-SG', {
     timeZone: SGT,
@@ -181,11 +144,6 @@ export function formatDateTime(iso) {
     hour: 'numeric',
     minute: '2-digit',
   })
-}
-
-export function isSameSgtDay(isoA, isoB) {
-  const day = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: SGT })
-  return day(isoA) === day(isoB)
 }
 
 export function timeLeft(deadlineIso, nowMs) {

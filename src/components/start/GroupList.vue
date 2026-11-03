@@ -34,7 +34,8 @@ const readyCount = computed(() => {
   return count
 })
 
-// The hangout's invite link, used by Remind in the demo (the Invite button is in the step bar)
+// The hangout's invite link, used by Remind in the demo (everyone else copies it from the
+// hangout's ⋯ menu on My hangouts)
 const inviteLink = computed(
   () => `${window.location.origin}/login?invite=${props.hangout.invite_code}`,
 )
