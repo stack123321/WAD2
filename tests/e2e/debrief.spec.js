@@ -4,6 +4,7 @@
 // ticked. A hangout that hasn't been decided yet gets a note instead.
 import { test, expect } from '@playwright/test'
 import { setTime, HANGOUT_STARTED } from './helpers/clock.js'
+import { closeTheVote } from './helpers/vote.js'
 
 const cafe = 'Mock Cafe (sample data)'
 
@@ -11,8 +12,7 @@ const cafe = 'Mock Cafe (sample data)'
 async function openDebrief(page) {
   await setTime(page, HANGOUT_STARTED)
   await page.goto('/hangouts/demo/vote')
-  await page.getByRole('button', { name: 'Close vote' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+  await closeTheVote(page)
   await page.getByRole('button', { name: 'Mark as done' }).click()
   await page.getByRole('link', { name: 'See how it went' }).click()
 }

@@ -32,8 +32,18 @@ const notice = ref('')
 const MIN_PASSWORD = 8
 const MAX_NAME = 50
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/ // (Surya) 8–72 characters, at least 1 letter and 1 number
-const PASSWORD_RULE = 'Use 8–72 characters with at least one letter and one number.'
+const MAX_PASSWORD = 72
+const PASSWORD_RULE = `Use ${MIN_PASSWORD}–${MAX_PASSWORD} characters with at least one letter and one number.`
+
+// (Surya) 8–72 characters, at least 1 letter and 1 number
+function isGoodPassword(password) {
+  return (
+    password.length >= MIN_PASSWORD &&
+    password.length <= MAX_PASSWORD &&
+    /[A-Za-z]/.test(password) &&
+    /\d/.test(password)
+  )
+}
 
 const touched = reactive({ name: false, email: false, password: false })
 
@@ -60,7 +70,7 @@ const fieldErrors = computed(() => {
       ? 'Enter your password.'
       : isSignup.value && form.password.length < MIN_PASSWORD
         ? `Use at least ${MIN_PASSWORD} characters (${form.password.length} so far).`
-        : isSignup.value && !PASSWORD_PATTERN.test(form.password)
+        : isSignup.value && !isGoodPassword(form.password)
           ? PASSWORD_RULE
           : '',
   }
@@ -272,7 +282,7 @@ const resetErrors = computed(() => ({
     ? 'Enter a new password.'
     : reset.password.length < MIN_PASSWORD
       ? `Use at least ${MIN_PASSWORD} characters (${reset.password.length} so far).`
-      : !PASSWORD_PATTERN.test(reset.password)
+      : !isGoodPassword(reset.password)
         ? PASSWORD_RULE
         : '',
   confirm: !reset.confirm
@@ -483,10 +493,10 @@ const avatars = [
               v-else
               id="reset-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': PASSWORD_PATTERN.test(reset.password) }"
+              :class="{ 'field-hint--ok': isGoodPassword(reset.password) }"
             >
               {{
-                PASSWORD_PATTERN.test(reset.password)
+                isGoodPassword(reset.password)
                   ? '✓ Looks good'
                   : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
@@ -616,10 +626,10 @@ const avatars = [
               v-else-if="isSignup"
               id="auth-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': PASSWORD_PATTERN.test(form.password) }"
+              :class="{ 'field-hint--ok': isGoodPassword(form.password) }"
             >
               {{
-                PASSWORD_PATTERN.test(form.password)
+                isGoodPassword(form.password)
                   ? '✓ Looks good'
                   : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}

@@ -170,7 +170,7 @@
       <div v-if="hasMidpoint" class="ask-menu-container" @keydown.esc="showMobileAsk = false">
         <button
           type="button"
-          class="desktop-filter-toggle desktop-ask-toggle"
+          class="desktop-filter-toggle"
           :aria-expanded="showMobileAsk"
           aria-controls="explore-ask"
           :aria-label="
@@ -185,7 +185,7 @@
         <button
           v-if="askedSpots"
           type="button"
-          class="desktop-filter-toggle desktop-ask-toggle"
+          class="desktop-filter-toggle"
           @click="resetAskResults"
         >
           Reset
