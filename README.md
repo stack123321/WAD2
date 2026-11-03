@@ -58,7 +58,7 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 | Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 575 px found no sideways scrolling on any page. |
 | Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). Schema: [supabase/schema.sql](supabase/schema.sql). |
 | External APIs, called asynchronously | See the table below. |
-| Tests | Vitest unit and component tests (160, in `__tests__` folders next to the code) and Playwright end-to-end tests (78, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
+| Tests | Vitest unit and component tests (187, in `__tests__` folders next to the code) and Playwright end-to-end tests (101, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
@@ -146,7 +146,7 @@ Only the two `VITE_` values are sent to the browser. Every other key has no `VIT
 
 Testing follows the course's three kinds (Week 10): unit tests for plain functions and component tests for Vue components, both with Vitest, and one end-to-end test per user journey with Playwright.
 
-The tests need no keys and no account. The end-to-end tests start their own copy of the app on port 5198 with every key blanked, so the app uses the demo hangouts and the functions' sample data, and the tests answer the Google Places calls themselves.
+The tests need no keys and no account. The end-to-end tests start their own copy of the app on port 5198 with every key blanked, so the app uses the demo hangouts and the functions' sample data (routes, place search, the Ask box), and the tests answer the Google Places calls themselves.
 
 ```bash
 npm run test:unit                  # Vitest: unit and component tests, next to the code in __tests__ folders
@@ -180,14 +180,28 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 | `startingPoints.spec.js` | 06: everyone's starting point; search and pick a place; no match |
 | `transport.spec.js` | 07: everyone's mode; Find our midpoint opens 08 |
 | `midpoint.spec.js`, `crowds.spec.js` | 08 and `/crowds`: the time slider; See nearby spots |
-| `explore.spec.js` | 09: spots appear once Google Places is on; filters; opening a spot |
-| `assistant.spec.js` | 09: the Ask box |
-| `spotDetails.spec.js` | 10: details; Add to Vote and Remove; back to 09 |
+| `explore.spec.js` | 09: spots near the midpoint; Filters; adding a spot to the shortlist; opening a spot; on a phone, the menu and the swipeable cards |
+| `assistant.spec.js` | 09: the Ask box, and Reset; on a phone, the Ask button |
+| `spotDetails.spec.js` | 10: details; the photos; each friend's travel time; Add to Vote and Remove; back to 09 |
 | `voting.spec.js` | 11 and 12: start the vote, change a vote, close it, the final plan shows the winner |
 | `debrief.spec.js`, `pastHangouts.spec.js` | After the hangout: the debrief, "Plan another with this group", Go again |
 | `friends.spec.js`, `chats.spec.js`, `groups.spec.js` | Friends and requests, chats, switching between hangouts |
+| `chatPopover.spec.js` | The 💬 group chat opening over a step and closing (✕, Esc, the button), on a laptop and a phone |
+| `friendGroups.spec.js` | Friend groups: My Chats, a group's page, usual starting points, planning with a group, adding and removing people, on a phone |
 
-**Unit and component tests** (`src/**/__tests__/`): the fair-midpoint algorithm (fairness, ranking, times per person), the match score, the voting helpers, dates, hangout status, avatar colours, vibes, weather and "Go again" logic, and the voting, transport, spot and weather components.
+**Unit and component tests** (`src/**/__tests__/` and `api/__tests__/`): the fair-midpoint algorithm (fairness, ranking, times per person), the match score, the voting helpers, dates, hangout status, avatar colours, vibes, weather, "Go again", friend groups' usual starting points and Google's error messages, and the voting, transport, spot and weather components.
+
+**What goes beyond the course.** Everything else uses only what Week 10 covers. These few extras are each needed for one thing, and each is in one place with a comment saying why:
+
+| Extra | Where | Why it's needed |
+|---|---|---|
+| A fixed date and time (`page.clock`) | `tests/e2e/helpers/clock.js` | The demo hangouts are dated October 2026; without it, voting and the countdowns would always show as over |
+| Fake Google Places answers (`page.route`) | `tests/e2e/helpers/places.js`, `tests/live/helpers.js` | Nearby spots are the only API with no sample data without a key |
+| A phone-sized screen (`page.setViewportSize`) | `tests/e2e/helpers/phone.js` | 09 and the chat work differently on a phone |
+| Pressing Esc (`page.keyboard.press`) | `tests/e2e/chatPopover.spec.js` | Esc closing the chat is the behaviour being tested |
+| Two people at once (`browser.newContext`), reading the invite link (clipboard) | `tests/live/` | The two-person live test needs two logged-in browsers, and the app only copies the link |
+
+Small extensions of what the course shows, used where they read more clearly: Vitest matchers such as `toContain` and `toHaveLength`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled` and `toBeChecked`; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()` and `.nth()` to pick one card or row; and `check()` and `hover()`.
 
 ## AI and LLM usage
 
