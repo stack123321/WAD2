@@ -292,6 +292,31 @@ export async function addMember(hangoutId, userId) {
 }
 
 /**
+ * (Eashvar) Save someone's trip time and cost to the midpoint, for "Leave by" on 12. You can save
+ * your own; in host mode the host can save anyone's ("members: edit own row" in schema.sql).
+ * @param {number} mins whole minutes
+ * @param {number} cost in S$
+ */
+export async function updateMemberTrip(hangoutId, userId, mins, cost) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ travel_mins: mins, travel_cost: cost })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  // Blocked by the security rules: Supabase changes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('You can only save your own trip time.')
+  }
+}
+
+/**
  * Save how someone is travelling (07 Mode of transport). You can save your own; the security
  * rule "members: edit own row" in schema.sql enforces that.
  * @param {'mrt' | 'bus' | 'car' | 'walk'} mode

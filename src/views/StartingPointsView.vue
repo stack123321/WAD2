@@ -14,6 +14,7 @@ import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
 import { getMyHangouts, updateMemberStart } from '@/services/hangouts'
+import { saveTrip } from '@/services/routing'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
@@ -195,10 +196,25 @@ const saveStatus = ref('') // '', 'saving', 'saved' or 'error'
 const failedMember = ref(null) // whose save failed, for "Try again"
 const startChanged = ref(false) // (Ryan) a start was saved this visit, so the midpoint may be out of date
 
+// (Eashvar) if the group already has a midpoint, work out this person's trip to it from the new
+// starting point and save it, so "Leave by" on 12 is right. Only extra: a failure is just logged.
+async function updateTrip(member) {
+  try {
+    const trip = await saveTrip(route.params.id, store.hangout, member)
+    if (trip) {
+      member.travel_mins = trip.mins
+      member.travel_cost = trip.cost
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 async function saveStart(member) {
   // The demo hangout isn't saved anywhere, so don't show "Saved"
   if (route.params.id === 'demo') {
     startChanged.value = true
+    updateTrip(member)
     return
   }
 
@@ -212,6 +228,7 @@ async function saveStart(member) {
     saveStatus.value = 'saved'
     startChanged.value = true
     failedMember.value = null
+    updateTrip(member)
     setTimeout(() => {
       if (saveStatus.value === 'saved') {
         saveStatus.value = ''

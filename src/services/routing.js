@@ -1,6 +1,7 @@
 // Owner: Nicole. Travel time per person and mode, via our /api/route function
 // (OneMap Routing needs a token, so the call happens server-side in api/route.js).
-import { centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint'
+import { canWorkOutTrip, centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint'
+import { updateMemberTrip } from '@/services/hangouts'
 
 /**
  * @param {{ lat: number, lng: number }} from
@@ -32,6 +33,28 @@ export async function travelTo(members, place) {
     members.map((m) => getRoute({ lat: m.start_lat, lng: m.start_lng }, place, m.mode)),
   )
   return { travelMins: routes.map((r) => r.mins), travelCosts: routes.map((r) => r.cost) }
+}
+
+/**
+ * (Eashvar) Work out one person's trip to the group's midpoint and save it, after they set their
+ * starting point (06) or mode (07). Everyone's times are otherwise only saved when the midpoint is
+ * found or moved, so someone who sets either later would have no "Leave by" on 12. Does nothing
+ * until the group has a midpoint and they have a starting point and a mode.
+ * @param {string} hangoutId
+ * @param {{ midpoint_lat: number, midpoint_lng: number }} hangout
+ * @param {{ user_id: string, start_lat: number, start_lng: number, mode: string }} member
+ * @returns {Promise<{ mins: number, cost: number } | null>} the saved trip, or null if skipped
+ */
+export async function saveTrip(hangoutId, hangout, member) {
+  if (!canWorkOutTrip(hangout, member)) return null
+  const route = await getRoute(
+    { lat: member.start_lat, lng: member.start_lng },
+    { lat: hangout.midpoint_lat, lng: hangout.midpoint_lng },
+    member.mode,
+  )
+  const mins = Math.round(route.mins)
+  await updateMemberTrip(hangoutId, member.user_id, mins, route.cost)
+  return { mins, cost: route.cost }
 }
 
 // How many MRT stations near the middle of everyone's starting points we compare

@@ -5,7 +5,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
   import { useAuthStore } from '@/stores/auth'
-  import { rankStations } from '@/services/routing'
+  import { rankStations, saveTrip } from '@/services/routing'
   import { timesFor } from '@/utils/midpoint'
   import {
     getMyHangouts,
@@ -171,6 +171,15 @@
     return m.user_id === myId.value
   }
 
+  // (Eashvar) Times are only saved for everyone when the midpoint is found, so if the group already
+  // has one, save my own trip to it by my new mode, for "Leave by" on 12. It doesn't change what
+  // this page shows (the times to the fairest station), and a failure is just logged.
+  function saveMyTrip(m) {
+    saveTrip(route.params.id, store.hangout, m).catch((e) => {
+      console.error('Could not save your trip time', e)
+    })
+  }
+
   // Pick your mode: show it straight away, save it so friends see it, then re-rank the stations
   const modeError = ref('')
 
@@ -187,6 +196,7 @@
       modeError.value = "Couldn't save your mode. Try again."
       return
     }
+    saveMyTrip(m)
     try {
       await scoreAreas()
     } catch (e) {
@@ -274,6 +284,7 @@
       if (!latest) return
       me.mode = latest.mode
       await updateMemberMode(route.params.id, me.user_id, latest.mode)
+      saveMyTrip(me)
       usualModeNote.value = `${modeName(latest.mode)}, like last time. Change it anytime.`
     } catch (e) {
       // only a shortcut: if it fails, you just pick your mode yourself
