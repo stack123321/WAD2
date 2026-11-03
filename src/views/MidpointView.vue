@@ -6,6 +6,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import { nearestStations, timesFor } from '@/utils/midpoint'
 import { rankStations, scoreStation } from '@/services/routing'
 import { saveMidpoint, setMidpointLocked, subscribeToHangout } from '@/services/hangouts'
@@ -18,6 +20,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout, ['starting-points', 'transport'])
 
 let stopListening = () => {}
 
@@ -382,6 +385,10 @@ async function moveToDropped(station) {
       Couldn't load this hangout. Check the link, or go back to
       <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
     </div>
+  </div>
+
+  <div v-else-if="missingStep" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
   </div>
 
   <div v-else-if="store.hangout">

@@ -2,9 +2,9 @@
 // 12 Final plan & itinerary
 // Owner: Eashvar (routes section: Nicole)
 // Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
-// a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
-// spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
-// only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
+// a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, a Google
+// Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which only works
+// once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
 // current members' latest votes count. Surya's MembersMap shows everyone's starting point and
 // his WeatherCard the forecast at the spot for the hangout's time (until the hangout starts); a
 // line under the map holds space for Nicole's routes. On phones the cards reorder so the map
@@ -13,6 +13,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import { isMockHangout, markHangoutDone, reopenVote } from '@/services/votes'
 import SpotHero from '@/components/shared/SpotHero.vue'
 import TripTable from '@/components/shared/TripTable.vue'
@@ -36,6 +38,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout)
 
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
@@ -194,6 +197,8 @@ onUnmounted(() => clearInterval(timer))
       <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
     </div>
 
+    <MissingPrerequisite v-else-if="missingStep" :hangout-id="String(hangoutId)" :step="missingStep" />
+
     <div v-else-if="hangout && !spot" class="alert alert-info">
       Nothing has been shortlisted yet, so there's no plan to show.
     </div>
@@ -229,22 +234,6 @@ onUnmounted(() => clearInterval(timer))
             :starts-at="startsAt"
             :my-id="myId"
           />
-
-          <section class="panel backup slot-backup" aria-labelledby="backup-heading">
-            <div class="backup__thumb" aria-hidden="true">
-              {{ backup ? backup.name.trim().charAt(0).toUpperCase() : '–' }}
-            </div>
-            <div>
-              <h2 id="backup-heading" class="backup__label mb-0">Backup plan</h2>
-              <template v-if="backup">
-                <p class="fw-semibold mb-0">{{ backup.name }}</p>
-                <p class="small muted mb-0">
-                  The runner-up, in case {{ spot.name }} is full or closed.
-                </p>
-              </template>
-              <p v-else class="small muted mb-0">There was only one spot, so there's no backup.</p>
-            </div>
-          </section>
         </div>
 
         <div class="plan-col">
@@ -357,7 +346,7 @@ onUnmounted(() => clearInterval(timer))
 }
 
 /* Phones: one column, cards in the order below (the columns step aside with display: contents).
-   From lg: the spot, trips and backup on the left; the map, weather and actions on the right. */
+   From lg: the spot and trips on the left; the map, weather and actions on the right. */
 .plan-layout {
   display: flex;
   flex-direction: column;
@@ -386,10 +375,6 @@ onUnmounted(() => clearInterval(timer))
 
 .slot-share {
   order: 5;
-}
-
-.slot-backup {
-  order: 6;
 }
 
 @media (min-width: 992px) {
@@ -443,33 +428,6 @@ onUnmounted(() => clearInterval(timer))
 .done {
   background: var(--fp-primary);
   color: var(--fp-surface);
-}
-
-.backup {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 1rem 1.25rem;
-}
-
-.backup__thumb {
-  flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  display: grid;
-  place-items: center;
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-bg);
-  color: var(--fp-muted);
-  font-weight: 800;
-}
-
-.backup__label {
-  color: var(--fp-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .map-frame {

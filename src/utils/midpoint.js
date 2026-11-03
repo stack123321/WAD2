@@ -77,6 +77,24 @@ export function timesFor(members, station) {
 }
 
 /**
+ * (Eashvar) Can someone's own trip to the group's midpoint be worked out? Only once the group has
+ * a midpoint and they have a starting point and a mode. Used to save their time when they set
+ * either after the midpoint was found, so "Leave by" on 12 isn't left empty.
+ * @param {{ midpoint_lat: number | null, midpoint_lng: number | null } | null} hangout
+ * @param {{ start_lat: number | null, start_lng: number | null, mode: string | null }} member
+ */
+export function canWorkOutTrip(hangout, member) {
+  return (
+    hangout != null &&
+    hangout.midpoint_lat != null &&
+    hangout.midpoint_lng != null &&
+    member.start_lat != null &&
+    member.start_lng != null &&
+    Boolean(member.mode)
+  )
+}
+
+/**
  * Score every candidate area and sort best first.
  * @param {Array<{ name: string, lat: number, lng: number, travelMins: number[], travelCosts: number[] }>} candidates
  *   travelMins / travelCosts: one entry per person, in the same order as the members

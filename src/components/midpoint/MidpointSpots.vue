@@ -215,7 +215,7 @@ function priceLabel(spot) {
             <!-- the whole card opens the spot's page (10) -->
             <RouterLink
               class="spot"
-              :to="{ name: 'spot-details', params: { id: hangoutId, spotId: s.source_place_id } }"
+              :to="{ name: 'spot-details', params: { id: hangoutId, spotId: s.source_place_id }, query: { from: 'midpoint' } }"
             >
               <img v-if="s.image_url" :src="s.image_url" alt="" class="spot__img" loading="lazy" />
               <div v-else class="spot__img spot__img--empty" aria-hidden="true">
