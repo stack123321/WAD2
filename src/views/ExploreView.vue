@@ -233,6 +233,30 @@
           </div>
         </div>
       </div>
+      <button
+        v-if="googlePlacesEnabled && hasMidpoint"
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        :disabled="loadingSpots"
+        @click="refreshSpots"
+      >
+        Refresh spots
+      </button>
+      <button
+        v-if="shortlisted.length < 2"
+        type="button"
+        class="btn btn-sm btn-primary tools-vote-action"
+        disabled
+      >
+        Go Vote!
+      </button>
+      <router-link
+        v-else
+        :to="{ name: 'vote', params: { id: route.params.id } }"
+        class="btn btn-sm btn-primary tools-vote-action"
+      >
+        Go Vote!
+      </router-link>
     </div>
     <SpotCarousel ref="spotCarousel" :items="shownSpots">
       <template #default="{ item: spot }">
@@ -1048,6 +1072,19 @@ async function selectSpot(id) {
     margin: 0;
   }
 
+  /* pushed to the right end of the row, right beside the map column */
+  .tools-vote-action {
+    margin-left: auto;
+    display:flex;
+    align-items: center;
+    justify-content:center;
+  }
+
+  /* on laptops Refresh and Go Vote live in the tools row instead */
+  .shortlist-actions {
+    display: none;
+  }
+
   /* Ask (and Reset), with the Ask box as a pop-up under them, like Filters */
   .ask-menu-container {
     position: relative;
@@ -1133,6 +1170,7 @@ async function selectSpot(id) {
     gap: 12px;
     min-width: 0;
     min-height: 0;
+    max-height: 100%;
   }
 
   .map-section {
@@ -1143,13 +1181,16 @@ async function selectSpot(id) {
     width: 100%;
     height: auto;
     aspect-ratio: 1 / 1;
+    /* leaves room for the 300px shortlist so the column never overflows */
+    max-height: calc(max(100vh, 600px) - 120px - 312px);
+    min-height: 150px;
   }
 
   .shortlist-panel {
     position: static;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 300px; /* grows to the bottom of the card grid, never past it */
     width: auto;
     min-height: 0;
     padding: 0;
@@ -1162,6 +1203,7 @@ async function selectSpot(id) {
     flex-direction: column;
     min-height: 0;
     align-self: stretch;
+
   }
 
   .shortlist-content {
@@ -1209,7 +1251,7 @@ async function selectSpot(id) {
      * hangout bar. The authenticated mobile tab bar is outside the page
      * flow and needs its own deduction below.
      */
-    height: calc(100dvh - 57px - 108px);
+    height: calc(100dvh);
     min-height: 0;
     padding: 0 !important;
     overflow: hidden;
