@@ -151,7 +151,8 @@ function resetPreferences() {
 
 const noRestrictions = computed(() => prefs.dietary.length === 0)
 
-const setupStep = ref(0)
+// (Surya) setup opens straight on step 1 (no "Get started" screen first)
+const setupStep = ref(1)
 const setupTotal = 4
 // (Surya) what each setup step asks about, shown beside "Step 2 of 4"
 const setupStepNames = ['What you enjoy', 'Food', 'Budget', 'Travel & comfort']
@@ -176,7 +177,7 @@ async function nextSetupStep() {
 }
 
 function previousSetupStep() {
-  if (setupStep.value > 0) {
+  if (setupStep.value > 1) {
     setupStep.value -= 1
     showErrors.value = false
     error.value = ''
@@ -200,6 +201,16 @@ const travelFill = computed(
 
 watch(prefs, () => (saved.value = false))
 
+// (Surya) Where setup goes when it's done: the page they were heading to before signing up
+// (?next=, from 02), or My hangouts. Only a page inside Fairpoint ("/..."), never another site.
+function afterSetup() {
+  const next = route.query.next
+  if (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')) {
+    return next
+  }
+  return { name: 'dashboard' }
+}
+
 async function save() {
   error.value = ''
   showErrors.value = true
@@ -214,7 +225,7 @@ async function save() {
   try {
     await saveProfile(userId.value, displayName.value, clean(prefs))
     if (isSetup.value) {
-      router.push({ name: 'dashboard' })
+      router.push(afterSetup())
     } else {
       saved.value = true
     }
@@ -271,13 +282,16 @@ async function confirmDelete() {
               : 'Fairpoint uses this to rank cafes and activities for your group.'
           }}
         </p>
+        <!-- (Surya) was on the old "4 quick questions" screen -->
+        <p v-if="isSetup" class="prefs__sub">
+          Your answers help Fairpoint suggest places that work for you and your group.
+        </p>
       </div>
     </header>
 
-    <!-- (Surya) setup progress: 4 segments, one per step, filled as you go. Hidden on the
-         intro screen, where there's no progress yet and the empty line looked like a divider -->
+    <!-- (Surya) setup progress: 4 segments, one per step, filled as you go -->
     <div
-      v-if="isSetup && setupStep > 0"
+      v-if="isSetup"
       class="progress-step"
       role="progressbar"
       aria-label="Setup progress"
@@ -315,15 +329,7 @@ async function confirmDelete() {
     </div>
 
     <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
-      <section v-if="isSetup && setupStep === 0" class="panel setup-intro">
-        <h2 class="panel__title">4 quick questions</h2>
-        <p class="panel__sub">
-          Your answers help Fairpoint suggest places that work for you and your group.
-        </p>
-        <button type="submit" class="btn btn-primary">Get started</button>
-      </section>
-
-      <div v-else class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
+      <div class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
         <div class="prefs__col">
           <section
             v-if="!isSetup || setupStep === 1"
@@ -463,7 +469,7 @@ async function confirmDelete() {
 
       <p v-if="error" class="alert alert-danger py-2 small mt-3 mb-0" role="alert">{{ error }}</p>
 
-      <footer v-if="!isSetup || setupStep > 0" class="actions">
+      <footer class="actions">
         <div class="actions__buttons">
           <span v-if="saved" class="actions__saved" role="status">Saved ✓</span>
           <button
@@ -483,7 +489,7 @@ async function confirmDelete() {
             Reset preferences
           </button>
           <button
-            v-if="isSetup && setupStep > 0"
+            v-if="isSetup && setupStep > 1"
             type="button"
             class="btn btn-outline-primary btn-back"
             @click="previousSetupStep"
@@ -658,10 +664,6 @@ async function confirmDelete() {
 .prefs__col {
   display: grid;
   gap: 1.25rem;
-}
-
-.setup-intro {
-  text-align: center;
 }
 
 .panel {
