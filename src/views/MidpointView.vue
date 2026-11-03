@@ -151,27 +151,17 @@ const otherOptions = computed(() => {
   return result
 })
 
-// "Ryan 12 min shorter · Nicole 8 min longer · Surya same. Trips up to 30 min apart (less fair)",
-// compared with the current midpoint, in plain words
+// (Surya) "Ryan 39 min · Nicole 38 min · Surya 31 min (fairer)": everyone's real trip time to this
+// station, and whether it's fairer than the current midpoint
 function compareLine(option) {
-  const spread = `Trips up to ${option.gap} min apart`
-  if (!current.value) {
-    return `Longest trip ${option.longest} min · ${spread}`
-  }
   const people = []
   rankedFor.value.forEach((m, i) => {
-    people.push(
-      `${m.display_name} ${longerText(option.travelMins[i] - current.value.travelMins[i])}`,
-    )
+    people.push(`${m.display_name} ${option.travelMins[i]} min`)
   })
-  return `${people.join(' · ')}. ${spread} (${fairerText(option.gap - current.value.gap)}).`
-}
-
-// 4 → "4 min longer", -19 → "19 min shorter", 0 → "same"
-function longerText(n) {
-  if (n === 0) return 'same'
-  if (n > 0) return `${n} min longer`
-  return `${Math.abs(n)} min shorter`
+  if (!current.value) {
+    return `${people.join(' · ')}.`
+  }
+  return `${people.join(' · ')} (${fairerText(option.gap - current.value.gap)}).`
 }
 
 // smaller spread between trips = fairer
