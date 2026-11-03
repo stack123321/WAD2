@@ -391,6 +391,16 @@
       </div>
     </div>
     </div>
+    <!-- (Surya) Need an idea? found nothing: say so, and offer to search for another food -->
+    <ConfirmDialog
+      :open="noAskResults"
+      title="No spots found"
+      :text="`Nothing near ${hangout.hangout?.midpoint_name} matched that, or it isn't open at your hangout's time. Try another food, like prata, ramen or bubble tea.`"
+      button="Try another food"
+      cancel="Close"
+      @confirm="tryAnotherFood"
+      @cancel="noAskResults = false"
+    />
   </div>
 </template>
 
@@ -402,6 +412,7 @@ import BaseMap from '@/components/map/BaseMap.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
   googlePlacesEnabled,
   loadSpots,
@@ -599,7 +610,10 @@ function selectMobileView(view) {
 
 function closeMobileFiltersOutside(event) {
   // (Surya) laptops: a click outside the Ask pop-up closes it (phones use the dark backdrop)
-  if (!mobileViewport.matches && !event.target.closest('.ask-menu-container')) {
+  // (clicks inside the "No spots found" pop-up don't count, so "Try another food" can open it)
+  const outsideAsk =
+    !event.target.closest('.ask-menu-container') && !event.target.closest('.confirm-backdrop')
+  if (!mobileViewport.matches && outsideAsk) {
     showMobileAsk.value = false
   }
   if (event.target.closest('.filters')) return
@@ -723,11 +737,26 @@ const shownSpots = computed(() =>
   askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
 )
 
+// (Surya) the "No spots found" pop-up, when a search on Need an idea? finds nothing
+const noAskResults = ref(false)
+
 async function onAskFound(found) {
+  // nothing found: keep the usual spots, close Ask and say so in a pop-up
+  if (found && found.length === 0) {
+    showMobileAsk.value = false
+    noAskResults.value = true
+    return
+  }
   askedSpots.value = found
   // (Surya) phones and laptops: close the pop-up after a search, so the cards show the results
   if (found) showMobileAsk.value = false
   await resetCarouselOnMobile()
+}
+
+// "Try another food" in the pop-up: open Ask again to type something else
+function tryAnotherFood() {
+  noAskResults.value = false
+  showMobileAsk.value = true
 }
 
 const {
