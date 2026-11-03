@@ -1198,7 +1198,7 @@ async function selectSpot(id) {
     height: 44px;
     padding: 0;
     border: 0;
-    border-radius: 50%;
+    border-radius: 9px;
     background: rgb(0 0 0 / 45%);
     color: var(--fp-white);
     cursor: pointer;
@@ -1238,7 +1238,7 @@ async function selectSpot(id) {
     height: 44px;
     padding: 0 1rem;
     border: 0;
-    border-radius: 999px;
+    border-radius: 9px;
     background: rgb(0 0 0 / 45%);
     color: var(--fp-white);
     font-size: 0.875rem;
