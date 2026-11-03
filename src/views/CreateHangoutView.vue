@@ -19,6 +19,7 @@ import {
   getHangout,
   getPastFriends,
   makeInviteCode,
+  removeMember,
   updateHangoutDetails,
 } from '@/services/hangouts'
 import { useHangoutStore } from '@/stores/hangout'
@@ -40,6 +41,7 @@ import {
   sendFriendRequest,
 } from '@/services/friends'
 import { useAuthStore } from '@/stores/auth'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
 
@@ -330,6 +332,33 @@ const memberIds = computed(() => {
   }
   return ids
 })
+
+// (Surya) The host taps ✕ on someone's chip, confirms, and they're removed straight away
+// (with their starting point, transport and vote). Not the host themselves.
+const removing = ref(null) // the member the "Remove …?" pop-up is asking about
+const removeError = ref('')
+
+function isHostChip(m) {
+  return store.hangout && m.user_id === store.hangout.host_id
+}
+
+async function confirmRemove() {
+  const person = removing.value
+  removing.value = null
+  removeError.value = ''
+  try {
+    await removeMember(editId, person.user_id)
+    if (isMockHangout(editId)) {
+      // the sample hangout has no database: just take them off the list
+      store.members.splice(store.members.indexOf(person), 1)
+    } else {
+      await store.load(editId) // the step bar and Starting points update too
+    }
+  } catch (e) {
+    console.error(e)
+    removeError.value = `Couldn’t remove ${person.display_name}. Try again.`
+  }
+}
 
 async function saveEdit(name) {
   busy.value = true
@@ -920,13 +949,25 @@ async function submit() {
             >
           </div>
 
-          <!-- (Surya) edit mode: everyone already in, as chips without ✕ (removing is on 06) -->
+          <!-- (Surya) edit mode: everyone already in. ✕ removes them (after a confirm); the host
+               has no ✕ -->
           <ul v-if="members.length > 0" class="picked" aria-label="Already in this hangout">
             <li v-for="m in members" :key="m.user_id" class="picked__chip">
               <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="24" />
               <span class="picked__name">{{ m.display_name }}</span>
+              <span v-if="isHostChip(m)" class="picked__host">host</span>
+              <button
+                v-else
+                type="button"
+                class="picked__remove"
+                :aria-label="`Remove ${m.display_name} from this hangout`"
+                @click="removing = m"
+              >
+                ✕
+              </button>
             </li>
           </ul>
+          <p v-if="removeError" class="small text-danger" role="alert">{{ removeError }}</p>
 
           <!-- Picked friends first, as chips (✕ to remove), then the list to pick from -->
           <ul v-if="selectedPeople.length > 0" class="picked" aria-label="Picked friends">
@@ -945,10 +986,8 @@ async function submit() {
           </ul>
 
           <p v-if="isEdit" class="panel__sub">
-            Everyone above is already in. Tick friends to add them when you save.
-            <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
-              Remove someone on Starting points →
-            </RouterLink>
+            Everyone above is already in (✕ removes someone). Tick friends to add them when you
+            save.
           </p>
           <p v-else class="panel__sub">
             Tick your friends and they’re added straight away. Anyone else can join with the Invite
@@ -993,6 +1032,10 @@ async function submit() {
               </li>
             </ul>
           </template>
+          <!-- (Surya) edit mode: every friend is already in the hangout -->
+          <p v-else-if="!searching" class="panel__sub mb-0">
+            All your friends are already in. Search above to find someone else.
+          </p>
           <p v-else-if="friendSearch.trim().length < 2" class="panel__sub mb-0">
             Keep typing to search everyone on Fairpoint.
           </p>
@@ -1093,6 +1136,17 @@ async function submit() {
         </section>
       </div>
     </form>
+
+    <!-- (Surya) "Remove Ryan?" before the host takes someone out of the hangout -->
+    <ConfirmDialog
+      :open="removing !== null"
+      :title="removing ? `Remove ${removing.display_name} from this hangout?` : ''"
+      text="Their starting point, transport and vote are removed. You can add them again later."
+      button="Remove"
+      danger
+      @confirm="confirmRemove"
+      @cancel="removing = null"
+    />
   </main>
 </template>
 
@@ -1342,6 +1396,14 @@ legend.form-label {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* (Surya) "host" on the host's own chip, where the others have ✕ */
+.picked__host {
+  padding-right: 0.5rem;
+  color: var(--fp-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .picked__remove {
