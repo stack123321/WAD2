@@ -28,10 +28,17 @@ const myId = computed(() => (auth.user ? auth.user.id : null))
 const friends = ref([]) // my friends
 const pending = ref([]) // you asked them
 const requests = ref([]) // they asked you
+const pageSize = 6
+const pendingCurrentPage = ref(1)
+const friendsCurrentPage = ref(1)
 const loading = ref(false)
 const error = ref('')
 const actionError = ref('')
 const actionDone = ref('') // "Friend request sent to Mei." after something worked
+
+function clampPage(page, total) {
+  return Math.min(page, Math.max(1, Math.ceil(total / pageSize)))
+}
 
 // one call fills all three lists, and it runs again after every change so the page always matches the database
 async function loadFriendships() {
@@ -40,6 +47,8 @@ async function loadFriendships() {
     friends.value = lists.friends
     pending.value = lists.pending
     requests.value = lists.requests
+    friendsCurrentPage.value = clampPage(friendsCurrentPage.value, friends.value.length)
+    pendingCurrentPage.value = clampPage(pendingCurrentPage.value, pending.value.length)
   } catch (err) {
     console.error(err)
     error.value = 'Could not load your friends.'
@@ -77,18 +86,25 @@ const results = ref([]) // people found, [{ user_id, display_name, avatar_color 
 const searched = ref(false) // true after the first search, so "no one found" only shows then
 const searching = ref(false)
 const searchError = ref('')
+const currentPage = ref(1)
 
 async function search() {
   if (searching.value) return // already searching, so ignore a second press
   searchError.value = ''
-  // 1 letter would match almost everyone, so ask for at least 2
-  if (query.value.trim().length < 2) {
+  // 1 letter would match almost everyone, so ask for at least 2. 0 letters will remove the list altogether.
+  if (query.value.trim().length === 0) {
+    searching.value = false
+    searched.value = false
+    results.value = []
+    return
+  } else if (query.value.trim().length < 2) {
     searchError.value = 'Type at least 2 letters of a name, or a full email.'
     return
   }
   searching.value = true // also disables the search button
   try {
     results.value = await searchPeople(query.value.trim()) // trim() drops spaces at either end
+    currentPage.value = 1
     searched.value = true
   } catch (err) {
     console.error(err)
@@ -102,6 +118,7 @@ function clearSearch() {
   query.value = ''
   results.value = []
   searched.value = false
+  currentPage.value = 1
 }
 
 // where a search result stands with you: 'friend', 'pending', 'request' or 'none'
@@ -119,6 +136,33 @@ const sortedResults = computed(() => {
   const others = results.value.filter((p) => statusOf(p.user_id) !== 'friend')
   return mine.concat(others) // friends, then everyone else
 })
+const pageCount = computed(() => Math.ceil(sortedResults.value.length / pageSize))
+const pageResults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return sortedResults.value.slice(start, start + pageSize)
+})
+const firstVisibleResult = computed(() => (currentPage.value - 1) * pageSize + 1)
+const lastVisibleResult = computed(() =>
+  Math.min(currentPage.value * pageSize, sortedResults.value.length),
+)
+const pendingPageCount = computed(() => Math.ceil(pending.value.length / pageSize))
+const pendingPageItems = computed(() => {
+  const start = (pendingCurrentPage.value - 1) * pageSize
+  return pending.value.slice(start, start + pageSize)
+})
+const pendingFirstVisible = computed(() => (pendingCurrentPage.value - 1) * pageSize + 1)
+const pendingLastVisible = computed(() =>
+  Math.min(pendingCurrentPage.value * pageSize, pending.value.length),
+)
+const friendsPageCount = computed(() => Math.ceil(friends.value.length / pageSize))
+const friendsPageItems = computed(() => {
+  const start = (friendsCurrentPage.value - 1) * pageSize
+  return friends.value.slice(start, start + pageSize)
+})
+const friendsFirstVisible = computed(() => (friendsCurrentPage.value - 1) * pageSize + 1)
+const friendsLastVisible = computed(() =>
+  Math.min(friendsCurrentPage.value * pageSize, friends.value.length),
+)
 
 // each action below clears the old messages, saves the change, reloads the lists, then says what happened.
 async function addFriend(person) {
@@ -231,7 +275,11 @@ async function remove() {
     <!-- search results, only after a search: each row shows what i can do with that person -->
     <section v-if="searched" id="search-results" class="box mb-4">
       <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
-      <div v-for="p in sortedResults" :key="p.user_id" class="person">
+      <p v-else-if="pageCount > 1" class="text-muted small mb-2" aria-live="polite">
+        Showing {{ firstVisibleResult }}–{{ lastVisibleResult }} of
+        {{ sortedResults.length }} people
+      </p>
+      <div v-for="p in pageResults" :key="p.user_id" class="person">
         <span class="name">{{ p.display_name }}</span>
         <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
         <template v-if="statusOf(p.user_id) === 'friend'">
@@ -265,6 +313,48 @@ async function remove() {
           Add Friend
         </button>
       </div>
+      <nav v-if="pageCount > 1" aria-label="Friend search result pages" class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <button
+              type="button"
+              class="page-link"
+              aria-label="Previous page"
+              :disabled="currentPage === 1"
+              @click="currentPage -= 1"
+            >
+              Previous
+            </button>
+          </li>
+          <li
+            v-for="page in pageCount"
+            :key="page"
+            class="page-item"
+            :class="{ active: currentPage === page }"
+          >
+            <button
+              type="button"
+              class="page-link"
+              :aria-label="`Page ${page}`"
+              :aria-current="currentPage === page ? 'page' : undefined"
+              @click="currentPage = page"
+            >
+              {{ page }}
+            </button>
+          </li>
+          <li class="page-item" :class="{ disabled: currentPage === pageCount }">
+            <button
+              type="button"
+              class="page-link"
+              aria-label="Next page"
+              :disabled="currentPage === pageCount"
+              @click="currentPage += 1"
+            >
+              Next
+            </button>
+          </li>
+        </ul>
+      </nav>
     </section>
 
     <!-- what the last action did: red if it failed, green tick if it worked -->
@@ -292,9 +382,54 @@ async function remove() {
       <section id="pending" class="box mb-4">
         <h2 class="h6 fw-bold mb-2">Pending</h2>
         <p v-if="pending.length === 0" class="text-muted small mb-0">No requests waiting.</p>
-        <div v-for="p in pending" :key="p.user_id" class="person">
+        <p v-else-if="pendingPageCount > 1" class="text-muted small mb-2" aria-live="polite">
+          Showing {{ pendingFirstVisible }}–{{ pendingLastVisible }} of {{ pending.length }} people
+        </p>
+        <div v-for="p in pendingPageItems" :key="p.user_id" class="person">
           <span class="name">{{ p.display_name }}</span>
         </div>
+        <nav v-if="pendingPageCount > 1" aria-label="Pending list pages" class="mt-3">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item" :class="{ disabled: pendingCurrentPage === 1 }">
+              <button
+                type="button"
+                class="page-link"
+                aria-label="Previous pending page"
+                :disabled="pendingCurrentPage === 1"
+                @click="pendingCurrentPage -= 1"
+              >
+                Previous
+              </button>
+            </li>
+            <li
+              v-for="page in pendingPageCount"
+              :key="page"
+              class="page-item"
+              :class="{ active: pendingCurrentPage === page }"
+            >
+              <button
+                type="button"
+                class="page-link"
+                :aria-label="`Pending page ${page}`"
+                :aria-current="pendingCurrentPage === page ? 'page' : undefined"
+                @click="pendingCurrentPage = page"
+              >
+                {{ page }}
+              </button>
+            </li>
+            <li class="page-item" :class="{ disabled: pendingCurrentPage === pendingPageCount }">
+              <button
+                type="button"
+                class="page-link"
+                aria-label="Next pending page"
+                :disabled="pendingCurrentPage === pendingPageCount"
+                @click="pendingCurrentPage += 1"
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </section>
 
       <section id="my-friends" class="box">
@@ -302,7 +437,10 @@ async function remove() {
         <p v-if="friends.length === 0" class="text-muted small mb-0">
           No friends yet. Search above to add some.
         </p>
-        <div v-for="f in friends" :key="f.user_id" class="person">
+        <p v-else-if="friendsPageCount > 1" class="text-muted small mb-2" aria-live="polite">
+          Showing {{ friendsFirstVisible }}–{{ friendsLastVisible }} of {{ friends.length }} friends
+        </p>
+        <div v-for="f in friendsPageItems" :key="f.user_id" class="person">
           <span class="name">{{ f.display_name }}</span>
           <AddToHangout class="ms-auto" :friend="f" :hangouts="openHangouts" @add="addToHangout" />
           <button
@@ -338,6 +476,48 @@ async function remove() {
             </ul>
           </div>
         </div>
+        <nav v-if="friendsPageCount > 1" aria-label="Friends list pages" class="mt-3">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item" :class="{ disabled: friendsCurrentPage === 1 }">
+              <button
+                type="button"
+                class="page-link"
+                aria-label="Previous friends page"
+                :disabled="friendsCurrentPage === 1"
+                @click="friendsCurrentPage -= 1"
+              >
+                Previous
+              </button>
+            </li>
+            <li
+              v-for="page in friendsPageCount"
+              :key="page"
+              class="page-item"
+              :class="{ active: friendsCurrentPage === page }"
+            >
+              <button
+                type="button"
+                class="page-link"
+                :aria-label="`Friends page ${page}`"
+                :aria-current="friendsCurrentPage === page ? 'page' : undefined"
+                @click="friendsCurrentPage = page"
+              >
+                {{ page }}
+              </button>
+            </li>
+            <li class="page-item" :class="{ disabled: friendsCurrentPage === friendsPageCount }">
+              <button
+                type="button"
+                class="page-link"
+                aria-label="Next friends page"
+                :disabled="friendsCurrentPage === friendsPageCount"
+                @click="friendsCurrentPage += 1"
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </section>
     </template>
 
