@@ -14,7 +14,7 @@
 // wheel: any member spins, the database picks the winner, and it's listed in Group activity.
 // The store is updated directly after starting, closing or spinning (a forced reload would reset
 // the demo hangout).
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
@@ -151,6 +151,15 @@ const timeLeftText = computed(() => (deadline.value ? timeLeft(deadline.value, n
 const deadlinePassed = computed(() => deadline.value !== null && timeLeftText.value === null)
 const status = computed(() => hangout.value?.status)
 const votingOpen = computed(() => status.value === 'voting' && !deadlinePassed.value)
+
+// (Surya) the host started a re-vote while you had this page open: say so. The host pressed
+// the button themselves, so they don't need telling.
+const showRevoteNotice = ref(false)
+watch(status, (now, before) => {
+  if (before === 'confirmed' && now === 'voting' && !isHost.value) {
+    showRevoteNotice.value = true
+  }
+})
 const canVote = computed(() => votingOpen.value && isMember.value)
 // where the host can move the closing time to once voting has started
 const moveOptions = computed(() => changeOptions(hangout.value?.starts_at, now.value))
@@ -594,6 +603,14 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- (Surya) shown live to members when the host starts a re-vote -->
+    <ConfirmDialog
+      :open="showRevoteNotice"
+      title="The host started a re-vote 🗳️"
+      text="The plan isn't confirmed any more, so everyone can vote again. Your earlier vote still counts. Tap another spot if you want to change it."
+      cancel="OK"
+      @cancel="showRevoteNotice = false"
+    />
     <ConfirmDialog
       :open="showRevoteModal"
       title="Start a re-vote?"
