@@ -453,35 +453,21 @@ watch(
 
 // A spot with a live group match % (Component A–D + hard/soft vetoes, see src/utils/matchScore.js)
 function scoreSpot(spot) {
+  // the same group conditions for the match %, the hard veto and the soft vetoes
+  const context = {
+    vibes: hangout.hangout?.vibe,
+    startAt: hangout.hangout?.starts_at,
+    raining: raining.value,
+    crowdLevel: crowdLevel.value,
+    midpoint: hasMidpoint.value
+      ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
+      : null,
+  }
   return {
     ...spot,
-    matchPct: matchScore(spot, hangout.members, {
-      vibes: hangout.hangout?.vibe,
-      startAt: hangout.hangout?.starts_at,
-      raining: raining.value,
-      crowdLevel: crowdLevel.value,
-      midpoint: hasMidpoint.value
-        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
-        : null,
-    }),
-    vetoReason: hardVetoReason(spot, hangout.members, {
-      vibes: hangout.hangout?.vibe,
-      startAt: hangout.hangout?.starts_at,
-      raining: raining.value,
-      crowdLevel: crowdLevel.value,
-      midpoint: hasMidpoint.value
-        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
-        : null,
-    }),
-    softVetoReasons: softVetoReasons(spot, hangout.members, {
-      vibes: hangout.hangout?.vibe,
-      startAt: hangout.hangout?.starts_at,
-      raining: raining.value,
-      crowdLevel: crowdLevel.value,
-      midpoint: hasMidpoint.value
-        ? { lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }
-        : null,
-    }),
+    matchPct: matchScore(spot, hangout.members, context),
+    vetoReason: hardVetoReason(spot, hangout.members, context),
+    softVetoReasons: softVetoReasons(spot, hangout.members, context),
     vibeMatch: matchesHangoutVibe(spot, hangout.hangout?.vibe ?? []),
   }
 }

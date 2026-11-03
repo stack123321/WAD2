@@ -9,47 +9,27 @@ import mockHangout2 from '@/mocks/hangout-collecting.json'
 // in the demo (no supabase) you're surya, like on 06 and 07
 const DEMO_ME = 'u-surya'
 
-// every hangout member you can see, one row per person per hangout
-async function getMemberRows() {
-  // no supabase, so use the sample hangouts
-  if (!hasSupabase) {
-    let rows = []
-    for (let h of [mockHangout, mockHangout2]) {
-      for (let m of h.members) {
-        rows.push({
-          user_id: m.user_id,
-          hangout_id: h.id,
-          joined_at: m.joined_at,
-          display_name: m.display_name,
-          avatar_color: m.avatar_color,
-        })
-      }
+// demo only: every member of the sample hangouts, one row per person per hangout
+function demoMemberRows() {
+  let rows = []
+  for (let h of [mockHangout, mockHangout2]) {
+    for (let m of h.members) {
+      rows.push({
+        user_id: m.user_id,
+        hangout_id: h.id,
+        joined_at: m.joined_at,
+        display_name: m.display_name,
+        avatar_color: m.avatar_color,
+      })
     }
-    return rows
   }
-
-  // no filter needed: the security rules only let you read the members of hangouts you're in
-  // each member's name and colour come from the profiles table, as profile
-  const { data, error } = await supabase
-    .from('hangout_members')
-    .select('user_id, hangout_id, joined_at, profile:profiles(display_name, avatar_color)')
-  if (error) {
-    throw error // the page's try/catch shows the message
-  }
-  // flatten each row, so the name and colour sit beside the ids instead of inside profile
-  return data.map((r) => ({
-    user_id: r.user_id,
-    hangout_id: r.hangout_id,
-    joined_at: r.joined_at,
-    display_name: r.profile.display_name,
-    avatar_color: r.profile.avatar_color,
-  }))
+  return rows
 }
 
 // one person's name and colour, for "hanging out with …" on 05
 export async function getFriend(userId) {
   if (!hasSupabase) {
-    const rows = await getMemberRows()
+    const rows = demoMemberRows()
     return rows.find((r) => r.user_id === userId) || null
   }
 
@@ -103,7 +83,7 @@ let demoFriendships = [
 
 // demo only: everyone in the sample hangouts, once each
 async function demoPeople() {
-  const rows = await getMemberRows()
+  const rows = demoMemberRows()
   let people = []
   for (let r of rows) {
     // someone in both sample hangouts has two rows, so only add them the first time

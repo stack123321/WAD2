@@ -181,7 +181,6 @@ async function loadFriends() {
       }
     }
 
-    // The people you hang out with most come first (like "suggested" contacts)
     // A to Z by name, so you can find someone quickly (prof's feedback)
     all.sort((a, b) => a.display_name.localeCompare(b.display_name))
 
@@ -376,11 +375,7 @@ const withFriend = computed(() => {
   if (!route.query.with || Array.isArray(route.query.with)) {
     return null
   }
-  const found = friends.value.find((f) => f.user_id === route.query.with)
-  if (!found) {
-    return null
-  }
-  return found
+  return friends.value.find((f) => f.user_id === route.query.with) ?? null
 })
 
 // Search: type a name to filter your friends
@@ -485,15 +480,7 @@ function isOften(friend) {
 }
 
 // Names of the ticked friends, for the summary
-const selectedNames = computed(() => {
-  const names = []
-  for (const f of friends.value) {
-    if (selectedFriends.value.includes(f.user_id)) {
-      names.push(f.display_name)
-    }
-  }
-  return names
-})
+const selectedNames = computed(() => selectedPeople.value.map((f) => f.display_name))
 
 function toggleVibe(value) {
   const i = form.vibe.indexOf(value)
@@ -668,7 +655,7 @@ async function submit() {
     router.push({
       name: 'starting-points',
       params: { id: hangout.id },
-      // not saved on the hangout (it has no column for it), the choice is kept in this browser by saveFriendsAddStart()
+      // the choice is saved on the hangout (friends_add_start) and remembered in this browser for next time
       query: form.friendsAddStart ? {} : { entry: 'host' },
     })
   } catch (e) {
@@ -1116,15 +1103,13 @@ legend.form-label {
   width: auto;
 }
 
-.form-control,
-.form-select {
+.form-control {
   padding-block: 0.7rem;
   background-color: var(--fp-surface);
   font-size: 0.9rem;
 }
 
-.form-control:focus,
-.form-select:focus {
+.form-control:focus {
   border-color: var(--fp-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fp-primary) 15%, transparent);
 }

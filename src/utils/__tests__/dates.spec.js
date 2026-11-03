@@ -1,8 +1,9 @@
 // Owner: Eashvar (testing). Unit tests for the dashboard's dates (Week 10a): the heading above each
-// day's hangouts and the "how soon" chip on UP NEXT, in Singapore time. Both functions take "now"
-// as an argument, so the tests pass in a fixed time instead of faking the clock.
+// day's hangouts, the "how soon" chip on UP NEXT and the Upcoming / Past split, in Singapore time.
+// Each function takes "now" (or today) as an argument, so the tests pass in a fixed time instead of
+// faking the clock.
 import { describe, it, expect } from 'vitest'
-import { dayHeading, countdownLabel } from '../dates.js'
+import { dayHeading, countdownLabel, isPast } from '../dates.js'
 
 const now = new Date('2026-10-21T10:00:00+08:00') // Wednesday, 10 am in Singapore
 
@@ -55,5 +56,28 @@ describe('TestSuite: countdownLabel', () => {
 
   it('Test5: further away counts whole days', () => {
     expect(countdownLabel(new Date('2026-10-25T09:00:00+08:00'), now)).toBe('In 4 days')
+  })
+})
+
+// (Ryan) the Upcoming / Past split on 04 and the group page, checked against "2026-10-21"
+describe('TestSuite: isPast', () => {
+  const today = '2026-10-21'
+
+  it('Test1: a hangout on an earlier day is past', () => {
+    expect(isPast({ status: 'confirmed', starts_at: '2026-10-20T19:00:00+08:00' }, today)).toBe(
+      true,
+    )
+  })
+
+  it('Test2: a hangout later today is still upcoming', () => {
+    expect(isPast({ status: 'voting', starts_at: '2026-10-21T21:00:00+08:00' }, today)).toBe(false)
+  })
+
+  it('Test3: a done hangout is past, even on a later day', () => {
+    expect(isPast({ status: 'done', starts_at: '2026-10-25T19:00:00+08:00' }, today)).toBe(true)
+  })
+
+  it('Test4: a hangout with no date yet is upcoming', () => {
+    expect(isPast({ status: 'collecting', starts_at: null }, today)).toBe(false)
   })
 })

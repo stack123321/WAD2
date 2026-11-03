@@ -7,6 +7,7 @@ import L from 'leaflet'
 import { isInSingapore } from '@/services/onemap'
 import { createOneMap } from '@/utils/mapSetup'
 import { avatarColor } from '@/utils/avatarColor'
+import { escapeHtml } from '@/utils/escapeHtml'
 
 const props = defineProps({
   // [{ user_id, display_name, avatar_color, start_label, start_lat, start_lng }]
@@ -158,16 +159,6 @@ function shortPlace(label) {
     text = text.slice(0, -' MRT'.length)
   }
   return text
-}
-
-// Names and labels go inside HTML, so turn < > & " ' into safe text first
-function escapeHtml(text) {
-  return String(text ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
 }
 </script>
 
