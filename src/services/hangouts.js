@@ -212,6 +212,24 @@ export async function leaveHangout(hangoutId, userId) {
 }
 
 /**
+ * (Surya) The host removes someone from the hangout (step 0 Details). Their vote goes too, which
+ * only the database function can do (people may only delete their own vote).
+ * Needs supabase/migrations/2026-11-03-remove-member.sql.
+ * @param {string} hangoutId
+ * @param {string} userId the person to remove
+ */
+export async function removeMember(hangoutId, userId) {
+  // the sample hangouts have no database: the page just takes them off the list
+  if (hangoutId.startsWith('demo') || !hasSupabase) {
+    return
+  }
+  const { error } = await supabase.rpc('remove_member', { p_hangout: hangoutId, p_user: userId })
+  if (error) {
+    throw error
+  }
+}
+
+/**
  * Everyone you've been in a hangout with: one entry per person, most hangouts together first.
  * Used by 06 Starting points ("Friends from past hangouts").
  * @param {string} myId the logged-in user, left out of the list
