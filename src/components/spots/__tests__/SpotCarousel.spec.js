@@ -1,5 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
-import { h, nextTick } from 'vue'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpotCarousel from '../SpotCarousel.vue'
 
@@ -13,13 +12,16 @@ function mountCarousel(items = spots) {
   const wrapper = mount(SpotCarousel, {
     props: { items },
     slots: {
-      default: ({ item }) => h('article', item.name),
+      default: '<template #default="{ item }"><article>{{ item.name }}</article></template>',
     },
   })
-  const viewport = wrapper.get('.cards').element
+  const viewport = wrapper.find('.cards').element
+  // jsdom has no layout, so the viewport is given a width, and scrollTo (which jsdom lacks) writes
+  // down where it was asked to scroll
   Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 320 })
-  viewport.scrollTo = vi.fn()
-  return { wrapper, viewport }
+  const scrolls = []
+  viewport.scrollTo = (options) => scrolls.push(options)
+  return { wrapper, scrolls }
 }
 
 describe('SpotCarousel', () => {
@@ -31,42 +33,42 @@ describe('SpotCarousel', () => {
       'Spot Two',
       'Spot Three',
     ])
-    expect(wrapper.get('[aria-label="Previous spot"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[aria-label="Next spot"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Previous spot"]').attributes()).toHaveProperty('disabled')
+    expect(wrapper.findAll('[aria-label="Next spot"]')).toHaveLength(1)
 
     const singleItem = mountCarousel([spots[0]]).wrapper
-    expect(singleItem.find('[aria-label="Previous spot"]').exists()).toBe(false)
-    expect(singleItem.find('[aria-label="Next spot"]').exists()).toBe(false)
+    expect(singleItem.findAll('[aria-label="Previous spot"]')).toHaveLength(0)
+    expect(singleItem.findAll('[aria-label="Next spot"]')).toHaveLength(0)
   })
 
   it('moves through items and disables arrows at the ends', async () => {
-    const { wrapper, viewport } = mountCarousel()
-    const previous = wrapper.get('[aria-label="Previous spot"]')
-    const next = wrapper.get('[aria-label="Next spot"]')
+    const { wrapper, scrolls } = mountCarousel()
+    const previous = wrapper.find('[aria-label="Previous spot"]')
+    const next = wrapper.find('[aria-label="Next spot"]')
 
     await next.trigger('click')
-    expect(viewport.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'smooth' })
-    expect(previous.attributes('disabled')).toBeUndefined()
-    expect(next.attributes('disabled')).toBeUndefined()
+    expect(scrolls[scrolls.length - 1]).toEqual({ left: 320, behavior: 'smooth' })
+    expect(previous.attributes()).not.toHaveProperty('disabled')
+    expect(next.attributes()).not.toHaveProperty('disabled')
 
     await next.trigger('click')
-    expect(viewport.scrollTo).toHaveBeenLastCalledWith({ left: 640, behavior: 'smooth' })
-    expect(next.attributes('disabled')).toBeDefined()
+    expect(scrolls[scrolls.length - 1]).toEqual({ left: 640, behavior: 'smooth' })
+    expect(next.attributes()).toHaveProperty('disabled')
 
     await previous.trigger('click')
-    expect(viewport.scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: 'smooth' })
-    expect(next.attributes('disabled')).toBeUndefined()
+    expect(scrolls[scrolls.length - 1]).toEqual({ left: 320, behavior: 'smooth' })
+    expect(next.attributes()).not.toHaveProperty('disabled')
   })
 
   it('clamps externally requested indexes to the available items', async () => {
-    const { wrapper, viewport } = mountCarousel()
+    const { wrapper, scrolls } = mountCarousel()
 
     wrapper.vm.scrollToIndex(-4)
-    expect(viewport.scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: 'smooth' })
+    expect(scrolls[scrolls.length - 1]).toEqual({ left: 0, behavior: 'smooth' })
 
     wrapper.vm.scrollToIndex(99)
-    await nextTick()
-    expect(viewport.scrollTo).toHaveBeenLastCalledWith({ left: 640, behavior: 'smooth' })
-    expect(wrapper.get('[aria-label="Next spot"]').attributes('disabled')).toBeDefined()
+    await wrapper.vm.$nextTick()
+    expect(scrolls[scrolls.length - 1]).toEqual({ left: 640, behavior: 'smooth' })
+    expect(wrapper.find('[aria-label="Next spot"]').attributes()).toHaveProperty('disabled')
   })
 })

@@ -1,6 +1,6 @@
 # Beyond the syllabus
 
-Functions and techniques used in Fairpoint that the IS216 WAD2 course folder doesn't teach (Weeks 1–6 plus the WAD1 recap, checked by searching the course code and the slide text). Each entry says what it does, shows a small example, and links to where we use it.
+Functions and techniques used in Fairpoint that the IS216 WAD2 course folder doesn't teach (Weeks 1–6 plus the WAD1 recap, and the Week 10 testing and Week 11 Router and Pinia slides and exercises, checked by searching the course code and the slide text). Week 11 teaches composables, Pinia stores and route guards (`router.beforeEach` with `meta`), so those aren't listed. Each entry says what it does, shows a small example, and links to where we use it.
 
 "Seen" means it appears in course-provided code but isn't explained in the lessons.
 
@@ -127,7 +127,7 @@ Used in: [api/_google.js](../api/_google.js) (one Google search per place type),
 'Bishan (sample)'.includes('(sample)') // true
 'Bishan'.includes('(sample)') // false
 ```
-Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) and [CrowdsNow.vue](../src/components/heatmap/CrowdsNow.vue) to tell when api/crowd.js sent sample data because LTA was unavailable.
+Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) to tell when api/crowd.js sent sample data because LTA was unavailable.
 
 ### `text.startsWith(part)` and `text.endsWith(part)`
 `true` if `text` begins (or ends) with `part`.
@@ -384,12 +384,12 @@ Selects an element that comes straight after another one, inside the same parent
 Used in: [HangoutCard.vue](../src/components/dashboard/HangoutCard.vue) for the overlapping member circles.
 
 ### `var(--name)` and `:root { --name: value }` (CSS custom properties)
-Gives a value a name once, then uses it everywhere. "Seen": the Vue starter project we were given (`base.css`) defines its palette this way. Ours is `src/styles/tokens.css`, so the teal, radius and shadow are written in one place and every page matches.
+Gives a value a name once, then uses it everywhere. "Seen": the Vue starter project we were given (`base.css`) defines its palette this way. Ours is `src/assets/tokens.css`, so the teal, radius and shadow are written in one place and every page matches.
 ```css
 :root { --fp-primary: #0e7c6b; }
 .btn-save { background: var(--fp-primary); }
 ```
-Used in: [tokens.css](../src/styles/tokens.css) and almost every component.
+Used in: [tokens.css](../src/assets/tokens.css) and almost every component.
 
 ### `color-mix(in srgb, colour percent, colour)`
 Mixes two colours, for example 10% teal into white to get a pale teal without picking another hex code. Only "seen" in the lab-test snippets.
@@ -423,7 +423,7 @@ Used in: [SpotCard.vue](../src/components/spots/SpotCard.vue), [HangoutPhotos.vu
 height: calc(100dvh - 57px - 108px); /* screen minus the navbar and the hangout bar */
 padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 ```
-Used in: [ExploreView.vue](../src/views/ExploreView.vue), [NavBar.vue](../src/components/ui/NavBar.vue), [tokens.css](../src/styles/tokens.css).
+Used in: [ExploreView.vue](../src/views/ExploreView.vue), [NavBar.vue](../src/components/ui/NavBar.vue), [tokens.css](../src/assets/tokens.css).
 
 ### `minmax(0, 1fr)` in a grid
 `1fr` columns normally grow to fit their widest content. `minmax(0, 1fr)` lets them shrink below it instead, so long text or a photo can't push the grid wider than the screen.
@@ -525,7 +525,7 @@ const sortBy = toRef(remembered, 'sortBy') // sortBy.value is remembered.sortBy
 Used in: [ExploreView.vue](../src/views/ExploreView.vue), [AskSpots.vue](../src/components/assistant/AskSpots.vue).
 
 ### `await nextTick()`
-Waits until Vue has updated the page after a change. It's needed before focusing or scrolling to something that has only just appeared.
+Waits until Vue has updated the page after a change. Week 10b teaches the test version, `await wrapper.vm.$nextTick()`; this is the same thing for app code. It's needed before focusing or scrolling to something that has only just appeared.
 ```js
 showErrors.value = true
 await nextTick() // the error message is on the page now
@@ -549,35 +549,13 @@ In a template, `$event` is the event, or the value a child emitted: `@change="em
 Used in: [ClosePanel.vue](../src/components/voting/ClosePanel.vue), [PlaceSearch.vue](../src/components/map/PlaceSearch.vue); `$slots` in [WeatherFrame.vue](../src/components/weather/WeatherFrame.vue).
 
 ### Event modifiers: `.prevent`, `.self`, `.esc`, `.up`, `.down`, `.passive`
-Short forms Vue adds to `@event`. `@submit.prevent` stops the page reloading when a form is sent. `@click.self` only fires when the element itself is clicked, not something inside it (a pop-up's dark backdrop). `@keydown.esc`, `.up` and `.down` only fire for that key, like `@keyup.enter` in the course. `@scroll.passive` tells the browser the handler won't stop the scrolling.
+Short forms Vue adds to `@event`. `@submit.prevent` (seen in the Week 10 exercise app, not explained) stops the page reloading when a form is sent. `@click.self` only fires when the element itself is clicked, not something inside it (a pop-up's dark backdrop). `@keydown.esc`, `.up` and `.down` only fire for that key, like `@keyup.enter` in the course. `@scroll.passive` tells the browser the handler won't stop the scrolling.
 
 Used in: [AuthView.vue](../src/views/AuthView.vue), [ConfirmDialog.vue](../src/components/ui/ConfirmDialog.vue), [PlaceSearch.vue](../src/components/map/PlaceSearch.vue), [SpotCarousel.vue](../src/components/spots/SpotCarousel.vue).
 
-### Composables: `useSomething()` functions
-A plain function in `src/composables/` that uses `ref`, `computed` or `watch` and returns them, so two pages can share the same logic. Call it at the top of `<script setup>`.
-```js
-const isWide = useMediaQuery('(min-width: 576px)') // a ref that's true on wider screens
-```
-Used in: [useShortlist.js](../src/composables/useShortlist.js) (09 and 10), [useHangoutPrerequisites.js](../src/composables/useHangoutPrerequisites.js), [useMediaQuery.js](../src/composables/useMediaQuery.js).
-
 ## Vue Router
 
-### `router.beforeEach((to) => ...)` and route `meta`
-A **navigation guard**: a function the router runs before *every* page change, including the first page load. What it returns decides what happens: returning nothing (or `true`) lets the page open; a route like `{ name: 'auth' }` sends the user there instead. `to` is the page they're trying to open, and `to.meta` is whatever you put in that route's `meta: { ... }`.
-```js
-// in the routes list
-{ path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } }
-
-// after createRouter
-router.beforeEach(async (to) => {
-  if (!to.meta.requiresAuth) return true // public page
-  if (await isLoggedIn()) return true
-  return { name: 'auth', query: { redirect: to.fullPath } } // log in, then come back
-})
-```
-`to.fullPath` is the whole address including `?query`, so after logging in the user lands exactly where they were going.
-
-Used in: [router/index.js](../src/router/index.js) for the login guard.
+Route guards (`router.beforeEach`, route `meta` and the `redirect` query) are taught in Week 11. This is the one extra piece our login guard needs.
 
 ### Waiting for something: `new Promise` + `watch`
 After a page refresh, the auth store takes a moment to hear back from Supabase (`auth.ready` turns `true`). The guard has to wait for that, or a logged-in user would be sent to the login page by mistake.
@@ -605,44 +583,129 @@ if (!auth.ready) {
 
 Used in: [router/index.js](../src/router/index.js) for the login guard (written by a teammate, kept instead of Ryan's version).
 
-## Testing with Playwright
+## Testing
 
-The Week 4–6 project setup includes Playwright with one example test (`e2e/vue.spec.js`: `test`, `expect`, `page.goto`, `page.locator`, `toHaveText`). These are the extra pieces our tests use. Run them with `npm run test:e2e`, or `npx playwright test --ui` to watch.
+The course teaches Vitest (`describe`, `it`/`test`, `expect`, and the matchers `toBe`, `toEqual`, `toBeTruthy`, `toBeFalsy`, `toHaveLength`, `toContain`, `toThrow`, `toBeGreaterThan`, `toHaveProperty`, `toMatch` and `.not`), Vue Test Utils (`mount`, `find`, `findAll`, `text`, `trigger`, `emitted`, `setValue`, `props`, `vm`, `$nextTick` and `global.stubs`) and Playwright (`test`, `expect`, `page.goto`, `getByRole`, `getByText`, `locator`, `click`, `fill`, `press`, `toBeVisible`, `toHaveText`, `toHaveTitle`) in Week 10. Our tests use those wherever they can, including `findAll(...)` with `toHaveLength(0)` for "is not there". These are the extra pieces, and why each is needed. Run them with `npm run test:unit` and `npm run test:e2e` (`npx playwright test --ui` to watch).
 
-All of these are used in [dashboard.spec.js](../tests/e2e/dashboard.spec.js) and [midpoint.spec.js](../tests/e2e/midpoint.spec.js).
-
-### Finding elements: `getByRole`, `getByText`, `getByLabel`
-Find things the way a person (or screen reader) would, instead of by CSS class, so tests don't break when styling changes.
+### Vitest: `toBeGreaterThanOrEqual`, `toBeLessThanOrEqual` and `toBeLessThan`
+Like the taught `toBeGreaterThan`, but "or equal" also passes (or the other way round). `toBeGreaterThan(4.5)` would fail on exactly 4.5, so it can't say "at least 4.5".
 ```js
-page.getByRole('button', { name: 'Past' }) // a <button> whose text is "Past"
-page.getByRole('heading', { name: 'Friday dinner after class' }) // an <h1>–<h6> with that text
-page.getByText('No past hangouts yet.') // any element showing this text
-page.getByLabel(/Time today/) // the input whose <label> contains "Time today"
+expect(contrastWithWhite(colour)).toBeGreaterThanOrEqual(4.5) // the minimum for readable text
 ```
+Used in: [avatarColor.spec.js](../src/utils/__tests__/avatarColor.spec.js), [assistant.spec.js](../tests/e2e/assistant.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js) (sizes in pixels).
 
-### Acting: `.click()` and `.fill(value)`
-`click()` clicks like a mouse. `fill()` types into an input; on a range slider it sets the value and fires the events, so `@change` runs.
-
-### Checking: `toBeVisible`, `toHaveURL`, `toHaveCount`
+### Vitest: `toContainEqual(object)`
+`toContain` on a list compares with `===`, so it can't find an object by what's inside it. `toContainEqual` compares the contents, like `toEqual` does.
 ```js
-await expect(page.getByText('Voting · 3 of 4 voted')).toBeVisible() // on screen
+expect(reasons).toContainEqual({ tone: 'warn', text: 'Within budget for 1 of 2 members' })
+```
+Used in: [matchScore.spec.js](../src/utils/__tests__/matchScore.spec.js).
+
+### Vitest: `toMatchObject(object)` and `toBeNull()`
+`toMatchObject` passes when the object has *at least* those fields and values; `toBeNull()` is `toBe(null)`.
+```js
+expect(trips.b).toMatchObject({ label: 'Newer B', mode: 'walk', fromLast: true })
+expect(trips.c).toBeNull()
+```
+Used in: [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), to check a function that runs inside the browser.
+
+### `Object.defineProperty(element, name, { value })`
+The pretend browser in component tests (jsdom) has no layout, so `clientWidth` is always 0 and can't be assigned to. This gives it a fixed value. A plain function stands in for `scrollTo`, which jsdom doesn't have, and writes down where it was asked to scroll.
+```js
+Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 320 })
+viewport.scrollTo = (options) => scrolls.push(options)
+```
+Used in: [SpotCarousel.spec.js](../src/components/spots/__tests__/SpotCarousel.spec.js).
+
+### Playwright: `getByLabel(text)`
+Finds an input by its `<label>`. Password, date and time fields have no role that `getByRole` can look for, and `locator('#id')` (taught) breaks as soon as an id changes, which Week 10b calls a fragile test.
+```js
+await page.getByLabel('Date').fill('2030-01-15')
+```
+Used in: [createHangout.spec.js](../tests/e2e/createHangout.spec.js), [auth.spec.js](../tests/e2e/auth.spec.js) and most other specs.
+
+### Playwright: `.first()`, `.last()`, `.nth(i)` and `.filter({ hasText })`
+When several elements match, pick one: the first, the last, or number `i` (counting from 0). `filter` keeps only those that contain some text.
+```js
+page.getByRole('button', { name: 'Log in', exact: true }).last()
+page.getByRole('status').filter({ hasText: 'Planning with Class project crew' })
+```
+Used in: [landing.spec.js](../tests/e2e/landing.spec.js), [midpoint.spec.js](../tests/e2e/midpoint.spec.js), [transport.spec.js](../tests/e2e/transport.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js).
+
+### Playwright: more checks
+`toHaveURL`, `toContainText`, `toHaveCount`, `toBeHidden`, `toBeDisabled`, `toBeEnabled`, `toBeChecked`, `toHaveAttribute`, `toHaveClass`, `toHaveCSS` and `toHaveValue` work like the taught `toBeVisible` and `toHaveText`: each waits up to 5 seconds for the page to catch up.
+```js
 await expect(page).toHaveURL('/hangouts/demo/vote') // the address bar
+await expect(banner).toContainText('3 usual starting points') // contains; toHaveText must match all of it
 await expect(page.locator('path.crowd-midpoint')).toHaveCount(1) // exactly one match
+await expect(button).toBeDisabled()
+await expect(page.getByText('Saved')).toBeHidden() // not on screen, or not there at all
 ```
-`expect(locator)` checks keep retrying for up to 5 seconds, so they wait for API data to arrive. `expect(number)` checks like `toBeLessThanOrEqual(4)` run once, straight away.
+`toBeHidden()` is the opposite of `toBeVisible()`. Use it instead of `.not.toBeVisible()`: the project's lint rule (`playwright/no-useless-not`) asks for it.
 
-### `page.waitForRequest(test)`
-Gives a promise that finishes when the page sends a request matching `test`. Start waiting *before* the action that triggers it, then `await` it after.
+Used in: almost every spec in [tests/e2e/](../tests/e2e/), e.g. [voting.spec.js](../tests/e2e/voting.spec.js) and [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
+
+### Playwright: `test.beforeEach(fn)`, `test.skip(condition, reason)` and `test.setTimeout(ms)`
+`beforeEach` runs `fn` before every test in the file (here: set the clock and answer the Google calls). `skip` leaves the tests out when the condition is true, and `setTimeout` gives them longer than the default 30 seconds.
 ```js
-const request = page.waitForRequest((r) => r.url().includes('/api/crowd'))
-await page.getByLabel(/Time today/).fill('38')
-await request // proves moving the slider called the API
+test.beforeEach(async ({ page }) => {
+  await setTime(page, VOTING_OPEN)
+  await stubPlaces(page, spots)
+})
 ```
+Used in: [explore.spec.js](../tests/e2e/explore.spec.js), [assistant.spec.js](../tests/e2e/assistant.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js); `skip` and `setTimeout` in [together.spec.js](../tests/live/together.spec.js).
 
-### `request.get(url, { params })`
-Calls an API directly, without opening a page. Works like `axios.get`, but `res.ok()`, `res.status()` and `await res.json()` replace `response.data`.
+### Playwright: `page.route(pattern, handler)` and `route.fulfill({ json })`
+Catches requests the page makes and answers them from the test instead. Google Places only allows 100 searches a day, so the tests never call it. `route.request()` is the request being answered.
+```js
+await page.route('**/api/places**', (route) => route.fulfill({ json: places }))
+```
+Used in: [helpers/places.js](../tests/e2e/helpers/places.js), [assistant.spec.js](../tests/e2e/assistant.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
 
-Used in: [api.spec.js](../tests/e2e/api.spec.js).
+### Playwright: `page.clock`
+Sets the date and time the page sees. The sample hangouts are dated October 2026, and without this they would always look as if they were over. `setFixedTime` freezes the clock, `install` starts it at a time and lets it run, and `fastForward` skips ahead.
+```js
+await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
+```
+Used in: [helpers/clock.js](../tests/e2e/helpers/clock.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js).
+
+### Playwright: `page.addInitScript(fn)` and `page.evaluate(fn)`
+`addInitScript` runs `fn` inside the page before the app starts, on every load (here: to set a `localStorage` flag). `evaluate` runs `fn` inside the page right now and gives back what it returns (here: to read sizes and styles).
+```js
+await page.addInitScript(() => window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'))
+const size = await page.evaluate(() => document.documentElement.clientWidth)
+```
+Used in: [explore.spec.js](../tests/e2e/explore.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js).
+
+### Playwright: `page.setViewportSize` and `locator.boundingBox()`
+`setViewportSize({ width, height })` resizes the browser window, for the phone and laptop layouts. `boundingBox()` gives an element's `x`, `y`, `width` and `height` on screen.
+```js
+await page.setViewportSize({ width: 390, height: 844 })
+const box = await button.boundingBox() // box.height is at least 44, the smallest comfortable tap target
+```
+Used in: [assistant.spec.js](../tests/e2e/assistant.spec.js), [chatPopover.spec.js](../tests/e2e/chatPopover.spec.js), [explore.spec.js](../tests/e2e/explore.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
+
+### Playwright: two people at once (live tests)
+`browser.newContext()` is a separate browser profile and `context.newPage()` a tab in it, so the host and a friend can be logged in at the same time. `context.grantPermissions` lets the page use the clipboard, and `navigator.clipboard.readText()` reads back the invite link the app copied.
+```js
+const hostContext = await browser.newContext()
+const hostPage = await hostContext.newPage()
+```
+Used in: [together.spec.js](../tests/live/together.spec.js) and [live/helpers.js](../tests/live/helpers.js).
+
+## Folders and files
+
+The course's Vue project (Weeks 4–6 and 11) has `src/` with `assets/`, `components/`, `router/`, `stores/` and `views/` (plus `composables/` in Week 11 and `utils/` in Week 4), a Playwright test in `e2e/`, and a `__tests__/` folder next to the code it tests (Week 10). Ours follows that, with these differences:
+
+- **`src/services/`**: every call to an API or to Supabase, one file per area. The course puts axios calls in store actions, but we have 19 service files and only 3 stores, so that would make a few very large store files.
+- **`src/mocks/`**: sample hangouts, addresses and place types, used when there are no keys (demo mode).
+- **`api/`**: the server-side functions, one file per `/api/...` address. The course uses an Express server (Week 11); ours run on Vercel, which keeps the secret keys off the browser.
+- **`scripts/`**: `devApi.js` runs `api/` during `npm run dev`, and `buildCarparkRates.js` is a one-time script.
+- **`tests/e2e/` and `tests/live/`**: Week 10c puts Playwright tests in `tests/`, and the Vue exercises in `e2e/`. We have two kinds (demo data, and the real database), so `tests/` holds one folder for each.
+- **`vitest.config.js`**: the course's version merges `vite.config.js`; ours lists its own plugin and alias instead. That keeps `devApi.js`, which loads the keys in `.env.local`, out of the unit tests.
+- **`playwright.config.js` and `playwright.live.config.js`**: the course has one config. The second is for `tests/live/`.
+- **`.github/workflows/`**: runs lint, the build and the tests on every pull request, and deploys to Vercel.
+- **`src/assets/tokens.css`**: the course keeps its CSS in `assets/` (`main.css`, `base.css`). Ours is one file of colour, radius and shadow values.
 
 ## Regular expressions
 
