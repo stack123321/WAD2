@@ -385,6 +385,24 @@ export function subscribeToHangout(hangoutId, onChange) {
 }
 
 /**
+ * (Surya) Call onChange when any of my hangouts changes (e.g. the host confirms the plan or starts
+ * a re-vote) or anyone votes in one. No filter needed: the read rules ("hangouts: members read",
+ * "votes: members read") mean Supabase only sends changes to hangouts I'm in. Used by 04.
+ * @returns {() => void} call this in onUnmounted to stop listening
+ */
+export function subscribeToMyHangouts(onChange) {
+  if (!hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel('my-hangouts')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hangouts' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onChange)
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
  * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
  * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
  * @param {string} hangoutId
