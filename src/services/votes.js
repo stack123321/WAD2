@@ -23,6 +23,17 @@ export async function castVote(hangoutId, userId, shortlistId) {
   if (error) throw error
 }
 
+/** (Surya) Take back my vote, so I haven't voted for anything ("votes: remove own" allows it). */
+export async function removeVote(hangoutId, userId) {
+  if (isMockHangout(hangoutId)) return
+  const { error } = await supabase
+    .from('votes')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 /** All votes for a hangout. */
 export async function getVotes(hangoutId) {
   if (isMockHangout(hangoutId)) return []

@@ -23,6 +23,7 @@ import {
   closeVote,
   getVotes,
   isMockHangout,
+  removeVote,
   reopenVote,
   spinTiebreak,
   startVote,
@@ -204,7 +205,12 @@ async function refreshVotes() {
 }
 
 async function vote(spotId) {
-  if (!canVote.value || savingId.value !== null || spotId === myVoteId.value) return
+  if (!canVote.value || savingId.value !== null) return
+  // (Surya) tapping my own vote again takes it back
+  if (spotId === myVoteId.value) {
+    await unvote(spotId)
+    return
+  }
   actionError.value = ''
   savingId.value = spotId
   const before = votes.value
@@ -216,6 +222,23 @@ async function vote(spotId) {
     votes.value = before
     history.value = history.value.filter((event) => !added.includes(event))
     actionError.value = `Your vote wasn't saved: ${e.message}`
+  } finally {
+    savingId.value = null
+  }
+}
+
+// (Surya) Take back my vote: it goes from the count straight away, and comes back if saving fails
+async function unvote(spotId) {
+  actionError.value = ''
+  savingId.value = spotId
+  const before = votes.value
+  const added = applyVotes(before.filter((v) => v.user_id !== myId.value))
+  try {
+    await removeVote(hangoutId, myId.value)
+  } catch (e) {
+    votes.value = before
+    history.value = history.value.filter((event) => !added.includes(event))
+    actionError.value = `Your vote wasn't taken back: ${e.message}`
   } finally {
     savingId.value = null
   }
