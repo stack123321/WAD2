@@ -320,6 +320,15 @@ async function copyInvite() {
   min-width: 0; /* lets text-truncate work inside a flex row */
 }
 
+/* (Surya) Chat and Invite always sit on the right, even when they wrap onto a second line.
+   The steps get the same auto margin, so on one line the space is still shared out evenly
+   (name · steps · Chat), like space-between. */
+.hangout-bar .invite-group,
+.hangout-bar .steps,
+.hangout-bar .step-nav {
+  margin-left: auto;
+}
+
 .date-chip {
   flex-shrink: 0;
   background: var(--fp-bg);
