@@ -239,7 +239,7 @@ begin
 end;
 $$;
 
--- Tie-break wheel (11 Group voting, Eashvar). Any member may spin once voting is over (the deadline
+-- Tie-break wheel (11 Group voting, Eashvar). Only the host may spin, once voting is over (the deadline
 -- has passed or every member has voted) and two or more spots share the most votes. The database
 -- picks the winner at random from the tied spots, so nobody can choose it, then closes the vote.
 -- Only votes from people who are still members count. "for update" stops two spins at once.
@@ -253,8 +253,8 @@ declare
   tied_count integer;
   winner uuid;
 begin
-  if not (public.is_member(p_hangout) or public.is_host(p_hangout)) then
-    raise exception 'Only members of this hangout can spin the wheel';
+  if not public.is_host(p_hangout) then
+    raise exception 'Only the host can spin the wheel';
   end if;
 
   select * into h from hangouts where id = p_hangout for update;
