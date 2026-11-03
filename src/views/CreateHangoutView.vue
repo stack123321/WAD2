@@ -500,10 +500,10 @@ async function searchEveryone() {
     }
     const result = []
     for (const person of found) {
-      // skip yourself, people already in your list, and (edit mode) people already in the hangout
+      // skip yourself and your friends (they come from your own list). People already in the
+      // hangout stay: the search list marks them "In hangout".
       const isMe = auth.user && person.user_id === auth.user.id
-      const inHangout = memberIds.value.includes(person.user_id)
-      if (!isMe && !inHangout && !friends.value.find((f) => f.user_id === person.user_id)) {
+      if (!isMe && !friends.value.find((f) => f.user_id === person.user_id)) {
         result.push(person)
       }
     }
@@ -515,6 +515,66 @@ async function searchEveryone() {
   }
   searchingPeople.value = false
 }
+
+// (Surya) Searching shows ONE list of everyone who matches, closest people first, like Instagram:
+// 1. friends (you can tick them), then people who asked you (Accept), people you asked
+//    (Requested), everyone else (Add friend), and last people already in the hangout
+// 2. inside each group: names that start with what you typed ("ry" → Ryan) before names that
+//    only contain it (Henry)
+// 3. then the most hangouts together, then A to Z
+const ORDER = { friend: 0, request: 1, pending: 2, none: 3, member: 4 }
+
+function statusOf(userId) {
+  if (memberIds.value.includes(userId)) return 'member'
+  if (friends.value.find((f) => f.user_id === userId)) return 'friend'
+  if (askedYouIds.value.includes(userId)) return 'request'
+  if (requestedIds.value.includes(userId)) return 'pending'
+  return 'none'
+}
+
+// 0 if the name, or a word in it, starts with what you typed, else 1
+function matchRank(name, text) {
+  for (const word of name.toLowerCase().split(' ')) {
+    if (word.startsWith(text)) {
+      return 0
+    }
+  }
+  return 1
+}
+
+const searchRows = computed(() => {
+  const text = friendSearch.value.trim().toLowerCase()
+  let myId = null
+  if (auth.user) {
+    myId = auth.user.id
+  }
+  const rows = []
+  const seen = [] // each person once
+  for (const p of [...shownFriends.value, ...members.value, ...peopleResults.value]) {
+    if (seen.includes(p.user_id) || p.user_id === myId) {
+      continue
+    }
+    if (!p.display_name.toLowerCase().includes(text)) {
+      continue
+    }
+    seen.push(p.user_id)
+    rows.push({ ...p, status: statusOf(p.user_id), rank: matchRank(p.display_name, text) })
+  }
+  rows.sort((a, b) => {
+    if (ORDER[a.status] !== ORDER[b.status]) {
+      return ORDER[a.status] - ORDER[b.status]
+    }
+    if (a.rank !== b.rank) {
+      return a.rank - b.rank
+    }
+    const together = (b.together ?? 0) - (a.together ?? 0)
+    if (together !== 0) {
+      return together
+    }
+    return a.display_name.localeCompare(b.display_name)
+  })
+  return rows
+})
 
 // (Surya) Search everyone on Fairpoint as you type (no extra button to press). It waits until
 // you stop typing for a moment, so it doesn't search after every letter.
@@ -1011,60 +1071,71 @@ async function submit() {
 
           <p v-if="friendsLoading" class="panel__sub mb-0">Loading your friends…</p>
           <p v-else-if="friendsError" class="panel__sub mb-0">{{ friendsError }}</p>
-          <p v-else-if="friends.length === 0 && !searching" class="panel__sub mb-0">
-            No friends yet. Search for people above, or invite them with the link on the next page.
-          </p>
-          <!-- (Surya) your friends: "Suggested" (first 5), or the ones that match your search -->
-          <template v-else-if="visibleFriends.length > 0">
-            <p class="list-label">{{ searching ? 'Your friends' : 'Suggested' }}</p>
-            <ul class="people">
-              <li v-for="f in visibleFriends" :key="f.user_id">
-                <label class="person" :class="{ 'is-picked': selectedFriends.includes(f.user_id) }">
-                  <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
-                  <span class="person__name">{{ f.display_name }}</span>
-                  <input
-                    v-model="selectedFriends"
-                    type="checkbox"
-                    class="form-check-input person__tick"
-                    :value="f.user_id"
-                  />
-                </label>
-              </li>
-            </ul>
-          </template>
-          <!-- (Surya) edit mode: every friend is already in the hangout -->
-          <p v-else-if="!searching" class="panel__sub mb-0">
-            All your friends are already in. Search above to find someone else.
-          </p>
-          <p v-else-if="friendSearch.trim().length < 2" class="panel__sub mb-0">
-            Keep typing to search everyone on Fairpoint.
-          </p>
 
-          <!-- (Surya) everyone else on Fairpoint who matches, found as you type -->
-          <p v-if="searchingPeople" class="panel__sub mb-0">Searching everyone on Fairpoint…</p>
-          <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
-
-          <template v-if="searchedText !== '' && searchedText === friendSearch.trim()">
-            <p
-              v-if="peopleResults.length === 0 && shownFriends.length === 0"
-              class="panel__sub mb-0"
-            >
-              Nobody on Fairpoint matches “{{ searchedText }}”.
+          <!-- Not searching: "Suggested", your first 5 friends to tick -->
+          <template v-else-if="!searching">
+            <p v-if="friends.length === 0" class="panel__sub mb-0">
+              No friends yet. Search for people above, or invite them with the link on the next
+              page.
             </p>
-            <template v-else-if="peopleResults.length > 0">
-              <p class="list-label">Others on Fairpoint</p>
+            <template v-else-if="visibleFriends.length > 0">
+              <p class="list-label">Suggested</p>
+              <ul class="people">
+                <li v-for="f in visibleFriends" :key="f.user_id">
+                  <label
+                    class="person"
+                    :class="{ 'is-picked': selectedFriends.includes(f.user_id) }"
+                  >
+                    <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
+                    <span class="person__name">{{ f.display_name }}</span>
+                    <input
+                      v-model="selectedFriends"
+                      type="checkbox"
+                      class="form-check-input person__tick"
+                      :value="f.user_id"
+                    />
+                  </label>
+                </li>
+              </ul>
+            </template>
+            <!-- (Surya) edit mode: every friend is already in the hangout -->
+            <p v-else class="panel__sub mb-0">
+              All your friends are already in. Search above to find someone else.
+            </p>
+          </template>
+
+          <!-- (Surya) Searching: one list of everyone who matches, closest people first (like
+               Instagram). Each row shows what you can do with that person. -->
+          <template v-else>
+            <template v-if="searchRows.length > 0">
               <p class="panel__sub mb-2">
-                Send a friend request, or share the Invite link on the next page.
+                Tick friends to add them. Others need to accept a friend request first.
               </p>
               <ul class="people">
-                <li v-for="p in peopleResults" :key="p.user_id">
-                  <div class="person">
+                <li v-for="p in searchRows" :key="p.user_id">
+                  <!-- a friend: tick to add, like Suggested -->
+                  <label
+                    v-if="p.status === 'friend'"
+                    class="person"
+                    :class="{ 'is-picked': selectedFriends.includes(p.user_id) }"
+                  >
                     <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
                     <span class="person__name">{{ p.display_name }}</span>
-                    <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
-                    <!-- (Surya) they asked you first: one tap makes you friends -->
+                    <input
+                      v-model="selectedFriends"
+                      type="checkbox"
+                      class="form-check-input person__tick"
+                      :value="p.user_id"
+                    />
+                  </label>
+                  <div v-else class="person">
+                    <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
+                    <span class="person__name">{{ p.display_name }}</span>
+                    <span v-if="p.status === 'member'" class="requested">In hangout</span>
+                    <span v-else-if="p.status === 'pending'" class="requested">Requested</span>
+                    <!-- they asked you first: one tap makes you friends -->
                     <button
-                      v-else-if="askedYouIds.includes(p.user_id)"
+                      v-else-if="p.status === 'request'"
                       type="button"
                       class="btn btn-primary btn-sm request-btn"
                       :aria-label="`Accept ${p.display_name}'s friend request`"
@@ -1085,7 +1156,20 @@ async function submit() {
                 </li>
               </ul>
             </template>
+            <p v-else-if="friendSearch.trim().length < 2" class="panel__sub mb-0">
+              Keep typing to search everyone on Fairpoint.
+            </p>
+            <p
+              v-else-if="!searchingPeople && searchedText === friendSearch.trim()"
+              class="panel__sub mb-0"
+            >
+              Nobody on Fairpoint matches “{{ searchedText }}”.
+            </p>
           </template>
+
+          <!-- (Surya) everyone else on Fairpoint who matches, found as you type -->
+          <p v-if="searchingPeople" class="panel__sub mb-0">Searching everyone on Fairpoint…</p>
+          <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
         </section>
 
         <!-- Summary: fills in as you type -->
