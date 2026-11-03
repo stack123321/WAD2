@@ -69,7 +69,7 @@ test('desktop filters control the desktop menu and filter the spots', async ({ p
   await expect(page.locator('#explore-shortlist-content')).toBeVisible()
 
   const menu = page.locator('#explore-filters')
-  const toggle = page.locator('.desktop-filter-toggle')
+  const toggle = page.getByRole('button', { name: 'Filters' })
   await expect(menu).toBeHidden()
   await toggle.click()
   await expect(menu).toBeVisible()
