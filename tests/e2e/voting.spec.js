@@ -25,7 +25,6 @@ test('a member changes their vote to another spot', async ({ page }) => {
   await page.getByRole('button', { name: `Vote for ${hawker}` }).click()
 
   await expect(page.getByRole('button', { name: `Vote for ${hawker}` })).toHaveText('✓ Your vote')
-  await expect(page.getByText(`You changed your vote to ${hawker}`)).toBeVisible()
   await expect(page.getByText('3 of 4 voted')).toBeVisible()
 })
 
@@ -64,19 +63,30 @@ test('someone who isn’t in the hangout is told they can’t vote', async ({ pa
   await expect(page.getByRole('button', { name: `Vote for ${cafe}` })).toBeDisabled()
 })
 
-test('a tie when voting ends is settled by spinning the wheel', async ({ page }) => {
+test('the tie-break wheel stays locked until voting ends in a tie', async ({ page }) => {
+  await setTime(page, VOTING_OPEN)
+  await page.goto('/hangouts/demo/vote')
+  const wheel = page.getByRole('region', { name: 'Tie-break wheel' })
+
+  await expect(wheel).toContainText('Ryan (the host) spins it')
+  await expect(wheel).toContainText("Locked until there's a tie")
+  await expect(page.getByRole('button', { name: 'Spin the wheel' })).toHaveCount(0)
+})
+
+test('a tie when voting ends is settled by the host spinning the wheel', async ({ page }) => {
   await startClockAt(page, VOTING_OPEN)
   await page.goto('/hangouts/demo/vote')
 
   // moving my vote to the hawker centre makes it 1 vote each
   await page.getByRole('button', { name: `Vote for ${hawker}` }).click()
-  await expect(page.getByText(`You changed your vote to ${hawker}`)).toBeVisible()
+  await expect(page.getByRole('button', { name: `Vote for ${hawker}` })).toHaveText('✓ Your vote')
   await moveTimeForward(page, 24) // past the deadline
 
+  // in the demo I'm Ryan, the host, so I get the button
   await page.getByRole('button', { name: 'Spin the wheel' }).click()
 
   // the wheel spins for about 3 seconds before it picks, then a pop-up says which spot won
-  await expect(page.getByRole('dialog')).toContainText('The wheel has picked a winner!', {
+  await expect(page.getByRole('dialog')).toContainText('You spun the wheel', {
     timeout: 10000,
   })
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()

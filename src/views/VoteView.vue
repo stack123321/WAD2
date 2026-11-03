@@ -4,14 +4,16 @@
 // Figma frame "11". While the hangout is still collecting, the host starts the vote (members see
 // who they're waiting for). Then everyone votes for one shortlisted spot and can change it until
 // the deadline (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally
-// updates straight away (also in demo mode), re-fetches all votes on every Realtime change, and
-// lists activity seen while open (the group chat is the 💬 Chat button in the step bar). "Me" is
-// the logged-in user, or in demo mode the host, so the host controls can be tried without keys.
+// updates straight away (also in demo mode) and re-fetches all votes on every Realtime change
+// (the group chat is the 💬 Chat button in the step bar). "Me" is the logged-in user, or in demo
+// mode the host, so the host controls can be tried without keys.
 // Validation: only members can vote (others are told why), only one vote is sent at a time, only
 // each current member's latest vote counts, and the host can't close a vote nobody has voted in.
-// The host can close the vote and pick the winner. Once voting is over (deadline passed or
-// everyone voted) and the top spots are tied, the host's close card is replaced by the tie-break
-// wheel: any member spins, the database picks the winner, and it's listed in Group activity.
+// The host can close the vote and pick the winner. The tie-break wheel is always on the page,
+// greyed out until voting is over (deadline passed or everyone voted) with the top spots tied.
+// Then the host's close card is hidden and only the host can spin; the database picks the winner.
+// Everyone else's wheel spins to the same spot as soon as the vote closes (Realtime), and a
+// pop-up says where the group is going.
 // The store is updated directly after starting, closing or spinning (a forced reload would reset
 // the demo hangout).
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -37,7 +39,6 @@ import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import StartPanel from '@/components/voting/StartPanel.vue'
 import ClosePanel from '@/components/voting/ClosePanel.vue'
 import SpinWheel from '@/components/voting/SpinWheel.vue'
-import ActivityFeed from '@/components/voting/ActivityFeed.vue'
 import DeadlinePanel from '@/components/voting/DeadlinePanel.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
@@ -45,7 +46,6 @@ import {
   countVotes,
   closeOptions,
   changeOptions,
-  diffVotes,
   formatDateTime,
   pickLeader,
   tiedLeaders,
@@ -63,7 +63,6 @@ const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
 
 const votes = ref([])
-const history = ref([])
 const now = ref(Date.now())
 const manualWinnerId = ref(null)
 const actionError = ref('')
@@ -76,12 +75,12 @@ const spinWinnerId = ref(null)
 const spinSpots = ref([])
 const spinWheelKey = ref(0)
 const showSpinResultModal = ref(false)
+const iSpun = ref(false) // the pop-up says "You spun" to the host and "Ryan spun" to everyone else
 const revoting = ref(false)
 const showRevoteModal = ref(false)
 const showCloseModal = ref(false)
 const pendingCloseId = ref(null)
 
-let nextEventId = 1
 let unsubscribe = () => {}
 let timer = null
 
@@ -207,31 +206,8 @@ const closeText = computed(() => {
   }
   return `This will confirm ${pick} as the plan for this hangout.`
 })
-const feedItems = computed(() =>
-  [...history.value]
-    .sort((a, b) => b.id - a.id)
-    .map((event) => ({
-      id: event.id,
-      kind: event.kind,
-      isMe: event.userId === myId.value,
-      name:
-        event.userId === myId.value ? 'You' : (memberOf(event.userId)?.display_name ?? 'Someone'),
-      displayName: memberOf(event.userId)?.display_name ?? 'Someone',
-      color: memberOf(event.userId)?.avatar_color ?? null,
-      toName: event.toId ? spotName(event.toId) : null,
-      fromName: event.fromId ? spotName(event.fromId) : null,
-      at: event.at,
-    })),
-)
-
 function applyVotes(allVotes) {
-  const next = countableVotes(allVotes, store.members)
-  const events = diffVotes(votes.value, next, new Date().toISOString())
-    .sort((a, b) => new Date(a.at) - new Date(b.at))
-    .map((event) => ({ ...event, id: nextEventId++ }))
-  history.value.push(...events)
-  votes.value = next
-  return events
+  votes.value = countableVotes(allVotes, store.members)
 }
 
 async function refreshVotes() {
@@ -254,12 +230,11 @@ async function vote(spotId) {
   savingId.value = spotId
   const before = votes.value
   const mine = { user_id: myId.value, shortlist_id: spotId, voted_at: new Date().toISOString() }
-  const added = applyVotes([...before.filter((v) => v.user_id !== myId.value), mine])
+  applyVotes([...before.filter((v) => v.user_id !== myId.value), mine])
   try {
     await castVote(hangoutId, myId.value, spotId)
   } catch (e) {
     votes.value = before
-    history.value = history.value.filter((event) => !added.includes(event))
     actionError.value = `Your vote wasn't saved: ${e.message}`
   } finally {
     savingId.value = null
@@ -271,12 +246,11 @@ async function unvote(spotId) {
   actionError.value = ''
   savingId.value = spotId
   const before = votes.value
-  const added = applyVotes(before.filter((v) => v.user_id !== myId.value))
+  applyVotes(before.filter((v) => v.user_id !== myId.value))
   try {
     await removeVote(hangoutId, myId.value)
   } catch (e) {
     votes.value = before
-    history.value = history.value.filter((event) => !added.includes(event))
     actionError.value = `Your vote wasn't taken back: ${e.message}`
   } finally {
     savingId.value = null
@@ -369,7 +343,7 @@ async function confirmRevote() {
 }
 
 async function onSpin() {
-  if (!needsSpin.value || spinning.value || !isMember.value) return
+  if (!needsSpin.value || spinning.value || !isHost.value) return
   spinning.value = true
   actionError.value = ''
   spinSpots.value = tiedSpots.value
@@ -381,15 +355,7 @@ async function onSpin() {
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
     manualWinnerId.value = null
-    // (Ryan) listed in Group activity, not posted in the group chat
-    history.value.push({
-      id: nextEventId++,
-      kind: 'wheel',
-      userId: myId.value,
-      toId: winner,
-      fromId: null,
-      at: new Date().toISOString(),
-    })
+    iSpun.value = true
     showSpinResultModal.value = true
   } catch (e) {
     if (/already closed/i.test(e.message)) {
@@ -401,6 +367,31 @@ async function onSpin() {
   } finally {
     spinning.value = false
   }
+}
+
+// The host spun the wheel on their own page: the vote closes in the database, and that change
+// reaches this page straight away. While it was a tie, the host can't close the vote any other
+// way, so this wheel plays the same spin to the same spot, then the pop-up says who spun.
+async function watchHostSpin() {
+  spinSpots.value = tiedSpots.value
+  spinning.value = true
+  spinWinnerId.value = hangout.value.final_shortlist_id
+  await new Promise((resolve) => setTimeout(resolve, SPIN_MS))
+  spinning.value = false
+  iSpun.value = false
+  showSpinResultModal.value = true
+}
+
+watch(status, (now, before) => {
+  const wasTie = (deadlinePassed.value || everyoneVoted.value) && tiedSpots.value.length > 1
+  if (before === 'voting' && now === 'confirmed' && wasTie && !spinning.value && !spinWinnerId.value) {
+    watchHostSpin()
+  }
+})
+
+function seeFinalPlan() {
+  showSpinResultModal.value = false
+  router.push({ name: 'final-plan', params: { id: hangoutId } })
 }
 
 // (Surya) the host closing (or reopening) the vote reaches everyone's page straight away, so
@@ -487,12 +478,6 @@ onUnmounted(() => {
             class="alert alert-info d-flex align-items-center flex-wrap gap-2"
           >
             <span>Voting is closed.</span>
-            <RouterLink
-              class="btn btn-primary final-plan-btn"
-              :to="{ name: 'final-plan', params: { id: hangoutId } }"
-            >
-              See the final plan <span aria-hidden="true">→</span>
-            </RouterLink>
             <button
               v-if="isHost && status === 'confirmed'"
               type="button"
@@ -505,8 +490,8 @@ onUnmounted(() => {
             </button>
           </div>
           <div v-else-if="needsSpin" class="alert alert-info">
-            Voting is over and it's a tie. Anyone in the group can spin the wheel to pick the
-            winner.
+            Voting is over and it's a tie. {{ isHost ? 'Spin' : `${store.hostName} (the host) will spin` }}
+            the wheel to pick the winner.
           </div>
           <div v-else-if="deadlinePassed" class="alert alert-info">
             The deadline ({{ formatDateTime(deadline) }} SGT) has passed, so voting is closed.
@@ -566,12 +551,15 @@ onUnmounted(() => {
             :starting="starting"
             @start="onStart"
           />
+          <!-- always here, greyed out with a lock unless voting ended in a tie -->
           <SpinWheel
             :key="spinWheelKey"
-            v-if="isMember && (needsSpin || spinWinnerId)"
             :spots="spinWinnerId ? spinSpots : tiedSpots"
             :winner-id="spinWinnerId"
             :spinning="spinning"
+            :locked="!needsSpin && !spinWinnerId"
+            :can-spin="isHost"
+            :host-name="store.hostName"
             @spin="onSpin"
           />
           <DeadlinePanel
@@ -582,9 +570,7 @@ onUnmounted(() => {
             :saving="changingDeadline"
             @change="onChangeDeadline"
           />
-          <!-- Host controls first, so on phones and tablets (one column) closing the vote isn't
-               below the activity feed. After closing (or the wheel), it stays so the host can
-               change the winner. -->
+          <!-- After closing (or the wheel), it stays so the host can change the winner. -->
           <ClosePanel
             v-if="isHost && ((status === 'voting' && !needsSpin) || status === 'confirmed')"
             :shortlist="store.shortlist"
@@ -598,7 +584,14 @@ onUnmounted(() => {
             @select="selectWinner"
             @close="onClose"
           />
-          <ActivityFeed :items="feedItems" />
+          <!-- (Surya) once voting is closed, everyone's way to the plan, under the host's winner card -->
+          <RouterLink
+            v-if="status === 'confirmed' || status === 'done'"
+            class="btn btn-primary btn-lg w-100 final-plan-btn"
+            :to="{ name: 'final-plan', params: { id: hangoutId } }"
+          >
+            See the final plan <span aria-hidden="true">→</span>
+          </RouterLink>
         </div>
       </div>
     </div>
@@ -629,11 +622,14 @@ onUnmounted(() => {
       @confirm="confirmClose"
       @cancel="showCloseModal = false"
     />
+    <!-- after the wheel, for the host who spun it and, live, for everyone else -->
     <ConfirmDialog
       :open="showSpinResultModal && !!spinWinner"
-      title="The wheel has picked a winner!"
-      :text="`Your group is going to ${spinWinner?.name}.`"
+      :title="iSpun ? 'You spun the wheel' : `${store.hostName} spun the wheel`"
+      :text="`It landed on ${spinWinner?.name}. That's where your group is going.`"
+      button="See the final plan"
       cancel="Close"
+      @confirm="seeFinalPlan"
       @cancel="showSpinResultModal = false"
     />
   </main>
