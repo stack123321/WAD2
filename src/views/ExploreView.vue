@@ -163,7 +163,7 @@
     <p v-else-if="!askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
       No spots match this filter.
     </p>
-    <!-- (Surya) laptops: "Need an idea?" (Ask) and Filters side by side -->
+    <!-- (Surya) laptops: "Ask Fairpoint" and Filters side by side -->
     <div class="tools-row">
       <!-- (Surya) Ask, like on phones: a button opens the Ask box as a pop-up (laptops: under the
            button, like Filters). The phone's own Ask button is in mobile-spots-controls above. -->
@@ -175,12 +175,12 @@
           aria-controls="explore-ask"
           :aria-label="
             askedSpots
-              ? `Need an idea? Ask for something specific, ${askedSpots.length} found`
-              : 'Need an idea? Ask for something specific'
+              ? `Ask Fairpoint for something specific, ${askedSpots.length} found`
+              : 'Ask Fairpoint for something specific'
           "
           @click="toggleMobilePanel('ask')"
         >
-          {{ askedSpots ? `Need an idea? · ${askedSpots.length}` : 'Need an idea?' }}
+          {{ askedSpots ? `Ask Fairpoint · ${askedSpots.length}` : 'Ask Fairpoint' }}
         </button>
         <button
           v-if="askedSpots"
@@ -391,7 +391,7 @@
       </div>
     </div>
     </div>
-    <!-- (Surya) Need an idea? found nothing: say so, and offer to search for another food -->
+    <!-- (Surya) Ask Fairpoint found nothing: say so, and offer to search for another food -->
     <ConfirmDialog
       :open="noAskResults"
       title="No spots found"
@@ -737,7 +737,7 @@ const shownSpots = computed(() =>
   askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
 )
 
-// (Surya) the "No spots found" pop-up, when a search on Need an idea? finds nothing
+// (Surya) the "No spots found" pop-up, when a search on Ask Fairpoint finds nothing
 const noAskResults = ref(false)
 
 async function onAskFound(found) {
@@ -1048,7 +1048,7 @@ async function selectSpot(id) {
 }
 
 @media (min-width: 768px) {
-  /* (Surya) laptops: "Need an idea?" (Ask), Reset and Filters on one line */
+  /* (Surya) laptops: "Ask Fairpoint", Reset and Filters on one line */
   .tools-row {
     display: flex;
     flex-wrap: wrap;
@@ -1069,7 +1069,7 @@ async function selectSpot(id) {
     gap: 8px;
   }
 
-  /* "Need an idea?", Reset and Filters all in solid green */
+  /* "Ask Fairpoint", Reset and Filters all in solid green */
   .tools-row .desktop-filter-toggle,
   .tools-row .desktop-filter-toggle[aria-expanded='true'] {
     border-color: var(--fp-primary);
