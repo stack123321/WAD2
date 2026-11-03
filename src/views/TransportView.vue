@@ -403,52 +403,6 @@
   margin-bottom: 1.25rem;
 }
 
-/* Coloured circle with the person's initial */
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--fp-surface);
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.area-best {
-  background: color-mix(in srgb, var(--fp-primary) 12%, var(--fp-surface));
-}
-
-
-/* area | avg time | gap */
-.area-row {
-  display: grid;
-  grid-template-columns: 1fr 80px 60px;
-  align-items: center;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--fp-radius-sm);
-  font-size: 0.9rem;
-}
-
-.area-row span:nth-child(n + 2) {
-  text-align: right;
-}
-
-.area-head {
-  color: var(--fp-muted);
-  font-size: 0.8rem;
-  padding-bottom: 0.25rem;
-}
-
-.badge-best {
-  background: var(--fp-primary);
-  color: var(--fp-surface);
-  border-radius: 99px;
-  padding: 0.1rem 0.5rem;
-  font-size: 0.7rem;
-  margin-left: 0.35rem;
-}
-
 .footnote {
   color: var(--fp-muted);
   font-size: 0.75rem;

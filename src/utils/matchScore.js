@@ -181,10 +181,7 @@ function evaluate(place, profiles = [], context = {}) {
   const dietaryMatches = profiles.filter((p) => {
     const needs = p.dietary ?? []
     if (needs.length === 0) return true
-    return needs.some((need) => {
-      const value = String(need).toLowerCase()
-      return placeText.includes(value) || (value === 'vegetarian' && placeText.includes('vegetarian'))
-    })
+    return needs.some((need) => placeText.includes(String(need).toLowerCase()))
   }).length
   const dietaryKnown =
     profiles.some((p) => (p.dietary ?? []).length > 0) &&
@@ -260,12 +257,9 @@ export function softVetoReasons(place, profiles = [], context = {}) {
   if (result.vetoReason) return []
 
   const reasons = []
+  // no minutes here: the spot card already shows its walk time
   if (result.walkMins !== null && result.walkingMultiplier < 1) {
-    reasons.push(
-      result.walkingMultiplier >= 0.7
-        ? `Distant (~${result.walkMins} min)`
-        : `Far (~${result.walkMins} min walk)`,
-    )
+    reasons.push(result.walkingMultiplier >= 0.7 ? 'A bit of a walk' : 'Long walk')
   }
   if (result.closingSoon) {
     reasons.push('Closes within an hour of your hangout starting')

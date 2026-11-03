@@ -2,7 +2,7 @@
 // Owner: Surya. "Add friends" on 06 Starting points (host only): your friends (accepted on the
 // Friends page) and everyone you've been in a hangout with, once each. Tick as many as you like
 // and add them all at once, so you don't have to send the invite link.
-// Usage: <PastFriends :hangout="store.hangout" :my-id="myId" @added="reloadHangout" />
+// Usage: <PastFriends :hangout="store.hangout" :my-id="myId" @added="store.load(route.params.id)" />
 //   added → people were added (the page reloads the hangout so they appear in Your group)
 import { computed, onMounted, ref } from 'vue'
 import { addMember, getPastFriends } from '@/services/hangouts'

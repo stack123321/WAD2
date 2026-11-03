@@ -1,6 +1,6 @@
 // Owner: Surya. Weather and haze for the weather cards on 04, 08, 10, 12 (src/components/weather/).
 // Two free sources, both callable straight from the browser with no key:
-//   NEA on data.gov.sg: 2-hour forecast, today's forecast, 4-day outlook, haze (PSI)
+//   NEA on data.gov.sg: today's forecast, 4-day outlook, haze (PSI)
 //     Docs: https://guide.data.gov.sg/ (search "weather forecast" and "PSI")
 //   Open-Meteo: hourly forecast (temperature, rain chance, humidity, UV) up to 16 days ahead,
 //     which NEA doesn't have. Docs: https://open-meteo.com/en/docs
@@ -19,37 +19,7 @@ async function getNea(path) {
   return response.data.data
 }
 
-// Part (a) 2-hour forecast
-/**
- * 2-hour forecast for the NEA area nearest a point.
- * @returns {Promise<{ area: string, forecast: string, rain: boolean, validUntil: string }>}
- */
-export async function getTwoHourForecast(lat, lng) {
-  const data = await getNea('two-hr-forecast')
-  const latest = data.items[0]
-
-  // NEA gives the areas' positions and their forecasts in two separate lists, so join them by name
-  const areas = []
-  for (const a of data.area_metadata) {
-    const match = latest.forecasts.find((f) => f.area === a.name)
-    areas.push({
-      name: a.name,
-      lat: a.label_location.latitude,
-      lng: a.label_location.longitude,
-      forecast: match ? match.forecast : 'Unknown',
-    })
-  }
-
-  const area = nearestArea(areas, lat, lng)
-  return {
-    area: area.name,
-    forecast: area.forecast,
-    rain: isRain(area.forecast),
-    validUntil: latest.valid_period.end,
-  }
-}
-
-// Part (b) 4-day outlook
+// Part (a) 4-day outlook
 /**
  * Outlook for the next 4 days, for the week strip on 04 Dashboard and 05 New hangout.
  * NEA issues it in the afternoon, so before then the first day can be TODAY, not tomorrow.
@@ -71,7 +41,7 @@ export async function getDayForecast() {
   return days
 }
 
-// Part (c) Today's forecast
+// Part (b) Today's forecast
 /**
  * Today's forecast for the whole island, same shape as one day of getDayForecast().
  * @returns {Promise<{ date: string, forecast: string, rain: boolean, low: number, high: number }>}
@@ -94,7 +64,7 @@ export async function getTodayForecast() {
   }
 }
 
-// Part (c2) Further ahead (Open-Meteo): NEA's outlook only goes 4 days ahead
+// Part (b2) Further ahead (Open-Meteo): NEA's outlook only goes 4 days ahead
 /**
  * Day-by-day forecast for Singapore (its centre) for the next `days` days (Open-Meteo goes up to
  * 16), in the same shape as getDayForecast(), so the weather card can mix the two.
@@ -127,7 +97,7 @@ export async function getWeekForecast(days = 7) {
   return result
 }
 
-// Part (d) Hourly forecast (Open-Meteo)
+// Part (c) Hourly forecast (Open-Meteo)
 /**
  * Hourly forecast at a point, from today up to 16 days ahead.
  * @returns {Promise<Array<{ time: string, temp: number, rainChance: number, humidity: number,
@@ -163,7 +133,7 @@ export async function getHourlyForecast(lat, lng) {
   return hours
 }
 
-// Part (d2) Will it rain? For the "indoor only if it rains" filter on 09 Nearby spots (Hugo)
+// Part (c2) Will it rain? For the "indoor only if it rains" filter on 09 Nearby spots (Hugo)
 /**
  * Whether rain is likely at a place and time, from Open-Meteo's hourly forecast.
  * @param {string | Date} [when] the hangout time; leave out for "now"
@@ -185,7 +155,7 @@ export async function willRainAt(lat, lng, when, threshold = 50) {
   return { rain: rain, chance: hour.rainChance, condition: hour.condition }
 }
 
-// Part (e) Haze
+// Part (d) Haze
 /**
  * Haze right now: the 24-hour PSI for the region (north/south/east/west/central) nearest a point.
  * Without a point, the worst region (NEA has no island-wide number).

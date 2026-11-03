@@ -158,7 +158,6 @@ const moveOptions = computed(() => changeOptions(hangout.value?.starts_at, now.v
 const startOptions = computed(() =>
   closeOptions(hangout.value?.vote_deadline, hangout.value?.starts_at, now.value),
 )
-const hostName = computed(() => memberOf(hangout.value?.host_id)?.display_name ?? 'the host')
 const everyoneVoted = computed(() => store.members.length > 0 && waiting.value.length === 0)
 const votingOver = computed(
   () => status.value === 'voting' && (deadlinePassed.value || everyoneVoted.value),
@@ -413,7 +412,7 @@ onUnmounted(() => {
               Voting hasn't started yet. Start it when the shortlist is ready, and everyone can pick
               their favourite.
             </template>
-            <template v-else>Waiting for {{ hostName }} to start the vote.</template>
+            <template v-else>Waiting for {{ store.hostName }} to start the vote.</template>
           </div>
           <div
             v-else-if="status === 'confirmed' || status === 'done'"

@@ -10,25 +10,22 @@ import { useAlertsStore } from '@/stores/alerts'
 import { getHangout, getMyHangouts } from '@/services/hangouts'
 import { getMyDirectChats } from '@/services/directChats'
 import { getMyGroups } from '@/services/groups'
-import { planningLinks } from '@/utils/planningLinks'
+import { getStatus } from '@/utils/hangoutStatus'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
 const alerts = useAlertsStore() // unread counts, kept fresh by the navbar
 
-// (Nicole) Came here from a hangout's chat (?hangout=<id>, and ?from= the planning page before
-// that): a banner offers the way back into planning, so nobody gets stuck in the chats
-const planning = ref(null) // { hangout, links } or null
+// (Nicole) Came here from a hangout's chat (?hangout=<id>): a banner offers the way back into
+// planning, to the step the hangout is up to, so nobody gets stuck in the chats
+const planning = ref(null) // { hangout, page } or null
 
 async function loadPlanning() {
   if (!route.query.hangout) return
   try {
     const hangout = await getHangout(route.query.hangout)
-    const links = planningLinks(hangout, auth.user?.id, route.query.from)
-    if (links.back || links.next) {
-      planning.value = { hangout: hangout, links: links }
-    }
+    planning.value = { hangout: hangout, page: getStatus(hangout, auth.user?.id).page }
   } catch (err) {
     console.error(err) // no banner, the list still works
   }
@@ -54,7 +51,7 @@ async function loadGroups() {
       to: { name: 'group', params: { groupId: g.id } },
     }))
   } catch (err) {
-    console.log(err)
+    console.error(err)
     groupsError.value = 'Could not load your groups.'
   }
 }
@@ -128,16 +125,8 @@ function groupName(groupId) {
       <span class="planning-text">Still planning “{{ planning.hangout.name }}”?</span>
       <span class="planning-actions">
         <router-link
-          v-if="planning.links.back"
-          class="btn btn-outline-primary"
-          :to="{ name: planning.links.back.page, params: { id: planning.hangout.id } }"
-        >
-          ← Back to {{ planning.links.back.label }}
-        </router-link>
-        <router-link
-          v-if="planning.links.next"
           class="btn btn-primary"
-          :to="{ name: planning.links.next.page, params: { id: planning.hangout.id } }"
+          :to="{ name: planning.page, params: { id: planning.hangout.id } }"
         >
           Continue planning →
         </router-link>

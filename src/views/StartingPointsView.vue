@@ -13,7 +13,7 @@ import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
-import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangouts'
+import { getMyHangouts, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
@@ -38,11 +38,7 @@ const myId = computed(() => {
 const me = computed(() => findMember(myId.value))
 
 function findMember(id) {
-  const member = store.members.find((m) => m.user_id === id)
-  if (!member) {
-    return null
-  }
-  return member
+  return store.members.find((m) => m.user_id === id) ?? null
 }
 
 function hasStart(member) {
@@ -124,37 +120,30 @@ const showLastPlace = computed(() => {
   return me.value.start_label !== lastPlace.value.label
 })
 
-// Part (g) "Reply" on the newest message and "Open chat" after a reminder open the group chat on top
-// of the page (Ryan: the same ChatPopover as the step bar's 💬, so the map stays in view)
-
 // Part (h) "Add friends" starts folded away (most people add friends when creating the hangout)
 const showAddFriends = ref(false)
 
 // Part (b) Host mode
-// 05 Create hangout sends the host here with ?entry=host when friends don't add their own.
+// When friends don't add their own (switched off on 05, saved as friends_add_start), the host
+// enters everyone's. 05 also sends the host here with ?entry=host straight after creating it.
 // Only the host may enter other people's locations (the demo lets anyone try it).
-// host_enters_starts: read once the hangout saves this setting (not in the database yet).
+const isHost = computed(
+  () =>
+    store.hangout !== null && (store.hangout.host_id === myId.value || route.params.id === 'demo'),
+)
+
 const hostMode = computed(() => {
-  if (!store.hangout) {
+  if (!isHost.value) {
     return false
   }
-  const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
-  const turnedOn =
-    route.query.entry === 'host' || store.hangout.host_enters_starts === true || hostFill.value
-  return isHost && turnedOn
+  return route.query.entry === 'host' || store.hangout.friends_add_start === false || hostFill.value
 })
 
 // (Surya) "Fill in for friends": the host can stop waiting and enter everyone's starting points
 // right here (the prof asked "What if I give up waiting and set the starting point for everyone?")
 const hostFill = ref(false)
 
-const canFillIn = computed(() => {
-  if (!store.hangout || !me.value) {
-    return false
-  }
-  const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
-  return isHost && waitingNames.value.length > 0
-})
+const canFillIn = computed(() => isHost.value && me.value !== null && waitingNames.value.length > 0)
 
 function toggleFillIn() {
   hostFill.value = !hostFill.value
@@ -170,16 +159,6 @@ const isRealHost = computed(() => {
   }
   return store.hangout.host_id === auth.user.id
 })
-
-// After adding someone, get the hangout again so they appear in Your group and on the map.
-// (store.load skips hangouts it already has, so fetch it here and put the fresh copy in the store.)
-async function reloadHangout() {
-  try {
-    store.hangout = await getHangout(route.params.id)
-  } catch (error) {
-    console.error(error)
-  }
-}
 
 // Whose starting point the search box and the draggable pin are setting:
 // you (targetId is null), or in host mode the friend you picked with Set / Change.
@@ -594,7 +573,7 @@ const savedText = computed(() => {
             class="mt-2"
             :hangout="store.hangout"
             :my-id="myId"
-            @added="reloadHangout"
+            @added="store.load(route.params.id)"
           />
         </div>
       </div>
