@@ -18,6 +18,8 @@ import { willRainAt } from '@/services/weather'
 import { getRoute } from '@/services/routing'
 
 const route = useRoute()
+// Midpoint links here with ?from=midpoint; anything else goes back to Explore
+const cameFromMidpoint = computed(() => route.query.from === 'midpoint')
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
 const { hasStartingPoint, hasTransport, hasMidpoint } = useHangoutPrerequisites(
@@ -266,7 +268,7 @@ const reasons = computed(() =>
     <header class="spot__nav">
       <RouterLink
         class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
-        :to="{ name: 'explore', params: { id: route.params.id } }"
+        :to="{ name: cameFromMidpoint ? 'midpoint' : 'explore', params: { id: route.params.id } }"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -283,7 +285,7 @@ const reasons = computed(() =>
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="12 19 5 12 12 5" />
         </svg>
-        Back to exploring
+        {{ cameFromMidpoint ? 'Back to midpoint' : 'Back to exploring' }}
       </RouterLink>
     </header>
 
