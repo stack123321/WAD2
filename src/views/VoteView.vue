@@ -30,7 +30,7 @@ import {
   subscribeToVotes,
   changeVoteDeadline,
 } from '@/services/votes'
-import { getHangout } from '@/services/hangouts'
+import { getHangout, subscribeToHangout } from '@/services/hangouts'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
@@ -394,8 +394,13 @@ async function onSpin() {
   }
 }
 
+// (Surya) the host closing (or reopening) the vote reaches everyone's page straight away, so
+// the Vote buttons switch off without a refresh
+let stopHangout = () => {}
+
 onMounted(async () => {
   unsubscribe = subscribeToVotes(hangoutId, refreshVotes)
+  stopHangout = subscribeToHangout(hangoutId, store.applyChange)
   timer = setInterval(() => {
     now.value = Date.now()
   }, 30000)
@@ -412,6 +417,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribe()
+  stopHangout()
   clearInterval(timer)
 })
 </script>
