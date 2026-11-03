@@ -478,12 +478,6 @@ onUnmounted(() => {
             class="alert alert-info d-flex align-items-center flex-wrap gap-2"
           >
             <span>Voting is closed.</span>
-            <RouterLink
-              class="btn btn-primary final-plan-btn"
-              :to="{ name: 'final-plan', params: { id: hangoutId } }"
-            >
-              See the final plan <span aria-hidden="true">→</span>
-            </RouterLink>
             <button
               v-if="isHost && status === 'confirmed'"
               type="button"
@@ -590,6 +584,14 @@ onUnmounted(() => {
             @select="selectWinner"
             @close="onClose"
           />
+          <!-- (Surya) once voting is closed, everyone's way to the plan, under the host's winner card -->
+          <RouterLink
+            v-if="status === 'confirmed' || status === 'done'"
+            class="btn btn-primary btn-lg w-100 final-plan-btn"
+            :to="{ name: 'final-plan', params: { id: hangoutId } }"
+          >
+            See the final plan <span aria-hidden="true">→</span>
+          </RouterLink>
         </div>
       </div>
     </div>
