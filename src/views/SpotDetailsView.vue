@@ -14,6 +14,8 @@ import { matchScore, matchReasons } from '@/utils/matchScore'
 import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
 import { getRoute } from '@/services/routing'
+import { getPublicHoliday } from '@/services/holidays'
+import { openingHoursOn } from '@/utils/openingHours'
 
 const route = useRoute()
 const hangout = useHangoutStore()
@@ -79,6 +81,21 @@ const price = computed(() => {
   if (level === undefined || level === null) return null
   return level === 0 ? 'Free' : '$'.repeat(level)
 })
+
+// Opening hours on the day of the hangout (null when Google has no hours for this spot)
+const hangoutDay = computed(() => hangout.hangout?.starts_at ?? null)
+const hoursOnHangoutDay = computed(() =>
+  hangoutDay.value ? openingHoursOn(spot.value?.openingHours, hangoutDay.value) : null,
+)
+const holidayName = ref(null)
+watch(
+  hangoutDay,
+  async (day) => {
+    holidayName.value = null
+    if (day) holidayName.value = await getPublicHoliday(day)
+  },
+  { immediate: true },
+)
 
 const imageUrls = computed(() => spot.value?.imageUrls ?? [])
 const travelRows = ref([])
@@ -378,6 +395,20 @@ const reasons = computed(() =>
         <span v-if="spot.address" class="d-block">{{ spot.address }}</span>
         <span v-if="spot.openNow !== null" class="d-block">{{ spot.openNow ? 'Open now' : 'Closed now' }}</span>
       </p>
+      <div v-if="spot" class="spot__hours mt-2">
+        <template v-if="hoursOnHangoutDay">
+          <p class="mb-1">
+            <strong>Opening hours on the day:</strong>
+            {{ hoursOnHangoutDay.length ? hoursOnHangoutDay.join(', ') : 'Closed' }}
+          </p>
+        </template>
+        <p v-else class="text-secondary mb-0">
+          Opening hours not listed. Please check with the establishment.
+        </p>
+        <p v-if="holidayName" class="text-warning-emphasis mb-0 mt-1" role="note">
+          {{ holidayName }} falls on the day of your hangout. Hours may differ, please check.
+        </p>
+      </div>
       <p v-if="summaryLoading" class="text-secondary mb-2" role="status">Summarising this spot…</p>
       <template v-else-if="summary">
         <p class="mb-1">{{ summary.text }}</p>
