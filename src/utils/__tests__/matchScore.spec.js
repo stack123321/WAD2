@@ -47,7 +47,7 @@ describe('TestSuite: matchScore', () => {
     expect(matchScore(cafe, group, atTheMidpoint)).toBe(100)
     // about a 30 min walk takes 40% off
     expect(matchScore(cafe, group, twoKmAway)).toBe(60)
-    expect(softVetoReasons(cafe, group, twoKmAway)[0]).toContain('Far (~30 min walk)')
+    expect(softVetoReasons(cafe, group, twoKmAway)[0]).toBe('Long walk')
   })
 })
 

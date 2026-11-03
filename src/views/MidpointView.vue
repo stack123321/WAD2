@@ -62,9 +62,7 @@ async function loadRanking() {
 // The saved midpoint's numbers from the ranking (null if it was dragged to a station further out)
 const current = computed(() => {
   if (!midpoint.value) return null
-  const found = ranked.value.find((r) => r.name === midpoint.value.name)
-  if (!found) return null
-  return found
+  return ranked.value.find((r) => r.name === midpoint.value.name) ?? null
 })
 
 const isFairest = computed(() => ranked.value.length > 0 && current.value === ranked.value[0])
@@ -588,10 +586,6 @@ async function moveToDropped(station) {
 .my-trip {
   font-size: 0.9rem;
   font-weight: 600;
-}
-
-.min-w-0 {
-  min-width: 0;
 }
 
 .eyebrow {

@@ -18,7 +18,7 @@ import {
   setUsualStart,
   usualTrips,
 } from '@/services/groups'
-import { sgDate } from '@/utils/dates'
+import { sgDate, isPast } from '@/utils/dates'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import HangoutChat from '@/components/chat/HangoutChat.vue'
 import GroupHangoutRow from '@/components/groups/GroupHangoutRow.vue'
@@ -78,17 +78,7 @@ const memberLine = computed(() => {
   return n === 1 ? 'Just you so far' : `${n} people`
 })
 
-// Part (b) Upcoming and Past, split like the dashboard: done, or its day is before today
-function isPast(h, today) {
-  if (h.status === 'done') {
-    return true
-  }
-  if (!h.starts_at) {
-    return false
-  }
-  return sgDate(new Date(h.starts_at)) < today
-}
-
+// Part (b) Upcoming and Past, split like the dashboard (isPast in utils/dates.js)
 const tab = ref('upcoming')
 const upcoming = computed(() => {
   const today = sgDate(new Date())
@@ -256,10 +246,17 @@ async function endGroup() {
 
           <p v-if="hangoutsError" class="text-danger small mb-0">{{ hangoutsError }}</p>
           <div v-else-if="tabList.length === 0" class="empty">
+            <!-- (Ryan) says "next" once the group has past hangouts, so it doesn't contradict Past -->
             <template v-if="tab === 'upcoming'">
-              <p class="mb-2">Nothing planned with this group yet.</p>
+              <p class="mb-2">
+                {{
+                  past.length > 0
+                    ? 'Nothing coming up with this group.'
+                    : 'Nothing planned with this group yet.'
+                }}
+              </p>
               <RouterLink class="btn btn-outline-primary btn-tap" :to="planLink">
-                Plan the first one
+                {{ past.length > 0 ? 'Plan the next one' : 'Plan the first one' }}
               </RouterLink>
             </template>
             <p v-else class="mb-0">No past hangouts with this group yet.</p>

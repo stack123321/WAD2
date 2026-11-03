@@ -85,6 +85,7 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
     await expect(hostPage.getByText('1 of 2 voted')).toBeVisible({ timeout: 15000 })
     // spot B leads, so it's the winner the close card picks
     await hostPage.getByRole('button', { name: 'Close vote' }).click()
+    await hostPage.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
     await expect(hostPage).toHaveURL(`/hangouts/${id}/plan`)
     await expect(hostPage.getByText('Confirmed spot')).toBeVisible()
 

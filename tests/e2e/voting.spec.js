@@ -33,6 +33,7 @@ test('the host closes the vote and the final plan shows the winner', async ({ pa
   await page.goto('/hangouts/demo/vote')
 
   await page.getByRole('button', { name: 'Close vote' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
 
   await expect(page).toHaveURL('/hangouts/demo/plan')
   await expect(page.getByText('Confirmed spot')).toBeVisible()
@@ -74,9 +75,15 @@ test('a tie when voting ends is settled by spinning the wheel', async ({ page })
 
   await page.getByRole('button', { name: 'Spin the wheel' }).click()
 
-  // the wheel spins for about 3 seconds before it picks
-  await expect(page.getByText('The wheel picked')).toBeVisible({ timeout: 10000 })
-  await page.getByRole('link', { name: 'See the final plan' }).first().click()
+  // the wheel spins for about 3 seconds before it picks, then a pop-up says which spot won
+  await expect(page.getByRole('dialog')).toContainText('The wheel has picked a winner!', {
+    timeout: 10000,
+  })
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+
+  // the host's Winner card stays, so they can still change the winner
+  await expect(page.getByRole('button', { name: 'Change the winner' })).toBeDisabled()
+  await page.getByRole('link', { name: 'See the final plan' }).click()
   await expect(page.getByText('Confirmed spot')).toBeVisible()
 })
 
@@ -94,6 +101,7 @@ test('once the hangout has started, the host can mark it done', async ({ page })
   await setTime(page, HANGOUT_STARTED)
   await page.goto('/hangouts/demo/vote')
   await page.getByRole('button', { name: 'Close vote' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
 
   await page.getByRole('button', { name: 'Mark as done' }).click()
 

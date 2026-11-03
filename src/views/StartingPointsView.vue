@@ -8,16 +8,15 @@
 // Reads: hangout_members · Writes: start_label, start_lat, start_lng (mine, or anyone's in host mode)
 // The pieces live in components: PlaceSearch, GroupList, MembersMap. The step bar on top
 // (HangoutBar) is added for every hangout page in App.vue.
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
-import { getHangout, getMyHangouts, updateMemberStart } from '@/services/hangouts'
+import { getMyHangouts, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import PastFriends from '@/components/start/PastFriends.vue'
-import HangoutChat from '@/components/chat/HangoutChat.vue'
 import LatestMessage from '@/components/chat/LatestMessage.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
@@ -39,11 +38,7 @@ const myId = computed(() => {
 const me = computed(() => findMember(myId.value))
 
 function findMember(id) {
-  const member = store.members.find((m) => m.user_id === id)
-  if (!member) {
-    return null
-  }
-  return member
+  return store.members.find((m) => m.user_id === id) ?? null
 }
 
 function hasStart(member) {
@@ -61,7 +56,6 @@ onMounted(async () => {
   }
 
   loadLastPlace()
-  openChatFromBar() // came here from the step bar's Chat on another step
 
   // the page is on screen now, so we can measure how much height is left for it
   await nextTick()
@@ -126,62 +120,30 @@ const showLastPlace = computed(() => {
   return me.value.start_label !== lastPlace.value.label
 })
 
-// Part (g) Group chat opens in a side panel (so the map stays in view): from the step bar's 💬 Chat
-// (it adds ?chat=1), "Reply" on the newest message, or "Open chat" after a reminder
-const showChat = ref(false)
-const chatCloseBtn = ref(null) // the ✕ button, so we can move the keyboard focus into the panel
-
-async function openChat() {
-  showChat.value = true
-  await nextTick() // wait until the panel is on the page
-  if (chatCloseBtn.value) {
-    chatCloseBtn.value.focus()
-  }
-}
-
-// The step bar's Chat: open the panel, then take ?chat=1 out of the address again
-const router = useRouter()
-
-function openChatFromBar() {
-  if (route.query.chat !== '1' || !me.value) {
-    return
-  }
-  openChat()
-  const query = { ...route.query }
-  delete query.chat
-  router.replace({ query })
-}
-
-watch(() => route.query.chat, openChatFromBar)
-
 // Part (h) "Add friends" starts folded away (most people add friends when creating the hangout)
 const showAddFriends = ref(false)
 
 // Part (b) Host mode
-// 05 Create hangout sends the host here with ?entry=host when friends don't add their own.
+// When friends don't add their own (switched off on 05, saved as friends_add_start), the host
+// enters everyone's. 05 also sends the host here with ?entry=host straight after creating it.
 // Only the host may enter other people's locations (the demo lets anyone try it).
-// host_enters_starts: read once the hangout saves this setting (not in the database yet).
+const isHost = computed(
+  () =>
+    store.hangout !== null && (store.hangout.host_id === myId.value || route.params.id === 'demo'),
+)
+
 const hostMode = computed(() => {
-  if (!store.hangout) {
+  if (!isHost.value) {
     return false
   }
-  const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
-  const turnedOn =
-    route.query.entry === 'host' || store.hangout.host_enters_starts === true || hostFill.value
-  return isHost && turnedOn
+  return route.query.entry === 'host' || store.hangout.friends_add_start === false || hostFill.value
 })
 
 // (Surya) "Fill in for friends": the host can stop waiting and enter everyone's starting points
 // right here (the prof asked "What if I give up waiting and set the starting point for everyone?")
 const hostFill = ref(false)
 
-const canFillIn = computed(() => {
-  if (!store.hangout || !me.value) {
-    return false
-  }
-  const isHost = store.hangout.host_id === myId.value || route.params.id === 'demo'
-  return isHost && waitingNames.value.length > 0
-})
+const canFillIn = computed(() => isHost.value && me.value !== null && waitingNames.value.length > 0)
 
 function toggleFillIn() {
   hostFill.value = !hostFill.value
@@ -197,16 +159,6 @@ const isRealHost = computed(() => {
   }
   return store.hangout.host_id === auth.user.id
 })
-
-// After adding someone, get the hangout again so they appear in Your group and on the map.
-// (store.load skips hangouts it already has, so fetch it here and put the fresh copy in the store.)
-async function reloadHangout() {
-  try {
-    store.hangout = await getHangout(route.params.id)
-  } catch (error) {
-    console.error(error)
-  }
-}
 
 // Whose starting point the search box and the draggable pin are setting:
 // you (targetId is null), or in host mode the friend you picked with Set / Change.
@@ -481,7 +433,12 @@ const savedText = computed(() => {
         </div>
         <p v-else-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
         <!-- (Surya) the chat's newest message, tap to reply -->
-        <LatestMessage v-if="me" :hangout="store.hangout" :my-id="myId" @open-chat="openChat" />
+        <LatestMessage
+          v-if="me"
+          :hangout="store.hangout"
+          :my-id="myId"
+          @open-chat="store.chatOpen = true"
+        />
         <p class="text-secondary mb-4">
           Search an address, MRT station or postal code. We use everyone’s starting point to find a
           spot that’s fair for all.
@@ -567,7 +524,7 @@ const savedText = computed(() => {
           :editing-id="editingId"
           :host-mode="hostMode"
           @select="startEditing"
-          @open-chat="openChat"
+          @open-chat="store.chatOpen = true"
         />
 
         <!-- Host only: stop waiting and fill in friends' starting points yourself -->
@@ -616,7 +573,7 @@ const savedText = computed(() => {
             class="mt-2"
             :hangout="store.hangout"
             :my-id="myId"
-            @added="reloadHangout"
+            @added="store.load(route.params.id)"
           />
         </div>
       </div>
@@ -638,27 +595,6 @@ const savedText = computed(() => {
         </div>
       </div>
     </div>
-
-    <!-- Group chat panel: slides in from the side, closes with ✕, Esc or a tap outside -->
-    <template v-if="me && showChat">
-      <div class="chat-backdrop" @click="showChat = false"></div>
-      <aside
-        id="chat-panel"
-        class="chat-panel"
-        role="dialog"
-        aria-label="Group chat"
-        @keydown.esc="showChat = false"
-      >
-        <button
-          ref="chatCloseBtn"
-          type="button"
-          class="btn-close chat-close"
-          aria-label="Close chat"
-          @click="showChat = false"
-        ></button>
-        <HangoutChat :hangout="store.hangout" :my-id="myId" :height="420" />
-      </aside>
-    </template>
   </div>
 </template>
 
@@ -707,40 +643,6 @@ const savedText = computed(() => {
   padding: 0;
   font-weight: 600;
   text-decoration: none;
-}
-
-/* Chat panel: dark backdrop + a panel on the right (full width on phones) */
-.chat-backdrop {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 1040;
-  background: rgb(0 0 0 / 0.35);
-}
-
-.chat-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1050; /* above the map and the navbar */
-  width: 100%;
-  max-width: 420px;
-  padding: 3.25rem 1rem 1rem;
-  overflow-y: auto;
-  background: var(--fp-surface);
-  box-shadow: -8px 0 30px rgb(0 0 0 / 0.15);
-}
-
-.chat-close {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 44px;
-  height: 44px;
-  padding: 0;
 }
 
 .panel {

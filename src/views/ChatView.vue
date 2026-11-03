@@ -7,7 +7,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getHangout } from '@/services/hangouts'
 import { isMockHangout } from '@/services/votes'
-import { planningLinks } from '@/utils/planningLinks'
+import { getStatus } from '@/utils/hangoutStatus'
 import HangoutChat from '@/components/chat/HangoutChat.vue'
 
 const route = useRoute()
@@ -22,10 +22,10 @@ const isMember = computed(() => {
   return hangout.value.members.some((m) => m.user_id === auth.user?.id)
 })
 
-// (Nicole) Ways back into planning, e.g. "← Back to Transport" after Remind on 07
-const links = computed(() => {
-  if (!hangout.value || !isMember.value) return { back: null, next: null }
-  return planningLinks(hangout.value, auth.user?.id, route.query.from)
+// (Nicole) "Continue planning" goes to the step the hangout is up to (the same page the dashboard opens)
+const nextPage = computed(() => {
+  if (!hangout.value || !isMember.value) return null
+  return getStatus(hangout.value, auth.user?.id).page
 })
 
 onMounted(async () => {
@@ -40,11 +40,8 @@ onMounted(async () => {
 
 <template>
   <main class="container py-4 chat-page">
-    <!-- passes on where you came from, so My Chats can offer the way back too -->
-    <router-link
-      :to="{ name: 'chats', query: { from: route.query.from, hangout: route.params.hangoutId } }"
-      class="small"
-    >
+    <!-- passes on this hangout, so My Chats can offer the way back into planning too -->
+    <router-link :to="{ name: 'chats', query: { hangout: route.params.hangoutId } }" class="small">
       ← My Chats
     </router-link>
 
@@ -55,19 +52,8 @@ onMounted(async () => {
       <HangoutChat v-if="isMember" :hangout="hangout" :height="420" title="Chat" />
       <p v-else class="text-muted">Only people in this hangout can see its chat.</p>
 
-      <div v-if="links.back || links.next" class="planning-links">
-        <router-link
-          v-if="links.back"
-          class="btn btn-outline-primary"
-          :to="{ name: links.back.page, params: { id: hangout.id } }"
-        >
-          ← Back to {{ links.back.label }}
-        </router-link>
-        <router-link
-          v-if="links.next"
-          class="btn btn-primary"
-          :to="{ name: links.next.page, params: { id: hangout.id } }"
-        >
+      <div v-if="nextPage" class="planning-links">
+        <router-link class="btn btn-primary" :to="{ name: nextPage, params: { id: hangout.id } }">
           Continue planning →
         </router-link>
       </div>
@@ -80,7 +66,7 @@ onMounted(async () => {
   max-width: 720px;
 }
 
-/* "← Back to Transport" / "Continue planning →" under the chat */
+/* "Continue planning →" under the chat */
 .planning-links {
   display: flex;
   flex-wrap: wrap;

@@ -50,6 +50,7 @@ test('new hangout: from the landing page to the final plan', async ({ page }) =>
 
   await page.goto('/hangouts/demo/vote')
   await page.getByRole('button', { name: 'Close vote' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
   await expect(h1).toHaveText('Final plan & itinerary')
 })
 

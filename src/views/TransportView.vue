@@ -327,12 +327,14 @@
           <!-- Says where the reminder went (the prof asked "how is the reminder sent?") -->
           <p v-if="remindStatus === 'Sent ✓'" class="small remind-note" role="status">
             Posted in the group chat ·
-            <!-- from=transport: the chat page then offers "← Back to Transport" -->
-            <RouterLink
-              :to="{ name: 'chat', params: { hangoutId: route.params.id }, query: { from: 'transport' } }"
+            <!-- (Ryan) opens the chat on top of this page, like 💬 in the step bar -->
+            <button
+              type="button"
+              class="btn btn-link btn-sm p-0 align-baseline"
+              @click="store.chatOpen = true"
             >
               Open chat →
-            </RouterLink>
+            </button>
           </p>
           <p v-else-if="remindStatus === 'Copied ✓'" class="small remind-note" role="status">
             Copied the reminder. Paste it to them (the demo hangout has no group chat).
@@ -399,52 +401,6 @@
   color: var(--fp-muted);
   font-size: 0.9rem;
   margin-bottom: 1.25rem;
-}
-
-/* Coloured circle with the person's initial */
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--fp-surface);
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.area-best {
-  background: color-mix(in srgb, var(--fp-primary) 12%, var(--fp-surface));
-}
-
-
-/* area | avg time | gap */
-.area-row {
-  display: grid;
-  grid-template-columns: 1fr 80px 60px;
-  align-items: center;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--fp-radius-sm);
-  font-size: 0.9rem;
-}
-
-.area-row span:nth-child(n + 2) {
-  text-align: right;
-}
-
-.area-head {
-  color: var(--fp-muted);
-  font-size: 0.8rem;
-  padding-bottom: 0.25rem;
-}
-
-.badge-best {
-  background: var(--fp-primary);
-  color: var(--fp-surface);
-  border-radius: 99px;
-  padding: 0.1rem 0.5rem;
-  font-size: 0.7rem;
-  margin-left: 0.35rem;
 }
 
 .footnote {

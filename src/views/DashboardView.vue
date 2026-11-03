@@ -12,7 +12,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import { getHaze, getHourlyForecast } from '@/services/weather'
 import { getStationCrowd } from '@/services/crowd'
 import { getPhotos } from '@/services/photos'
-import { sgDate, dayHeading } from '@/utils/dates'
+import { sgDate, dayHeading, isPast } from '@/utils/dates'
 import { getStatus } from '@/utils/hangoutStatus'
 
 const hangouts = ref([]) // every hangout i'm in, in date order, from getMyHangouts()
@@ -49,13 +49,6 @@ const heading = computed(() =>
 )
 
 const HALF_HOUR = 30 * 60 * 1000 // in milliseconds, for the crowd window below
-
-// done, or its date is before today (no date set yet counts as upcoming)
-function isPast(h, today) {
-  if (h.status === 'done') return true // finished hangouts are always past
-  if (!h.starts_at) return false // no date yet, so it can't be past
-  return sgDate(new Date(h.starts_at)) < today // "2026-10-16" < "2026-10-20" works because the dates are text in year-month-day order
-}
 
 // the two tabs: each hangout goes in exactly one of them
 const upcoming = computed(() => {

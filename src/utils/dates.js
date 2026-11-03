@@ -1,5 +1,5 @@
 // Owner: Ryan
-// dates in singapore time, shared by the dashboard and the hangout card.
+// dates in singapore time, shared by the dashboard, the hangout card and the group page.
 // a phone set to another time zone would otherwise show the wrong day, so every function here asks for singapore time.
 const SG = 'Asia/Singapore' // the time zone name the browser understands
 const DAY = 24 * 60 * 60 * 1000 // one day in milliseconds (singapore has no daylight saving)
@@ -7,6 +7,14 @@ const DAY = 24 * 60 * 60 * 1000 // one day in milliseconds (singapore has no day
 // "2026-10-16", so two dates can be compared as text
 export function sgDate(date) {
   return date.toLocaleDateString('en-CA', { timeZone: SG }) // en-CA writes dates as year-month-day
+}
+
+// for the Upcoming and Past tabs: done, or its date is before today (no date set yet counts as upcoming)
+// today is sgDate(new Date()), passed in so a whole list is checked against the same day
+export function isPast(h, today) {
+  if (h.status === 'done') return true // finished hangouts are always past
+  if (!h.starts_at) return false // no date yet, so it can't be past
+  return sgDate(new Date(h.starts_at)) < today // "2026-10-16" < "2026-10-20" works because the dates are text in year-month-day order
 }
 
 // "Fri 16 Oct"
