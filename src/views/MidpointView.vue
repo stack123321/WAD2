@@ -151,24 +151,35 @@ const otherOptions = computed(() => {
   return result
 })
 
-// (Surya) "Ryan 39 min · Nicole 38 min · Surya 31 min (fairer)": everyone's real trip time to this
-// station, and whether it's fairer than the current midpoint
-function compareLine(option) {
+// (Surya) For the preview chips on another station: everyone's trip there, how much longer or
+// shorter it is than now, and whether it's fairer. "You" instead of your own name.
+function compareFor(option) {
   const people = []
   rankedFor.value.forEach((m, i) => {
-    people.push(`${m.display_name} ${option.travelMins[i]} min`)
+    let change = null // null = no midpoint yet, so nothing to compare with
+    if (current.value) {
+      change = option.travelMins[i] - current.value.travelMins[i]
+    }
+    people.push({
+      id: m.user_id,
+      name: m.user_id === myId.value ? 'You' : m.display_name,
+      color: m.avatar_color,
+      mins: option.travelMins[i],
+      change: change,
+    })
   })
-  if (!current.value) {
-    return `${people.join(' · ')}.`
+  let fairness = ''
+  if (current.value) {
+    fairness = fairnessText(option.gap - current.value.gap)
   }
-  return `${people.join(' · ')} (${fairerText(option.gap - current.value.gap)}).`
+  return { people: people, fairness: fairness }
 }
 
 // smaller spread between trips = fairer
-function fairerText(n) {
-  if (n === 0) return 'just as fair'
-  if (n > 0) return 'less fair'
-  return 'fairer'
+function fairnessText(n) {
+  if (n === 0) return 'Just as fair as now.'
+  if (n > 0) return 'Less fair: trips are further apart than now.'
+  return 'Fairer: trips are closer together than now.'
 }
 
 const longestTrip = computed(() => {
@@ -184,12 +195,15 @@ const longestTrip = computed(() => {
 // (Surya) Your own trip to the midpoint, e.g. "27 min by MRT · $2.20". Null if we don't know it
 // yet (you haven't picked a mode, or the travel times haven't loaded), so the line is hidden.
 // In the demo hangout (sample people) you're Surya, like on 06 and 07.
-const myTrip = computed(() => {
-  let myId = 'u-surya'
+const myId = computed(() => {
   if (route.params.id !== 'demo' && auth.user) {
-    myId = auth.user.id
+    return auth.user.id
   }
-  const me = store.members.find((m) => m.user_id === myId)
+  return 'u-surya'
+})
+
+const myTrip = computed(() => {
+  const me = store.members.find((m) => m.user_id === myId.value)
   if (!me || !me.mode || me.travel_mins == null) {
     return null
   }
@@ -206,10 +220,10 @@ const myTrip = computed(() => {
 })
 
 // (Surya) The station tabs above "Things to do": your midpoint first, then the next best ones,
-// each with a one-line comparison so you can weigh better spots against a longer trip
+// each with everyone's trip times so you can weigh better spots against a longer trip
 const stationTabs = computed(() => {
   if (!midpoint.value) return []
-  const tabs = [{ ...midpoint.value, chosen: true, compareText: '', station: null }]
+  const tabs = [{ ...midpoint.value, chosen: true, compare: null, station: null }]
   for (const o of otherOptions.value) {
     tabs.push({
       name: o.name,
@@ -217,7 +231,7 @@ const stationTabs = computed(() => {
       lng: o.lng,
       chosen: false,
       tag: o.tag,
-      compareText: compareLine(o),
+      compare: compareFor(o),
       station: o,
     })
   }
