@@ -2,7 +2,8 @@
 // Owner: Eashvar. One shortlisted spot on 11 Group voting: photo, name, category, rating,
 // price and match %, its live tally (bar, votes and % of votes cast, avatars of who voted for it),
 // and a vote button that shows "✓ Your vote" when it's my choice and "Saving…" while this vote is
-// being saved. Emits vote(spotId). A photo that fails to load (e.g. Google refuses it) shows the
+// being saved. Emits vote(spotId); tapping "✓ Your vote" again emits it too, and the page takes the
+// vote back (Surya). A photo that fails to load (e.g. Google refuses it) shows the
 // spot's initial instead, like a spot with no photo.
 import { computed, ref, watch } from 'vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
