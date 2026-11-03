@@ -135,10 +135,8 @@ const selectedFriends = ref([]) // user_ids of the ticked friends
 const friendsLoading = ref(true)
 const friendsError = ref('')
 
+// (Surya) edit mode loads them too: the host can add more friends on step 0 Details
 async function loadFriends() {
-  if (isEdit) {
-    return // edit mode doesn't pick people (that's on 06)
-  }
   friendsLoading.value = true
   friendsError.value = ''
   try {
@@ -317,6 +315,22 @@ const memberNames = computed(() => {
   return names
 })
 
+// (Surya) Everyone already in the hangout (edit mode), shown as chips and left out of the list
+const members = computed(() => {
+  if (!isEdit || !store.hangout) {
+    return []
+  }
+  return store.members
+})
+
+const memberIds = computed(() => {
+  const ids = []
+  for (const m of members.value) {
+    ids.push(m.user_id)
+  }
+  return ids
+})
+
 async function saveEdit(name) {
   busy.value = true
   try {
@@ -326,6 +340,18 @@ async function saveEdit(name) {
     store.hangout.name = fields.name
     store.hangout.starts_at = fields.starts_at
     store.hangout.vibe = fields.vibe
+    // (Surya) add the friends ticked in "Who's coming?", one by one, like New hangout does.
+    // If one fails, the rest are still added (and they can join with the Invite link).
+    if (selectedFriends.value.length > 0) {
+      for (const userId of selectedFriends.value) {
+        try {
+          await addFriendToHangout(editId, userId)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      await store.load(editId) // the step bar and Starting points show them straight away
+    }
     router.push(backTo.value)
   } catch (e) {
     error.value = e.message || 'Couldn’t save the changes. Please try again.'
@@ -405,12 +431,13 @@ const visibleFriends = computed(() => {
 
 const shownFriends = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
-  if (text === '') {
-    return friends.value
-  }
   const result = []
   for (const f of friends.value) {
-    if (f.display_name.toLowerCase().includes(text)) {
+    // (Surya) edit mode: people already in the hangout show as chips above, not in the list
+    if (memberIds.value.includes(f.user_id)) {
+      continue
+    }
+    if (text === '' || f.display_name.toLowerCase().includes(text)) {
       result.push(f)
     }
   }
@@ -444,9 +471,10 @@ async function searchEveryone() {
     }
     const result = []
     for (const person of found) {
-      // skip yourself and people already in your list
+      // skip yourself, people already in your list, and (edit mode) people already in the hangout
       const isMe = auth.user && person.user_id === auth.user.id
-      if (!isMe && !friends.value.find((f) => f.user_id === person.user_id)) {
+      const inHangout = memberIds.value.includes(person.user_id)
+      if (!isMe && !inHangout && !friends.value.find((f) => f.user_id === person.user_id)) {
         result.push(person)
       }
     }
@@ -882,23 +910,23 @@ async function submit() {
       </section>
 
       <div class="side">
-        <!-- (Surya) edit mode: people are added and removed on 06 -->
-        <section v-if="isEdit" class="panel">
-          <h2 class="panel__title mb-1">Who’s coming</h2>
-          <p class="mb-2">{{ memberNames.join(', ') }}</p>
-          <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
-            Add or remove people on Starting points →
-          </RouterLink>
-        </section>
-
-        <!-- Who's coming? Ticked friends are added when the hangout is created -->
-        <section v-else class="panel">
+        <!-- Who's coming? Ticked friends are added when the hangout is created, or (edit mode)
+             when the host saves the changes -->
+        <section class="panel">
           <div class="d-flex justify-content-between align-items-baseline gap-2">
             <h2 class="panel__title mb-1">Who’s coming?</h2>
             <span v-if="selectedPeople.length > 0" class="small text-secondary"
               >{{ selectedPeople.length }} picked</span
             >
           </div>
+
+          <!-- (Surya) edit mode: everyone already in, as chips without ✕ (removing is on 06) -->
+          <ul v-if="members.length > 0" class="picked" aria-label="Already in this hangout">
+            <li v-for="m in members" :key="m.user_id" class="picked__chip">
+              <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="24" />
+              <span class="picked__name">{{ m.display_name }}</span>
+            </li>
+          </ul>
 
           <!-- Picked friends first, as chips (✕ to remove), then the list to pick from -->
           <ul v-if="selectedPeople.length > 0" class="picked" aria-label="Picked friends">
@@ -916,7 +944,13 @@ async function submit() {
             </li>
           </ul>
 
-          <p class="panel__sub">
+          <p v-if="isEdit" class="panel__sub">
+            Everyone above is already in. Tick friends to add them when you save.
+            <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
+              Remove someone on Starting points →
+            </RouterLink>
+          </p>
+          <p v-else class="panel__sub">
             Tick your friends and they’re added straight away. Anyone else can join with the Invite
             link on the next page.
           </p>
@@ -1022,7 +1056,7 @@ async function submit() {
             <dt>Vibe</dt>
             <dd>{{ vibeSummary }}</dd>
             <dt>Who</dt>
-            <dd v-if="isEdit">{{ memberNames.join(', ') }}</dd>
+            <dd v-if="isEdit">{{ [...memberNames, ...selectedNames].join(', ') }}</dd>
             <dd v-else>
               You<template v-if="selectedNames.length > 0"
                 >, {{ selectedNames.join(', ') }}</template
