@@ -12,6 +12,7 @@ import {
   HANGOUT_STARTED,
 } from './helpers/clock.js'
 import { signUp, skipOnboarding } from './helpers/onboarding.js'
+import { closeTheVote } from './helpers/vote.js'
 
 const cafe = 'Mock Cafe (sample data)'
 const hawker = 'Mock Hawker Centre (sample data)'
@@ -32,8 +33,7 @@ test('the host closes the vote and the final plan shows the winner', async ({ pa
   await setTime(page, VOTING_OPEN)
   await page.goto('/hangouts/demo/vote')
 
-  await page.getByRole('button', { name: 'Close vote' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+  await closeTheVote(page)
 
   await expect(page).toHaveURL('/hangouts/demo/plan')
   await expect(page.getByText('Confirmed spot')).toBeVisible()
@@ -100,8 +100,7 @@ test('before the vote closes, the final plan shows the leader as not confirmed',
 test('once the hangout has started, the host can mark it done', async ({ page }) => {
   await setTime(page, HANGOUT_STARTED)
   await page.goto('/hangouts/demo/vote')
-  await page.getByRole('button', { name: 'Close vote' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+  await closeTheVote(page)
 
   await page.getByRole('button', { name: 'Mark as done' }).click()
 

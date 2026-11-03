@@ -446,17 +446,12 @@ const withFriend = computed(() => {
 // Search: type a name to filter your friends
 const friendSearch = ref('')
 
-// (Surya) Only the first 5 friends show (the ones you hang out with most). Searching shows every
-// friend who matches, plus anyone else on Fairpoint (below).
+// (Surya) Not searching: only the first 5 friends show (the ones you hang out with most).
+// Searching shows one list of everyone who matches (searchRows, below).
 const FIRST_FRIENDS = 5
 const searching = computed(() => friendSearch.value.trim() !== '')
 
-const visibleFriends = computed(() => {
-  if (searching.value) {
-    return shownFriends.value
-  }
-  return shownFriends.value.slice(0, FIRST_FRIENDS)
-})
+const visibleFriends = computed(() => shownFriends.value.slice(0, FIRST_FRIENDS))
 
 const shownFriends = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()

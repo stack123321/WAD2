@@ -4,6 +4,7 @@
 // sample hangouts and any email and password signs up.
 import { test, expect } from '@playwright/test'
 import { signUp, skipOnboarding } from './helpers/onboarding.js'
+import { closeTheVote } from './helpers/vote.js'
 
 const pages = [
   ['/', 'Meet halfway.'],
@@ -49,8 +50,7 @@ test('new hangout: from the landing page to the final plan', async ({ page }) =>
   await expect(h1).toContainText('Spots near')
 
   await page.goto('/hangouts/demo/vote')
-  await page.getByRole('button', { name: 'Close vote' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+  await closeTheVote(page)
   await expect(h1).toHaveText('Final plan & itinerary')
 })
 
