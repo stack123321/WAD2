@@ -16,7 +16,6 @@ import { reverseGeocode } from '@/services/onemap'
 import { getMyHangouts, updateMemberStart } from '@/services/hangouts'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
-import PastFriends from '@/components/start/PastFriends.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
 
@@ -119,9 +118,6 @@ const showLastPlace = computed(() => {
   return me.value.start_label !== lastPlace.value.label
 })
 
-// Part (h) "Add friends" starts folded away (most people add friends when creating the hangout)
-const showAddFriends = ref(false)
-
 // Part (b) Host mode
 // When friends don't add their own (switched off on 05, saved as friends_add_start), the host
 // enters everyone's. 05 also sends the host here with ?entry=host straight after creating it.
@@ -150,14 +146,6 @@ function toggleFillIn() {
     startEditing(me.value) // done filling in: back to your own starting point
   }
 }
-
-// The logged-in host of a real (saved) hangout: can add friends from past hangouts
-const isRealHost = computed(() => {
-  if (!store.hangout || !auth.user || route.params.id === 'demo') {
-    return false
-  }
-  return store.hangout.host_id === auth.user.id
-})
 
 // Whose starting point the search box and the draggable pin are setting:
 // you (targetId is null), or in host mode the friend you picked with Set / Change.
@@ -547,27 +535,6 @@ const savedText = computed(() => {
             Add your starting point to continue. Friends can add theirs later.
           </p>
         </template>
-
-        <!-- Host only: add more people, folded away (most are added when creating the hangout) -->
-        <div v-if="isRealHost">
-          <button
-            type="button"
-            class="btn btn-link add-toggle"
-            :aria-expanded="showAddFriends"
-            aria-controls="add-friends"
-            @click="showAddFriends = !showAddFriends"
-          >
-            {{ showAddFriends ? 'Hide add friends ▴' : '+ Add friends ▾' }}
-          </button>
-          <PastFriends
-            v-if="showAddFriends"
-            id="add-friends"
-            class="mt-2"
-            :hangout="store.hangout"
-            :my-id="myId"
-            @added="store.load(route.params.id)"
-          />
-        </div>
       </div>
 
       <!-- Right: shared map -->
@@ -627,14 +594,6 @@ const savedText = computed(() => {
   font-weight: 600;
   text-align: left;
   overflow-wrap: anywhere;
-}
-
-/* "+ Add friends ▾" */
-.add-toggle {
-  min-height: 44px;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
 }
 
 .panel {

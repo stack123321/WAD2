@@ -231,7 +231,7 @@ export async function removeMember(hangoutId, userId) {
 
 /**
  * Everyone you've been in a hangout with: one entry per person, most hangouts together first.
- * Used by 06 Starting points ("Friends from past hangouts").
+ * Used by 05 New hangout and step 0 Details ("Who's coming?") and friend groups.
  * @param {string} myId the logged-in user, left out of the list
  * @returns {Promise<Array<{ user_id: string, display_name: string, avatar_color: string | null, together: number }>>}
  */
