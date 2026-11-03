@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 
 test('Delete my account is not shown during setup after sign up', async ({ page }) => {
   await page.goto('/preferences?setup=1')
-  await expect(page.getByRole('button', { name: 'Get started' })).toBeVisible()
+  await expect(page.getByText('Step 1 of 4')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Delete my account' })).toHaveCount(0)
 })
 

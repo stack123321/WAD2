@@ -17,7 +17,6 @@ test('signing up on the way to New hangout shows the setup first, then New hango
   await page.goto('/login?mode=signup&redirect=/hangouts/new')
   await createAccount(page)
   await expect(page).toHaveURL('/preferences?setup=1&next=/hangouts/new')
-  await page.getByRole('button', { name: 'Get started' }).click()
   for (let step = 1; step <= 4; step++) {
     await expect(page.getByText(`Step ${step} of 4`)).toBeVisible()
     await page.getByRole('button', { name: 'Skip for now' }).click()
@@ -27,7 +26,6 @@ test('signing up on the way to New hangout shows the setup first, then New hango
 
 test('the setup never sends you to another website', async ({ page }) => {
   await page.goto('/preferences?setup=1&next=//example.com')
-  await page.getByRole('button', { name: 'Get started' }).click()
   for (let step = 1; step <= 4; step++) {
     await expect(page.getByText(`Step ${step} of 4`)).toBeVisible()
     await page.getByRole('button', { name: 'Skip for now' }).click()
