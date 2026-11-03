@@ -20,6 +20,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import {
   castVote,
   closeVote,
@@ -58,6 +60,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout)
 
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
@@ -462,6 +465,8 @@ onUnmounted(() => {
           Couldn't load this hangout. Check the link, or go back to
       <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
         </div>
+
+        <MissingPrerequisite v-else-if="missingStep" :hangout-id="String(hangoutId)" :step="missingStep" />
 
         <template v-else-if="hangout">
           <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>

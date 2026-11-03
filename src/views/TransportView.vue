@@ -18,12 +18,15 @@
   import { hasSupabase } from '@/services/supabase'
   import PersonModeRow from '@/components/transport/PersonModeRow.vue'
   import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+  import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+  import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 
   const route = useRoute()
   const router = useRouter()
   const optimiseFor = ref('fairest')
   const ranked = ref([])
   const store = useHangoutStore()
+  const missingStep = useHangoutPrerequisites(() => store.hangout, ['starting-points']).missingStep
   const missingMode = computed(() => store.members.filter((m) => !m.mode))
 
 
@@ -326,6 +329,10 @@
         Couldn't load this hangout. Check the link, or go back to
         <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
       </div>
+    </div>
+
+    <div v-else-if="missingStep" class="container py-4">
+      <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
     </div>
 
     <section v-else-if="store.hangout" class="container py-4">

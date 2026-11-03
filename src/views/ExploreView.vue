@@ -15,20 +15,9 @@
     </div>
   </div>
   <!-- reached from the step bar before a midpoint has been picked: no filters, map or shortlist to show yet -->
-  <main v-else-if="noMidpoint" class="container py-4">
-    <h1 class="page-title mb-3">Spots near the midpoint</h1>
-    <div class="alert alert-info" role="status">
-      <p class="mb-2">
-        No midpoint yet. Pick one first, then Fairpoint finds cafes, activities and restaurants near it.
-      </p>
-      <router-link
-        :to="{ name: 'midpoint', params: { id: route.params.id } }"
-        class="btn btn-primary btn-sm"
-      >
-        Go to midpoint →
-      </router-link>
-    </div>
-  </main>
+  <div v-else-if="missingStep" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
+  </div>
 
   <div
     v-else
@@ -429,11 +418,14 @@ import {
 } from '@/utils/matchScore'
 import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
+const { missingStep } = useHangoutPrerequisites(() => hangout.hangout)
 
 // Filters, sort and Ask results are kept until a different hangout is opened
 const remembered = useExploreMemory(route.params.id)
@@ -445,11 +437,6 @@ const hasMidpoint = computed(
   () =>
     hangout.hangout?.midpoint_lat != null &&
     hangout.hangout?.midpoint_lng != null,
-)
-
-// The hangout has loaded but nobody has picked a midpoint yet, so there is nothing to search around
-const noMidpoint = computed(
-  () => hangout.hangout !== null && !hangout.loading && !hasMidpoint.value,
 )
 
 // Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.

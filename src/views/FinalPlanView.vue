@@ -13,6 +13,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import { isMockHangout, markHangoutDone, reopenVote } from '@/services/votes'
 import SpotHero from '@/components/shared/SpotHero.vue'
 import TripTable from '@/components/shared/TripTable.vue'
@@ -36,6 +38,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout)
 
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
@@ -193,6 +196,8 @@ onUnmounted(() => clearInterval(timer))
       Couldn't load this hangout. Check the link, or go back to
       <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
     </div>
+
+    <MissingPrerequisite v-else-if="missingStep" :hangout-id="String(hangoutId)" :step="missingStep" />
 
     <div v-else-if="hangout && !spot" class="alert alert-info">
       Nothing has been shortlisted yet, so there's no plan to show.

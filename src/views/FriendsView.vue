@@ -18,6 +18,8 @@ import {
 import { getOrCreateDirectChat } from '@/services/directChats'
 import AddToHangout from '@/components/friends/AddToHangout.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import PaginationNav from '@/components/shared/PaginationNav.vue'
+import { usePagination } from '@/composables/usePagination'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -89,6 +91,7 @@ async function search() {
   searching.value = true // also disables the search button
   try {
     results.value = await searchPeople(query.value.trim()) // trim() drops spaces at either end
+    resultsPaging.page.value = 1
     searched.value = true
   } catch (err) {
     console.error(err)
@@ -119,6 +122,11 @@ const sortedResults = computed(() => {
   const others = results.value.filter((p) => statusOf(p.user_id) !== 'friend')
   return mine.concat(others) // friends, then everyone else
 })
+
+// 6 people per page in each list
+const resultsPaging = usePagination(sortedResults)
+const pendingPaging = usePagination(pending)
+const friendsPaging = usePagination(friends)
 
 // each action below clears the old messages, saves the change, reloads the lists, then says what happened.
 async function addFriend(person) {
@@ -231,7 +239,7 @@ async function remove() {
     <!-- search results, only after a search: each row shows what i can do with that person -->
     <section v-if="searched" id="search-results" class="box mb-4">
       <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
-      <div v-for="p in sortedResults" :key="p.user_id" class="person">
+      <div v-for="p in resultsPaging.pageItems.value" :key="p.user_id" class="person">
         <span class="name">{{ p.display_name }}</span>
         <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
         <template v-if="statusOf(p.user_id) === 'friend'">
@@ -265,6 +273,10 @@ async function remove() {
           Add Friend
         </button>
       </div>
+      <p v-if="results.length > 0" class="text-muted small text-center mt-2 mb-0">
+        {{ resultsPaging.rangeText.value }}
+      </p>
+      <PaginationNav v-model="resultsPaging.page.value" :page-count="resultsPaging.pageCount.value" label="search results" />
     </section>
 
     <!-- what the last action did: red if it failed, green tick if it worked -->
@@ -292,9 +304,13 @@ async function remove() {
       <section id="pending" class="box mb-4">
         <h2 class="h6 fw-bold mb-2">Pending</h2>
         <p v-if="pending.length === 0" class="text-muted small mb-0">No requests waiting.</p>
-        <div v-for="p in pending" :key="p.user_id" class="person">
+        <div v-for="p in pendingPaging.pageItems.value" :key="p.user_id" class="person">
           <span class="name">{{ p.display_name }}</span>
         </div>
+        <p v-if="pending.length > 0" class="text-muted small text-center mt-2 mb-0">
+          {{ pendingPaging.rangeText.value }}
+        </p>
+        <PaginationNav v-model="pendingPaging.page.value" :page-count="pendingPaging.pageCount.value" label="pending" />
       </section>
 
       <section id="my-friends" class="box">
@@ -302,7 +318,7 @@ async function remove() {
         <p v-if="friends.length === 0" class="text-muted small mb-0">
           No friends yet. Search above to add some.
         </p>
-        <div v-for="f in friends" :key="f.user_id" class="person">
+        <div v-for="f in friendsPaging.pageItems.value" :key="f.user_id" class="person">
           <span class="name">{{ f.display_name }}</span>
           <AddToHangout class="ms-auto" :friend="f" :hangouts="openHangouts" @add="addToHangout" />
           <button
@@ -338,6 +354,10 @@ async function remove() {
             </ul>
           </div>
         </div>
+        <p v-if="friends.length > 0" class="text-muted small text-center mt-2 mb-0">
+          {{ friendsPaging.rangeText.value }}
+        </p>
+        <PaginationNav v-model="friendsPaging.page.value" :page-count="friendsPaging.pageCount.value" label="friends" />
       </section>
     </template>
 

@@ -16,10 +16,14 @@ import { willRainAt } from '@/services/weather'
 import { getRoute } from '@/services/routing'
 import { getPublicHoliday } from '@/services/holidays'
 import { openingHoursOn } from '@/utils/openingHours'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 
 const route = useRoute()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
+const cameFromMidpoint = route.query.from === 'midpoint'
+const { missingStep } = useHangoutPrerequisites(() => hangout.hangout)
 const { error: shortlistError, isAdded, isMine, addSpot, removeSpot } = useShortlist(
   () => route.params.id,
 )
@@ -257,11 +261,14 @@ const reasons = computed(() =>
 </script>
 
 <template>
-  <main class="container spot">
+  <div v-if="missingStep" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
+  </div>
+  <main v-else class="container spot">
     <header class="spot__nav">
       <RouterLink
         class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
-        :to="{ name: 'explore', params: { id: route.params.id } }"
+        :to="{ name: cameFromMidpoint ? 'midpoint' : 'explore', params: { id: route.params.id } }"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -278,7 +285,7 @@ const reasons = computed(() =>
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="12 19 5 12 12 5" />
         </svg>
-        Back to exploring
+        {{ cameFromMidpoint ? 'Back to midpoint' : 'Back to exploring' }}
       </RouterLink>
     </header>
 
