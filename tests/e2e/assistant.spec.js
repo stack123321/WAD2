@@ -9,6 +9,9 @@ import { setTime, VOTING_OPEN } from './helpers/clock.js'
 import { place, stubPlaces } from './helpers/places.js'
 
 const askBox = (page) => page.getByRole('textbox', { name: 'Ask for something specific' })
+// (Surya) on a laptop the Ask box is a pop-up: open it with the Ask button first
+const askButton = (page) => page.getByRole('button', { name: 'Ask for something specific' })
+const openAsk = (page) => askButton(page).click()
 const reply = 'Sample results for "prata for dinner" near Bishan'
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -26,18 +29,23 @@ test.beforeEach(async ({ page }, testInfo) => {
 })
 
 test('asking shows a reply for the request', async ({ page }) => {
+  await openAsk(page)
   await askBox(page).fill('prata for dinner')
 
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
 
-  await expect(page.getByText(reply)).toBeVisible()
+  // the pop-up closes so the cards show the results; the Ask button counts them
+  await expect(askButton(page)).toContainText('Need an idea? ·')
   await expect(page.getByRole('button', { name: 'Reset', exact: true })).toBeVisible()
+  await openAsk(page)
+  await expect(page.getByText(reply)).toBeVisible()
 })
 
 test('"Reset" goes back to the usual list', async ({ page }) => {
+  await openAsk(page)
   await askBox(page).fill('prata for dinner')
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
-  await expect(page.getByText(reply)).toBeVisible()
+  await expect(askButton(page)).toContainText('Need an idea? ·')
 
   await page.getByRole('button', { name: 'Reset', exact: true }).click()
 
