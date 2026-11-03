@@ -44,6 +44,7 @@ import { useAuthStore } from '@/stores/auth'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
+import { sortPeople } from '@/utils/peopleSearch'
 
 const route = useRoute()
 const router = useRouter()
@@ -527,16 +528,6 @@ function statusOf(userId) {
   return 'none'
 }
 
-// 0 if the name, or a word in it, starts with what you typed, else 1
-function matchRank(name, text) {
-  for (const word of name.toLowerCase().split(' ')) {
-    if (word.startsWith(text)) {
-      return 0
-    }
-  }
-  return 1
-}
-
 const searchRows = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
   let myId = null
@@ -553,22 +544,9 @@ const searchRows = computed(() => {
       continue
     }
     seen.push(p.user_id)
-    rows.push({ ...p, status: statusOf(p.user_id), rank: matchRank(p.display_name, text) })
+    rows.push({ ...p, status: statusOf(p.user_id) })
   }
-  rows.sort((a, b) => {
-    if (ORDER[a.status] !== ORDER[b.status]) {
-      return ORDER[a.status] - ORDER[b.status]
-    }
-    if (a.rank !== b.rank) {
-      return a.rank - b.rank
-    }
-    const together = (b.together ?? 0) - (a.together ?? 0)
-    if (together !== 0) {
-      return together
-    }
-    return a.display_name.localeCompare(b.display_name)
-  })
-  return rows
+  return sortPeople(rows, text, ORDER) // utils/peopleSearch.js
 })
 
 // (Surya) Search everyone on Fairpoint as you type (no extra button to press). It waits until

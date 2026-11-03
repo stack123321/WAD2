@@ -2,7 +2,7 @@
 // Friends
 // Owner: Ryan
 // friends: search, send and accept requests, see pending and my friends (data: services/friends.js)
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAlertsStore } from '@/stores/alerts'
@@ -20,6 +20,7 @@ import AddToHangout from '@/components/friends/AddToHangout.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import PaginationNav from '@/components/shared/PaginationNav.vue'
 import { usePagination } from '@/composables/usePagination'
+import { sortPeople } from '@/utils/peopleSearch'
 
 const auth = useAuthStore()
 const alerts = useAlertsStore()
@@ -77,27 +78,41 @@ onMounted(async () => {
 const query = ref('') // what's typed in the search box
 const results = ref([]) // people found, [{ user_id, display_name, avatar_color }]
 const searched = ref(false) // true after the first search, so "no one found" only shows then
+const searchedText = ref('') // (Surya) what the results are for
 const searching = ref(false)
 const searchError = ref('')
 
-async function search() {
-  if (searching.value) return // already searching, so ignore a second press
+// (Surya) pressing Search (or Enter) says when the text is too short; typing just waits quietly
+async function search(sayIfTooShort = true) {
+  const text = query.value.trim() // trim() drops spaces at either end
   searchError.value = ''
   // 1 letter would match almost everyone, so ask for at least 2
-  if (query.value.trim().length < 2) {
-    searchError.value = 'Type at least 2 letters of a name, or a full email.'
+  if (text.length < 2) {
+    if (sayIfTooShort) {
+      searchError.value = 'Type at least 2 letters of a name, or a full email.'
+    } else {
+      results.value = []
+      searched.value = false
+    }
     return
   }
   searching.value = true // also disables the search button
   try {
-    results.value = await searchPeople(query.value.trim()) // trim() drops spaces at either end
+    const found = await searchPeople(text)
+    // (Surya) you kept typing while this search ran: a newer search will show its own results
+    if (text !== query.value.trim()) {
+      return
+    }
+    results.value = found
+    searchedText.value = text
     resultsPaging.page.value = 1
     searched.value = true
   } catch (err) {
     console.error(err)
     searchError.value = 'Could not search right now. Try again in a moment.'
+  } finally {
+    searching.value = false // also runs after the early return above
   }
-  searching.value = false
 }
 
 // empty the search box and hide the results, after adding or accepting someone from them
@@ -116,11 +131,38 @@ function statusOf(userId) {
   return 'none' // a stranger
 }
 
-// friends first, since with a long list most searches are to find a friend to invite
+// (Surya) Search as you type: it waits until you stop typing for a moment, so it doesn't search
+// after every letter. Search and Enter still work too.
+let searchTimer = null
+watch(query, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => search(false), 400)
+})
+
+// (Surya) One list, closest people first (like Instagram, the same rules as "Who's coming?" on
+// New hangout): friends, then people who asked you, people you asked, then everyone else; inside
+// each, names that start with what you typed first, then A to Z (utils/peopleSearch.js).
+// Friends and requests come from this page's own lists, so every match shows, not just the ones
+// in the database's 10 results.
+const SEARCH_ORDER = { friend: 0, request: 1, pending: 2, none: 3 }
+
 const sortedResults = computed(() => {
-  const mine = results.value.filter((p) => statusOf(p.user_id) === 'friend')
-  const others = results.value.filter((p) => statusOf(p.user_id) !== 'friend')
-  return mine.concat(others) // friends, then everyone else
+  const text = searchedText.value.toLowerCase()
+  const rows = []
+  const seen = [] // each person once
+  for (const p of [...friends.value, ...requests.value, ...pending.value, ...results.value]) {
+    if (seen.includes(p.user_id)) {
+      continue
+    }
+    // my own lists are filtered here; the database's results already match (by name or email)
+    const fromDatabase = results.value.includes(p)
+    if (!fromDatabase && !p.display_name.toLowerCase().includes(text)) {
+      continue
+    }
+    seen.push(p.user_id)
+    rows.push({ ...p, status: statusOf(p.user_id) })
+  }
+  return sortPeople(rows, text, SEARCH_ORDER)
 })
 
 // 6 people per page in each list
@@ -238,7 +280,7 @@ async function remove() {
 
     <!-- search results, only after a search: each row shows what i can do with that person -->
     <section v-if="searched" id="search-results" class="box mb-4">
-      <p v-if="results.length === 0" class="text-muted small mb-0">No one found.</p>
+      <p v-if="sortedResults.length === 0" class="text-muted small mb-0">No one found.</p>
       <div v-for="p in resultsPaging.pageItems.value" :key="p.user_id" class="person">
         <span class="name">{{ p.display_name }}</span>
         <!-- one of four: friend (add to hangout, chat), requested, accept their request, or add friend -->
@@ -273,7 +315,7 @@ async function remove() {
           Add Friend
         </button>
       </div>
-      <p v-if="results.length > 0" class="text-muted small text-center mt-2 mb-0">
+      <p v-if="sortedResults.length > 0" class="text-muted small text-center mt-2 mb-0">
         {{ resultsPaging.rangeText.value }}
       </p>
       <PaginationNav v-model="resultsPaging.page.value" :page-count="resultsPaging.pageCount.value" label="search results" />
