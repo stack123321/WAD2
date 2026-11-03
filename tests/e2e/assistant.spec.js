@@ -65,7 +65,7 @@ test('on a phone the Ask toggle opens over the cards and closes after a search',
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
 
   await expect(askBox(page)).toBeHidden()
-  await expect(toggle).toContainText('Ask ·')
+  await expect(toggle).toContainText('Need an idea? ·')
 
   const reset = page.getByRole('button', { name: 'Reset Ask results' })
   await expect(reset).toBeVisible()

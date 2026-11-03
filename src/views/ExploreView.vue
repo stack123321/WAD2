@@ -71,12 +71,12 @@
           aria-controls="explore-ask"
           :aria-label="
             askedSpots
-              ? `Ask for something specific, ${askedSpots.length} found`
-              : 'Ask for something specific'
+              ? `Need an idea? Ask for something specific, ${askedSpots.length} found`
+              : 'Need an idea? Ask for something specific'
           "
           @click="toggleMobilePanel('ask')"
         >
-          {{ askedSpots ? `Ask · ${askedSpots.length}` : 'Ask' }}
+          {{ askedSpots ? `Need an idea? · ${askedSpots.length}` : 'Need an idea?' }}
         </button>
         <button
           v-if="shortlisted.length < 2"
@@ -1233,9 +1233,16 @@ async function selectSpot(id) {
     height: 100%;
   }
 
+  /* title and buttons on top, the spots card fills the rest */
   .main-col {
-    display: block;
+    display: flex;
+    flex-direction: column;
     height: 100%;
+  }
+
+  .main-col > :deep(.cards-carousel) {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .explore-status {
@@ -1251,31 +1258,27 @@ async function selectSpot(id) {
     pointer-events: none;
   }
 
+  /* on the off-white page above the card, not over the photo */
   .head {
-    position: absolute;
-    z-index: 3;
-    top: 0;
-    left: 0;
-    right: 0;
-    align-items: flex-end;
-    padding: 1rem 1rem 0;
-    pointer-events: none;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0.75rem;
   }
 
   .cards-title {
-    max-width: calc(100% - 5rem);
-    color: var(--fp-white);
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-left: 3.25rem; /* room for the ☰ button */
     font-size: 1.25rem;
-    text-align: right;
-    text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
   }
 
   .mobile-spots-controls {
     position: static;
     align-self: flex-end;
     display: flex;
-    gap: 0.5rem;
-    pointer-events: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.375rem;
   }
 
   .mobile-vote-action {
@@ -1299,15 +1302,17 @@ async function selectSpot(id) {
     width: 44px;
     height: 44px;
     padding: 0;
-    border: 0;
+    border: 1px solid var(--fp-border);
     border-radius: 50%;
-    background: rgb(0 0 0 / 45%);
-    color: var(--fp-white);
+    background: var(--fp-surface);
+    color: var(--fp-ink);
     cursor: pointer;
   }
 
   .mobile-menu-toggle[aria-expanded='true'] {
+    border-color: var(--fp-primary);
     background: var(--fp-primary);
+    color: var(--fp-white);
   }
 
   .hamburger-icon {
@@ -1323,11 +1328,29 @@ async function selectSpot(id) {
     background: currentColor;
   }
 
+  /* Spots, Map and Shortlist in a white pop-up under the ☰ button */
   .mobile-toggle-menu {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    min-width: 10rem;
+    padding: 0.375rem;
+    border: 1px solid var(--fp-border);
+    border-radius: var(--fp-radius-sm);
+    background: var(--fp-surface);
+    box-shadow: var(--fp-shadow);
+  }
+
+  .mobile-toggle-menu .mobile-view-toggle {
+    justify-items: start;
+    border-radius: var(--fp-radius-sm);
+    background: transparent;
+    color: var(--fp-ink);
+  }
+
+  .mobile-toggle-menu .mobile-view-toggle[aria-expanded='true'] {
+    background: var(--fp-primary);
+    color: var(--fp-white);
   }
 
   .mobile-filter-toggle,
@@ -1352,6 +1375,28 @@ async function selectSpot(id) {
   .mobile-ask-toggle[aria-expanded='true'],
   .mobile-view-toggle[aria-expanded='true'] {
     background: var(--fp-primary);
+  }
+
+  /* Filters, "Need an idea?" and Reset in solid green, like the laptop buttons */
+  .mobile-spots-controls .mobile-filter-toggle,
+  .mobile-spots-controls .mobile-ask-reset,
+  .mobile-spots-controls .mobile-ask-toggle {
+    padding: 0 0.75rem;
+    border: 1px solid var(--fp-primary);
+    border-radius: var(--fp-radius-sm);
+    background: var(--fp-primary);
+    white-space: nowrap;
+  }
+
+  .mobile-vote-action {
+    white-space: nowrap;
+  }
+
+  .mobile-spots-controls .mobile-filter-toggle:hover,
+  .mobile-spots-controls .mobile-ask-reset:hover,
+  .mobile-spots-controls .mobile-ask-toggle:hover {
+    border-color: var(--fp-primary-dark);
+    background: var(--fp-primary-dark);
   }
 
   .nearby-page .ask-panel {
@@ -1402,7 +1447,7 @@ async function selectSpot(id) {
   }
 
   .filters {
-    top: 6.25rem;
+    top: 7.5rem;
   }
 
   .filters.is-mobile-visible {

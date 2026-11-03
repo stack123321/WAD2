@@ -133,7 +133,7 @@ defineExpose({ scrollToIndex })
 
   .cards-carousel__arrow {
     position: absolute;
-    top: 50%;
+    top: 35%; /* on the photo, which ends above the details */
     z-index: 3;
     display: grid;
     place-items: center;
@@ -149,11 +149,11 @@ defineExpose({ scrollToIndex })
   }
 
   .cards-carousel__arrow--previous {
-    left: 0.75rem;
+    left: 1.5rem;
   }
 
   .cards-carousel__arrow--next {
-    right: 0.75rem;
+    right: 1.5rem;
   }
 
   .cards-carousel__arrow:disabled {
@@ -172,32 +172,23 @@ defineExpose({ scrollToIndex })
     scroll-snap-align: start;
   }
 
+  /* an off-white card: the photo in a rounded frame, with the details under it */
   :deep(.spot-card) {
-    position: relative;
     height: 100%;
+    padding: 0 1rem 1rem;
     border: 0;
     border-radius: 0;
-    background: var(--fp-black);
+    background: var(--fp-bg);
   }
 
   :deep(.spot-card__image) {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    border: 1px solid var(--fp-border);
+    border-radius: var(--fp-radius);
+    overflow: hidden;
     aspect-ratio: auto;
-  }
-
-  :deep(.spot-card__image::after) {
-    content: '';
-    position: absolute;
-    top: 35%;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 72%));
-    pointer-events: none;
   }
 
   :deep(.spot-card__image img) {
@@ -205,17 +196,9 @@ defineExpose({ scrollToIndex })
   }
 
   :deep(.spot-card__body) {
-    position: absolute;
-    z-index: 1;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    max-height: 72%;
-    padding: rem 1rem 1.5rem;
-    background: linear-gradient(to bottom, rgba(30, 29, 29, 0), rgba(63, 63, 63, 0.58));
-    color: var(--fp-white);
-    text-shadow: 0 1px 4px rgb(0 0 0 / 85%);
+    flex: 0 0 auto;
+    max-height: 45%;
+    padding: 0.75rem 0 0;
   }
 
   :deep(.spot-card__details) {
@@ -230,17 +213,6 @@ defineExpose({ scrollToIndex })
     flex: 0 0 auto;
   }
 
-  :deep(.spot-card__link),
-  :deep(.spot-card__rating),
-  :deep(.spot-card__meta),
-  :deep(.spot-card__price) {
-    color: var(--fp-white);
-  }
-
-  :deep(.spot-card__match) {
-    text-shadow: none;
-  }
-
   :deep(.spot-card__tags) {
     flex-wrap: wrap;
     margin-top: 5px;
@@ -252,16 +224,8 @@ defineExpose({ scrollToIndex })
     display: none;
   }
 
-  :deep(.spot-card__tag) {
-    border-color: rgb(255 255 255 / 70%);
-    background: transparent;
-    color: var(--fp-white);
-    text-shadow: none;
-  }
-
   :deep(.spot-card .btn) {
     align-self: flex-start;
-    text-shadow: none;
   }
 }
 </style>
