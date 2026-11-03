@@ -39,9 +39,9 @@ const dietaryOptions = [
 ]
 
 const budgetOptions = [
-  { value: 1, symbol: '$', label: 'Under $15' },
-  { value: 2, symbol: '$$', label: '$15–30' },
-  { value: 3, symbol: '$$$', label: '$30+' },
+  { value: 1, label: 'Under $15' },
+  { value: 2, label: '$15–30' },
+  { value: 3, label: '$30+' },
 ]
 
 const comfortOptions = [
@@ -154,8 +154,6 @@ const noRestrictions = computed(() => prefs.dietary.length === 0)
 // (Surya) setup opens straight on step 1 (no "Get started" screen first)
 const setupStep = ref(1)
 const setupTotal = 4
-// (Surya) what each setup step asks about, shown beside "Step 2 of 4"
-const setupStepNames = ['What you enjoy', 'Food', 'Budget', 'Travel & comfort']
 const setupStepLabel = computed(() => `Step ${setupStep.value} of ${setupTotal}`)
 
 async function nextSetupStep() {
@@ -301,7 +299,6 @@ async function confirmDelete() {
     >
       <div class="progress-step__text">
         <span class="progress-step__label">{{ setupStepLabel }}</span>
-        <span class="progress-step__name">{{ setupStepNames[setupStep - 1] }}</span>
       </div>
       <div class="progress-step__segs" aria-hidden="true">
         <span
@@ -423,7 +420,7 @@ async function confirmDelete() {
                 :aria-checked="prefs.budget === o.value"
                 @click="prefs.budget = o.value"
               >
-                {{ o.symbol }} {{ o.label }}
+                {{ o.label }}
               </button>
             </div>
           </section>
@@ -622,10 +619,6 @@ async function confirmDelete() {
 .progress-step__label {
   font-weight: 700;
   color: var(--fp-ink);
-}
-
-.progress-step__name {
-  color: var(--fp-muted);
 }
 
 /* one segment per step */
