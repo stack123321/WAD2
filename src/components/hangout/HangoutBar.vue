@@ -2,8 +2,8 @@
 // Owner: Surya. The bar under the navbar on pages 06–12 (Figma): hangout name, date, the 6 steps
 // with the current one highlighted, everyone's avatars, and an Invite button that copies the
 // hangout's invite link (for people who aren't your friends yet). Each step links to its page.
-// (Surya) A 💬 Chat button opens the group chat from any step, with the count of new messages.
-// On 06 it opens 06's chat side panel (so the map stays in view), elsewhere the chat page.
+// (Surya) A 💬 button opens the group chat from any step, with the count of new messages.
+// (Ryan) It opens on top of the step you're on (ChatPopover in App.vue), so you don't leave the page.
 // (Surya) The host also gets step "0 Details" before step 1, in place of the "Get there" label
 // (‹ on step 1 on phones), which opens 05 in edit mode to change the name, date, time or vibe.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
@@ -12,6 +12,7 @@ import { computed, ref } from 'vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import { useAlertsStore } from '@/stores/alerts'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutStore } from '@/stores/hangout'
 
 const props = defineProps({
   hangout: { type: Object, required: true }, // needs id, name, starts_at, invite_code
@@ -92,24 +93,15 @@ const startsAt = computed(() => {
   return `${day} · ${hour}${minutes} ${amPm}`
 })
 
-// (Surya) Group chat: opens the chat page, which then offers "← Back to <this step>". On 06 it
-// adds ?chat=1 to 06's own address instead, and 06 opens its chat panel
+// (Ryan) Group chat: 💬 opens and closes it on top of this step
 const alerts = useAlertsStore()
 const unreadChat = computed(() => alerts.unreadIn(props.hangout.id))
+const store = useHangoutStore()
 
-const chatLink = computed(() => {
-  if (props.current === 'starting-points') {
-    return { name: 'starting-points', params: { id: props.hangout.id }, query: { chat: '1' } }
-  }
-  return { name: 'chat', params: { hangoutId: props.hangout.id }, query: { from: chatFrom.value } }
-})
-
-// The chat page only has a back button for steps, so 10 Spot details goes back as Spots
-const chatFrom = computed(() => {
-  if (props.current === 'spot-details') {
-    return 'explore'
-  }
-  return props.current
+// what the button says to screen readers, since on phones it shows only 💬
+const chatLabel = computed(() => {
+  const action = store.chatOpen ? 'Close group chat' : 'Open group chat'
+  return unreadChat.value > 0 ? `${action}, ${unreadChat.value} new` : action
 })
 
 // Invite: copy the hangout's link. Friends who open it log in and join this hangout.
@@ -237,17 +229,20 @@ async function copyInvite() {
         />
       </div>
       <!-- (Surya) the group chat, from any step; red number = new messages -->
-      <RouterLink
+      <button
+        type="button"
         class="chat-link"
-        :to="chatLink"
-        :aria-label="unreadChat > 0 ? `Group chat, ${unreadChat} new` : 'Group chat'"
+        :aria-expanded="store.chatOpen"
+        aria-controls="chat-pop"
+        :aria-label="chatLabel"
+        @click="store.chatOpen = !store.chatOpen"
       >
         <span aria-hidden="true">💬</span>
-        <span class="chat-link__label">Chat</span>
+        <span class="chat-link__label">{{ store.chatOpen ? 'Close chat' : 'Open chat' }}</span>
         <span v-if="unreadChat > 0" class="chat-badge" aria-hidden="true">{{
           unreadChat > 9 ? '9+' : unreadChat
         }}</span>
-      </RouterLink>
+      </button>
       <button
         v-if="hangout.id !== 'demo'"
         type="button"
@@ -271,6 +266,7 @@ async function copyInvite() {
   gap: 0.3rem;
   min-height: 36px;
   padding: 0 0.75rem;
+  border: 0;
   border-radius: var(--fp-radius-sm);
   background: var(--fp-accent);
   color: var(--fp-ink);
@@ -466,6 +462,13 @@ a.step-arrow:hover {
 @media (max-width: 991.98px) {
   .chat-link {
     min-height: 44px;
+  }
+}
+
+/* (Ryan) phones: just 💬, the bar is tight (the button's aria-label still says what it does) */
+@media (max-width: 767.98px) {
+  .chat-link__label {
+    display: none;
   }
 }
 

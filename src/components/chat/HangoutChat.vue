@@ -4,7 +4,9 @@
 // Usage: <HangoutChat :hangout="store.hangout" />
 //   or a one to one chat: <HangoutChat :direct="chat" /> (/chats/direct/:chatId)
 //   or a friend group's chat: <HangoutChat :group="group" /> (/groups/:id, Eashvar)
-//   optional: :my-id (defaults to the logged-in user), title, :height (px of the message list)
+//   optional: :my-id (defaults to the logged-in user), title, :height (px of the message list, or
+//   (Ryan) any CSS height such as var(--chat-list-height)), and an #actions slot for a button at
+//   the end of the title line (ChatPopover's ✕)
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { getMessages, sendMessage, subscribeToMessages } from '@/services/chat'
 import { useAuthStore } from '@/stores/auth'
@@ -18,7 +20,7 @@ const props = defineProps({
   group: { type: Object, default: null }, // or a friend group: needs id, members
   myId: { type: String, default: null },
   title: { type: String, default: 'Group chat' },
-  height: { type: Number, default: 260 },
+  height: { type: [Number, String], default: 260 }, // px, or any CSS height
 })
 
 // Who I am: given by the page, or the logged-in user
@@ -171,7 +173,10 @@ function timeLabel(message) {
   <section class="chat">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
       <h2 class="h6 fw-bold mb-0">{{ title }}</h2>
-      <span class="small text-secondary">{{ whoSees }}</span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="small text-secondary">{{ whoSees }}</span>
+        <slot name="actions" />
+      </div>
     </div>
 
     <p v-if="isDemo" class="small text-secondary mb-0">
@@ -186,7 +191,7 @@ function timeLabel(message) {
       <div
         ref="listEl"
         class="messages"
-        :style="{ height: height + 'px' }"
+        :style="{ height: typeof height === 'number' ? height + 'px' : height }"
         role="log"
         aria-live="polite"
         aria-label="Chat messages"

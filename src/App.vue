@@ -7,6 +7,7 @@ import { useRoute } from 'vue-router'
 import NavBar from '@/components/ui/NavBar.vue'
 import HangoutBar from '@/components/hangout/HangoutBar.vue'
 import PageDrop from '@/components/ui/PageDrop.vue'
+import ChatPopover from '@/components/chat/ChatPopover.vue'
 import { useHangoutStore } from '@/stores/hangout'
 
 const route = useRoute()
@@ -50,6 +51,13 @@ watchEffect(() => {
       :current="route.name"
     />
   </div>
+  <!-- (Ryan) the group chat on top of the page, opened by 💬 in the step bar. It sits outside
+       .top-bars so it can cover the phone tab bar when it fills the screen -->
+  <ChatPopover
+    v-if="showHangoutBar && store.chatOpen"
+    :hangout="store.hangout"
+    @close="store.chatOpen = false"
+  />
   <!-- each kind of page drops in from above when you go to it -->
   <PageDrop :key="route.name">
     <RouterView />
