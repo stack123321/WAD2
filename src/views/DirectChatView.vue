@@ -31,7 +31,7 @@ onMounted(async () => {
 
 <template>
   <main class="container py-4 chat-page">
-    <router-link :to="{ name: 'chats' }" class="small">← My Chats</router-link>
+    <RouterLink :to="{ name: 'chats' }" class="small">← My Chats</RouterLink>
 
     <p v-if="loading" class="text-muted mt-3">Loading the chat…</p>
     <p v-else-if="error" class="text-danger mt-3">{{ error }}</p>

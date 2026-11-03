@@ -24,6 +24,7 @@ import {
   decisionSummary,
   runnerUp,
 } from '@/utils/voteHelpers'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const store = useHangoutStore()
@@ -68,7 +69,7 @@ const whoCame = computed(() => {
   const names = store.members.map((m) =>
     m.user_id === myId.value ? `${m.display_name} (you)` : m.display_name,
   )
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+  return joinNames(names)
 })
 
 // Everyone except me, ticked on 05 New hangout

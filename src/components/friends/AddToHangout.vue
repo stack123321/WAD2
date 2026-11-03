@@ -22,14 +22,14 @@ const choices = computed(() =>
 
 <template>
   <!-- nothing to add them to: go straight to a new hangout with them, like before -->
-  <router-link
+  <RouterLink
     v-if="choices.length === 0"
     :to="{ name: 'create-hangout', query: { with: friend.user_id } }"
     class="btn btn-primary btn-sm text-nowrap"
     :aria-label="`Add ${friend.display_name} to hangout`"
   >
     Add to hangout
-  </router-link>
+  </RouterLink>
 
   <!-- some to choose from: a menu of them, plus a new hangout at the bottom -->
   <div v-else class="dropdown">
@@ -52,12 +52,12 @@ const choices = computed(() =>
       </li>
       <li><hr class="dropdown-divider" /></li>
       <li>
-        <router-link
+        <RouterLink
           class="dropdown-item"
           :to="{ name: 'create-hangout', query: { with: friend.user_id } }"
         >
           New hangout with {{ friend.display_name }}
-        </router-link>
+        </RouterLink>
       </li>
     </ul>
   </div>

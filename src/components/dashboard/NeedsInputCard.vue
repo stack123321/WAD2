@@ -35,9 +35,9 @@ function whenOf(h) {
         <p class="name">{{ x.hangout.name }}</p>
         <p class="when">{{ whenOf(x.hangout) }}</p>
       </div>
-      <router-link :to="{ name: x.status.page, params: { id: x.hangout.id } }" class="open">
+      <RouterLink :to="{ name: x.status.page, params: { id: x.hangout.id } }" class="open">
         {{ x.status.button }} →
-      </router-link>
+      </RouterLink>
     </div>
     <p v-if="items.length > MAX" class="more">and {{ items.length - MAX }} more in the list</p>
   </section>

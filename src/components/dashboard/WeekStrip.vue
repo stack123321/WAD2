@@ -95,9 +95,9 @@ function summary(count) {
       <span>
         Next free day: <strong>{{ shortDate(freeDay.date) }}</strong>
       </span>
-      <router-link :to="{ name: 'create-hangout', query: { date: freeDay.key } }">
+      <RouterLink :to="{ name: 'create-hangout', query: { date: freeDay.key } }">
         Start planning →
-      </router-link>
+      </RouterLink>
     </p>
   </section>
 </template>

@@ -54,27 +54,35 @@ function emailError() {
   return ''
 }
 
-const fieldErrors = computed(() => {
+function nameError() {
   const name = form.name.trim()
-  return {
-    name: !isSignup.value
-      ? ''
-      : !name
-        ? 'Enter your name.'
-        : name.length > MAX_NAME
-          ? `Keep your name under ${MAX_NAME} characters.`
-          : '',
-    email: emailError(),
-    // Only sign up checks length: older accounts may have shorter passwords and still need to log in.
-    password: !form.password
-      ? 'Enter your password.'
-      : isSignup.value && form.password.length < MIN_PASSWORD
-        ? `Use at least ${MIN_PASSWORD} characters (${form.password.length} so far).`
-        : isSignup.value && !isGoodPassword(form.password)
-          ? PASSWORD_RULE
-          : '',
+  if (!isSignup.value) return ''
+  if (!name) return 'Enter your name.'
+  if (name.length > MAX_NAME) return `Keep your name under ${MAX_NAME} characters.`
+  return ''
+}
+
+// A new password, on sign up and on the reset screen
+function newPasswordError(password) {
+  if (password.length < MIN_PASSWORD) {
+    return `Use at least ${MIN_PASSWORD} characters (${password.length} so far).`
   }
-})
+  if (!isGoodPassword(password)) return PASSWORD_RULE
+  return ''
+}
+
+function passwordError() {
+  if (!form.password) return 'Enter your password.'
+  // Only sign up checks the rule: older accounts may have shorter passwords and still need to log in.
+  if (!isSignup.value) return ''
+  return newPasswordError(form.password)
+}
+
+const fieldErrors = computed(() => ({
+  name: nameError(),
+  email: emailError(),
+  password: passwordError(),
+}))
 
 // The message to show under each field right now
 const shown = computed(() => ({
@@ -277,19 +285,15 @@ watch(
   { immediate: true },
 )
 
+function confirmError() {
+  if (!reset.confirm) return 'Type the new password again.'
+  if (reset.confirm !== reset.password) return 'The two passwords don’t match.'
+  return ''
+}
+
 const resetErrors = computed(() => ({
-  password: !reset.password
-    ? 'Enter a new password.'
-    : reset.password.length < MIN_PASSWORD
-      ? `Use at least ${MIN_PASSWORD} characters (${reset.password.length} so far).`
-      : !isGoodPassword(reset.password)
-        ? PASSWORD_RULE
-        : '',
-  confirm: !reset.confirm
-    ? 'Type the new password again.'
-    : reset.confirm !== reset.password
-      ? 'The two passwords don’t match.'
-      : '',
+  password: reset.password ? newPasswordError(reset.password) : 'Enter a new password.',
+  confirm: confirmError(),
 }))
 
 const resetShown = computed(() => ({

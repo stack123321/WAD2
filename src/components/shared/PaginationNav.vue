@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 // Previous / numbered / Next buttons for a paged list. Hidden when there is only one page.
 // Usage: <PaginationNav v-model="page" :page-count="pageCount" label="friends" />
 defineProps({
