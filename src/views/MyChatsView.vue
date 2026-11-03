@@ -124,12 +124,12 @@ function groupName(groupId) {
     <div v-if="planning" class="planning-banner mb-3" role="region" aria-label="Back to planning">
       <span class="planning-text">Still planning “{{ planning.hangout.name }}”?</span>
       <span class="planning-actions">
-        <router-link
+        <RouterLink
           class="btn btn-primary"
           :to="{ name: planning.page, params: { id: planning.hangout.id } }"
         >
           Continue planning →
-        </router-link>
+        </RouterLink>
       </span>
     </div>
 
@@ -149,9 +149,9 @@ function groupName(groupId) {
     <section class="box mb-3" aria-labelledby="groups-title">
       <div class="section-head">
         <h2 id="groups-title" class="section-title">Groups</h2>
-        <router-link class="btn btn-outline-primary new-group" :to="{ name: 'new-group' }">
+        <RouterLink class="btn btn-outline-primary new-group" :to="{ name: 'new-group' }">
           + New group
-        </router-link>
+        </RouterLink>
       </div>
       <p v-if="groupsError" class="text-danger small mb-0">{{ groupsError }}</p>
       <p v-else-if="shownGroups.length === 0" class="text-muted small mb-0">
@@ -161,7 +161,7 @@ function groupName(groupId) {
             : 'No groups yet. Make one for the friends you meet often.'
         }}
       </p>
-      <router-link
+      <RouterLink
         v-for="g in shownGroups"
         :key="g.key"
         :to="g.to"
@@ -181,7 +181,7 @@ function groupName(groupId) {
             :size="32"
           />
         </span>
-      </router-link>
+      </RouterLink>
     </section>
 
     <p v-if="loading" class="text-muted">Loading your chats…</p>
@@ -190,7 +190,7 @@ function groupName(groupId) {
     <section v-else id="chat-list" class="box">
       <p v-if="shown.length === 0" class="text-muted small mb-0">No chats found.</p>
       <!-- each row: name in bold if unread, a red count, and everyone's avatars -->
-      <router-link v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
+      <RouterLink v-for="c in shown" :key="c.key" :to="c.to" class="person text-decoration-none">
         <span class="name" :class="{ unread: alerts.unreadIn(c.key) > 0 }">{{ c.name }}</span>
         <span v-if="c.groupId && groupName(c.groupId)" class="group-tag">{{
           groupName(c.groupId)
@@ -208,7 +208,7 @@ function groupName(groupId) {
             :size="32"
           />
         </span>
-      </router-link>
+      </RouterLink>
     </section>
   </main>
 </template>

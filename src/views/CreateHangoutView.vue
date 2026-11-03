@@ -45,6 +45,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
 import { sortPeople } from '@/utils/peopleSearch'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const router = useRouter()
@@ -429,10 +430,7 @@ const againNames = computed(() => {
       names.push(m.display_name)
     }
   }
-  if (names.length <= 1) {
-    return names.join('')
-  }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  return joinNames(names)
 })
 
 // The friend you came from on the Friends page or dashboard (?with=), or null (also when several
@@ -652,11 +650,7 @@ const missingHint = computed(() => {
   if (missing.length === 0) {
     return ''
   }
-  if (missing.length === 1) {
-    return `Add ${missing[0]} to continue.`
-  }
-  const last = missing[missing.length - 1]
-  return `Add ${missing.slice(0, -1).join(', ')} and ${last} to continue.`
+  return `Add ${joinNames(missing)} to continue.`
 })
 
 // Part (d) Name idea, e.g. "Saturday chill" (the day you picked + the first vibe)

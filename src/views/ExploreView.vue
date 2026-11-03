@@ -1,4 +1,4 @@
-﻿<template>
+<template>
    <div
     v-if="hangout.loading"
     class="d-flex align-items-center gap-2 text-secondary p-5"
@@ -75,13 +75,13 @@
         >
           Go Vote!
         </button>
-        <router-link
+        <RouterLink
           v-else
           :to="{ name: 'vote', params: { id: route.params.id } }"
           class="btn btn-sm btn-primary mobile-vote-action"
         >
           Go Vote!
-        </router-link>
+        </RouterLink>
       </div>
     </section>
     <div class="mobile-toggles">
@@ -369,13 +369,13 @@
           >
             Go Vote!
           </button>
-          <router-link
+          <RouterLink
             v-else
             :to="{ name: 'vote', params: { id: route.params.id } }"
             class="btn btn-sm btn-primary shortlist-vote-action"
           >
             Go Vote!
-          </router-link>
+          </RouterLink>
         </div>
       </div>
     </div>
@@ -411,6 +411,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useShortlist } from '@/composables/useShortlist'
 import { useExploreMemory } from '@/composables/useExploreMemory'
 import {
+  distanceKm,
   hardVetoReason,
   matchScore,
   matchesHangoutVibe,
@@ -668,15 +669,7 @@ function matchesFilter(spot) {
 const radiusKm = toRef(remembered, 'radiusKm')
 
 function distanceFromMidpointKm(spot) {
-  const toRad = (deg) => (deg * Math.PI) / 180
-  const dLat = toRad(spot.lat - hangout.hangout.midpoint_lat)
-  const dLng = toRad(spot.lng - hangout.hangout.midpoint_lng)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(hangout.hangout.midpoint_lat)) *
-      Math.cos(toRad(spot.lat)) *
-      Math.sin(dLng / 2) ** 2
-  return 6371 * 2 * Math.asin(Math.sqrt(a))
+  return distanceKm({ lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }, spot)
 }
 
 const filteredSpots = computed(() =>

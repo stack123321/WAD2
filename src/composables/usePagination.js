@@ -1,4 +1,4 @@
-﻿// Splits a list into pages. `page` is kept inside the valid range when the list shrinks.
+// Splits a list into pages. `page` is kept inside the valid range when the list shrinks.
 import { computed, ref } from 'vue'
 
 export function usePagination(list, pageSize = 6) {

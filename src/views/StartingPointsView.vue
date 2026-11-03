@@ -19,6 +19,7 @@ import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const store = useHangoutStore()
@@ -375,14 +376,6 @@ const waitingNames = computed(() => {
   }
   return names
 })
-
-// "Ryan", "Ryan and Nicole", "Ryan, Nicole and Hugo"
-function joinNames(names) {
-  if (names.length <= 1) {
-    return names.join('')
-  }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-}
 
 const statusLine = computed(() => {
   if (!me.value) {

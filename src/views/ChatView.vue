@@ -41,9 +41,9 @@ onMounted(async () => {
 <template>
   <main class="container py-4 chat-page">
     <!-- passes on this hangout, so My Chats can offer the way back into planning too -->
-    <router-link :to="{ name: 'chats', query: { hangout: route.params.hangoutId } }" class="small">
+    <RouterLink :to="{ name: 'chats', query: { hangout: route.params.hangoutId } }" class="small">
       ← My Chats
-    </router-link>
+    </RouterLink>
 
     <p v-if="error" class="text-danger mt-3">{{ error }}</p>
     <template v-else-if="hangout">
@@ -53,9 +53,9 @@ onMounted(async () => {
       <p v-else class="text-muted">Only people in this hangout can see its chat.</p>
 
       <div v-if="nextPage" class="planning-links">
-        <router-link class="btn btn-primary" :to="{ name: nextPage, params: { id: hangout.id } }">
+        <RouterLink class="btn btn-primary" :to="{ name: nextPage, params: { id: hangout.id } }">
           Continue planning →
-        </router-link>
+        </RouterLink>
       </div>
     </template>
   </main>

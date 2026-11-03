@@ -215,18 +215,18 @@ async function copyInvite() {
           <span v-if="featured && countdown" class="countdown">{{ countdown }}</span>
           <h3 class="title">
             <!-- stretched-link makes this link cover the whole card, so a tap anywhere opens the hangout -->
-            <router-link
+            <RouterLink
               class="stretched-link text-reset text-decoration-none"
               :to="{ name: status.page, params: { id: hangout.id } }"
             >
               {{ hangout.name }}
-            </router-link>
+            </RouterLink>
             <PinIcon v-if="hangout.pinned" filled :size="14" class="text-success ms-1" />
           </h3>
           <p class="meta">{{ details }}</p>
           <!-- amber text when rain is likely -->
           <!-- (surya) photos from the day, tap to see them all on debrief -->
-          <router-link
+          <RouterLink
             v-if="shownPhotos.length > 0"
             class="photo-strip"
             :to="{ name: 'debrief', params: { id: hangout.id }, hash: '#photos' }"
@@ -234,7 +234,7 @@ async function copyInvite() {
           >
             <img v-for="p in shownPhotos" :key="p.id" :src="p.url" alt="" loading="lazy" />
             <span v-if="morePhotos > 0" class="photo-more">+{{ morePhotos }}</span>
-          </router-link>
+          </RouterLink>
           <p v-if="weatherLine || crowdText" class="wx" :class="{ 'wx-warn': weatherLine?.warn }">
             <template v-if="weatherLine">
               <WeatherLineIcon :kind="weatherLine.kind" />
@@ -314,20 +314,20 @@ async function copyInvite() {
           <!-- solid green when it's my turn (fill), a quiet outline otherwise -->
           <div class="act" :class="{ 'act--again': goAgainLink }">
             <!-- (surya) past and decided: do it again with the same group and place -->
-            <router-link
+            <RouterLink
               v-if="goAgainLink"
               :to="goAgainLink"
               class="btn btn-outline-primary text-nowrap"
             >
               ↻ Go again
-            </router-link>
-            <router-link
+            </RouterLink>
+            <RouterLink
               :to="{ name: status.page, params: { id: hangout.id } }"
               class="btn text-nowrap"
               :class="status.fill ? 'btn-primary' : 'btn-outline-secondary btn-quiet'"
             >
               {{ status.button }}
-            </router-link>
+            </RouterLink>
           </div>
         </div>
 

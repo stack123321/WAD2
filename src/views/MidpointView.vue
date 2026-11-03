@@ -517,12 +517,12 @@ async function moveToDropped(station) {
           </div>
         </div>
         <!-- (Surya) the next step, full width at the bottom so it's clear what to do next -->
-        <router-link
+        <RouterLink
           :to="{ name: 'explore', params: { id: route.params.id } }"
           class="btn btn-primary btn-lg w-100 mt-4 see-spots-btn"
         >
           Next: see nearby spots →
-        </router-link>
+        </RouterLink>
         <p class="small text-secondary text-center mt-2 mb-0">
           Pick places near {{ midpoint.name }} for the group to vote on.
         </p>
@@ -533,12 +533,12 @@ async function moveToDropped(station) {
         <p class="mb-2">
           No midpoint yet. Fairpoint finds it once everyone has picked how they're travelling.
         </p>
-        <router-link
+        <RouterLink
           :to="{ name: 'transport', params: { id: route.params.id } }"
           class="btn btn-primary btn-sm go-btn"
         >
           Go to transport →
-        </router-link>
+        </RouterLink>
       </div>
 
       <ConfirmDialog

@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 // Blue notice shown on a page whose earlier planning step isn't done yet.
 // Usage: <MissingPrerequisite :hangout-id="id" step="starting-points" />
 import { computed } from 'vue'

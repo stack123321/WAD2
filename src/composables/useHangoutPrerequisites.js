@@ -1,4 +1,4 @@
-﻿// Which planning steps the current person has finished, so later pages can point them back
+// Which planning steps the current person has finished, so later pages can point them back
 // to a missing one. A member who isn't found (e.g. a viewer) is never blocked.
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'

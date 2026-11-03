@@ -53,6 +53,7 @@ import {
   tiedLeaders,
   timeLeft,
 } from '@/utils/voteHelpers'
+import { joinNames } from '@/utils/joinNames'
 
 const SPIN_MS = 3200
 
@@ -127,11 +128,9 @@ const votersBySpot = computed(() => {
 const waiting = computed(() =>
   store.members.filter((m) => !votes.value.some((v) => v.user_id === m.user_id)),
 )
-const waitingText = computed(() => {
-  const names = waiting.value.map((m) => (m.user_id === myId.value ? 'you' : m.display_name))
-  if (names.length <= 1) return names.join('')
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-})
+const waitingText = computed(() =>
+  joinNames(waiting.value.map((m) => (m.user_id === myId.value ? 'you' : m.display_name))),
+)
 
 // the Winner card starts on the leading spot, or once the vote is closed, on the confirmed spot
 const defaultWinnerId = computed(() =>

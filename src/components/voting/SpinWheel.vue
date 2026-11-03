@@ -7,6 +7,7 @@
 // written out in text for screen readers, and people who turn off motion get no animation.
 // Emits spin.
 import { computed } from 'vue'
+import { joinNames } from '@/utils/joinNames'
 
 const props = defineProps({
   spots: { type: Array, default: () => [] },
@@ -55,11 +56,7 @@ const winner = computed(() => props.spots.find((spot) => spot.id === props.winne
 const decided = computed(() => winner.value !== null && !props.spinning)
 
 // "Hawker and Coffee", or "Hawker, Coffee and Toast"
-const tiedNames = computed(() => {
-  const names = props.spots.map((spot) => spot.name)
-  if (names.length <= 1) return names.join('')
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-})
+const tiedNames = computed(() => joinNames(props.spots.map((spot) => spot.name)))
 </script>
 
 <template>
