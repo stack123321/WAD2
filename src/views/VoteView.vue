@@ -18,6 +18,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import {
   castVote,
   closeVote,
@@ -57,6 +59,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { hasStartingPoint, hasTransport, hasMidpoint } = useHangoutPrerequisites(() => store.hangout)
 
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
@@ -366,7 +369,25 @@ onUnmounted(() => {
 
 <template>
   <main class="container py-4">
-    <div class="row g-4">
+    <div v-if="hangout && !store.loading && !store.error && !hasStartingPoint" class="row g-4">
+      <div class="col-12">
+        <MissingPrerequisite :hangout-id="String(hangoutId)" step="starting-points" />
+      </div>
+    </div>
+
+    <div v-else-if="hangout && !store.loading && !store.error && !hasTransport" class="row g-4">
+      <div class="col-12">
+        <MissingPrerequisite :hangout-id="String(hangoutId)" step="transport" />
+      </div>
+    </div>
+
+    <div v-else-if="hangout && !store.loading && !store.error && !hasMidpoint" class="row g-4">
+      <div class="col-12">
+        <MissingPrerequisite :hangout-id="String(hangoutId)" step="midpoint" />
+      </div>
+    </div>
+
+    <div v-else class="row g-4">
       <div class="col-12 col-lg-8">
         <header class="mb-3">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">

@@ -5,6 +5,8 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
   import { useAuthStore } from '@/stores/auth'
+  import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+  import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
   import { rankStations } from '@/services/routing'
   import { timesFor } from '@/utils/midpoint'
   import {
@@ -24,6 +26,7 @@
   const optimiseFor = ref('fairest')
   const ranked = ref([])
   const store = useHangoutStore()
+  const { hasStartingPoint } = useHangoutPrerequisites(() => store.hangout)
   const missingMode = computed(() => store.members.filter((m) => !m.mode))
 
 
@@ -302,6 +305,10 @@
         Couldn't load this hangout. Check the link, or go back to
         <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
       </div>
+    </div>
+
+    <div v-else-if="store.hangout && !hasStartingPoint" class="container py-4">
+      <MissingPrerequisite :hangout-id="String(route.params.id)" step="starting-points" />
     </div>
 
     <section v-else-if="store.hangout" class="container py-4">

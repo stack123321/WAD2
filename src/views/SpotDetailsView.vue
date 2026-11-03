@@ -4,6 +4,8 @@
 // Figma frame "10". One Google place: photos or map, rating, price, a short summary and how well it suits the group.
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import BaseMap from '@/components/map/BaseMap.vue'
 import WeatherCard from '@/components/weather/WeatherCard.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
@@ -18,6 +20,9 @@ import { getRoute } from '@/services/routing'
 const route = useRoute()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
+const { hasStartingPoint, hasTransport, hasMidpoint } = useHangoutPrerequisites(
+  () => hangout.hangout,
+)
 const { error: shortlistError, isAdded, isMine, addSpot, removeSpot } = useShortlist(
   () => route.params.id,
 )
@@ -240,7 +245,24 @@ const reasons = computed(() =>
 </script>
 
 <template>
-  <main class="container spot">
+  <div
+    v-if="hangout.loading"
+    class="d-flex align-items-center gap-2 text-secondary p-5"
+    role="status"
+  >
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    Loading hangout…
+  </div>
+  <div v-else-if="hangout.hangout && !hasStartingPoint" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" step="starting-points" />
+  </div>
+  <div v-else-if="hangout.hangout && !hasTransport" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" step="transport" />
+  </div>
+  <div v-else-if="hangout.hangout && !hasMidpoint" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" step="midpoint" />
+  </div>
+  <main v-else class="container spot">
     <header class="spot__nav">
       <RouterLink
         class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
