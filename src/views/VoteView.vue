@@ -168,6 +168,36 @@ const needsSpin = computed(() => votingOver.value && tiedSpots.value.length > 1)
 function spotName(spotId) {
   return store.shortlist.find((s) => s.id === spotId)?.name ?? 'a removed spot'
 }
+
+// (Surya) The "Close vote" pop-up says why the host might want to wait: who hasn't voted yet, or
+// that the spot they're picking is tied (instead of spinning the wheel)
+const closeEarly = computed(() => status.value !== 'confirmed' && waiting.value.length > 0)
+
+const closeTitle = computed(() => {
+  if (status.value === 'confirmed') return 'Change the winner?'
+  if (closeEarly.value) return 'Close the vote early?'
+  return 'Close vote and confirm plan?'
+})
+
+const closeText = computed(() => {
+  const pick = spotName(pendingCloseId.value)
+  if (closeEarly.value) {
+    const onlyMe = waitingText.value === 'you'
+    const who = waitingText.value.charAt(0).toUpperCase() + waitingText.value.slice(1)
+    const verb = waiting.value.length === 1 && !onlyMe ? "hasn't" : "haven't"
+    const counted = `${totalVotes.value} of ${store.members.length} voted`
+    const they = onlyMe ? 'you' : 'they'
+    return `${who} ${verb} voted yet (${counted}). Once it's closed ${they} can't vote, and ${pick} becomes the plan.`
+  }
+  if (status.value !== 'confirmed' && tiedIds.value.includes(pendingCloseId.value)) {
+    const others = []
+    for (const id of tiedIds.value) {
+      if (id !== pendingCloseId.value) others.push(spotName(id))
+    }
+    return `${pick} and ${others.join(' and ')} are tied. You're choosing ${pick} instead of spinning the wheel.`
+  }
+  return `This will confirm ${pick} as the plan for this hangout.`
+})
 const feedItems = computed(() =>
   [...history.value]
     .sort((a, b) => b.id - a.id)
@@ -569,9 +599,10 @@ onUnmounted(() => {
     />
     <ConfirmDialog
       :open="showCloseModal"
-      :title="status === 'confirmed' ? 'Change the winner?' : 'Close vote and confirm plan?'"
-      :text="`This will confirm ${spotName(pendingCloseId)} as the plan for this hangout.`"
-      button="Confirm"
+      :title="closeTitle"
+      :text="closeText"
+      :button="closeEarly ? 'Close anyway' : 'Confirm'"
+      :cancel="closeEarly ? 'Keep waiting' : 'Cancel'"
       @confirm="confirmClose"
       @cancel="showCloseModal = false"
     />
