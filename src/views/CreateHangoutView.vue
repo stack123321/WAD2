@@ -12,7 +12,7 @@
 // (Eashvar) "Plan a hangout with this group" on a friend group opens this page with ?group=<id>:
 // everyone in the group is ticked (untick anyone who can't make it), the hangout is tagged with
 // the group, and everyone's usual starting point and transport are filled in on 06.
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createHangout,
@@ -181,8 +181,14 @@ async function loadFriends() {
       }
     }
 
-    // A to Z by name, so you can find someone quickly (prof's feedback)
-    all.sort((a, b) => a.display_name.localeCompare(b.display_name))
+    // (Surya) People you often hang out with (2 or more hangouts) come first, then everyone else.
+    // Each part is A to Z by name, so you can still find someone quickly (prof's feedback)
+    all.sort((a, b) => {
+      if (isOften(a) !== isOften(b)) {
+        return isOften(a) ? -1 : 1
+      }
+      return a.display_name.localeCompare(b.display_name)
+    })
 
     // "Add to hangout" on the Friends page opens this page with ?with=<friend's id>: tick them.
     // The debrief's "Plan another with this group" passes several (?with=a&with=b).
@@ -381,18 +387,17 @@ const withFriend = computed(() => {
 // Search: type a name to filter your friends
 const friendSearch = ref('')
 
-// With lots of friends, show the first 8 (A to Z), then "Show all". Searching shows every match.
-const FIRST_FRIENDS = 8
-const showAllFriends = ref(false)
+// (Surya) Only the first 5 friends show (the ones you hang out with most). Searching shows every
+// friend who matches, plus anyone else on Fairpoint (below).
+const FIRST_FRIENDS = 5
+const searching = computed(() => friendSearch.value.trim() !== '')
 
 const visibleFriends = computed(() => {
-  if (showAllFriends.value || friendSearch.value.trim() !== '') {
+  if (searching.value) {
     return shownFriends.value
   }
   return shownFriends.value.slice(0, FIRST_FRIENDS)
 })
-
-const hiddenCount = computed(() => shownFriends.value.length - visibleFriends.value.length)
 
 const shownFriends = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
@@ -420,12 +425,18 @@ async function searchEveryone() {
   const text = friendSearch.value.trim()
   peopleError.value = ''
   if (text.length < 2) {
-    peopleError.value = 'Type at least 2 letters.'
+    peopleResults.value = []
+    searchedText.value = ''
+    searchingPeople.value = false
     return
   }
   searchingPeople.value = true
   try {
     const found = await searchPeople(text)
+    // (Surya) you kept typing while this search ran: a newer search will show its own results
+    if (text !== friendSearch.value.trim()) {
+      return
+    }
     const result = []
     for (const person of found) {
       // skip yourself and people already in your list
@@ -442,6 +453,14 @@ async function searchEveryone() {
   }
   searchingPeople.value = false
 }
+
+// (Surya) Search everyone on Fairpoint as you type (no extra button to press). It waits until
+// you stop typing for a moment, so it doesn't search after every letter.
+let searchTimer = null
+watch(friendSearch, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(searchEveryone, 400)
+})
 
 async function requestFriend(person) {
   peopleError.value = ''
@@ -474,7 +493,7 @@ function unselect(userId) {
   selectedFriends.value = selectedFriends.value.filter((id) => id !== userId)
 }
 
-// "Often with you" tag for people you've had 2 or more hangouts with
+// People you've had 2 or more hangouts with, who go to the top of the list
 function isOften(friend) {
   return friend.together >= 2
 }
@@ -876,85 +895,76 @@ async function submit() {
             Hanging out with <strong>{{ withFriend.display_name }}</strong> (ticked below)
           </p>
 
-          <label for="friend-search" class="visually-hidden">Search by name</label>
+          <label for="friend-search" class="visually-hidden">Search anyone on Fairpoint</label>
           <input
             id="friend-search"
             v-model="friendSearch"
             type="search"
             class="form-control mb-2"
-            placeholder="Search by name"
+            placeholder="Search anyone on Fairpoint"
             autocomplete="off"
             @keydown.enter.prevent="searchEveryone"
           />
 
           <p v-if="friendsLoading" class="panel__sub mb-0">Loading your friends…</p>
           <p v-else-if="friendsError" class="panel__sub mb-0">{{ friendsError }}</p>
-          <p v-else-if="friends.length === 0 && friendSearch.trim() === ''" class="panel__sub mb-0">
+          <p v-else-if="friends.length === 0 && !searching" class="panel__sub mb-0">
             No friends yet. Search for people above, or invite them with the link on the next page.
           </p>
-          <p v-else-if="shownFriends.length === 0" class="panel__sub mb-0">
-            No friends called “{{ friendSearch.trim() }}”.
+          <!-- (Surya) your friends: "Suggested" (first 5), or the ones that match your search -->
+          <template v-else-if="visibleFriends.length > 0">
+            <p class="list-label">{{ searching ? 'Your friends' : 'Suggested' }}</p>
+            <ul class="people">
+              <li v-for="f in visibleFriends" :key="f.user_id">
+                <label class="person" :class="{ 'is-picked': selectedFriends.includes(f.user_id) }">
+                  <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
+                  <span class="person__name">{{ f.display_name }}</span>
+                  <input
+                    v-model="selectedFriends"
+                    type="checkbox"
+                    class="form-check-input person__tick"
+                    :value="f.user_id"
+                  />
+                </label>
+              </li>
+            </ul>
+          </template>
+          <p v-else-if="friendSearch.trim().length < 2" class="panel__sub mb-0">
+            Keep typing to search everyone on Fairpoint.
           </p>
-          <ul v-else class="people">
-            <li v-for="f in visibleFriends" :key="f.user_id">
-              <label class="person">
-                <input
-                  v-model="selectedFriends"
-                  type="checkbox"
-                  class="form-check-input"
-                  :value="f.user_id"
-                />
-                <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
-                <span class="person__name">{{ f.display_name }}</span>
-                <span v-if="isOften(f)" class="often">Often with you</span>
-              </label>
-            </li>
-          </ul>
-          <!-- More than 8 friends: the rest are one tap away -->
-          <button
-            v-if="hiddenCount > 0 || (showAllFriends && shownFriends.length > FIRST_FRIENDS)"
-            type="button"
-            class="btn btn-link show-all"
-            @click="showAllFriends = !showAllFriends"
-          >
-            {{ showAllFriends ? 'Show fewer ▴' : `Show all (${hiddenCount} more) ▾` }}
-          </button>
 
-          <!-- Search everyone on Fairpoint (shown while you're searching) -->
-          <button
-            v-if="friendSearch.trim().length >= 2"
-            type="button"
-            class="btn btn-link btn-sm search-all"
-            :disabled="searchingPeople"
-            @click="searchEveryone"
-          >
-            {{ searchingPeople ? 'Searching…' : `Search everyone for “${friendSearch.trim()}”` }}
-          </button>
+          <!-- (Surya) everyone else on Fairpoint who matches, found as you type -->
+          <p v-if="searchingPeople" class="panel__sub mb-0">Searching everyone on Fairpoint…</p>
           <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
 
           <template v-if="searchedText !== '' && searchedText === friendSearch.trim()">
-            <p v-if="peopleResults.length === 0" class="panel__sub mb-0">
-              Nobody else on Fairpoint matches “{{ searchedText }}”.
+            <p
+              v-if="peopleResults.length === 0 && shownFriends.length === 0"
+              class="panel__sub mb-0"
+            >
+              Nobody on Fairpoint matches “{{ searchedText }}”.
             </p>
-            <template v-else>
-              <p class="panel__sub mb-1">
-                Not your friends yet. Send a request, and once they accept you can add them to
-                hangouts. Or share the Invite link on the next page.
+            <template v-else-if="peopleResults.length > 0">
+              <p class="list-label">Others on Fairpoint</p>
+              <p class="panel__sub mb-2">
+                Send a friend request, or share the Invite link on the next page.
               </p>
               <ul class="people">
-                <li v-for="p in peopleResults" :key="p.user_id" class="person">
-                  <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
-                  <span class="person__name">{{ p.display_name }}</span>
-                  <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
-                  <button
-                    v-else
-                    type="button"
-                    class="btn btn-outline-primary btn-sm request-btn"
-                    :aria-label="`Send ${p.display_name} a friend request`"
-                    @click="requestFriend(p)"
-                  >
-                    Add friend
-                  </button>
+                <li v-for="p in peopleResults" :key="p.user_id">
+                  <div class="person">
+                    <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
+                    <span class="person__name">{{ p.display_name }}</span>
+                    <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
+                    <button
+                      v-else
+                      type="button"
+                      class="btn btn-outline-primary btn-sm request-btn"
+                      :aria-label="`Send ${p.display_name} a friend request`"
+                      @click="requestFriend(p)"
+                    >
+                      Add friend
+                    </button>
+                  </div>
                 </li>
               </ul>
             </template>
@@ -1195,15 +1205,6 @@ legend.form-label {
 }
 
 /* Search everyone */
-.search-all {
-  min-height: 44px;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
 .request-btn {
   flex-shrink: 0;
   min-height: 44px;
@@ -1287,19 +1288,6 @@ legend.form-label {
   color: var(--fp-ink);
 }
 
-/* "Often with you" tag */
-.often {
-  flex-shrink: 0;
-  margin-left: auto;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--fp-accent) 14%, var(--fp-surface));
-  color: var(--fp-ink);
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 /* Right column: Who's coming? + Summary */
 .side {
   display: flex;
@@ -1321,19 +1309,28 @@ legend.form-label {
   }
 }
 
-.show-all {
-  min-height: 44px;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
+/* (Surya) "SUGGESTED", "YOUR FRIENDS", "OTHERS ON FAIRPOINT" above each list, like the step bar's
+   "CHOOSE" and "DECIDE" */
+.list-label {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--fp-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .people {
   max-height: 420px;
   padding: 0;
-  margin: 0.5rem 0 0;
+  margin: 0 0 0.5rem;
   overflow-y: auto;
   list-style: none;
+}
+
+/* (Surya) a thin line between people */
+.people li + li {
+  border-top: 1px solid var(--fp-border);
 }
 
 .person {
@@ -1341,7 +1338,19 @@ legend.form-label {
   align-items: center;
   gap: 0.75rem;
   min-height: 48px; /* big enough to tap with a finger */
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--fp-radius-sm);
   cursor: pointer;
+}
+
+label.person:hover {
+  background: var(--fp-bg);
+}
+
+/* (Surya) a ticked friend's row turns light green */
+.person.is-picked,
+.person.is-picked:hover {
+  background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 }
 
 .person .form-check-input {
@@ -1349,6 +1358,11 @@ legend.form-label {
   width: 1.25rem;
   height: 1.25rem;
   margin: 0;
+}
+
+/* the tick box sits on the right of the row */
+.person .person__tick {
+  margin-left: auto;
 }
 
 .person__name {
