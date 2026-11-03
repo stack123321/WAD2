@@ -1,6 +1,7 @@
 <script setup>
 // Owner: Eashvar. "Group activity" on 11 Group voting: who voted, changed or removed their vote,
-// newest first, with an avatar and the time in SGT (date included if it wasn't today).
+// and (Ryan) who spun the tie-break wheel, newest first, with an avatar and the time in SGT (date
+// included if it wasn't today).
 // The database keeps only each person's latest vote, so changes are listed only while the page is open.
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import { formatDateTime, formatTime, isSameSgtDay } from '@/utils/voteHelpers'
@@ -28,6 +29,9 @@ function when(iso) {
             <template v-else-if="item.kind === 'changed'">
               changed {{ item.isMe ? 'your' : 'their' }} vote to {{ item.toName }} (was
               {{ item.fromName }})
+            </template>
+            <template v-else-if="item.kind === 'wheel'">
+              spun the tie-break wheel 🎡 {{ item.toName }} won
             </template>
             <template v-else> removed {{ item.isMe ? 'your' : 'their' }} vote</template>
           </p>

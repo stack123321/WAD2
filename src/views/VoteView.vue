@@ -5,13 +5,13 @@
 // who they're waiting for). Then everyone votes for one shortlisted spot and can change it until
 // the deadline (shown as a countdown in SGT). The page keeps its own copy of the votes so the tally
 // updates straight away (also in demo mode), re-fetches all votes on every Realtime change, and
-// lists activity seen while open, next to Surya's group chat (members only). "Me" is the logged-in
-// user, or in demo mode the host, so the host controls can be tried without keys.
+// lists activity seen while open (the group chat is the 💬 Chat button in the step bar). "Me" is
+// the logged-in user, or in demo mode the host, so the host controls can be tried without keys.
 // Validation: only members can vote (others are told why), only one vote is sent at a time, only
 // each current member's latest vote counts, and the host can't close a vote nobody has voted in.
 // The host can close the vote and pick the winner. Once voting is over (deadline passed or
 // everyone voted) and the top spots are tied, the host's close card is replaced by the tie-break
-// wheel: any member spins, the database picks the winner, and it's announced in the chat.
+// wheel: any member spins, the database picks the winner, and it's listed in Group activity.
 // The store is updated directly after starting, closing or spinning (a forced reload would reset
 // the demo hangout).
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -30,7 +30,6 @@ import {
   changeVoteDeadline,
 } from '@/services/votes'
 import { getHangout } from '@/services/hangouts'
-import { sendMessage } from '@/services/chat'
 import CandidateList from '@/components/voting/CandidateList.vue'
 import VoteTurnout from '@/components/voting/VoteTurnout.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
@@ -39,7 +38,6 @@ import ClosePanel from '@/components/voting/ClosePanel.vue'
 import SpinWheel from '@/components/voting/SpinWheel.vue'
 import ActivityFeed from '@/components/voting/ActivityFeed.vue'
 import DeadlinePanel from '@/components/voting/DeadlinePanel.vue'
-import HangoutChat from '@/components/chat/HangoutChat.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
   countableVotes,
@@ -132,13 +130,19 @@ const waitingText = computed(() => {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 })
 
-const winnerId = computed(() => manualWinnerId.value ?? leader.value?.spot.id ?? null)
+// the Winner card starts on the leading spot, or once the vote is closed, on the confirmed spot
+const defaultWinnerId = computed(() =>
+  status.value === 'confirmed'
+    ? (hangout.value?.final_shortlist_id ?? null)
+    : (leader.value?.spot.id ?? null),
+)
+const winnerId = computed(() => manualWinnerId.value ?? defaultWinnerId.value)
 const spinWinner = computed(
   () => store.shortlist.find((spot) => spot.id === spinWinnerId.value) ?? null,
 )
 
 function selectWinner(spotId) {
-  manualWinnerId.value = spotId === leaderId.value ? null : spotId
+  manualWinnerId.value = spotId === defaultWinnerId.value ? null : spotId
 }
 
 const deadline = computed(() => hangout.value?.vote_deadline ?? null)
@@ -268,6 +272,7 @@ async function confirmClose() {
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = spotId
     store.hangout.votes = votes.value
+    manualWinnerId.value = null
     router.push({ name: 'final-plan', params: { id: hangoutId } })
   } catch (e) {
     actionError.value = `Couldn't close the vote: ${e.message}`
@@ -289,6 +294,7 @@ async function confirmRevote() {
     store.hangout.status = 'voting'
     store.hangout.vote_deadline = null
     store.hangout.final_shortlist_id = null
+    manualWinnerId.value = null
     spinning.value = false
     spinWinnerId.value = null
     spinSpots.value = []
@@ -313,7 +319,16 @@ async function onSpin() {
     store.hangout.status = 'confirmed'
     store.hangout.final_shortlist_id = winner
     store.hangout.votes = votes.value
-    await announceWinner(winner)
+    manualWinnerId.value = null
+    // (Ryan) listed in Group activity, not posted in the group chat
+    history.value.push({
+      id: nextEventId++,
+      kind: 'wheel',
+      userId: myId.value,
+      toId: winner,
+      fromId: null,
+      at: new Date().toISOString(),
+    })
     showSpinResultModal.value = true
   } catch (e) {
     if (/already closed/i.test(e.message)) {
@@ -324,15 +339,6 @@ async function onSpin() {
     }
   } finally {
     spinning.value = false
-  }
-}
-
-async function announceWinner(spotId) {
-  if (isMock) return
-  try {
-    await sendMessage(hangoutId, `🎡 Tie-break: the wheel picked ${spotName(spotId)}!`)
-  } catch {
-    actionError.value = 'The winner is saved, but the chat message didn’t send.'
   }
 }
 
@@ -411,14 +417,15 @@ onUnmounted(() => {
           </div>
           <div
             v-else-if="status === 'confirmed' || status === 'done'"
-            class="alert alert-info d-flex align-items-center gap-2"
+            class="alert alert-info d-flex align-items-center flex-wrap gap-2"
           >
-            <span>
-              Voting is closed.
-              <RouterLink :to="{ name: 'final-plan', params: { id: hangoutId } }">
-                See the final plan
-              </RouterLink>
-            </span>
+            <span>Voting is closed.</span>
+            <RouterLink
+              class="btn btn-primary final-plan-btn"
+              :to="{ name: 'final-plan', params: { id: hangoutId } }"
+            >
+              See the final plan <span aria-hidden="true">→</span>
+            </RouterLink>
             <button
               v-if="isHost && status === 'confirmed'"
               type="button"
@@ -509,20 +516,22 @@ onUnmounted(() => {
             @change="onChangeDeadline"
           />
           <!-- Host controls first, so on phones and tablets (one column) closing the vote isn't
-               below the activity feed and chat -->
+               below the activity feed. After closing (or the wheel), it stays so the host can
+               change the winner. -->
           <ClosePanel
-            v-if="isHost && status === 'voting' && !needsSpin"
+            v-if="isHost && ((status === 'voting' && !needsSpin) || status === 'confirmed')"
             :shortlist="store.shortlist"
             :leader-id="leaderId"
             :selected-id="winnerId"
             :vote-count="totalVotes"
             :deadline-text="deadline ? formatDateTime(deadline) : null"
             :closing="closing"
+            :closed="status === 'confirmed'"
+            :current-id="hangout.final_shortlist_id"
             @select="selectWinner"
             @close="onClose"
           />
           <ActivityFeed :items="feedItems" />
-          <HangoutChat v-if="myId && isMember" :hangout="hangout" :my-id="myId" />
         </div>
       </div>
     </div>
@@ -538,7 +547,7 @@ onUnmounted(() => {
     />
     <ConfirmDialog
       :open="showCloseModal"
-      title="Close vote and confirm plan?"
+      :title="status === 'confirmed' ? 'Change the winner?' : 'Close vote and confirm plan?'"
       :text="`This will confirm ${spotName(pendingCloseId)} as the plan for this hangout.`"
       button="Confirm"
       @confirm="confirmClose"
@@ -548,8 +557,7 @@ onUnmounted(() => {
       :open="showSpinResultModal && !!spinWinner"
       title="The wheel has picked a winner!"
       :text="`Your group is going to ${spinWinner?.name}.`"
-      button="See final plan"
-      @confirm="router.push({ name: 'final-plan', params: { id: hangoutId } })"
+      cancel="Close"
       @cancel="showSpinResultModal = false"
     />
   </main>
@@ -618,6 +626,10 @@ onUnmounted(() => {
 
 .revote-btn {
   min-width: 6.5rem;
+  font-weight: 600;
+}
+
+.final-plan-btn {
   font-weight: 600;
 }
 </style>

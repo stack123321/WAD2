@@ -2,7 +2,9 @@
 // Owner: Eashvar. Host-only card on 11 Group voting: a "Winner" dropdown and the
 // "Close vote & confirm plan" button. The parent holds the chosen winner (selectedId) so it can
 // default to the live leader; this card emits select(spotId) and close(spotId). Closing is blocked,
-// with a hint, until at least one person has voted (voteCount).
+// with a hint, until at least one person has voted (voteCount). Once the vote is closed (closed),
+// by the host or by the wheel, it stays so the host can change the winner (currentId is the
+// confirmed spot).
 defineProps({
   shortlist: { type: Array, required: true },
   leaderId: { type: String, default: null },
@@ -11,6 +13,8 @@ defineProps({
   deadlineText: { type: String, default: null },
   disabled: { type: Boolean, default: false },
   closing: { type: Boolean, default: false },
+  closed: { type: Boolean, default: false },
+  currentId: { type: String, default: null },
 })
 
 const emit = defineEmits(['select', 'close'])
@@ -31,13 +35,13 @@ const emit = defineEmits(['select', 'close'])
       :disabled="disabled || closing"
       @change="emit('select', $event.target.value)"
     >
-      <option v-if="leaderId" :value="leaderId">
+      <option v-if="leaderId && !closed" :value="leaderId">
         Most voted: {{ shortlist.find((spot) => spot.id === leaderId)?.name }}
       </option>
       <option v-for="spot in shortlist" :key="spot.id" :value="spot.id">{{ spot.name }}</option>
     </select>
     <button
-      v-if="leaderId && selectedId !== leaderId"
+      v-if="!closed && leaderId && selectedId !== leaderId"
       type="button"
       class="btn btn-outline-danger w-100 mb-3"
       :disabled="disabled || closing"
@@ -47,6 +51,17 @@ const emit = defineEmits(['select', 'close'])
     </button>
 
     <button
+      v-if="closed"
+      type="button"
+      class="btn btn-primary w-100 fw-semibold"
+      :disabled="disabled || closing || !selectedId || selectedId === currentId"
+      @click="emit('close', selectedId)"
+    >
+      <span v-if="closing" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+      Change the winner
+    </button>
+    <button
+      v-else
       type="button"
       class="btn btn-primary w-100 fw-semibold"
       :disabled="disabled || closing || !selectedId || voteCount === 0"
@@ -55,11 +70,14 @@ const emit = defineEmits(['select', 'close'])
       <span v-if="closing" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
       Close vote &amp; confirm plan <span aria-hidden="true">→</span>
     </button>
-    <p v-if="voteCount === 0" class="small hint mt-2 mb-0" role="status">
+    <p v-if="closed" class="small muted mt-2 mb-0">
+      Voting is closed. Pick another spot to change the winner.
+    </p>
+    <p v-else-if="voteCount === 0" class="small hint mt-2 mb-0" role="status">
       Wait for at least one vote before closing.
     </p>
 
-    <p v-if="deadlineText" class="small muted mt-2 mb-0">
+    <p v-if="deadlineText && !closed" class="small muted mt-2 mb-0">
       Voting closes {{ deadlineText }} SGT. The winner starts as the leading spot.
     </p>
   </section>
