@@ -406,7 +406,7 @@ async function confirmDelete() {
           <section v-if="!isSetup || setupStep === 3" class="panel">
             <h2 class="panel__title">Budget</h2>
             <p class="panel__sub">Used to filter spots by price level</p>
-            <div class="segmented" role="radiogroup" aria-label="Budget per person">
+            <div class="segmented" role="radiogroup" aria-label="Budget">
               <button
                 v-for="o in budgetOptions"
                 :key="o.value"
