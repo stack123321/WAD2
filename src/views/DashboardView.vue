@@ -406,12 +406,12 @@ onUnmounted(() => {
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
           <h1 class="page-title mb-0">{{ heading }}</h1>
           <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
-          <router-link
+          <RouterLink
             :to="{ name: 'create-hangout' }"
             class="btn btn-primary fw-semibold d-none d-md-inline-flex align-items-center start-btn"
           >
             Start planning
-          </router-link>
+          </RouterLink>
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">

@@ -259,7 +259,7 @@ async function remove() {
 
 <template>
   <main class="container py-4 friends-page">
-    <router-link :to="{ name: 'dashboard' }" class="small">← My hangouts</router-link>
+    <RouterLink :to="{ name: 'dashboard' }" class="small">← My hangouts</RouterLink>
     <h1 class="page-title mt-2 mb-3">Friends</h1>
 
     <!-- search -->

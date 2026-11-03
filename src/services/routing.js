@@ -1,5 +1,6 @@
 // Owner: Nicole. Travel time per person and mode, via our /api/route function
 // (OneMap Routing needs a token, so the call happens server-side in api/route.js).
+import axios from 'axios'
 import { canWorkOutTrip, centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint'
 import { updateMemberTrip } from '@/services/hangouts'
 
@@ -10,16 +11,15 @@ import { updateMemberTrip } from '@/services/hangouts'
  * @returns {Promise<{ mins: number, cost: number, steps: Array<{ instruction: string, mins: number }> }>}
  */
 export async function getRoute(from, to, mode) {
-  const params = new URLSearchParams({
-    fromLat: from.lat,
-    fromLng: from.lng,
-    toLat: to.lat,
-    toLng: to.lng,
-    mode,
-  })
-  const res = await fetch(`/api/route?${params}`)
-  if (!res.ok) throw new Error(`route failed: ${res.status}`)
-  return res.json()
+  try {
+    const response = await axios.get('/api/route', {
+      params: { fromLat: from.lat, fromLng: from.lng, toLat: to.lat, toLng: to.lng, mode },
+    })
+    return response.data
+  } catch (err) {
+    if (!err.response) throw err // offline
+    throw new Error(`route failed: ${err.response.status}`, { cause: err })
+  }
 }
 
 /**

@@ -20,6 +20,7 @@
   import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
   import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
   import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
+  import { joinNames } from '@/utils/joinNames'
 
   const route = useRoute()
   const router = useRouter()
@@ -304,8 +305,7 @@
     if (names.length === 1) {
       return `${names[0]} hasn’t picked yet, so we’re assuming MRT for now.`
     }
-    const last = names[names.length - 1]
-    return `${names.slice(0, -1).join(', ')} and ${last} haven’t picked yet, so we’re assuming MRT for now.`
+    return `${joinNames(names)} haven’t picked yet, so we’re assuming MRT for now.`
   })
 
   // I can find the midpoint once I've picked my own mode (friends can pick later)
@@ -396,13 +396,13 @@
                  Waits while the times are being worked out, so we never save a station that's
                  about to change -->
             <!-- (Ryan) locked on 08: there's nothing to find here, so the next step is to look at it -->
-            <router-link
+            <RouterLink
               v-if="midpointLocked"
               :to="{ name: 'midpoint', params: { id: route.params.id } }"
               class="btn btn-primary btn-lg w-100"
             >
               See the midpoint →
-            </router-link>
+            </RouterLink>
             <button
               v-else
               type="button"

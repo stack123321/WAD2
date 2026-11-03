@@ -1,5 +1,6 @@
 // Owner: Hugo. Google Places near the hangout midpoint for pages 09 and 10.
 import { ref } from 'vue'
+import axios from 'axios'
 import { supabase } from './supabase'
 import { isMockHangout } from './votes'
 
@@ -23,18 +24,18 @@ export function setGooglePlacesEnabled(enabled) {
 export async function searchNearby(centre, { radiusM = 3000, categories = [], signal } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
 
-  const params = new URLSearchParams({
-    lat: centre.lat,
-    lng: centre.lng,
-    radius: radiusM,
-    categories: categories.join(','),
-  })
-  const res = await fetch(`/api/places?${params}`, { signal })
-  if (!res.ok) {
-    const body = await res.json()
-    throw new Error(body.error ?? `places failed: ${res.status}`)
+  try {
+    const response = await axios.get('/api/places', {
+      params: { lat: centre.lat, lng: centre.lng, radius: radiusM, categories: categories.join(',') },
+      signal,
+    })
+    return response.data
+  } catch (err) {
+    if (!err.response) throw err // offline, or the search was cancelled
+    throw new Error(err.response.data?.error ?? `places failed: ${err.response.status}`, {
+      cause: err,
+    })
   }
-  return res.json()
 }
 
 const spotCache = {}
@@ -129,9 +130,8 @@ export async function loadSpotSummary(id, { signal } = {}) {
   if (cached) {
     summary = cached[0]
   } else {
-    const res = await fetch(`/api/places?id=${encodeURIComponent(id)}&summary=1`, { signal })
-    if (!res.ok) throw new Error(`summary failed: ${res.status}`)
-    summary = await res.json()
+    const response = await axios.get('/api/places', { params: { id, summary: 1 }, signal })
+    summary = response.data
     // wrapped in an array so "no summary" (null) is cached too
     writeSearchCache(key, [summary])
   }
@@ -143,9 +143,14 @@ export async function loadSpotSummary(id, { signal } = {}) {
 export async function loadSpot(id, { signal, force = false } = {}) {
   if (!googlePlacesEnabled.value) throw new Error('Google Places is disabled')
   if (!force && spotCache[id] !== undefined) return spotCache[id]
-  const res = await fetch(`/api/places?id=${encodeURIComponent(id)}`, { signal })
-  if (!res.ok) throw new Error(`place failed: ${res.status}`)
-  const spot = toSpot(await res.json())
+  let response
+  try {
+    response = await axios.get('/api/places', { params: { id }, signal })
+  } catch (err) {
+    if (!err.response) throw err // offline, or the page was left
+    throw new Error(`place failed: ${err.response.status}`, { cause: err })
+  }
+  const spot = toSpot(response.data)
   spotCache[id] = spot
   return spot
 }

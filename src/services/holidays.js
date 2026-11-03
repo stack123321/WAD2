@@ -20,7 +20,7 @@ async function getDatasetIds() {
 async function loadYear(year) {
   const ids = await getDatasetIds()
   const thisYear = new Date().getFullYear()
-  const id = { [thisYear]: ids.at(-2), [thisYear + 1]: ids.at(-1) }[year]
+  const id = { [thisYear]: ids[ids.length - 2], [thisYear + 1]: ids[ids.length - 1] }[year]
   if (!id) return {}
 
   const response = await axios.get(DATASTORE_URL + id)
