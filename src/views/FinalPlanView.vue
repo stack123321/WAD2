@@ -28,10 +28,7 @@ import {
   formatDateTime,
   formatTime,
   leaveBy,
-  modeLabel,
   pickLeader,
-  runnerUp,
-  tripRange,
 } from '@/utils/voteHelpers'
 
 const route = useRoute()
@@ -69,9 +66,6 @@ const confirmedSpot = computed(
 )
 const isConfirmed = computed(() => confirmedSpot.value !== null)
 const spot = computed(() => confirmedSpot.value ?? pickLeader(rows.value)?.spot ?? null)
-const backup = computed(() =>
-  spot.value ? (runnerUp(rows.value, spot.value.id)?.spot ?? null) : null,
-)
 
 // "You leave by" on the spot card, for the person looking
 const myLeave = computed(() => {
@@ -93,24 +87,39 @@ const calendarLink = computed(() => {
     title: `${hangout.value.name} at ${spot.value.name}`,
     startIso: startsAt.value,
     location: `${spot.value.name}, ${hangout.value.midpoint_name ?? 'Singapore'}`,
-    details: backup.value ? `Backup plan: ${backup.value.name}` : 'Planned with Fairpoint',
+    details: 'Planned with Fairpoint',
   })
 })
 
+// (Surya) how each person's trip reads in the copied plan, e.g. "14 min by bus", "8 min walking"
+const TRIP_WORDS = { mrt: 'by MRT', bus: 'by bus', car: 'by car', walk: 'walking' }
+
+// (Surya) "Copy plan": a short card that reads well in a chat, e.g.
+//   Thursday hangout 🎉
+//   📅 Thu, 5 Nov, 7:00 pm
+//   📍 Zhong Ji Dang Gui HK Roasted Delight
+//       near Aljunied MRT
+//
+//   🚶 Leave by
+//   • surya: 6:46 pm (14 min by bus)
 const summary = computed(() => {
   if (!hangout.value || !spot.value) return ''
-  const lines = [hangout.value.name]
-  if (startsAt.value) lines.push(`${formatDateTime(startsAt.value)} (SGT)`)
-  lines.push(`Where: ${spot.value.name}, ${hangout.value.midpoint_name ?? ''}`.trim(), '')
-  lines.push('Leave by:')
+  const lines = [`${hangout.value.name} 🎉`]
+  if (startsAt.value) lines.push(`📅 ${formatDateTime(startsAt.value)}`)
+  lines.push(`📍 ${spot.value.name}`)
+  if (hangout.value.midpoint_name) lines.push(`    near ${hangout.value.midpoint_name} MRT`)
+
+  const leaving = []
   for (const m of store.members) {
     if (m.travel_mins == null || !startsAt.value) continue
     const at = formatTime(leaveBy(startsAt.value, m.travel_mins))
-    lines.push(`- ${m.display_name}: ${at} (${m.travel_mins} min by ${modeLabel(m.mode)})`)
+    let trip = `${m.travel_mins} min`
+    if (TRIP_WORDS[m.mode]) {
+      trip = `${trip} ${TRIP_WORDS[m.mode]}`
+    }
+    leaving.push(`• ${m.display_name}: ${at} (${trip})`)
   }
-  const range = tripRange(store.members)
-  if (range) lines.push('', `Everyone's trip is within ${range.gap} min of each other.`)
-  if (backup.value) lines.push(`Backup: ${backup.value.name}`)
+  if (leaving.length > 0) lines.push('', '🚶 Leave by', ...leaving)
   return lines.join('\n')
 })
 

@@ -111,7 +111,8 @@ async function scrollToBottom() {
 // Part (b) Sending
 async function send() {
   error.value = ''
-  if (draft.value.trim() === '') {
+  // (Surya) empty, or still sending the last one (e.g. Enter pressed twice): do nothing
+  if (draft.value.trim() === '' || sending.value) {
     return
   }
   sending.value = true
@@ -222,15 +223,18 @@ function timeLabel(message) {
 
       <form class="send-row" @submit.prevent="send">
         <label for="chat-input" class="visually-hidden">Message</label>
-        <input
+        <!-- (Surya) a text area, so a pasted plan keeps its lines. Enter sends, Shift+Enter adds a
+             line, and the box grows to fit (up to 5 lines) -->
+        <textarea
           id="chat-input"
           v-model="draft"
-          class="form-control"
-          type="text"
+          class="form-control chat-input"
+          :rows="Math.min(5, draft.split('\n').length)"
           maxlength="500"
           :placeholder="kind === 'direct' ? 'Message' : 'Message your group'"
           autocomplete="off"
-        />
+          @keydown.enter.exact.prevent="send"
+        ></textarea>
         <button
           type="submit"
           class="btn btn-primary send-btn"
@@ -312,7 +316,14 @@ function timeLabel(message) {
 
 .send-row {
   display: flex;
+  align-items: flex-end; /* Send stays at the bottom when the box grows */
   gap: 0.5rem;
+}
+
+/* (Surya) the text area looks like the old one-line box until it has more lines */
+.chat-input {
+  min-height: 44px;
+  resize: none;
 }
 
 .send-btn {
