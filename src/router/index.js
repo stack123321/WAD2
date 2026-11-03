@@ -168,4 +168,15 @@ router.beforeEach(async (to) => {
   }
 })
 
+// (Surya) After we deploy a new version, a tab that was already open may ask for a page file that
+// no longer exists (each build renames them), and the link would silently do nothing. Load the new
+// version instead, straight onto the page they clicked.
+router.onError((error, to) => {
+  const stale =
+    /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i
+  if (stale.test(error.message)) {
+    window.location.assign(to.fullPath)
+  }
+})
+
 export default router
