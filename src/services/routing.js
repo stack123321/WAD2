@@ -45,15 +45,21 @@ const STATIONS_TO_TRY = 8
  * 4. rank them (fairest = shortest longest trip and smallest gap) and return them, best first
  * @param {Array} members people with a starting point and a mode
  * @param {'fairest' | 'fastest' | 'cheapest'} optimiseFor
+ * @param {(done: number, total: number) => void} [onProgress] (Surya) told after each station, for 07's progress bar
  */
-export async function rankStations(members, optimiseFor = 'fairest') {
+export async function rankStations(members, optimiseFor = 'fairest', onProgress = () => {}) {
   const middle = centroid(members.map((m) => ({ lat: m.start_lat, lng: m.start_lng })))
   if (!middle) {
     return []
   }
+  const stations = nearestStations(middle, STATIONS_TO_TRY)
+  let done = 0
+  onProgress(0, stations.length)
   const candidates = await Promise.all(
-    nearestStations(middle, STATIONS_TO_TRY).map(async (station) => {
+    stations.map(async (station) => {
       const travel = await travelTo(members, station)
+      done++
+      onProgress(done, stations.length) // e.g. 3 of 8 stations checked
       return { ...station, ...travel }
     }),
   )
