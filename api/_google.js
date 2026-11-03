@@ -85,6 +85,7 @@ function tagsOf(p) {
   if (p.goodForGroups) tags.push('Good for groups')
   if (p.servesVegetarianFood) tags.push('Vegetarian options')
   if (p.reservable) tags.push('Reservations')
+  if (p.accessibilityOptions?.wheelchairAccessibleEntrance) tags.push('Step-free access')
   return tags
 }
 
