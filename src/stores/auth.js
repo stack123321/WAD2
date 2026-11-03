@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { supabase, hasSupabase } from '@/services/supabase'
+import { freeName, isSameName } from '@/services/account'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null) // Supabase auth user, or null when logged out
@@ -15,7 +16,14 @@ export const useAuthStore = defineStore('auth', () => {
   // requests or be found. This adds the row if it's missing and never overwrites an existing one.
   async function ensureProfile(authUser) {
     if (!hasSupabase || !authUser) return
-    const name = authUser.user_metadata?.display_name || authUser.email?.split('@')[0] || 'Friend'
+    let name = authUser.user_metadata?.display_name || authUser.email?.split('@')[0] || 'Friend'
+    // (Surya) someone may have taken the name while they confirmed their email: use the next free one
+    try {
+      const free = await freeName(name)
+      if (free) name = free
+    } catch (err) {
+      console.error(err)
+    }
     const { error } = await supabase
       .from('profiles')
       .upsert({ id: authUser.id, display_name: name }, { onConflict: 'id', ignoreDuplicates: true })
@@ -62,12 +70,29 @@ export const useAuthStore = defineStore('auth', () => {
     await ensureProfile(data.user)
   }
 
+  // (Surya) Throws "“Ryan” is taken. Try “Ryan1”." when someone already has the name. If the check
+  // itself fails (e.g. the unique-names SQL hasn't been run yet), sign up carries on as before.
+  async function checkNameFree(displayName) {
+    let free
+    try {
+      free = await freeName(displayName)
+    } catch (err) {
+      console.error(err)
+      return
+    }
+    if (isSameName(displayName, free)) return
+    if (free) throw new Error(`“${displayName.trim()}” is taken. Try “${free}”.`)
+    throw new Error(`“${displayName.trim()}” is taken. Try another name.`)
+  }
+
   // Returns true when the user must confirm their email before they can log in.
   async function signUp(email, password, displayName) {
     if (!hasSupabase) {
       mockLogin(email, displayName)
       return false
     }
+    // (Surya) names are unique: stop before the account is made if this one is taken
+    await checkNameFree(displayName)
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

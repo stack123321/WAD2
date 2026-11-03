@@ -1,5 +1,5 @@
-// Owner: Surya. "Delete my account" on 03 Preferences.
-// Needs supabase/migrations/2026-10-31-delete-account.sql to have been run.
+// Owner: Surya. "Delete my account" on 03 Preferences, and unique names on 02 Sign up.
+// Needs supabase/migrations/2026-10-31-delete-account.sql and 2026-11-03-unique-names.sql.
 import { supabase, hasSupabase } from './supabase'
 
 const PHOTO_BUCKET = 'hangout-photos'
@@ -42,4 +42,31 @@ export async function deleteMyAccount(userId) {
   if (error) {
     throw error
   }
+}
+
+/**
+ * The name to use for `name`: the name itself if nobody has it, or the next free one with a
+ * number on the end (Ryan → Ryan1 → … → Ryan9999). "Ryan" and "ryan" count as the same.
+ * @param {string} name
+ * @returns {Promise<string | null>} null when every number is taken
+ */
+export async function freeName(name) {
+  // Without keys there are no other accounts, so every name is free
+  if (!hasSupabase) {
+    return name.trim()
+  }
+  const { data, error } = await supabase.rpc('free_name', { base: name })
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+/**
+ * True when `name` is free to use, i.e. the database gave the same name back.
+ * @param {string} name
+ * @param {string | null} free what freeName() returned
+ */
+export function isSameName(name, free) {
+  return free !== null && free.toLowerCase() === name.trim().toLowerCase()
 }

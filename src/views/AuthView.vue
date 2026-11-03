@@ -10,6 +10,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
 import { joinByInviteCode } from '@/services/hangouts'
+import { freeName, isSameName } from '@/services/account'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +32,8 @@ const notice = ref('')
 const MIN_PASSWORD = 8
 const MAX_NAME = 50
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/ // (Surya) 8–72 characters, at least 1 letter and 1 number
+const PASSWORD_RULE = 'Use 8–72 characters with at least one letter and one number.'
 
 const touched = reactive({ name: false, email: false, password: false })
 
@@ -57,7 +60,9 @@ const fieldErrors = computed(() => {
       ? 'Enter your password.'
       : isSignup.value && form.password.length < MIN_PASSWORD
         ? `Use at least ${MIN_PASSWORD} characters (${form.password.length} so far).`
-        : '',
+        : isSignup.value && !PASSWORD_PATTERN.test(form.password)
+          ? PASSWORD_RULE
+          : '',
   }
 })
 
@@ -67,6 +72,46 @@ const shown = computed(() => ({
   email: touched.email ? fieldErrors.value.email : '',
   password: touched.password ? fieldErrors.value.password : '',
 }))
+
+// (Surya) Names are unique. While you type a name, check it and suggest the next free one
+// (Ryan → Ryan1). nameCheck.name is the name the answer is for, so an old answer never shows.
+const nameCheck = reactive({ name: '', free: null })
+let nameTimer = null
+
+watch(
+  () => form.name,
+  () => {
+    clearTimeout(nameTimer)
+    if (!isSignup.value || form.name.trim() === '') {
+      return
+    }
+    nameTimer = setTimeout(checkName, 400) // wait until they stop typing for a moment
+  },
+)
+
+async function checkName() {
+  const name = form.name.trim()
+  try {
+    const free = await freeName(name)
+    nameCheck.name = name
+    nameCheck.free = free
+  } catch (err) {
+    console.error(err) // can't check right now: sign up checks again anyway
+  }
+}
+
+// true once the check says someone already has the name in the box
+const nameTaken = computed(
+  () =>
+    isSignup.value &&
+    nameCheck.name !== '' &&
+    nameCheck.name === form.name.trim() &&
+    !isSameName(nameCheck.name, nameCheck.free),
+)
+
+function useSuggestedName() {
+  form.name = nameCheck.free
+}
 
 const fieldIds = { name: 'auth-name', email: 'auth-email', password: 'auth-password' }
 
@@ -153,6 +198,11 @@ async function submit() {
     document.getElementById(fieldIds[firstInvalid])?.focus()
     return
   }
+  // (Surya) the name is taken: the suggestion is under the box
+  if (nameTaken.value) {
+    document.getElementById(fieldIds.name)?.focus()
+    return
+  }
 
   const email = form.email.trim()
   busy.value = true
@@ -222,7 +272,9 @@ const resetErrors = computed(() => ({
     ? 'Enter a new password.'
     : reset.password.length < MIN_PASSWORD
       ? `Use at least ${MIN_PASSWORD} characters (${reset.password.length} so far).`
-      : '',
+      : !PASSWORD_PATTERN.test(reset.password)
+        ? PASSWORD_RULE
+        : '',
   confirm: !reset.confirm
     ? 'Type the new password again.'
     : reset.confirm !== reset.password
@@ -431,12 +483,12 @@ const avatars = [
               v-else
               id="reset-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': reset.password.length >= MIN_PASSWORD }"
+              :class="{ 'field-hint--ok': PASSWORD_PATTERN.test(reset.password) }"
             >
               {{
-                reset.password.length >= MIN_PASSWORD
-                  ? '✓ Long enough'
-                  : `At least ${MIN_PASSWORD} characters`
+                PASSWORD_PATTERN.test(reset.password)
+                  ? '✓ Looks good'
+                  : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
             </p>
           </div>
@@ -490,16 +542,27 @@ const avatars = [
               id="auth-name"
               v-model="form.name"
               class="form-control"
-              :class="{ 'is-invalid': shown.name }"
+              :class="{ 'is-invalid': shown.name || nameTaken }"
               type="text"
               autocomplete="name"
               placeholder="What friends call you"
               required
-              :aria-invalid="Boolean(shown.name)"
+              :aria-invalid="Boolean(shown.name) || nameTaken"
               aria-describedby="auth-name-error"
               @blur="touched.name = true"
             />
             <p v-if="shown.name" id="auth-name-error" class="field-error">{{ shown.name }}</p>
+            <!-- (Surya) someone already has this name: offer the next free one in one tap -->
+            <p v-else-if="nameTaken" id="auth-name-error" class="field-error" role="alert">
+              “{{ nameCheck.name }}” is taken.
+              <template v-if="nameCheck.free">
+                Try
+                <button type="button" class="name-suggestion" @click="useSuggestedName">
+                  {{ nameCheck.free }}
+                </button>
+              </template>
+              <template v-else>Try another name.</template>
+            </p>
           </div>
 
           <div class="field">
@@ -553,12 +616,12 @@ const avatars = [
               v-else-if="isSignup"
               id="auth-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': form.password.length >= MIN_PASSWORD }"
+              :class="{ 'field-hint--ok': PASSWORD_PATTERN.test(form.password) }"
             >
               {{
-                form.password.length >= MIN_PASSWORD
-                  ? '✓ Long enough'
-                  : `At least ${MIN_PASSWORD} characters`
+                PASSWORD_PATTERN.test(form.password)
+                  ? '✓ Looks good'
+                  : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
             </p>
           </div>
@@ -846,6 +909,22 @@ const avatars = [
 
 .field-hint {
   color: var(--fp-muted);
+}
+
+/* (Surya) the suggested free name, e.g. "Ryan1": tap it to use it */
+.name-suggestion {
+  min-height: 32px;
+  margin-left: 0.25rem;
+  padding: 0.15rem 0.75rem;
+  border: 1px solid var(--fp-primary);
+  border-radius: 999px;
+  background: var(--fp-surface);
+  color: var(--fp-primary);
+  font-weight: 600;
+}
+
+.name-suggestion:hover {
+  background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 }
 
 .field-hint--ok {
