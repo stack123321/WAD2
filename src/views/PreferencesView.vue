@@ -326,6 +326,11 @@ async function confirmDelete() {
     </div>
 
     <form v-else id="prefs-form" novalidate @submit.prevent="isSetup ? nextSetupStep() : save()">
+      <section v-if="!isSetup" class="panel account" aria-label="Your account">
+        <p class="account__name">{{ displayName }}</p>
+        <p v-if="auth.user?.email" class="account__email">{{ auth.user.email }}</p>
+      </section>
+
       <div class="prefs__grid" :class="{ 'prefs__grid--setup': isSetup }">
         <div class="prefs__col">
           <section
@@ -664,6 +669,22 @@ async function confirmDelete() {
   background: var(--fp-surface);
   border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
+}
+
+.account {
+  margin-bottom: 1.25rem;
+}
+
+.account__name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.account__email {
+  margin: 0;
+  color: var(--fp-muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
 }
 
 .dietary-panel {
