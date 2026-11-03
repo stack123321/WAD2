@@ -338,10 +338,7 @@ const avatars = [
 <template>
   <main class="auth">
     <aside class="brand-panel">
-      <RouterLink class="logo" :to="{ name: 'landing' }">
-        <span class="logo__mark" aria-hidden="true"> <span></span><span></span><span></span> </span>
-        Fairpoint
-      </RouterLink>
+      <RouterLink class="logo" :to="{ name: 'landing' }">Fairpoint</RouterLink>
 
       <div class="brand-panel__copy">
         <h1 class="brand-panel__title">Stop arguing about where to meet.</h1>
@@ -712,28 +709,6 @@ const avatars = [
   font-size: 1.25rem;
   font-weight: 800;
   text-decoration: none;
-}
-
-.logo__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--fp-surface);
-}
-
-.logo__mark span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--fp-primary);
-}
-
-.logo__mark span:nth-child(2) {
-  background: var(--fp-accent);
 }
 
 .brand-panel__copy {
