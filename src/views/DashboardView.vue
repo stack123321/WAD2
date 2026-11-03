@@ -389,7 +389,7 @@ onMounted(async () => {
   loading.value = false
   loadCrowds() // not awaited, the chips appear when the levels arrive
   loadPhotos() // not awaited either
-  stopListening = subscribeToMyHangouts(onHangoutChanged)
+  stopListening = subscribeToMyHangouts('dashboard', onHangoutChanged)
 })
 
 onUnmounted(() => {

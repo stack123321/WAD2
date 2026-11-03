@@ -11,7 +11,8 @@
 // the label. A ring then keeps pulsing out of the midpoint. No motion if reduced motion is on.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getMyHangouts } from '@/services/hangouts'
+import { getMyHangouts, subscribeToMyHangouts } from '@/services/hangouts'
+import { getProgress, getStatus } from '@/utils/hangoutStatus'
 
 const auth = useAuthStore()
 
@@ -54,6 +55,8 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', checkMapInView)
   window.removeEventListener('resize', checkMapInView)
+  stopListening()
+  clearTimeout(reloadTimer)
 })
 
 // "18–22 min", shown in the label on phones instead of the time tags
@@ -156,11 +159,33 @@ async function loadData() {
   errorMessage.value = ''
   try {
     hangouts.value = await getMyHangouts()
+    // (Surya) from now on, changes to my hangouts update the Next up card by themselves
+    stopListening()
+    stopListening = subscribeToMyHangouts('landing', onHangoutChanged)
   } catch (error) {
     console.error(error)
     errorMessage.value = 'Couldn’t load your hangouts.'
   }
   loading.value = false
+}
+
+// (Surya) Live: when the host confirms a plan or starts a re-vote, or anyone votes, load the
+// hangouts again (without the loading line, so the card doesn't flicker). A burst of changes
+// reloads once.
+let stopListening = () => {}
+let reloadTimer = null
+
+function onHangoutChanged() {
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(reloadQuietly, 400)
+}
+
+async function reloadQuietly() {
+  try {
+    hangouts.value = await getMyHangouts()
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 // After a refresh, Supabase takes a moment to say who is logged in, so load once it does
@@ -181,15 +206,25 @@ const nextHangout = computed(() => {
   return next
 })
 
-// "3 of 4 starting points added"
-const startsAdded = computed(() => {
-  let count = 0
-  for (const m of nextHangout.value.members) {
-    if (m.start_lat != null) {
-      count++
-    }
+// (Surya) What the Next up card says and where its button goes, from the same rules as the
+// My hangouts cards (utils/hangoutStatus.js), so both always agree. e.g. "Your turn · 3 of 4
+// voted" with "Cast your vote", or "✓ Plan confirmed · Mongkok Dimsum" with "View plan".
+const nextStatus = computed(() => {
+  let myId = null
+  if (auth.user) {
+    myId = auth.user.id
   }
-  return count
+  return getStatus(nextHangout.value, myId)
+})
+
+const nextLine = computed(() => {
+  const h = nextHangout.value
+  if (h.status === 'confirmed') {
+    const spot = (h.shortlist ?? []).find((s) => s.id === h.final_shortlist_id)
+    return spot ? `✓ Plan confirmed · ${spot.name}` : '✓ Plan confirmed'
+  }
+  const progress = getProgress(h)
+  return progress ? `${nextStatus.value.text} · ${progress.text}` : nextStatus.value.text
 })
 
 // "Fri 24 Oct · 7 PM" (same format as the step bar)
@@ -213,15 +248,9 @@ function dateLabel(when) {
   return `${day} · ${hour}${minutes} ${amPm}`
 }
 
-// Continue planning: open the step the hangout is up to
+// the button opens the step the hangout is up to (the page getStatus picked)
 function continueRoute(hangout) {
-  let page = 'starting-points'
-  if (hangout.status === 'voting') {
-    page = 'vote'
-  } else if (hangout.status === 'confirmed') {
-    page = 'final-plan'
-  }
-  return { name: page, params: { id: hangout.id } }
+  return { name: nextStatus.value.page, params: { id: hangout.id } }
 }
 </script>
 
@@ -394,12 +423,11 @@ function continueRoute(hangout) {
               <div class="next-card__label">Next up</div>
               <div class="next-card__name text-truncate">{{ nextHangout.name }}</div>
               <div class="text-secondary">
-                {{ dateLabel(nextHangout.starts_at) }} · {{ startsAdded }} of
-                {{ nextHangout.members.length }} starting points added
+                {{ dateLabel(nextHangout.starts_at) }} · {{ nextLine }}
               </div>
             </div>
             <RouterLink class="btn btn-primary btn-lg cta" :to="continueRoute(nextHangout)">
-              Continue planning
+              {{ nextStatus.button }}
             </RouterLink>
           </div>
 

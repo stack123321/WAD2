@@ -387,15 +387,16 @@ export function subscribeToHangout(hangoutId, onChange) {
 /**
  * (Surya) Call onChange when any of my hangouts changes (e.g. the host confirms the plan or starts
  * a re-vote) or anyone votes in one. No filter needed: the read rules ("hangouts: members read",
- * "votes: members read") mean Supabase only sends changes to hangouts I'm in. Used by 04.
+ * "votes: members read") mean Supabase only sends changes to hangouts I'm in. Used by 01 and 04.
+ * @param {string} page which page is listening, e.g. 'dashboard'
  * @returns {() => void} call this in onUnmounted to stop listening
  */
-export function subscribeToMyHangouts(onChange) {
+export function subscribeToMyHangouts(page, onChange) {
   if (!hasSupabase) {
     return () => {}
   }
   const channel = supabase
-    .channel('my-hangouts')
+    .channel(`my-hangouts:${page}`) // one channel per page, so leaving one page never stops the other's
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hangouts' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onChange)
     .subscribe()
