@@ -404,7 +404,7 @@ async function confirmDelete() {
 
         <div class="prefs__col">
           <section v-if="!isSetup || setupStep === 3" class="panel">
-            <h2 class="panel__title">Budget per person</h2>
+            <h2 class="panel__title">Budget</h2>
             <p class="panel__sub">Used to filter spots by price level</p>
             <div class="segmented" role="radiogroup" aria-label="Budget per person">
               <button
