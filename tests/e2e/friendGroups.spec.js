@@ -96,11 +96,11 @@ test('planning with a group ticks everyone, and anyone can be left out', async (
   const banner = page.getByRole('status').filter({ hasText: 'Planning with Class project crew' })
   await expect(banner).toContainText('4 usual starting points are filled in')
   for (const name of ['Ryan', 'Nicole', 'Hugo']) {
-    await expect(page.getByRole('checkbox', { name: new RegExp(name) })).toBeChecked()
+    await expect(page.getByRole('checkbox', { name })).toBeChecked()
   }
 
   // Hugo can't make it this time: he's left out, and so is his starting point
-  await page.getByRole('checkbox', { name: /Hugo/ }).uncheck()
+  await page.getByRole('checkbox', { name: /Hugo/ }).click()
   await expect(banner).toContainText('3 usual starting points are filled in')
 })
 
@@ -144,7 +144,7 @@ test('making a new group opens it and lists it on My Chats', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Create group' })).toBeDisabled()
 
   await page.getByLabel('Group name').fill('Badminton')
-  await page.getByRole('checkbox', { name: /Ryan/ }).check()
+  await page.getByRole('checkbox', { name: /Ryan/ }).click()
   await expect(page.getByText('You and 1 more')).toBeVisible()
   await page.getByRole('button', { name: 'Create group' }).click()
 
@@ -154,7 +154,7 @@ test('making a new group opens it and lists it on My Chats', async ({ page }) =>
 
   // the owner adds someone else
   await page.getByRole('button', { name: '+ Add people' }).click()
-  await page.getByRole('checkbox', { name: /Nicole/ }).check()
+  await page.getByRole('checkbox', { name: /Nicole/ }).click()
   await page.getByRole('button', { name: 'Add 1' }).click()
   await expect(person(page, 'Nicole')).toBeVisible()
 

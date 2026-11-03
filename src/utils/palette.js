@@ -1,6 +1,6 @@
 // Owner: Ryan. The one place JavaScript holds colour codes, for things CSS variables can't reach:
 // Leaflet draws the map shapes itself, and avatars pick their colour in code.
-// Everything else uses var(--fp-...) from styles/tokens.css, so no other file has a hex code.
+// Everything else uses var(--fp-...) from assets/tokens.css, so no other file has a hex code.
 
 // avatar colours, all dark enough for white text (4.5:1, checked in tests/unit/avatarColor.spec.js)
 export const AVATAR_COLORS = [

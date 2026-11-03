@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js' // navbar toggle, dropdowns, modals
-import './styles/tokens.css'
+import './assets/tokens.css'
 
 import App from './App.vue'
 import router from './router'

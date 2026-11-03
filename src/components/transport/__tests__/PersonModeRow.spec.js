@@ -31,26 +31,26 @@ describe('TestSuite: PersonModeRow', () => {
   it('Test2: a friend with a starting point but no mode can be reminded too', () => {
     const wrapper = mount(PersonModeRow, { props: { member: noMode } })
     expect(wrapper.text()).toContain('From Tampines MRT')
-    expect(wrapper.find('.remind').exists()).toBeTruthy()
+    expect(wrapper.findAll('.remind')).toHaveLength(1)
   })
 
   it('Test3: a friend who is all set has no Remind button', () => {
     const wrapper = mount(PersonModeRow, { props: { member: allSet } })
-    expect(wrapper.find('.remind').exists()).toBeFalsy()
+    expect(wrapper.findAll('.remind')).toHaveLength(0)
   })
 
   it('Test4: my own row never shows Remind, even before I pick a mode', () => {
     const wrapper = mount(PersonModeRow, { props: { member: noMode, isMe: true } })
     expect(wrapper.text()).toContain('Ryan (you)')
     expect(wrapper.text()).toContain('Pick your mode')
-    expect(wrapper.find('.remind').exists()).toBeFalsy()
+    expect(wrapper.findAll('.remind')).toHaveLength(0)
   })
 
   it('Test5: just after reminding, the button says "Sent ✓" and can’t be pressed again', () => {
     const wrapper = mount(PersonModeRow, { props: { member: noStart, remindStatus: 'Sent ✓' } })
     const remind = wrapper.find('.remind')
     expect(remind.text()).toBe('Sent ✓')
-    expect(remind.attributes('disabled')).toBeDefined()
+    expect(remind.attributes()).toHaveProperty('disabled')
   })
 
   it('Test6: on my own row, clicking Bus emits pick with "bus"', async () => {
@@ -65,7 +65,7 @@ describe('TestSuite: PersonModeRow', () => {
   it('Test7: on a friend’s row, the mode buttons can’t be clicked', () => {
     const wrapper = mount(PersonModeRow, { props: { member: allSet } })
     const mrt = wrapper.findAll('button').find((b) => b.text() === 'MRT')
-    expect(mrt.attributes('disabled')).toBeDefined()
+    expect(mrt.attributes()).toHaveProperty('disabled')
   })
 
   it('Test8: shows the travel time and the fare one way', () => {

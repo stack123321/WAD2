@@ -31,28 +31,28 @@ describe('TestSuite: SpinWheel', () => {
 
   it('Test3: the button is disabled while the wheel is spinning', () => {
     const wrapper = mountWheel({ spinning: true })
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes()).toHaveProperty('disabled')
   })
 
   it('Test4: once there is a winner, it says which spot the wheel picked', () => {
     const wrapper = mountWheel({ winnerId: 's2' })
     expect(wrapper.text()).toContain('The wheel picked Coffee!')
-    expect(wrapper.find('button').exists()).toBeFalsy()
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 
   it('Test5: someone who is not the host gets no button and is told the host spins', () => {
     const wrapper = mountWheel({ canSpin: false })
-    expect(wrapper.find('button').exists()).toBeFalsy()
+    expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).toContain('Only the host can spin. Waiting for Ryan to spin…')
   })
 
   it('Test6: with no tie, it is locked: no spots, no button, and it says who spins', () => {
     const wrapper = mountWheel({ spots: [], locked: true })
-    expect(wrapper.find('section').classes()).toContain('is-locked')
+    expect(wrapper.find('section').attributes('class')).toContain('is-locked')
     expect(wrapper.find('h2').text()).toBe('Tie-break wheel')
     expect(wrapper.text()).toContain('Ryan (the host) spins it')
     expect(wrapper.text()).toContain("Locked until there's a tie")
     expect(wrapper.findAll('li')).toHaveLength(0)
-    expect(wrapper.find('button').exists()).toBeFalsy()
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 })

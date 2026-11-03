@@ -69,10 +69,8 @@ test('on a phone the Ask toggle opens over the cards and closes after a search',
 
   const reset = page.getByRole('button', { name: 'Reset Ask results' })
   await expect(reset).toBeVisible()
-  const [resetBounds, toggleBounds] = await Promise.all([
-    reset.boundingBox(),
-    toggle.boundingBox(),
-  ])
+  const resetBounds = await reset.boundingBox()
+  const toggleBounds = await toggle.boundingBox()
   expect(resetBounds.height).toBeGreaterThanOrEqual(44)
   expect(resetBounds.x + resetBounds.width).toBeLessThan(toggleBounds.x)
 

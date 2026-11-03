@@ -30,19 +30,19 @@ describe('SpotCard', () => {
   it('renders the spot information and derived travel details', () => {
     const wrapper = mountCard()
 
-    expect(wrapper.get('.spot-card__name').text()).toContain('Quiet Corner Cafe')
-    expect(wrapper.get('.spot-card__rating').text()).toBe('⭐ 4.5')
-    expect(wrapper.get('.spot-card__match').text()).toBe('84% match')
-    expect(wrapper.get('.spot-card__meta').text()).toContain('250 m from Bishan')
-    expect(wrapper.get('.spot-card__meta').text()).toContain('3 min walk')
-    expect(wrapper.get('.spot-card__price').text()).toBe('$$')
+    expect(wrapper.find('.spot-card__name').text()).toContain('Quiet Corner Cafe')
+    expect(wrapper.find('.spot-card__rating').text()).toBe('⭐ 4.5')
+    expect(wrapper.find('.spot-card__match').text()).toBe('84% match')
+    expect(wrapper.find('.spot-card__meta').text()).toContain('250 m from Bishan')
+    expect(wrapper.find('.spot-card__meta').text()).toContain('3 min walk')
+    expect(wrapper.find('.spot-card__price').text()).toBe('$$')
   })
 
   it('formats kilometre distances and free price', () => {
     const wrapper = mountCard({ stationDistanceM: 1200, priceLevel: 0 })
 
-    expect(wrapper.get('.spot-card__meta').text()).toContain('1.2 km from Bishan')
-    expect(wrapper.get('.spot-card__price').text()).toBe('Free')
+    expect(wrapper.find('.spot-card__meta').text()).toContain('1.2 km from Bishan')
+    expect(wrapper.find('.spot-card__price').text()).toBe('Free')
   })
 
   it('renders a link and image alternative text when supplied', () => {
@@ -51,34 +51,34 @@ describe('SpotCard', () => {
       to: { name: 'spot-details', params: { spotId: 'quiet-cafe' } },
     })
 
-    expect(wrapper.get('.spot-card__image').attributes('href')).toBe('spot-details')
-    expect(wrapper.get('.spot-card__image img').attributes('alt')).toBe(cafe.name)
-    expect(wrapper.get('.spot-card__link').text()).toBe(cafe.name)
+    expect(wrapper.find('.spot-card__image').attributes('href')).toBe('spot-details')
+    expect(wrapper.find('.spot-card__image img').attributes('alt')).toBe(cafe.name)
+    expect(wrapper.find('.spot-card__link').text()).toBe(cafe.name)
   })
 
   it('emits add when the spot is not shortlisted', async () => {
     const wrapper = mountCard()
 
-    await wrapper.get('.spot-card__action').trigger('click')
+    await wrapper.find('.spot-card__action').trigger('click')
 
     expect(wrapper.emitted('add')).toHaveLength(1)
-    expect(wrapper.emitted('remove')).toBeUndefined()
+    expect(wrapper.emitted('remove')).toBeFalsy()
   })
 
   it('disables the already-added action when the user cannot remove it', async () => {
     const wrapper = mountCard({ added: true })
-    const action = wrapper.get('.spot-card__action')
+    const action = wrapper.find('.spot-card__action')
 
     expect(action.text()).toBe('Added to vote')
     expect(action.attributes()).toHaveProperty('disabled')
     await action.trigger('click')
-    expect(wrapper.emitted('remove')).toBeUndefined()
+    expect(wrapper.emitted('remove')).toBeFalsy()
   })
 
   it('emits remove when the current user can remove an added spot', async () => {
     const wrapper = mountCard({ added: true, removable: true })
 
-    await wrapper.get('.spot-card__action').trigger('click')
+    await wrapper.find('.spot-card__action').trigger('click')
 
     expect(wrapper.emitted('remove')).toHaveLength(1)
   })
@@ -106,9 +106,9 @@ describe('SpotCard', () => {
       stationDistanceM: null,
     })
 
-    expect(wrapper.find('.spot-card__rating').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__match').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__price').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__tags').exists()).toBe(true)
+    expect(wrapper.findAll('.spot-card__rating')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__match')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__price')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__tags')).toHaveLength(1)
   })
 })

@@ -56,7 +56,7 @@ describe('TestSuite: CandidateCard', () => {
     const withPhoto = { ...spot, image_url: '/api/place-photo?name=places/p1/photos/a' }
     const wrapper = mount(CandidateCard, { props: { spot: withPhoto } })
     await wrapper.find('img').trigger('error')
-    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.findAll('img')).toHaveLength(0)
     expect(wrapper.find('.thumb--empty').text()).toBe('B')
   })
 })

@@ -44,7 +44,7 @@ describe('TestSuite: NeedsInputCard', () => {
 
   it('Test3: shows nothing when no hangout is waiting on me', () => {
     const wrapper = mountCard([votingHangout('h2', 'Saturday lunch', 's1')])
-    expect(wrapper.find('section').exists()).toBeFalsy()
+    expect(wrapper.findAll('section')).toHaveLength(0)
   })
 
   it('Test4: shows at most 3, then says how many more', () => {

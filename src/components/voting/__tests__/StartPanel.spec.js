@@ -37,13 +37,13 @@ describe('TestSuite: StartPanel', () => {
 
   it('Test4: with nothing shortlisted, it can’t start and says to add a spot', () => {
     const wrapper = mountPanel({ spotCount: 0 })
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toContain('Add at least one spot first.')
   })
 
   it('Test5: with no closing time left before the hangout, it can’t start', () => {
     const wrapper = mountPanel({ options: [] })
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toContain("there's no time left to vote")
   })
 })
