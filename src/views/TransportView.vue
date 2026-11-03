@@ -36,6 +36,16 @@
   // the last has finished; only the latest is allowed to update the page
   let latestRanking = 0
   const working = ref(false) // true while the travel times are being worked out
+  const progress = ref({ done: 0, total: 0 }) // (Surya) stations checked so far, for the progress bar
+  const rankError = ref('') // (Surya) shown with a Try again button when the times couldn't be worked out
+
+  // (Surya) how full the progress bar is, 0–100
+  const progressPercent = computed(() => {
+    if (progress.value.total === 0) {
+      return 0
+    }
+    return Math.round((progress.value.done / progress.value.total) * 100)
+  })
 
   async function scoreAreas() {
     const members = store.members.filter((m) => m.start_lat != null)
@@ -44,14 +54,22 @@
     latestRanking++
     const thisRanking = latestRanking
     working.value = true
+    rankError.value = ''
 
     const withModes = []
     for (const m of members) {
       withModes.push({ ...m, mode: m.mode || 'mrt' })
     }
 
+    // only the latest ranking moves the progress bar
+    function onProgress(done, total) {
+      if (thisRanking === latestRanking) {
+        progress.value = { done, total }
+      }
+    }
+
     try {
-      const result = await rankStations(withModes, optimiseFor.value)
+      const result = await rankStations(withModes, optimiseFor.value, onProgress)
       if (thisRanking !== latestRanking) return // a newer ranking started: throw this one away
 
       ranked.value = result
@@ -61,6 +79,12 @@
         m.travel_mins = best.travelMins[i]
         m.travel_cost = best.travelCosts[i]
       })
+    } catch (error) {
+      // (Surya) say so instead of leaving the button greyed out with no reason
+      console.error('Could not get travel times', error)
+      if (thisRanking === latestRanking) {
+        rankError.value = 'Couldn’t work out the travel times. Try again.'
+      }
     } finally {
       if (thisRanking === latestRanking) working.value = false // only the latest one turns it off
     }
@@ -369,8 +393,32 @@
               @click="onFindMidpoint()"
             >
               <span v-if="saving">Saving…</span>
+              <span v-else-if="working">Working out times…</span>
               <span v-else>Find our midpoint →</span>
             </button>
+            <!-- (Surya) why the button is greyed out: 8 stations × everyone's trip, from OneMap -->
+            <div v-if="working && !midpointLocked" class="rank-progress">
+              <div
+                class="progress"
+                role="progressbar"
+                aria-label="Working out travel times"
+                aria-valuemin="0"
+                :aria-valuemax="progress.total"
+                :aria-valuenow="progress.done"
+              >
+                <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
+              </div>
+              <p class="footnote mb-0">
+                Working out everyone’s travel times… {{ progress.done }} of
+                {{ progress.total }} stations
+              </p>
+            </div>
+            <div v-else-if="rankError && !midpointLocked" class="rank-error">
+              <p class="footnote text-danger mb-2" role="alert">{{ rankError }}</p>
+              <button type="button" class="btn btn-outline-primary w-100" @click="scoreAreas()">
+                Try again
+              </button>
+            </div>
             <p v-if="midpointLocked" class="footnote">🔒 {{ lockedNote }}</p>
             <p v-else-if="!myModePicked" class="footnote">Pick how you’re getting there first.</p>
             <p v-else-if="missingMode.length > 0" class="footnote">{{ waitingNote }}</p>
@@ -427,6 +475,29 @@
   border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
   background: var(--fp-surface);
+}
+
+/* (Surya) thin bar under the button while the travel times are worked out */
+.rank-progress {
+  margin-top: 0.75rem;
+}
+
+/* Bootstrap's progress bar, thin and in our colours (like the vote bars on 11) */
+.rank-progress .progress {
+  height: 6px;
+  background: var(--fp-border);
+}
+
+.rank-progress .progress-bar {
+  background: var(--fp-primary);
+}
+
+.rank-error {
+  margin-top: 0.75rem;
+}
+
+.rank-error .btn {
+  min-height: 44px;
 }
 
 .next-title {
