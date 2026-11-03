@@ -151,35 +151,19 @@ const otherOptions = computed(() => {
   return result
 })
 
-// (Surya) For the preview chips on another station: everyone's trip there, how much longer or
-// shorter it is than now, and whether it's fairer. "You" instead of your own name.
+// (Surya) For the preview chips on another station: everyone's trip time there.
+// "You" instead of your own name.
 function compareFor(option) {
   const people = []
   rankedFor.value.forEach((m, i) => {
-    let change = null // null = no midpoint yet, so nothing to compare with
-    if (current.value) {
-      change = option.travelMins[i] - current.value.travelMins[i]
-    }
     people.push({
       id: m.user_id,
       name: m.user_id === myId.value ? 'You' : m.display_name,
       color: m.avatar_color,
       mins: option.travelMins[i],
-      change: change,
     })
   })
-  let fairness = ''
-  if (current.value) {
-    fairness = fairnessText(option.gap - current.value.gap)
-  }
-  return { people: people, fairness: fairness }
-}
-
-// smaller spread between trips = fairer
-function fairnessText(n) {
-  if (n === 0) return 'Just as fair as now.'
-  if (n > 0) return 'Less fair: trips are further apart than now.'
-  return 'Fairer: trips are closer together than now.'
+  return { people: people }
 }
 
 const longestTrip = computed(() => {
@@ -192,9 +176,7 @@ const longestTrip = computed(() => {
   return longest
 })
 
-// (Surya) Your own trip to the midpoint, e.g. "27 min by MRT · $2.20". Null if we don't know it
-// yet (you haven't picked a mode, or the travel times haven't loaded), so the line is hidden.
-// In the demo hangout (sample people) you're Surya, like on 06 and 07.
+// (Surya) Who you are. In the demo hangout (sample people) you're Surya, like on 06 and 07.
 const myId = computed(() => {
   if (route.params.id !== 'demo' && auth.user) {
     return auth.user.id
@@ -202,6 +184,8 @@ const myId = computed(() => {
   return 'u-surya'
 })
 
+// (Surya) Your own trip to the midpoint, e.g. "27 min by MRT · $2.20". Null if we don't know it
+// yet (you haven't picked a mode, or the travel times haven't loaded), so the line is hidden.
 const myTrip = computed(() => {
   const me = store.members.find((m) => m.user_id === myId.value)
   if (!me || !me.mode || me.travel_mins == null) {
