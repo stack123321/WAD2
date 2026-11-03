@@ -141,17 +141,6 @@
         </button>
       </div>
     </div>
-    <AskSpots
-      ref="askSpots"
-      v-if="hasMidpoint"
-      id="explore-ask"
-      class="ask-panel"
-      :class="{ 'is-mobile-visible': showMobileAsk }"
-      :hangout="hangout.hangout"
-      :members="hangout.members"
-      :memory="remembered.ask"
-      @found="onAskFound"
-    />
     <div
       v-if="showMobileFilters || showMobileAsk"
       class="mobile-filter-barrier"
@@ -174,46 +163,85 @@
     <p v-else-if="!askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div v-if="!askedSpots" class="filter-menu-container">
-      <button
-        type="button"
-        class="desktop-filter-toggle"
-        :aria-expanded="showDesktopFilters"
-        aria-controls="explore-filters"
-        @click="toggleDesktopFilters"
-      >
-        Filters
-      </button>
-      <div
-        id="explore-filters"
-        class="filters"
-        :class="{
-          'is-mobile-visible': showMobileFilters,
-          'is-desktop-visible': showDesktopFilters,
-        }"
-      >
-        <div class="filter-buttons">
-          <button
-            v-for="filter in filters"
-            :key="filter.value"
-            type="button"
-            class="btn btn-sm"
-            :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
-            @click="selectFilter(filter.value)"
-          >
-            {{ filter.label }}
-          </button>
-        </div>
-        <div class="filter-options">
-          <label class="match-filter">
-            <input v-model="hideZeroMatches" type="checkbox" />
-            <span>Hide 0% matches</span>
-          </label>
-          <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
-            <option v-for="option in sortOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+    <!-- (Surya) laptops: "Need an idea?" (Ask) and Filters side by side -->
+    <div class="tools-row">
+      <!-- (Surya) Ask, like on phones: a button opens the Ask box as a pop-up (laptops: under the
+           button, like Filters). The phone's own Ask button is in mobile-spots-controls above. -->
+      <div v-if="hasMidpoint" class="ask-menu-container" @keydown.esc="showMobileAsk = false">
+        <button
+          type="button"
+          class="desktop-filter-toggle desktop-ask-toggle"
+          :aria-expanded="showMobileAsk"
+          aria-controls="explore-ask"
+          :aria-label="
+            askedSpots
+              ? `Need an idea? Ask for something specific, ${askedSpots.length} found`
+              : 'Need an idea? Ask for something specific'
+          "
+          @click="toggleMobilePanel('ask')"
+        >
+          {{ askedSpots ? `Need an idea? · ${askedSpots.length}` : 'Need an idea?' }}
+        </button>
+        <button
+          v-if="askedSpots"
+          type="button"
+          class="desktop-filter-toggle desktop-ask-toggle"
+          @click="resetAskResults"
+        >
+          Reset
+        </button>
+        <AskSpots
+          ref="askSpots"
+          id="explore-ask"
+          class="ask-panel"
+          :class="{ 'is-mobile-visible': showMobileAsk }"
+          :hangout="hangout.hangout"
+          :members="hangout.members"
+          :memory="remembered.ask"
+          @found="onAskFound"
+        />
+      </div>
+      <div v-if="!askedSpots" class="filter-menu-container">
+        <button
+          type="button"
+          class="desktop-filter-toggle"
+          :aria-expanded="showDesktopFilters"
+          aria-controls="explore-filters"
+          @click="toggleDesktopFilters"
+        >
+          Filters
+        </button>
+        <div
+          id="explore-filters"
+          class="filters"
+          :class="{
+            'is-mobile-visible': showMobileFilters,
+            'is-desktop-visible': showDesktopFilters,
+          }"
+        >
+          <div class="filter-buttons">
+            <button
+              v-for="filter in filters"
+              :key="filter.value"
+              type="button"
+              class="btn btn-sm"
+              :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
+              @click="selectFilter(filter.value)"
+            >
+              {{ filter.label }}
+            </button>
+          </div>
+          <div class="filter-options">
+            <label class="match-filter">
+              <input v-model="hideZeroMatches" type="checkbox" />
+              <span>Hide 0% matches</span>
+            </label>
+            <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
+              <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
@@ -570,6 +598,10 @@ function selectMobileView(view) {
 }
 
 function closeMobileFiltersOutside(event) {
+  // (Surya) laptops: a click outside the Ask pop-up closes it (phones use the dark backdrop)
+  if (!mobileViewport.matches && !event.target.closest('.ask-menu-container')) {
+    showMobileAsk.value = false
+  }
   if (event.target.closest('.filters')) return
   if (event.target.closest('.mobile-filter-toggle')) {
     showDesktopFilters.value = false
@@ -693,7 +725,8 @@ const shownSpots = computed(() =>
 
 async function onAskFound(found) {
   askedSpots.value = found
-  if (found && window.matchMedia('(max-width: 767px)').matches) showMobileAsk.value = false
+  // (Surya) phones and laptops: close the pop-up after a search, so the cards show the results
+  if (found) showMobileAsk.value = false
   await resetCarouselOnMobile()
 }
 
@@ -986,6 +1019,56 @@ async function selectSpot(id) {
 }
 
 @media (min-width: 768px) {
+  /* (Surya) laptops: "Need an idea?" (Ask), Reset and Filters on one line */
+  .tools-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+
+  .tools-row .filter-menu-container {
+    margin: 0;
+  }
+
+  /* Ask (and Reset), with the Ask box as a pop-up under them, like Filters */
+  .ask-menu-container {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* "Need an idea?", Reset and Filters all in solid green */
+  .tools-row .desktop-filter-toggle,
+  .tools-row .desktop-filter-toggle[aria-expanded='true'] {
+    border-color: var(--fp-primary);
+    background: var(--fp-primary);
+    color: var(--fp-white);
+  }
+
+  .tools-row .desktop-filter-toggle:hover {
+    border-color: var(--fp-primary-dark);
+    background: var(--fp-primary-dark);
+  }
+
+  .ask-panel {
+    display: none;
+  }
+
+  .ask-panel.is-mobile-visible {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 8;
+    display: grid;
+    width: 32rem;
+    max-width: calc(100vw - 2rem);
+    margin: 0;
+    box-shadow: var(--fp-shadow);
+  }
+
   .shortlist-toggle {
     display: none;
   }
@@ -1090,8 +1173,10 @@ async function selectSpot(id) {
     overflow: hidden;
   }
 
-  .filter-menu-container {
-    display: contents;
+  .filter-menu-container,
+  .ask-menu-container,
+  .tools-row {
+    display: contents; /* (Surya) phones: the Ask box and Filters sit where they always did */
   }
 
   .desktop-filter-toggle {
