@@ -1,5 +1,6 @@
 // Owner: Eashvar (testing). Component test for CandidateCard (Week 10b): one shortlisted spot on
-// 11, with its tally and vote button.
+// 11, with its tally and vote button, and its photo (or the spot's initial if there's none or it
+// fails to load).
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CandidateCard from '../CandidateCard.vue'
@@ -43,5 +44,19 @@ describe('TestSuite: CandidateCard', () => {
     const wrapper = mount(CandidateCard, { props: { spot, disabled: true } })
     await wrapper.find('button').trigger('click')
     expect(wrapper.emitted('vote')).toBeFalsy()
+  })
+
+  it('Test7: shows the photo when the spot has one', () => {
+    const withPhoto = { ...spot, image_url: '/api/place-photo?name=places/p1/photos/a' }
+    const wrapper = mount(CandidateCard, { props: { spot: withPhoto } })
+    expect(wrapper.find('img').attributes('alt')).toBe('Photo of Bishan Hawker Centre')
+  })
+
+  it("Test8: a photo that doesn't load is swapped for the spot's initial", async () => {
+    const withPhoto = { ...spot, image_url: '/api/place-photo?name=places/p1/photos/a' }
+    const wrapper = mount(CandidateCard, { props: { spot: withPhoto } })
+    await wrapper.find('img').trigger('error')
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('.thumb--empty').text()).toBe('B')
   })
 })

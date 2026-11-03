@@ -2,8 +2,9 @@
 // Owner: Eashvar. One shortlisted spot on 11 Group voting: photo, name, category, rating,
 // price and match %, its live tally (bar, votes and % of votes cast, avatars of who voted for it),
 // and a vote button that shows "✓ Your vote" when it's my choice and "Saving…" while this vote is
-// being saved. Emits vote(spotId).
-import { computed } from 'vue'
+// being saved. Emits vote(spotId). A photo that fails to load (e.g. Google refuses it) shows the
+// spot's initial instead, like a spot with no photo.
+import { computed, ref, watch } from 'vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
@@ -25,6 +26,15 @@ const percent = computed(() =>
   props.totalVotes === 0 ? 0 : Math.round((props.count / props.totalVotes) * 100),
 )
 const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
+
+// true once the photo fails to load; a new photo gets another try
+const photoFailed = ref(false)
+watch(
+  () => props.spot.image_url,
+  () => {
+    photoFailed.value = false
+  },
+)
 </script>
 
 <template>
@@ -33,7 +43,13 @@ const voterNames = computed(() => props.voters.map((v) => v.name).join(', '))
     :class="{ 'candidate--selected': selected }"
     :aria-labelledby="`spot-${spot.id}`"
   >
-    <img v-if="spot.image_url" class="thumb" :src="spot.image_url" :alt="`Photo of ${spot.name}`" />
+    <img
+      v-if="spot.image_url && !photoFailed"
+      class="thumb"
+      :src="spot.image_url"
+      :alt="`Photo of ${spot.name}`"
+      @error="photoFailed = true"
+    />
     <div v-else class="thumb thumb--empty" aria-hidden="true">{{ spot.name.charAt(0) }}</div>
 
     <div class="body">

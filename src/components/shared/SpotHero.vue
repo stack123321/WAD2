@@ -3,8 +3,9 @@
 // (or a tinted block with its initial when there's no photo), a small label above the name, the
 // category, rating and area, then a ticket strip with the date and, for the person looking, when
 // they leave and from where. Anything extra (the "not confirmed" note, the Done row) goes in the
-// default slot under the strip.
-import { computed } from 'vue'
+// default slot under the strip. A photo that fails to load (e.g. Google refuses it) shows the
+// tinted block too.
+import { computed, ref, watch } from 'vue'
 import { formatDateTime } from '@/utils/voteHelpers'
 
 const props = defineProps({
@@ -18,12 +19,26 @@ const props = defineProps({
 })
 
 const initial = computed(() => props.spot.name.trim().charAt(0).toUpperCase())
+
+// true once the photo fails to load; a new photo gets another try
+const photoFailed = ref(false)
+watch(
+  () => props.spot.image_url,
+  () => {
+    photoFailed.value = false
+  },
+)
 </script>
 
 <template>
   <section class="hero" :aria-labelledby="headingId">
     <div class="hero__media">
-      <img v-if="spot.image_url" :src="spot.image_url" :alt="`Photo of ${spot.name}`" />
+      <img
+        v-if="spot.image_url && !photoFailed"
+        :src="spot.image_url"
+        :alt="`Photo of ${spot.name}`"
+        @error="photoFailed = true"
+      />
       <div v-else class="hero__fallback" aria-hidden="true">
         <span class="hero__initial">{{ initial }}</span>
         <span class="hero__category text-capitalize">{{ spot.category }}</span>
