@@ -52,3 +52,6 @@ pnpm-lock.yaml
 
 # local Claude Code files
 .claude/
+
+# (Surya) database SQL is kept locally, not shared in the repo
+supabase/
