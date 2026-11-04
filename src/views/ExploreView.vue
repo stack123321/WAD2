@@ -1230,7 +1230,8 @@ async function selectSpot(id) {
     display: contents; /* (Surya) phones: the Ask box and Filters sit where they always did */
   }
 
-  .desktop-filter-toggle {
+  .desktop-filter-toggle,
+  .tools-row > .btn {
     display: none;
   }
 
