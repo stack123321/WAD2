@@ -25,8 +25,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Two at a time on GitHub's machines (they have 4 cores). */
-  workers: process.env.CI ? 2 : undefined,
+  /* Two at a time on GitHub's machines (they have 4 cores), and at most four on a laptop: with one
+     per core, a fast laptop runs so many browsers at once that slow pages time out. */
+  workers: process.env.CI ? 2 : 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters
      On GitHub, failures also show next to the code in the PR, and the HTML report is uploaded. */
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
