@@ -42,7 +42,11 @@ export default async function handler(req, res) {
   if (!key) return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY is not set' })
 
   try {
-    return res.json(await nearbyPlaces(key, centre, radiusM, categories))
+    const places = await nearbyPlaces(key, centre, radiusM, categories)
+    // the same midpoint gives the same spots for a while, so Vercel's CDN can reuse the answer
+    // and opening 09 again doesn't use up the 100-a-day Google quota
+    res.setHeader('Cache-Control', 'public, s-maxage=3600')
+    return res.json(places)
   } catch (err) {
     return res.status(502).json({ error: err.message })
   }
