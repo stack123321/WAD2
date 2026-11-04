@@ -14,7 +14,7 @@ Built for IS216 Web Application Development II. Team and page ownership: [CONTRI
 
 ## Test accounts
 
-Email confirmation is on in Supabase, so sign up needs a real inbox. Use these two accounts on the live app instead. <<FILL: confirm both accounts are email-confirmed in Supabase before submitting>>
+Email confirmation is on in Supabase, so sign up needs a real inbox. Use these two accounts on the live app instead. Both are already confirmed.
 
 | Account | Name | Email | Password | Role in the two-person test |
 |---|---|---|---|---|
@@ -218,7 +218,7 @@ Small extensions of what the course shows, used where they read more clearly: Vi
 
 ## AI and LLM usage
 
-The brief allows AI for lower-order work only: boilerplate, tidying, test cases, explanations, debugging hints and UI inspiration. Core logic and backend endpoints must be the team's own. Each member lists their own work below. Commits where an assistant is credited carry a `Co-Authored-By` line in the git history.
+The brief allows AI for lower-order work only: boilerplate, tidying, test cases, explanations, debugging hints and UI inspiration. Core logic and backend endpoints must be the team's own. Each member's table below says which parts AI helped with, and which parts they wrote themselves.
 
 **Parts that relied solely on AI:** <<FILL: none, or list them>>
 
