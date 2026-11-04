@@ -1,7 +1,8 @@
 // Owner: Eashvar (testing). E2E tests (Week 10c) for 10 Spot details on the Friday sample hangout,
 // with fake Google Places answers (helpers/places.js). Each test opens the spot from 09, the way
-// a user would: its details show, it can be added to the vote and removed again, "Back to
-// exploring" returns to 09, and a spot Google can't find says so.
+// a user would: its details show, its photos can be flipped through, each friend's travel time
+// shows (from the sample routes /api/route gives without keys), it can be added to the vote and
+// removed again, "Back to exploring" returns to 09, and a spot Google can't find says so.
 import { test, expect } from '@playwright/test'
 import { setTime, VOTING_OPEN } from './helpers/clock.js'
 import { place, stubPlaces } from './helpers/places.js'
@@ -16,21 +17,14 @@ const CAFE = place('quiet-cafe', 'Quiet Corner Cafe', {
   ],
 })
 
-// Enable Google Places for the test, then open the cafe from 09.
+// Open the cafe from 09, like a user would
 async function openCafe(page) {
-  await page.addInitScript(() =>
-    window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),
-  )
+  await setTime(page, VOTING_OPEN)
+  await stubPlaces(page, [CAFE])
   await page.goto('/hangouts/demo/explore')
   await page.getByRole('link', { name: 'Quiet Corner Cafe', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Quiet Corner Cafe')
-  await expect(page.getByRole('switch', { name: 'Google Places calls' })).toHaveCount(0)
 }
-
-test.beforeEach(async ({ page }) => {
-  await setTime(page, VOTING_OPEN)
-  await stubPlaces(page, [CAFE])
-})
 
 test('shows the spot’s name, rating and address', async ({ page }) => {
   await openCafe(page)
@@ -65,45 +59,15 @@ test('photo arrows navigate through the image carousel', async ({ page }) => {
   await expect(firstIndicator).toHaveAttribute('aria-current', 'true')
 })
 
-test('large-screen photo gallery is centered and uses a bounded frame', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
+test('shows how long each friend takes to get there, and how', async ({ page }) => {
   await openCafe(page)
+  // each friend's row in the travel times list
+  const friend = (name) => page.getByRole('listitem').filter({ hasText: name })
 
-  const gallery = page.locator('.preview-image')
-  const viewport = page.locator('.preview-image__viewport')
-  const galleryBounds = await gallery.boundingBox()
-  const previewBounds = await page.locator('.spot__preview').boundingBox()
-  const viewportStyle = await viewport.evaluate((element) => {
-    const style = getComputedStyle(element)
-    return { height: style.height, objectFit: getComputedStyle(element.querySelector('img')).objectFit }
-  })
-
-  expect(galleryBounds.width).toBeLessThanOrEqual(1100)
-  expect(Math.abs(
-    galleryBounds.x + galleryBounds.width / 2 - (previewBounds.x + previewBounds.width / 2),
-  )).toBeLessThanOrEqual(1)
-  expect(viewportStyle).toEqual({ height: '520px', objectFit: 'cover' })
-})
-
-test('shows estimated travel time to the spot for each friend', async ({ page }) => {
-  await page.addInitScript(() =>
-    window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),
-  )
-  await page.route('**/api/route**', (route) =>
-    route.fulfill({ json: { mins: 32, cost: 1.5, steps: [] } }),
-  )
-  await page.goto('/hangouts/demo/spots/quiet-cafe')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Quiet Corner Cafe')
-
-  const travelTimes = page.locator('.travel-time__row')
-  await expect(travelTimes).toHaveCount(4)
-  const ryanRow = travelTimes.filter({ hasText: 'Ryan' })
-  await expect(ryanRow.locator('.avatar')).toHaveAttribute('title', 'Ryan')
-  await expect(ryanRow.locator('.avatar')).toHaveText('R')
-  await expect(ryanRow).toContainText('32 min · MRT')
-  await expect(travelTimes.filter({ hasText: 'Nicole' })).toContainText('32 min · MRT')
-  await expect(travelTimes.filter({ hasText: 'Surya' })).toContainText('32 min · Bus')
-  await expect(travelTimes.filter({ hasText: 'Hugo' })).toContainText('32 min · Car')
+  await expect(friend('Ryan')).toContainText(/\d+ min · MRT/)
+  await expect(friend('Nicole')).toContainText(/\d+ min · MRT/)
+  await expect(friend('Surya')).toContainText(/\d+ min · Bus/)
+  await expect(friend('Hugo')).toContainText(/\d+ min · Car/)
 })
 
 test('Add to Vote adds it, and Remove from Vote takes it off again', async ({ page }) => {

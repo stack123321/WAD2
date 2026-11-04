@@ -1,7 +1,7 @@
 // Owner: Eashvar (testing; from Ryan's tests). E2E tests (Week 10c) for 04 My hangouts with the two
 // sample hangouts (Friday 16 Oct, voting; Saturday 24 Oct, still collecting): each shows its
-// progress, a card opens its next step, a hangout can be pinned and unpinned, a card stays
-// highlighted while its ⋯ menu is open, one whose date has passed moves to Past, and My Friends
+// progress, a card opens its next step, a hangout can be pinned and unpinned, a card's ⋯ menu stays
+// open until you click somewhere else, one whose date has passed moves to Past, and My Friends
 // in the navbar opens the friends page. Which step a card opens, the day headings and the
 // countdown have unit tests in src/utils/__tests__, and the "Needs your input" card has a
 // component test.
@@ -42,22 +42,19 @@ test('a hangout can be pinned to the top and unpinned again', async ({ page }) =
   await expect(page.getByRole('heading', { name: /PINNED/ })).toBeHidden()
 })
 
-test('a card stays highlighted while its ⋯ menu is open', async ({ page }) => {
+test('a card’s ⋯ menu stays open until you click somewhere else', async ({ page }) => {
   await setTime(page, VOTING_OPEN)
   await page.goto('/dashboard')
-  const fridayCard = page.getByRole('article').filter({ hasText: friday })
-  const saturdayCard = page.getByRole('article').filter({ hasText: saturday })
+  const copyInvite = page.getByRole('button', { name: 'Copy invite link' })
 
   await page.getByRole('button', { name: `More options for ${friday}` }).click()
-  // the pointer moves onto the other card: the open one stays bright, the other stays faded
-  await saturdayCard.hover()
-  await expect(fridayCard).toHaveCSS('opacity', '1')
-  await expect(saturdayCard).toHaveCSS('opacity', '0.45')
+  await expect(copyInvite).toBeVisible()
+  // moving the pointer onto the other card doesn't close it
+  await page.getByRole('link', { name: saturday }).hover()
+  await expect(copyInvite).toBeVisible()
 
-  // clicking somewhere else closes the menu, and with the pointer off the cards nothing is faded
   await page.getByRole('heading', { level: 1 }).click()
-  await expect(fridayCard).toHaveCSS('opacity', '1')
-  await expect(saturdayCard).toHaveCSS('opacity', '1')
+  await expect(copyInvite).toBeHidden()
 })
 
 test('a hangout whose date has passed moves to Past', async ({ page }) => {

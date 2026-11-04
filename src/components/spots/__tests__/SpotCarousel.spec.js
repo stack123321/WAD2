@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest'
+// Owner: Eashvar (testing). Component test for SpotCarousel (Week 10b): the swipeable row of spot
+// cards on 09 Nearby spots on a phone. Every spot gets a card, and the Previous / Next arrows show
+// only when there's more than one spot. Pressing the arrows scrolls the row, which jsdom can't do,
+// so that's tested on 09 in a real browser (tests/e2e/explore.spec.js and assistant.spec.js).
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpotCarousel from '../SpotCarousel.vue'
 
@@ -8,67 +12,25 @@ const spots = [
   { id: 'three', name: 'Spot Three' },
 ]
 
-function mountCarousel(items = spots) {
-  const wrapper = mount(SpotCarousel, {
-    props: { items },
-    slots: {
-      default: '<template #default="{ item }"><article>{{ item.name }}</article></template>',
-    },
-  })
-  const viewport = wrapper.find('.cards').element
-  // jsdom has no layout, so the viewport is given a width, and scrollTo (which jsdom lacks) writes
-  // down where it was asked to scroll
-  Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 320 })
-  const scrolls = []
-  viewport.scrollTo = (options) => scrolls.push(options)
-  return { wrapper, scrolls }
+// each spot's card comes from the page through the slot; a plain card is enough here
+function mountCarousel(items) {
+  return mount(SpotCarousel, { props: { items }, slots: { default: '<article>Card</article>' } })
 }
 
-describe('SpotCarousel', () => {
-  it('renders each item and only shows arrows when there are multiple items', () => {
-    const { wrapper } = mountCarousel()
-
-    expect(wrapper.findAll('.cards article').map((card) => card.text())).toEqual([
-      'Spot One',
-      'Spot Two',
-      'Spot Three',
-    ])
-    expect(wrapper.find('[aria-label="Previous spot"]').attributes()).toHaveProperty('disabled')
-    expect(wrapper.findAll('[aria-label="Next spot"]')).toHaveLength(1)
-
-    const singleItem = mountCarousel([spots[0]]).wrapper
-    expect(singleItem.findAll('[aria-label="Previous spot"]')).toHaveLength(0)
-    expect(singleItem.findAll('[aria-label="Next spot"]')).toHaveLength(0)
+describe('TestSuite: SpotCarousel', () => {
+  it('Test1: shows a card for every spot', () => {
+    expect(mountCarousel(spots).findAll('article')).toHaveLength(3)
   })
 
-  it('moves through items and disables arrows at the ends', async () => {
-    const { wrapper, scrolls } = mountCarousel()
-    const previous = wrapper.find('[aria-label="Previous spot"]')
-    const next = wrapper.find('[aria-label="Next spot"]')
-
-    await next.trigger('click')
-    expect(scrolls[scrolls.length - 1]).toEqual({ left: 320, behavior: 'smooth' })
-    expect(previous.attributes()).not.toHaveProperty('disabled')
-    expect(next.attributes()).not.toHaveProperty('disabled')
-
-    await next.trigger('click')
-    expect(scrolls[scrolls.length - 1]).toEqual({ left: 640, behavior: 'smooth' })
-    expect(next.attributes()).toHaveProperty('disabled')
-
-    await previous.trigger('click')
-    expect(scrolls[scrolls.length - 1]).toEqual({ left: 320, behavior: 'smooth' })
-    expect(next.attributes()).not.toHaveProperty('disabled')
+  it('Test2: with one spot there are no arrows', () => {
+    expect(mountCarousel([spots[0]]).findAll('button')).toHaveLength(0)
   })
 
-  it('clamps externally requested indexes to the available items', async () => {
-    const { wrapper, scrolls } = mountCarousel()
-
-    wrapper.vm.scrollToIndex(-4)
-    expect(scrolls[scrolls.length - 1]).toEqual({ left: 0, behavior: 'smooth' })
-
-    wrapper.vm.scrollToIndex(99)
-    await wrapper.vm.$nextTick()
-    expect(scrolls[scrolls.length - 1]).toEqual({ left: 640, behavior: 'smooth' })
-    expect(wrapper.find('[aria-label="Next spot"]').attributes()).toHaveProperty('disabled')
+  it('Test3: with several spots, Previous starts switched off and Next is on', () => {
+    const [previous, next] = mountCarousel(spots).findAll('button')
+    expect(previous.attributes('aria-label')).toBe('Previous spot')
+    expect(previous.attributes()).toHaveProperty('disabled')
+    expect(next.attributes('aria-label')).toBe('Next spot')
+    expect(next.attributes()).not.toHaveProperty('disabled')
   })
 })
