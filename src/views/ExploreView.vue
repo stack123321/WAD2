@@ -21,7 +21,7 @@
 
   <div
     v-else
-    class="nearby-page px-3 py-4"
+    class="nearby-page px-3 pt-4 pb-0"
     :class="{
       'is-mobile-ask-open': showMobileAsk,
       'is-mobile-view-active': activeMobileView === 'map' || activeMobileView === 'shortlist',
@@ -1242,7 +1242,7 @@ async function selectSpot(id) {
 
   .nearby-page {
     /*
-     * Explore is rendered after the 57px navbar and the two-row 108px
+     * Explore is rendered after the 46px navbar and the one-row 64px
      * hangout bar. The authenticated mobile tab bar is outside the page
      * flow and needs its own deduction below.
      */
@@ -1544,7 +1544,7 @@ async function selectSpot(id) {
   }
 
   .nearby-page.has-mobile-tabbar {
-    height: calc(100dvh - 57px - 108px - 52px - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 46px - 64px - 52px - env(safe-area-inset-bottom, 0px));
   }
 
   .nearby-page.has-mobile-tabbar .map-shortlist-row.is-mobile-shortlist .shortlist-panel {

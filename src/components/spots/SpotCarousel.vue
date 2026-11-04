@@ -212,7 +212,7 @@ defineExpose({ scrollToIndex })
     left: 0;
     display: flex;
     max-height: 72%;
-    padding: rem 1rem 1.5rem;
+    padding: 0 1rem 3rem;
     background: linear-gradient(to bottom, rgba(30, 29, 29, 0), rgba(63, 63, 63, 0.58));
     color: var(--fp-white);
     text-shadow: 0 1px 4px rgb(0 0 0 / 85%);
