@@ -450,22 +450,24 @@ a.step-arrow:hover {
   }
 }
 
-/* On phones the arrows make the step label too wide to sit beside Chat, so it gets its own line:
-   name and Chat on top, then ‹ step › across the full width */
+/* On phones everything stays on one line: name, ‹ step ›, Chat. The name gives way first and is
+   cut with … when there isn't room */
 @media (max-width: 767.98px) {
+  .hangout-bar {
+    flex-wrap: nowrap;
+  }
+
   .name-group {
-    order: 1;
-    flex: 1 1 0; /* takes the space Chat leaves, and the name is cut with … if it is too long */
+    flex: 1 1 0;
   }
 
+  .step-nav,
   .invite-group {
-    order: 2;
+    flex-shrink: 0;
   }
 
-  .step-nav {
-    order: 3;
-    flex: 1 1 100%;
-    justify-content: space-between;
+  .step-compact {
+    white-space: nowrap;
   }
 }
 

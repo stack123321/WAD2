@@ -30,7 +30,7 @@ const notice = ref('')
 // Validation. A field shows its message once it has been left (blur) or after a submit attempt,
 // so people aren't told off while they're still typing.
 const MIN_PASSWORD = 8
-const MAX_NAME = 50
+const MAX_NAME = 12
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MAX_PASSWORD = 72
 const PASSWORD_RULE = `Use ${MIN_PASSWORD}–${MAX_PASSWORD} characters with at least one letter and one number.`
@@ -58,7 +58,7 @@ function nameError() {
   const name = form.name.trim()
   if (!isSignup.value) return ''
   if (!name) return 'Enter your name.'
-  if (name.length > MAX_NAME) return `Keep your name under ${MAX_NAME} characters.`
+  if (name.length > MAX_NAME) return `Keep your name to ${MAX_NAME} characters or fewer.`
   return ''
 }
 
@@ -556,6 +556,7 @@ const avatars = [
               :class="{ 'is-invalid': shown.name || nameTaken }"
               type="text"
               autocomplete="name"
+              :maxlength="MAX_NAME"
               placeholder="What friends call you"
               required
               :aria-invalid="Boolean(shown.name) || nameTaken"

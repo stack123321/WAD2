@@ -27,7 +27,7 @@ function barWidth(mins) {
 
     <!-- (Surya) only people with a travel time (anyone without a starting point is skipped) -->
     <div v-for="m in members.filter((x) => x.travel_mins != null)" :key="m.user_id" class="bar-row">
-      <span class="bar-name">{{ m.display_name }}</span>
+      <span class="bar-name" :title="m.display_name">{{ m.display_name }}</span>
       <div class="bar-track">
         <div class="bar-fill" :style="{ width: barWidth(m.travel_mins), background: avatarColor(m.avatar_color, m.display_name) }"></div>
       </div>
@@ -65,6 +65,12 @@ function barWidth(mins) {
   gap: 0.5rem;
   margin-bottom: 0.6rem;
   font-size: 0.85rem;
+}
+
+.bar-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .bar-track {
