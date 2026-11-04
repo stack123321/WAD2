@@ -66,10 +66,25 @@ export function createOneMap(el, options = {}) {
     cover.textContent = 'Click to Interact'
     cover.style.cssText =
       'position:absolute;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;' +
-      'width:100%;border:0;background:rgba(0,0,0,0.35);color:#fff;font-weight:600;font-size:1rem;cursor:pointer;'
+      'width:100%;border:0;background:rgba(0,0,0,0.35);color:#fff;font-weight:600;font-size:1rem;cursor:pointer;touch-action:pan-y;'
     let locked = true
+    // Leaflet listens for touches on the map's own div, so the cover alone doesn't stop pinch-zoom
+    // or dragging; switch the map's handlers off while it is covered
+    const handlers = [
+      map.dragging,
+      map.touchZoom,
+      map.doubleClickZoom,
+      map.scrollWheelZoom,
+      map.boxZoom,
+      map.keyboard,
+    ]
     const showCover = () => {
-      cover.style.display = phone.matches && locked ? 'flex' : 'none'
+      const covered = phone.matches && locked
+      cover.style.display = covered ? 'flex' : 'none'
+      for (const handler of handlers) {
+        if (covered) handler.disable()
+        else handler.enable()
+      }
     }
     const unlock = () => {
       locked = false
@@ -84,11 +99,20 @@ export function createOneMap(el, options = {}) {
     cover.addEventListener('click', unlock)
     document.addEventListener('pointerdown', relock)
     phone.addEventListener('change', showCover)
+    // scrolling the map off screen puts the cover back
+    const visibilityWatcher = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) {
+        locked = true
+        showCover()
+      }
+    })
+    visibilityWatcher.observe(box)
     box.appendChild(cover)
     showCover()
     removeCover = () => {
       document.removeEventListener('pointerdown', relock)
       phone.removeEventListener('change', showCover)
+      visibilityWatcher.disconnect()
       cover.remove()
     }
   }
