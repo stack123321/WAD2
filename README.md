@@ -179,6 +179,15 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 
 `npm run test:live` runs `tests/live/` against the real Supabase project. It is optional and needs real accounts in `.env.local` (`E2E_EMAIL` and so on). It is not part of the normal run.
 
+**How the tests are built.**
+
+- **Three layers, each proving something different.** Unit tests check the logic with no screen: the fair-midpoint algorithm, the match score, counting votes, dates. Component tests mount one Vue component and check what it shows and what it emits. An integration test ([IntegrationTest.spec.js](src/components/voting/__tests__/IntegrationTest.spec.js)) mounts the real vote list with its real cards, to check they work together. End-to-end tests click through a whole journey in a real browser. Most checks sit in the fast lower layers; the end-to-end tests cover what only a full page can show.
+- **Repeatable.** Every run uses the same sample hangouts, a clock fixed in October 2026 ([helpers/clock.js](tests/e2e/helpers/clock.js)) and fake Google Places answers ([helpers/places.js](tests/e2e/helpers/places.js)). Nothing depends on today's date, the network or another test, and each test starts on a fresh page. The live tests delete what they create.
+- **Stable selectors.** Tests find things the way a person does: by role and name (`getByRole('button', { name: 'Close vote' })`), by label or by visible text, never by CSS classes or layout. Restyling a page doesn't break them, and a failing test means something a user would notice is broken.
+- **One behaviour per test, named after it.** Vitest tests are `TestSuite:` / `TestN:`, Playwright tests are a plain sentence such as "the host closes the vote and the final plan shows the winner". Each file starts with a header saying who owns it and what it covers.
+- **Tests that can fail.** While writing them, we checked tests by deliberately breaking the code they cover and making sure they fail, so a pass means the feature works.
+- **Run on every change.** GitHub runs lint, the build and both kinds of test on every pull request. Failed end-to-end tests are retried only there, as a safety net. Locally at most four run at once, so a busy laptop doesn't time out.
+
 **End-to-end tests** (`tests/e2e/`), each one a user journey on the demo hangouts:
 
 | Spec | Journey |
@@ -196,7 +205,7 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 | `explore.spec.js` | 09: spots near the midpoint; Filters; adding a spot to the shortlist; opening a spot; on a phone, the menu and the swipeable cards |
 | `assistant.spec.js` | 09: the Ask box, and Reset; on a phone, the Ask button |
 | `spotDetails.spec.js` | 10: details; the photos; each friend's travel time; Add to Vote and Remove; back to 09 |
-| `voting.spec.js` | 11 and 12: start the vote, change a vote, close it, the final plan shows the winner |
+| `voting.spec.js` | 11 and 12: start the vote, change a vote, someone outside the hangout can't vote; the tie-break wheel stays locked until a tie, and the host spins it; close the vote; the final plan shows the winner, how fair the trips are, and Mark as done |
 | `debrief.spec.js`, `pastHangouts.spec.js` | After the hangout: the debrief, "Plan another with this group", Go again |
 | `friends.spec.js`, `chats.spec.js`, `groups.spec.js` | Friends and requests, chats, switching between hangouts |
 | `chatPopover.spec.js` | The 💬 group chat opening over a step and closing (✕, Esc, the button), on a laptop and a phone |
@@ -214,7 +223,7 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 | Pressing Esc (`page.keyboard.press`) | `tests/e2e/chatPopover.spec.js` | Esc closing the chat is the behaviour being tested |
 | Two people at once (`browser.newContext`), reading the invite link (clipboard) | `tests/live/` | The two-person live test needs two logged-in browsers, and the app only copies the link |
 
-Small extensions of what the course shows, used where they read more clearly: Vitest matchers such as `toContain` and `toHaveLength`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled` and `toBeChecked`; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()` and `.nth()` to pick one card or row; and `hover()`.
+Small extensions of what the course shows, used where they read more clearly: the Vitest matchers `toBeGreaterThanOrEqual` and `toContainEqual`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled`, `toBeEnabled`, `toBeChecked`, `toHaveAttribute` and `toHaveValue`; `getByLabel` for fields with no role; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()`, `.last()` and `.nth()` to pick one card or row; and `hover()`. Each is explained, with where it's used, in [docs/beyond-the-syllabus.md](docs/beyond-the-syllabus.md#testing).
 
 ## AI and LLM usage
 

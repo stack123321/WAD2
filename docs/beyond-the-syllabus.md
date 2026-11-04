@@ -587,12 +587,12 @@ Used in: [router/index.js](../src/router/index.js) for the login guard (written 
 
 The course teaches Vitest (`describe`, `it`/`test`, `expect`, and the matchers `toBe`, `toEqual`, `toBeTruthy`, `toBeFalsy`, `toHaveLength`, `toContain`, `toThrow`, `toBeGreaterThan`, `toHaveProperty`, `toMatch` and `.not`), Vue Test Utils (`mount`, `find`, `findAll`, `text`, `trigger`, `emitted`, `setValue`, `props`, `vm`, `$nextTick` and `global.stubs`) and Playwright (`test`, `expect`, `page.goto`, `getByRole`, `getByText`, `locator`, `click`, `fill`, `press`, `toBeVisible`, `toHaveText`, `toHaveTitle`) in Week 10. Our tests use those wherever they can, including `findAll(...)` with `toHaveLength(0)` for "is not there". These are the extra pieces, and why each is needed. Run them with `npm run test:unit` and `npm run test:e2e` (`npx playwright test --ui` to watch).
 
-### Vitest: `toBeGreaterThanOrEqual`, `toBeLessThanOrEqual` and `toBeLessThan`
-Like the taught `toBeGreaterThan`, but "or equal" also passes (or the other way round). `toBeGreaterThan(4.5)` would fail on exactly 4.5, so it can't say "at least 4.5".
+### Vitest: `toBeGreaterThanOrEqual`
+Like the taught `toBeGreaterThan`, but "or equal" also passes. `toBeGreaterThan(4.5)` would fail on exactly 4.5, so it can't say "at least 4.5".
 ```js
 expect(contrastWithWhite(colour)).toBeGreaterThanOrEqual(4.5) // the minimum for readable text
 ```
-Used in: [avatarColor.spec.js](../src/utils/__tests__/avatarColor.spec.js), [assistant.spec.js](../tests/e2e/assistant.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js) (sizes in pixels).
+Used in: [avatarColor.spec.js](../src/utils/__tests__/avatarColor.spec.js).
 
 ### Vitest: `toContainEqual(object)`
 `toContain` on a list compares with `===`, so it can't find an object by what's inside it. `toContainEqual` compares the contents, like `toEqual` does.
@@ -600,22 +600,6 @@ Used in: [avatarColor.spec.js](../src/utils/__tests__/avatarColor.spec.js), [ass
 expect(reasons).toContainEqual({ tone: 'warn', text: 'Within budget for 1 of 2 members' })
 ```
 Used in: [matchScore.spec.js](../src/utils/__tests__/matchScore.spec.js).
-
-### Vitest: `toMatchObject(object)` and `toBeNull()`
-`toMatchObject` passes when the object has *at least* those fields and values; `toBeNull()` is `toBe(null)`.
-```js
-expect(trips.b).toMatchObject({ label: 'Newer B', mode: 'walk', fromLast: true })
-expect(trips.c).toBeNull()
-```
-Used in: [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), to check a function that runs inside the browser.
-
-### `Object.defineProperty(element, name, { value })`
-The pretend browser in component tests (jsdom) has no layout, so `clientWidth` is always 0 and can't be assigned to. This gives it a fixed value. A plain function stands in for `scrollTo`, which jsdom doesn't have, and writes down where it was asked to scroll.
-```js
-Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 320 })
-viewport.scrollTo = (options) => scrolls.push(options)
-```
-Used in: [SpotCarousel.spec.js](../src/components/spots/__tests__/SpotCarousel.spec.js).
 
 ### Playwright: `getByLabel(text)`
 Finds an input by its `<label>`. Password, date and time fields have no role that `getByRole` can look for, and `locator('#id')` (taught) breaks as soon as an id changes, which Week 10b calls a fragile test.
@@ -625,19 +609,19 @@ await page.getByLabel('Date').fill('2030-01-15')
 Used in: [createHangout.spec.js](../tests/e2e/createHangout.spec.js), [auth.spec.js](../tests/e2e/auth.spec.js) and most other specs.
 
 ### Playwright: `.first()`, `.last()`, `.nth(i)` and `.filter({ hasText })`
-When several elements match, pick one: the first, the last, or number `i` (counting from 0). `filter` keeps only those that contain some text.
+When several elements match, pick one: the first, the last, or number `i` (counting from 0). `filter` keeps only those that contain some text, for example the one card or list row with a spot's or a person's name in it.
 ```js
 page.getByRole('button', { name: 'Log in', exact: true }).last()
-page.getByRole('status').filter({ hasText: 'Planning with Class project crew' })
+page.getByRole('article').filter({ hasText: 'Top Rated Cafe' })
 ```
-Used in: [landing.spec.js](../tests/e2e/landing.spec.js), [midpoint.spec.js](../tests/e2e/midpoint.spec.js), [transport.spec.js](../tests/e2e/transport.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js).
+Used in: [landing.spec.js](../tests/e2e/landing.spec.js), [dashboard.spec.js](../tests/e2e/dashboard.spec.js), [midpoint.spec.js](../tests/e2e/midpoint.spec.js), [explore.spec.js](../tests/e2e/explore.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
 
 ### Playwright: more checks
-`toHaveURL`, `toContainText`, `toHaveCount`, `toBeHidden`, `toBeDisabled`, `toBeEnabled`, `toBeChecked`, `toHaveAttribute`, `toHaveClass`, `toHaveCSS` and `toHaveValue` work like the taught `toBeVisible` and `toHaveText`: each waits up to 5 seconds for the page to catch up.
+`toHaveURL`, `toContainText`, `toHaveCount`, `toBeHidden`, `toBeDisabled`, `toBeEnabled`, `toBeChecked`, `toHaveAttribute` and `toHaveValue` work like the taught `toBeVisible` and `toHaveText`: each waits up to 5 seconds for the page to catch up.
 ```js
 await expect(page).toHaveURL('/hangouts/demo/vote') // the address bar
 await expect(banner).toContainText('3 usual starting points') // contains; toHaveText must match all of it
-await expect(page.locator('path.crowd-midpoint')).toHaveCount(1) // exactly one match
+await expect(page.getByRole('article')).toHaveCount(3) // exactly three spot cards
 await expect(button).toBeDisabled()
 await expect(page.getByText('Saved')).toBeHidden() // not on screen, or not there at all
 ```
@@ -645,48 +629,36 @@ await expect(page.getByText('Saved')).toBeHidden() // not on screen, or not ther
 
 Used in: almost every spec in [tests/e2e/](../tests/e2e/), e.g. [voting.spec.js](../tests/e2e/voting.spec.js) and [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
 
-### Playwright: `test.beforeEach(fn)`, `test.skip(condition, reason)` and `test.setTimeout(ms)`
-`beforeEach` runs `fn` before every test in the file (here: set the clock and answer the Google calls). `skip` leaves the tests out when the condition is true, and `setTimeout` gives them longer than the default 30 seconds.
+### Playwright: `page.keyboard.press(key)`
+Presses a key on the page itself, not on one element (the taught `press` needs an element). Esc closing the group chat is the behaviour being tested.
 ```js
-test.beforeEach(async ({ page }) => {
-  await setTime(page, VOTING_OPEN)
-  await stubPlaces(page, spots)
-})
+await page.keyboard.press('Escape')
 ```
-Used in: [explore.spec.js](../tests/e2e/explore.spec.js), [assistant.spec.js](../tests/e2e/assistant.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js); `skip` and `setTimeout` in [together.spec.js](../tests/live/together.spec.js).
+Used in: [chatPopover.spec.js](../tests/e2e/chatPopover.spec.js).
 
 ### Playwright: `page.route(pattern, handler)` and `route.fulfill({ json })`
-Catches requests the page makes and answers them from the test instead. Google Places only allows 100 searches a day, so the tests never call it. `route.request()` is the request being answered.
+Catches requests the page makes and answers them from the test instead. Nearby spots are the only API with no sample data when there's no key, and Google Places only allows 100 searches a day, so the tests never call it.
 ```js
 await page.route('**/api/places**', (route) => route.fulfill({ json: places }))
 ```
-Used in: [helpers/places.js](../tests/e2e/helpers/places.js), [assistant.spec.js](../tests/e2e/assistant.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
+Used in: [helpers/places.js](../tests/e2e/helpers/places.js) and [live/helpers.js](../tests/live/helpers.js) only.
 
 ### Playwright: `page.clock`
 Sets the date and time the page sees. The sample hangouts are dated October 2026, and without this they would always look as if they were over. `setFixedTime` freezes the clock, `install` starts it at a time and lets it run, and `fastForward` skips ahead.
 ```js
 await page.clock.setFixedTime(new Date('2026-10-14T22:00:00+08:00'))
 ```
-Used in: [helpers/clock.js](../tests/e2e/helpers/clock.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js).
+Used in: [helpers/clock.js](../tests/e2e/helpers/clock.js) only.
 
-### Playwright: `page.addInitScript(fn)` and `page.evaluate(fn)`
-`addInitScript` runs `fn` inside the page before the app starts, on every load (here: to set a `localStorage` flag). `evaluate` runs `fn` inside the page right now and gives back what it returns (here: to read sizes and styles).
+### Playwright: `page.setViewportSize`
+Resizes the browser window. 09's spots and the group chat work differently on a phone, so those tests make the window phone-sized (375 × 812) first.
 ```js
-await page.addInitScript(() => window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'))
-const size = await page.evaluate(() => document.documentElement.clientWidth)
+await page.setViewportSize({ width: 375, height: 812 })
 ```
-Used in: [explore.spec.js](../tests/e2e/explore.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js), [friendGroups.spec.js](../tests/e2e/friendGroups.spec.js).
-
-### Playwright: `page.setViewportSize` and `locator.boundingBox()`
-`setViewportSize({ width, height })` resizes the browser window, for the phone and laptop layouts. `boundingBox()` gives an element's `x`, `y`, `width` and `height` on screen.
-```js
-await page.setViewportSize({ width: 390, height: 844 })
-const box = await button.boundingBox() // box.height is at least 44, the smallest comfortable tap target
-```
-Used in: [assistant.spec.js](../tests/e2e/assistant.spec.js), [chatPopover.spec.js](../tests/e2e/chatPopover.spec.js), [explore.spec.js](../tests/e2e/explore.spec.js), [spotDetails.spec.js](../tests/e2e/spotDetails.spec.js).
+Used in: [helpers/phone.js](../tests/e2e/helpers/phone.js) only (`onPhone(page)`).
 
 ### Playwright: two people at once (live tests)
-`browser.newContext()` is a separate browser profile and `context.newPage()` a tab in it, so the host and a friend can be logged in at the same time. `context.grantPermissions` lets the page use the clipboard, and `navigator.clipboard.readText()` reads back the invite link the app copied.
+`browser.newContext()` is a separate browser profile and `context.newPage()` a tab in it, so the host and a friend can be logged in at the same time. `context.grantPermissions` lets the page use the clipboard, and `page.evaluate(() => navigator.clipboard.readText())` reads back the invite link the app copied (the app only copies it, it doesn't show it). `test.skip` leaves the test out when the second test account isn't set, and `test.setTimeout` gives the two-person journey longer than 30 seconds.
 ```js
 const hostContext = await browser.newContext()
 const hostPage = await hostContext.newPage()
