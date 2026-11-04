@@ -2,9 +2,9 @@
 // 12 Final plan & itinerary
 // Owner: Eashvar (routes section: Nicole)
 // Figma frame "12". Shows the confirmed spot (or, before the vote closes, the current leader with
-// a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, the backup
-// spot, a Google Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which
-// only works once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
+// a "not confirmed yet" note), everyone's trip and leave-by time with the fairness gap, a Google
+// Calendar link, a copy-to-clipboard summary, and the host's "Mark as done", which only works
+// once the hangout has started. "Me" follows the same demo-mode rule as 11, and only
 // current members' latest votes count. Surya's MembersMap shows everyone's starting point and
 // his WeatherCard the forecast at the spot for the hangout's time (until the hangout starts); a
 // line under the map holds space for Nicole's routes. On phones the cards reorder so the map
@@ -13,6 +13,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import { isMockHangout, markHangoutDone, reopenVote } from '@/services/votes'
 import SpotHero from '@/components/shared/SpotHero.vue'
 import TripTable from '@/components/shared/TripTable.vue'
@@ -26,16 +28,14 @@ import {
   formatDateTime,
   formatTime,
   leaveBy,
-  modeLabel,
   pickLeader,
-  runnerUp,
-  tripRange,
 } from '@/utils/voteHelpers'
 
 const route = useRoute()
 const router = useRouter()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout)
 
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
@@ -66,9 +66,6 @@ const confirmedSpot = computed(
 )
 const isConfirmed = computed(() => confirmedSpot.value !== null)
 const spot = computed(() => confirmedSpot.value ?? pickLeader(rows.value)?.spot ?? null)
-const backup = computed(() =>
-  spot.value ? (runnerUp(rows.value, spot.value.id)?.spot ?? null) : null,
-)
 
 // "You leave by" on the spot card, for the person looking
 const myLeave = computed(() => {
@@ -90,24 +87,39 @@ const calendarLink = computed(() => {
     title: `${hangout.value.name} at ${spot.value.name}`,
     startIso: startsAt.value,
     location: `${spot.value.name}, ${hangout.value.midpoint_name ?? 'Singapore'}`,
-    details: backup.value ? `Backup plan: ${backup.value.name}` : 'Planned with Fairpoint',
+    details: 'Planned with Fairpoint',
   })
 })
 
+// (Surya) how each person's trip reads in the copied plan, e.g. "14 min by bus", "8 min walking"
+const TRIP_WORDS = { mrt: 'by MRT', bus: 'by bus', car: 'by car', walk: 'walking' }
+
+// (Surya) "Copy plan": a short card that reads well in a chat, e.g.
+//   Thursday hangout 🎉
+//   📅 Thu, 5 Nov, 7:00 pm
+//   📍 Zhong Ji Dang Gui HK Roasted Delight
+//       near Aljunied MRT
+//
+//   🚶 Leave by
+//   • surya: 6:46 pm (14 min by bus)
 const summary = computed(() => {
   if (!hangout.value || !spot.value) return ''
-  const lines = [hangout.value.name]
-  if (startsAt.value) lines.push(`${formatDateTime(startsAt.value)} (SGT)`)
-  lines.push(`Where: ${spot.value.name}, ${hangout.value.midpoint_name ?? ''}`.trim(), '')
-  lines.push('Leave by:')
+  const lines = [`${hangout.value.name} 🎉`]
+  if (startsAt.value) lines.push(`📅 ${formatDateTime(startsAt.value)}`)
+  lines.push(`📍 ${spot.value.name}`)
+  if (hangout.value.midpoint_name) lines.push(`    near ${hangout.value.midpoint_name} MRT`)
+
+  const leaving = []
   for (const m of store.members) {
     if (m.travel_mins == null || !startsAt.value) continue
     const at = formatTime(leaveBy(startsAt.value, m.travel_mins))
-    lines.push(`- ${m.display_name}: ${at} (${m.travel_mins} min by ${modeLabel(m.mode)})`)
+    let trip = `${m.travel_mins} min`
+    if (TRIP_WORDS[m.mode]) {
+      trip = `${trip} ${TRIP_WORDS[m.mode]}`
+    }
+    leaving.push(`• ${m.display_name}: ${at} (${trip})`)
   }
-  const range = tripRange(store.members)
-  if (range) lines.push('', `Everyone's trip is within ${range.gap} min of each other.`)
-  if (backup.value) lines.push(`Backup: ${backup.value.name}`)
+  if (leaving.length > 0) lines.push('', '🚶 Leave by', ...leaving)
   return lines.join('\n')
 })
 
@@ -194,6 +206,8 @@ onUnmounted(() => clearInterval(timer))
       <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
     </div>
 
+    <MissingPrerequisite v-else-if="missingStep" :hangout-id="String(hangoutId)" :step="missingStep" />
+
     <div v-else-if="hangout && !spot" class="alert alert-info">
       Nothing has been shortlisted yet, so there's no plan to show.
     </div>
@@ -229,22 +243,6 @@ onUnmounted(() => clearInterval(timer))
             :starts-at="startsAt"
             :my-id="myId"
           />
-
-          <section class="panel backup slot-backup" aria-labelledby="backup-heading">
-            <div class="backup__thumb" aria-hidden="true">
-              {{ backup ? backup.name.trim().charAt(0).toUpperCase() : '–' }}
-            </div>
-            <div>
-              <h2 id="backup-heading" class="backup__label mb-0">Backup plan</h2>
-              <template v-if="backup">
-                <p class="fw-semibold mb-0">{{ backup.name }}</p>
-                <p class="small muted mb-0">
-                  The runner-up, in case {{ spot.name }} is full or closed.
-                </p>
-              </template>
-              <p v-else class="small muted mb-0">There was only one spot, so there's no backup.</p>
-            </div>
-          </section>
         </div>
 
         <div class="plan-col">
@@ -357,7 +355,7 @@ onUnmounted(() => clearInterval(timer))
 }
 
 /* Phones: one column, cards in the order below (the columns step aside with display: contents).
-   From lg: the spot, trips and backup on the left; the map, weather and actions on the right. */
+   From lg: the spot and trips on the left; the map, weather and actions on the right. */
 .plan-layout {
   display: flex;
   flex-direction: column;
@@ -386,10 +384,6 @@ onUnmounted(() => clearInterval(timer))
 
 .slot-share {
   order: 5;
-}
-
-.slot-backup {
-  order: 6;
 }
 
 @media (min-width: 992px) {
@@ -443,33 +437,6 @@ onUnmounted(() => clearInterval(timer))
 .done {
   background: var(--fp-primary);
   color: var(--fp-surface);
-}
-
-.backup {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 1rem 1.25rem;
-}
-
-.backup__thumb {
-  flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  display: grid;
-  place-items: center;
-  border-radius: var(--fp-radius-sm);
-  background: var(--fp-bg);
-  color: var(--fp-muted);
-  font-weight: 800;
-}
-
-.backup__label {
-  color: var(--fp-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .map-frame {

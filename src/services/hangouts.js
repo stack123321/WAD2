@@ -212,8 +212,26 @@ export async function leaveHangout(hangoutId, userId) {
 }
 
 /**
+ * (Surya) The host removes someone from the hangout (step 0 Details). Their vote goes too, which
+ * only the database function can do (people may only delete their own vote).
+ * Needs supabase/migrations/2026-11-03-remove-member.sql.
+ * @param {string} hangoutId
+ * @param {string} userId the person to remove
+ */
+export async function removeMember(hangoutId, userId) {
+  // the sample hangouts have no database: the page just takes them off the list
+  if (hangoutId.startsWith('demo') || !hasSupabase) {
+    return
+  }
+  const { error } = await supabase.rpc('remove_member', { p_hangout: hangoutId, p_user: userId })
+  if (error) {
+    throw error
+  }
+}
+
+/**
  * Everyone you've been in a hangout with: one entry per person, most hangouts together first.
- * Used by 06 Starting points ("Friends from past hangouts").
+ * Used by 05 New hangout and step 0 Details ("Who's coming?") and friend groups.
  * @param {string} myId the logged-in user, left out of the list
  * @returns {Promise<Array<{ user_id: string, display_name: string, avatar_color: string | null, together: number }>>}
  */
@@ -270,6 +288,31 @@ export async function addMember(hangoutId, userId) {
       throw new Error('Only the host can add people, and only friends from past hangouts.')
     }
     throw error
+  }
+}
+
+/**
+ * (Eashvar) Save someone's trip time and cost to the midpoint, for "Leave by" on 12. You can save
+ * your own; in host mode the host can save anyone's ("members: edit own row" in schema.sql).
+ * @param {number} mins whole minutes
+ * @param {number} cost in S$
+ */
+export async function updateMemberTrip(hangoutId, userId, mins, cost) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ travel_mins: mins, travel_cost: cost })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  // Blocked by the security rules: Supabase changes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('You can only save your own trip time.')
   }
 }
 
@@ -362,6 +405,25 @@ export function subscribeToHangout(hangoutId, onChange) {
       { event: 'UPDATE', schema: 'public', table: 'hangouts', filter: `id=eq.${hangoutId}` },
       (payload) => onChange(payload.new),
     )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
+ * (Surya) Call onChange when any of my hangouts changes (e.g. the host confirms the plan or starts
+ * a re-vote) or anyone votes in one. No filter needed: the read rules ("hangouts: members read",
+ * "votes: members read") mean Supabase only sends changes to hangouts I'm in. Used by 01 and 04.
+ * @param {string} page which page is listening, e.g. 'dashboard'
+ * @returns {() => void} call this in onUnmounted to stop listening
+ */
+export function subscribeToMyHangouts(page, onChange) {
+  if (!hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel(`my-hangouts:${page}`) // one channel per page, so leaving one page never stops the other's
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hangouts' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onChange)
     .subscribe()
   return () => supabase.removeChannel(channel)
 }

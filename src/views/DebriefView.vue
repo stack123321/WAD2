@@ -10,6 +10,8 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import { isMockHangout } from '@/services/votes'
 import SpotHero from '@/components/shared/SpotHero.vue'
 import TripTable from '@/components/shared/TripTable.vue'
@@ -22,10 +24,12 @@ import {
   decisionSummary,
   runnerUp,
 } from '@/utils/voteHelpers'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout)
 
 const hangoutId = route.params.id
 const isMock = isMockHangout(hangoutId)
@@ -65,7 +69,7 @@ const whoCame = computed(() => {
   const names = store.members.map((m) =>
     m.user_id === myId.value ? `${m.display_name} (you)` : m.display_name,
   )
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+  return joinNames(names)
 })
 
 // Everyone except me, ticked on 05 New hangout
@@ -97,6 +101,8 @@ onMounted(() => store.load(hangoutId))
     <div v-else-if="store.error" class="alert alert-danger" role="alert">
       Couldn't load this hangout. {{ store.error.message }}
     </div>
+
+    <MissingPrerequisite v-else-if="missingStep" :hangout-id="String(hangoutId)" :step="missingStep" />
 
     <template v-else-if="hangout && !spot">
       <h1 class="page-title mb-2">How it went</h1>

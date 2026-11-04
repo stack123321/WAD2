@@ -1,6 +1,8 @@
 // Owner: Nicole. Travel time per person and mode, via our /api/route function
 // (OneMap Routing needs a token, so the call happens server-side in api/route.js).
-import { centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint'
+import axios from 'axios'
+import { canWorkOutTrip, centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint'
+import { updateMemberTrip } from '@/services/hangouts'
 
 /**
  * @param {{ lat: number, lng: number }} from
@@ -9,16 +11,15 @@ import { centroid, fairness, nearestStations, rankAreas } from '@/utils/midpoint
  * @returns {Promise<{ mins: number, cost: number, steps: Array<{ instruction: string, mins: number }> }>}
  */
 export async function getRoute(from, to, mode) {
-  const params = new URLSearchParams({
-    fromLat: from.lat,
-    fromLng: from.lng,
-    toLat: to.lat,
-    toLng: to.lng,
-    mode,
-  })
-  const res = await fetch(`/api/route?${params}`)
-  if (!res.ok) throw new Error(`route failed: ${res.status}`)
-  return res.json()
+  try {
+    const response = await axios.get('/api/route', {
+      params: { fromLat: from.lat, fromLng: from.lng, toLat: to.lat, toLng: to.lng, mode },
+    })
+    return response.data
+  } catch (err) {
+    if (!err.response) throw err // offline
+    throw new Error(`route failed: ${err.response.status}`, { cause: err })
+  }
 }
 
 /**
@@ -34,6 +35,28 @@ export async function travelTo(members, place) {
   return { travelMins: routes.map((r) => r.mins), travelCosts: routes.map((r) => r.cost) }
 }
 
+/**
+ * (Eashvar) Work out one person's trip to the group's midpoint and save it, after they set their
+ * starting point (06) or mode (07). Everyone's times are otherwise only saved when the midpoint is
+ * found or moved, so someone who sets either later would have no "Leave by" on 12. Does nothing
+ * until the group has a midpoint and they have a starting point and a mode.
+ * @param {string} hangoutId
+ * @param {{ midpoint_lat: number, midpoint_lng: number }} hangout
+ * @param {{ user_id: string, start_lat: number, start_lng: number, mode: string }} member
+ * @returns {Promise<{ mins: number, cost: number } | null>} the saved trip, or null if skipped
+ */
+export async function saveTrip(hangoutId, hangout, member) {
+  if (!canWorkOutTrip(hangout, member)) return null
+  const route = await getRoute(
+    { lat: member.start_lat, lng: member.start_lng },
+    { lat: hangout.midpoint_lat, lng: hangout.midpoint_lng },
+    member.mode,
+  )
+  const mins = Math.round(route.mins)
+  await updateMemberTrip(hangoutId, member.user_id, mins, route.cost)
+  return { mins, cost: route.cost }
+}
+
 // How many MRT stations near the middle of everyone's starting points we compare
 const STATIONS_TO_TRY = 8
 
@@ -45,15 +68,21 @@ const STATIONS_TO_TRY = 8
  * 4. rank them (fairest = shortest longest trip and smallest gap) and return them, best first
  * @param {Array} members people with a starting point and a mode
  * @param {'fairest' | 'fastest' | 'cheapest'} optimiseFor
+ * @param {(done: number, total: number) => void} [onProgress] (Surya) told after each station, for 07's progress bar
  */
-export async function rankStations(members, optimiseFor = 'fairest') {
+export async function rankStations(members, optimiseFor = 'fairest', onProgress = () => {}) {
   const middle = centroid(members.map((m) => ({ lat: m.start_lat, lng: m.start_lng })))
   if (!middle) {
     return []
   }
+  const stations = nearestStations(middle, STATIONS_TO_TRY)
+  let done = 0
+  onProgress(0, stations.length)
   const candidates = await Promise.all(
-    nearestStations(middle, STATIONS_TO_TRY).map(async (station) => {
+    stations.map(async (station) => {
       const travel = await travelTo(members, station)
+      done++
+      onProgress(done, stations.length) // e.g. 3 of 8 stations checked
       return { ...station, ...travel }
     }),
   )

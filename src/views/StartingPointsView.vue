@@ -14,12 +14,12 @@ import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
 import { reverseGeocode } from '@/services/onemap'
 import { getMyHangouts, updateMemberStart } from '@/services/hangouts'
+import { saveTrip } from '@/services/routing'
 import PlaceSearch from '@/components/map/PlaceSearch.vue'
 import GroupList from '@/components/start/GroupList.vue'
-import PastFriends from '@/components/start/PastFriends.vue'
-import LatestMessage from '@/components/chat/LatestMessage.vue'
 import MembersMap from '@/components/map/MembersMap.vue'
 import { centroid } from '@/utils/midpoint'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const store = useHangoutStore()
@@ -120,9 +120,6 @@ const showLastPlace = computed(() => {
   return me.value.start_label !== lastPlace.value.label
 })
 
-// Part (h) "Add friends" starts folded away (most people add friends when creating the hangout)
-const showAddFriends = ref(false)
-
 // Part (b) Host mode
 // When friends don't add their own (switched off on 05, saved as friends_add_start), the host
 // enters everyone's. 05 also sends the host here with ?entry=host straight after creating it.
@@ -151,14 +148,6 @@ function toggleFillIn() {
     startEditing(me.value) // done filling in: back to your own starting point
   }
 }
-
-// The logged-in host of a real (saved) hangout: can add friends from past hangouts
-const isRealHost = computed(() => {
-  if (!store.hangout || !auth.user || route.params.id === 'demo') {
-    return false
-  }
-  return store.hangout.host_id === auth.user.id
-})
 
 // Whose starting point the search box and the draggable pin are setting:
 // you (targetId is null), or in host mode the friend you picked with Set / Change.
@@ -208,10 +197,25 @@ const saveStatus = ref('') // '', 'saving', 'saved' or 'error'
 const failedMember = ref(null) // whose save failed, for "Try again"
 const startChanged = ref(false) // (Ryan) a start was saved this visit, so the midpoint may be out of date
 
+// (Eashvar) if the group already has a midpoint, work out this person's trip to it from the new
+// starting point and save it, so "Leave by" on 12 is right. Only extra: a failure is just logged.
+async function updateTrip(member) {
+  try {
+    const trip = await saveTrip(route.params.id, store.hangout, member)
+    if (trip) {
+      member.travel_mins = trip.mins
+      member.travel_cost = trip.cost
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 async function saveStart(member) {
   // The demo hangout isn't saved anywhere, so don't show "Saved"
   if (route.params.id === 'demo') {
     startChanged.value = true
+    updateTrip(member)
     return
   }
 
@@ -225,6 +229,7 @@ async function saveStart(member) {
     saveStatus.value = 'saved'
     startChanged.value = true
     failedMember.value = null
+    updateTrip(member)
     setTimeout(() => {
       if (saveStatus.value === 'saved') {
         saveStatus.value = ''
@@ -372,14 +377,6 @@ const waitingNames = computed(() => {
   return names
 })
 
-// "Ryan", "Ryan and Nicole", "Ryan, Nicole and Hugo"
-function joinNames(names) {
-  if (names.length <= 1) {
-    return names.join('')
-  }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-}
-
 const statusLine = computed(() => {
   if (!me.value) {
     return ''
@@ -432,13 +429,6 @@ const savedText = computed(() => {
           <p class="small mb-0">{{ savedText }}</p>
         </div>
         <p v-else-if="me" class="status-line mb-1">Hi {{ me.display_name }} 👋 {{ statusLine }}</p>
-        <!-- (Surya) the chat's newest message, tap to reply -->
-        <LatestMessage
-          v-if="me"
-          :hangout="store.hangout"
-          :my-id="myId"
-          @open-chat="store.chatOpen = true"
-        />
         <p class="text-secondary mb-4">
           Search an address, MRT station or postal code. We use everyone’s starting point to find a
           spot that’s fair for all.
@@ -555,27 +545,6 @@ const savedText = computed(() => {
             Add your starting point to continue. Friends can add theirs later.
           </p>
         </template>
-
-        <!-- Host only: add more people, folded away (most are added when creating the hangout) -->
-        <div v-if="isRealHost">
-          <button
-            type="button"
-            class="btn btn-link add-toggle"
-            :aria-expanded="showAddFriends"
-            aria-controls="add-friends"
-            @click="showAddFriends = !showAddFriends"
-          >
-            {{ showAddFriends ? 'Hide add friends ▴' : '+ Add friends ▾' }}
-          </button>
-          <PastFriends
-            v-if="showAddFriends"
-            id="add-friends"
-            class="mt-2"
-            :hangout="store.hangout"
-            :my-id="myId"
-            @added="store.load(route.params.id)"
-          />
-        </div>
       </div>
 
       <!-- Right: shared map -->
@@ -635,14 +604,6 @@ const savedText = computed(() => {
   font-weight: 600;
   text-align: left;
   overflow-wrap: anywhere;
-}
-
-/* "+ Add friends ▾" */
-.add-toggle {
-  min-height: 44px;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
 }
 
 .panel {

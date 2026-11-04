@@ -2,9 +2,11 @@
 // 10a): how fair one area is (fairness), ranking the candidate areas for "fairest", "fastest" or
 // "cheapest" (rankAreas), the helpers for the first guess (centroid,
 // nearestStations), and pairing everyone with their time and cost to the chosen station
-// (timesFor), which is saved with the midpoint for "Leave by" on 12.
+// (timesFor), which is saved with the midpoint for "Leave by" on 12. canWorkOutTrip decides when
+// someone's own trip can be worked out and saved after the midpoint was found.
 import { describe, it, expect } from 'vitest'
 import {
+  canWorkOutTrip,
   fairness,
   rankAreas,
   centroid,
@@ -136,5 +138,26 @@ describe('TestSuite: timesFor', () => {
     const station = { travelMins: [20], travelCosts: [1.5] }
     timesFor([{ user_id: 'amy' }], station)
     expect(station).toEqual({ travelMins: [20], travelCosts: [1.5] })
+  })
+})
+
+describe('TestSuite: canWorkOutTrip', () => {
+  const hangout = { midpoint_lat: 1.35, midpoint_lng: 103.85 }
+  const member = { start_lat: 1.36, start_lng: 103.76, mode: 'bus' }
+
+  it('Test1: yes once there is a midpoint, a starting point and a mode', () => {
+    expect(canWorkOutTrip(hangout, member)).toBe(true)
+  })
+
+  it('Test2: not before the group has a midpoint', () => {
+    expect(canWorkOutTrip({ midpoint_lat: null, midpoint_lng: null }, member)).toBe(false)
+  })
+
+  it('Test3: not without a starting point', () => {
+    expect(canWorkOutTrip(hangout, { ...member, start_lat: null, start_lng: null })).toBe(false)
+  })
+
+  it('Test4: not before a mode is picked', () => {
+    expect(canWorkOutTrip(hangout, { ...member, mode: null })).toBe(false)
   })
 })

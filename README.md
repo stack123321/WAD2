@@ -54,11 +54,11 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 | Requirement | Where |
 |---|---|
 | HTML, CSS, JavaScript, a framework | Vue 3 single-file components in `src/views/` and `src/components/`, built with Vite. Vue Router for the pages, Pinia for the hangout, login and alert stores. |
-| CSS framework | Bootstrap 5 for the grid, spacing and breakpoints. Colours, radius and fonts are tokens in `src/styles/tokens.css`; components use `<style scoped>`. |
+| CSS framework | Bootstrap 5 for the grid, spacing and breakpoints. Colours, radius and fonts are tokens in `src/assets/tokens.css`; components use `<style scoped>`. |
 | Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 575 px found no sideways scrolling on any page. |
 | Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). Schema: [supabase/schema.sql](supabase/schema.sql). |
 | External APIs, called asynchronously | See the table below. |
-| Tests | Vitest unit and component tests (187, in `__tests__` folders next to the code) and Playwright end-to-end tests (101, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
+| Tests | Vitest unit and component tests (197, in `__tests__` folders next to the code) and Playwright end-to-end tests (105, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
@@ -201,7 +201,7 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 | Pressing Esc (`page.keyboard.press`) | `tests/e2e/chatPopover.spec.js` | Esc closing the chat is the behaviour being tested |
 | Two people at once (`browser.newContext`), reading the invite link (clipboard) | `tests/live/` | The two-person live test needs two logged-in browsers, and the app only copies the link |
 
-Small extensions of what the course shows, used where they read more clearly: Vitest matchers such as `toContain` and `toHaveLength`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled` and `toBeChecked`; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()` and `.nth()` to pick one card or row; and `check()` and `hover()`.
+Small extensions of what the course shows, used where they read more clearly: Vitest matchers such as `toContain` and `toHaveLength`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled` and `toBeChecked`; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()` and `.nth()` to pick one card or row; and `hover()`.
 
 ## AI and LLM usage
 
@@ -249,7 +249,7 @@ Libraries (all in `package.json`):
 | qrcode | <<FILL: nothing in the code imports it. Remove it from package.json, or say where it is used>> | https://github.com/soldair/node-qrcode |
 | Plus Jakarta Sans | The app's font, loaded from Google Fonts | https://fonts.google.com/specimen/Plus+Jakarta+Sans |
 
-Build and test tools: Vite, Playwright, ESLint, oxlint and Prettier.
+Build and test tools: Vite, Vitest with Vue Test Utils, Playwright, ESLint, oxlint and Prettier.
 
 Data and APIs: [OneMap](https://www.onemap.gov.sg/apidocs/) (search, reverse geocoding, routing and map tiles, © Singapore Land Authority and contributors), [LTA DataMall](https://datamall.lta.gov.sg) (station crowd levels and car parks), [data.gov.sg](https://data.gov.sg) (NEA weather and haze, and the mall car park rates in `api/_data/carparkRates.js`, from 2018), [Open-Meteo](https://open-meteo.com) (weather forecast), [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service) (nearby places, photos and summaries) and [Gemini](https://ai.google.dev) (the Ask box).
 
@@ -271,7 +271,7 @@ src/              (a __tests__/ folder next to the code holds its Vitest tests)
   utils/         Plain functions with no Vue: midpoint.js, matchScore.js, voteHelpers.js, dates, status, and mapSetup.js (the Leaflet map)
   mocks/         Sample hangouts, addresses and place types
   router/        All routes, and the login redirect
-  styles/        tokens.css, the only global CSS
+  assets/        tokens.css, the only global CSS
 supabase/        schema.sql (the full database) and migrations/ (dated changes already included in it)
 tests/
   e2e/           The end-to-end Playwright tests (npm run test:e2e)
@@ -283,7 +283,7 @@ Conventions:
 
 - Services own every API and database call. Views and components never call `fetch` or Supabase directly.
 - Secret keys have no `VITE_` prefix and are used only in `api/`. The Supabase service-role key is never in the front end, and `.env.local` is never committed.
-- Colours, radius and shadows come from `var(--fp-...)` tokens in `src/styles/tokens.css`. Components use `<style scoped>`. The one exception is `src/utils/palette.js`, for colours that JavaScript has to hold itself (the avatar colours and the Leaflet map shapes).
+- Colours, radius and shadows come from `var(--fp-...)` tokens in `src/assets/tokens.css`. Components use `<style scoped>`. The one exception is `src/utils/palette.js`, for colours that JavaScript has to hold itself (the avatar colours and the Leaflet map shapes).
 - Components are `PascalCase.vue`, JavaScript modules in `src/` are `camelCase.js`, and files in `api/` are `kebab-case.js` because each one is a URL.
 
 ## Database

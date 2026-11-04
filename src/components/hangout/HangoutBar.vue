@@ -1,21 +1,22 @@
 <script setup>
 // Owner: Surya. The bar under the navbar on pages 06–12 (Figma): hangout name, date, the 6 steps
-// with the current one highlighted, everyone's avatars, and an Invite button that copies the
-// hangout's invite link (for people who aren't your friends yet). Each step links to its page.
+// with the current one highlighted, and everyone's avatars. Each step links to its page.
+// (Surya) No Invite button here any more: "Copy invite link" is in the hangout's ⋯ menu on My
+// hangouts, and the host adds friends by name on step 0 Details.
 // (Surya) A 💬 button opens the group chat from any step, with the count of new messages.
 // (Ryan) It opens on top of the step you're on (ChatPopover in App.vue), so you don't leave the page.
 // (Surya) The host also gets step "0 Details" before step 1, in place of the "Get there" label
 // (‹ on step 1 on phones), which opens 05 in edit mode to change the name, date, time or vibe.
 // Usage: <HangoutBar :hangout="store.hangout" :members="store.members" current="transport" />
 // (current = the route name of the page you're on)
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import { useAlertsStore } from '@/stores/alerts'
 import { useAuthStore } from '@/stores/auth'
 import { useHangoutStore } from '@/stores/hangout'
 
 const props = defineProps({
-  hangout: { type: Object, required: true }, // needs id, name, starts_at, invite_code
+  hangout: { type: Object, required: true }, // needs id, name, starts_at
   members: { type: Array, required: true }, // needs user_id, display_name, avatar_color
   current: { type: String, required: true },
 })
@@ -103,24 +104,6 @@ const chatLabel = computed(() => {
   const action = store.chatOpen ? 'Close group chat' : 'Open group chat'
   return unreadChat.value > 0 ? `${action}, ${unreadChat.value} new` : action
 })
-
-// Invite: copy the hangout's link. Friends who open it log in and join this hangout.
-const inviteCopied = ref(false)
-
-async function copyInvite() {
-  const link = `${window.location.origin}/login?invite=${props.hangout.invite_code}`
-  try {
-    await navigator.clipboard.writeText(link)
-    inviteCopied.value = true
-    setTimeout(() => {
-      inviteCopied.value = false
-    }, 2000)
-  } catch (error) {
-    // some browsers block copying: show the link so it can be copied by hand
-    console.error(error)
-    window.prompt('Copy this invite link:', link)
-  }
-}
 </script>
 
 <template>
@@ -243,15 +226,6 @@ async function copyInvite() {
           unreadChat > 9 ? '9+' : unreadChat
         }}</span>
       </button>
-      <button
-        v-if="hangout.id !== 'demo'"
-        type="button"
-        class="btn btn-outline-primary btn-sm invite-btn"
-        title="Copy the invite link for people who aren't your friends yet"
-        @click="copyInvite"
-      >
-        {{ inviteCopied ? 'Link copied!' : 'Invite' }}
-      </button>
     </div>
   </header>
 </template>
@@ -298,11 +272,6 @@ async function copyInvite() {
   text-align: center;
 }
 
-.invite-btn {
-  min-height: 36px;
-  white-space: nowrap;
-}
-
 .hangout-bar {
   display: flex;
   flex-wrap: wrap; /* on narrow phones the step goes onto its own line */
@@ -318,6 +287,15 @@ async function copyInvite() {
 
 .min-w-0 {
   min-width: 0; /* lets text-truncate work inside a flex row */
+}
+
+/* (Surya) the avatars and Chat always sit on the right, even when they wrap onto a second line.
+   The steps get the same auto margin, so on one line the space is still shared out evenly
+   (name · steps · Chat), like space-between. */
+.hangout-bar .invite-group,
+.hangout-bar .steps,
+.hangout-bar .step-nav {
+  margin-left: auto;
 }
 
 .date-chip {
@@ -408,7 +386,7 @@ async function copyInvite() {
 }
 
 /* (Surya) small laptops 1200–1365px: the full step list shows, so the avatars make way for Chat
-   and Invite to stay on the same line (everyone is listed on each page anyway) */
+   to stay on the same line (everyone is listed on each page anyway) */
 @media (min-width: 1200px) and (max-width: 1365.98px) {
   .avatar-stack {
     display: none !important; /* over Bootstrap's d-md-flex */
@@ -472,12 +450,12 @@ a.step-arrow:hover {
   }
 }
 
-/* On phones the arrows make the step label too wide to sit beside Invite, so it gets its own line:
-   name and Invite on top, then ‹ step › across the full width */
+/* On phones the arrows make the step label too wide to sit beside Chat, so it gets its own line:
+   name and Chat on top, then ‹ step › across the full width */
 @media (max-width: 767.98px) {
   .name-group {
     order: 1;
-    flex: 1 1 0; /* takes the space Invite leaves, and the name is cut with … if it is too long */
+    flex: 1 1 0; /* takes the space Chat leaves, and the name is cut with … if it is too long */
   }
 
   .invite-group {

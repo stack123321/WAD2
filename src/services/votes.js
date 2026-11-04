@@ -20,6 +20,19 @@ export async function castVote(hangoutId, userId, shortlistId) {
     shortlist_id: shortlistId,
     voted_at: new Date().toISOString(),
   })
+  // (Surya) 42501 = the database refused it: the host has closed the vote
+  if (error && error.code === '42501') throw new Error('voting has closed')
+  if (error) throw error
+}
+
+/** (Surya) Take back my vote, so I haven't voted for anything ("votes: remove own" allows it). */
+export async function removeVote(hangoutId, userId) {
+  if (isMockHangout(hangoutId)) return
+  const { error } = await supabase
+    .from('votes')
+    .delete()
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
   if (error) throw error
 }
 

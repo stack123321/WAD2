@@ -35,10 +35,9 @@ const emit = defineEmits(['select', 'close'])
       :disabled="disabled || closing"
       @change="emit('select', $event.target.value)"
     >
-      <option v-if="leaderId && !closed" :value="leaderId">
-        Most voted: {{ shortlist.find((spot) => spot.id === leaderId)?.name }}
+      <option v-for="spot in shortlist" :key="spot.id" :value="spot.id">
+        {{ spot.id === leaderId && !closed ? `Most voted: ${spot.name}` : spot.name }}
       </option>
-      <option v-for="spot in shortlist" :key="spot.id" :value="spot.id">{{ spot.name }}</option>
     </select>
     <button
       v-if="!closed && leaderId && selectedId !== leaderId"

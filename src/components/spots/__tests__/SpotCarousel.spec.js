@@ -29,8 +29,8 @@ describe('TestSuite: SpotCarousel', () => {
   it('Test3: with several spots, Previous starts switched off and Next is on', () => {
     const [previous, next] = mountCarousel(spots).findAll('button')
     expect(previous.attributes('aria-label')).toBe('Previous spot')
-    expect(previous.attributes('disabled')).toBeDefined()
+    expect(previous.attributes()).toHaveProperty('disabled')
     expect(next.attributes('aria-label')).toBe('Next spot')
-    expect(next.attributes('disabled')).toBeUndefined()
+    expect(next.attributes()).not.toHaveProperty('disabled')
   })
 })

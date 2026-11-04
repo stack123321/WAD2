@@ -6,6 +6,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHangoutStore } from '@/stores/hangout'
 import { useAuthStore } from '@/stores/auth'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 import { nearestStations, timesFor } from '@/utils/midpoint'
 import { rankStations, scoreStation } from '@/services/routing'
 import { saveMidpoint, setMidpointLocked, subscribeToHangout } from '@/services/hangouts'
@@ -18,6 +20,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 const route = useRoute()
 const store = useHangoutStore()
 const auth = useAuthStore()
+const { missingStep } = useHangoutPrerequisites(() => store.hangout, ['starting-points', 'transport'])
 
 let stopListening = () => {}
 
@@ -151,34 +154,19 @@ const otherOptions = computed(() => {
   return result
 })
 
-// "Ryan 12 min shorter · Nicole 8 min longer · Surya same. Trips up to 30 min apart (less fair)",
-// compared with the current midpoint, in plain words
-function compareLine(option) {
-  const spread = `Trips up to ${option.gap} min apart`
-  if (!current.value) {
-    return `Longest trip ${option.longest} min · ${spread}`
-  }
+// (Surya) For the preview chips on another station: everyone's trip time there.
+// "You" instead of your own name.
+function compareFor(option) {
   const people = []
   rankedFor.value.forEach((m, i) => {
-    people.push(
-      `${m.display_name} ${longerText(option.travelMins[i] - current.value.travelMins[i])}`,
-    )
+    people.push({
+      id: m.user_id,
+      name: m.user_id === myId.value ? 'You' : m.display_name,
+      color: m.avatar_color,
+      mins: option.travelMins[i],
+    })
   })
-  return `${people.join(' · ')}. ${spread} (${fairerText(option.gap - current.value.gap)}).`
-}
-
-// 4 → "4 min longer", -19 → "19 min shorter", 0 → "same"
-function longerText(n) {
-  if (n === 0) return 'same'
-  if (n > 0) return `${n} min longer`
-  return `${Math.abs(n)} min shorter`
-}
-
-// smaller spread between trips = fairer
-function fairerText(n) {
-  if (n === 0) return 'just as fair'
-  if (n > 0) return 'less fair'
-  return 'fairer'
+  return { people: people }
 }
 
 const longestTrip = computed(() => {
@@ -191,15 +179,18 @@ const longestTrip = computed(() => {
   return longest
 })
 
+// (Surya) Who you are. In the demo hangout (sample people) you're Surya, like on 06 and 07.
+const myId = computed(() => {
+  if (route.params.id !== 'demo' && auth.user) {
+    return auth.user.id
+  }
+  return 'u-surya'
+})
+
 // (Surya) Your own trip to the midpoint, e.g. "27 min by MRT · $2.20". Null if we don't know it
 // yet (you haven't picked a mode, or the travel times haven't loaded), so the line is hidden.
-// In the demo hangout (sample people) you're Surya, like on 06 and 07.
 const myTrip = computed(() => {
-  let myId = 'u-surya'
-  if (route.params.id !== 'demo' && auth.user) {
-    myId = auth.user.id
-  }
-  const me = store.members.find((m) => m.user_id === myId)
+  const me = store.members.find((m) => m.user_id === myId.value)
   if (!me || !me.mode || me.travel_mins == null) {
     return null
   }
@@ -216,10 +207,10 @@ const myTrip = computed(() => {
 })
 
 // (Surya) The station tabs above "Things to do": your midpoint first, then the next best ones,
-// each with a one-line comparison so you can weigh better spots against a longer trip
+// each with everyone's trip times so you can weigh better spots against a longer trip
 const stationTabs = computed(() => {
   if (!midpoint.value) return []
-  const tabs = [{ ...midpoint.value, chosen: true, compareText: '', station: null }]
+  const tabs = [{ ...midpoint.value, chosen: true, compare: null, station: null }]
   for (const o of otherOptions.value) {
     tabs.push({
       name: o.name,
@@ -227,7 +218,7 @@ const stationTabs = computed(() => {
       lng: o.lng,
       chosen: false,
       tag: o.tag,
-      compareText: compareLine(o),
+      compare: compareFor(o),
       station: o,
     })
   }
@@ -396,6 +387,10 @@ async function moveToDropped(station) {
     </div>
   </div>
 
+  <div v-else-if="missingStep" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
+  </div>
+
   <div v-else-if="store.hangout">
     <!-- the step bar comes from App.vue, which adds it to every hangout page -->
     <main class="container py-4">
@@ -522,12 +517,12 @@ async function moveToDropped(station) {
           </div>
         </div>
         <!-- (Surya) the next step, full width at the bottom so it's clear what to do next -->
-        <router-link
+        <RouterLink
           :to="{ name: 'explore', params: { id: route.params.id } }"
           class="btn btn-primary btn-lg w-100 mt-4 see-spots-btn"
         >
           Next: see nearby spots →
-        </router-link>
+        </RouterLink>
         <p class="small text-secondary text-center mt-2 mb-0">
           Pick places near {{ midpoint.name }} for the group to vote on.
         </p>
@@ -538,12 +533,12 @@ async function moveToDropped(station) {
         <p class="mb-2">
           No midpoint yet. Fairpoint finds it once everyone has picked how they're travelling.
         </p>
-        <router-link
+        <RouterLink
           :to="{ name: 'transport', params: { id: route.params.id } }"
           class="btn btn-primary btn-sm go-btn"
         >
           Go to transport →
-        </router-link>
+        </RouterLink>
       </div>
 
       <ConfirmDialog

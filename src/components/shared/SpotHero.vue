@@ -60,7 +60,7 @@ watch(
       <dl v-if="startsAt || myLeave" class="ticket mb-0">
         <div v-if="startsAt" class="ticket__part">
           <dt>When</dt>
-          <dd>{{ formatDateTime(startsAt) }} <span class="ticket__unit">SGT</span></dd>
+          <dd>{{ formatDateTime(startsAt) }}</dd>
         </div>
         <div v-if="myLeave" class="ticket__part ticket__part--you">
           <dt>You leave by</dt>

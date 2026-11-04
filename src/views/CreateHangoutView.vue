@@ -3,7 +3,7 @@
 // Owner: Matrix
 // Figma frame "05". Left: hangout details (with quick date buttons and a name idea).
 // Right: "Who's coming?" (tick friends to add them straight away) and a live summary.
-// Anyone else can be invited with the Invite button in the step bar once the hangout exists.
+// Anyone else can join with "Copy invite link" in the hangout's ⋯ menu on My hangouts.
 // (Surya, improve/user-friendly-customised: friends list with search, quick dates, optional name
 // with a suggestion, short "why" notes, a remembered switch, a summary, and a hint saying what's
 // missing when Create is greyed out. "Voting closes" moved to 11 Vote, where the host starts it.)
@@ -12,13 +12,14 @@
 // (Eashvar) "Plan a hangout with this group" on a friend group opens this page with ?group=<id>:
 // everyone in the group is ticked (untick anyone who can't make it), the hangout is tagged with
 // the group, and everyone's usual starting point and transport are filled in on 06.
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createHangout,
   getHangout,
   getPastFriends,
   makeInviteCode,
+  removeMember,
   updateHangoutDetails,
 } from '@/services/hangouts'
 import { useHangoutStore } from '@/stores/hangout'
@@ -32,6 +33,7 @@ import {
 } from '@/services/groups'
 import { isMockHangout } from '@/services/votes'
 import {
+  acceptFriendRequest,
   addFriendToHangout,
   getFriend,
   getFriendships,
@@ -39,8 +41,11 @@ import {
   sendFriendRequest,
 } from '@/services/friends'
 import { useAuthStore } from '@/stores/auth'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
+import { sortPeople } from '@/utils/peopleSearch'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const router = useRouter()
@@ -134,10 +139,8 @@ const selectedFriends = ref([]) // user_ids of the ticked friends
 const friendsLoading = ref(true)
 const friendsError = ref('')
 
+// (Surya) edit mode loads them too: the host can add more friends on step 0 Details
 async function loadFriends() {
-  if (isEdit) {
-    return // edit mode doesn't pick people (that's on 06)
-  }
   friendsLoading.value = true
   friendsError.value = ''
   try {
@@ -146,6 +149,9 @@ async function loadFriends() {
       myId = auth.user.id
     }
     const lists = await getFriendships(myId)
+    // (Surya) requests from before this visit: ones you sent show "Requested", ones sent to you "Accept"
+    requestedIds.value = lists.pending.map((p) => p.user_id)
+    askedYouIds.value = lists.requests.map((p) => p.user_id)
     const past = await getPastFriends(myId)
 
     // together = how many hangouts you've had with them (0 for friends you haven't met up with yet)
@@ -181,8 +187,14 @@ async function loadFriends() {
       }
     }
 
-    // A to Z by name, so you can find someone quickly (prof's feedback)
-    all.sort((a, b) => a.display_name.localeCompare(b.display_name))
+    // (Surya) People you often hang out with (2 or more hangouts) come first, then everyone else.
+    // Each part is A to Z by name, so you can still find someone quickly (prof's feedback)
+    all.sort((a, b) => {
+      if (isOften(a) !== isOften(b)) {
+        return isOften(a) ? -1 : 1
+      }
+      return a.display_name.localeCompare(b.display_name)
+    })
 
     // "Add to hangout" on the Friends page opens this page with ?with=<friend's id>: tick them.
     // The debrief's "Plan another with this group" passes several (?with=a&with=b).
@@ -307,6 +319,49 @@ const memberNames = computed(() => {
   return names
 })
 
+// (Surya) Everyone already in the hangout (edit mode), shown as chips and left out of the list
+const members = computed(() => {
+  if (!isEdit || !store.hangout) {
+    return []
+  }
+  return store.members
+})
+
+const memberIds = computed(() => {
+  const ids = []
+  for (const m of members.value) {
+    ids.push(m.user_id)
+  }
+  return ids
+})
+
+// (Surya) The host taps ✕ on someone's chip, confirms, and they're removed straight away
+// (with their starting point, transport and vote). Not the host themselves.
+const removing = ref(null) // the member the "Remove …?" pop-up is asking about
+const removeError = ref('')
+
+function isHostChip(m) {
+  return store.hangout && m.user_id === store.hangout.host_id
+}
+
+async function confirmRemove() {
+  const person = removing.value
+  removing.value = null
+  removeError.value = ''
+  try {
+    await removeMember(editId, person.user_id)
+    if (isMockHangout(editId)) {
+      // the sample hangout has no database: just take them off the list
+      store.members.splice(store.members.indexOf(person), 1)
+    } else {
+      await store.load(editId) // the step bar and Starting points update too
+    }
+  } catch (e) {
+    console.error(e)
+    removeError.value = `Couldn’t remove ${person.display_name}. Try again.`
+  }
+}
+
 async function saveEdit(name) {
   busy.value = true
   try {
@@ -316,6 +371,18 @@ async function saveEdit(name) {
     store.hangout.name = fields.name
     store.hangout.starts_at = fields.starts_at
     store.hangout.vibe = fields.vibe
+    // (Surya) add the friends ticked in "Who's coming?", one by one, like New hangout does.
+    // If one fails, the rest are still added (and they can join with the Invite link).
+    if (selectedFriends.value.length > 0) {
+      for (const userId of selectedFriends.value) {
+        try {
+          await addFriendToHangout(editId, userId)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      await store.load(editId) // the step bar and Starting points show them straight away
+    }
     router.push(backTo.value)
   } catch (e) {
     error.value = e.message || 'Couldn’t save the changes. Please try again.'
@@ -363,10 +430,7 @@ const againNames = computed(() => {
       names.push(m.display_name)
     }
   }
-  if (names.length <= 1) {
-    return names.join('')
-  }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  return joinNames(names)
 })
 
 // The friend you came from on the Friends page or dashboard (?with=), or null (also when several
@@ -381,27 +445,22 @@ const withFriend = computed(() => {
 // Search: type a name to filter your friends
 const friendSearch = ref('')
 
-// With lots of friends, show the first 8 (A to Z), then "Show all". Searching shows every match.
-const FIRST_FRIENDS = 8
-const showAllFriends = ref(false)
+// (Surya) Not searching: only the first 5 friends show (the ones you hang out with most).
+// Searching shows one list of everyone who matches (searchRows, below).
+const FIRST_FRIENDS = 5
+const searching = computed(() => friendSearch.value.trim() !== '')
 
-const visibleFriends = computed(() => {
-  if (showAllFriends.value || friendSearch.value.trim() !== '') {
-    return shownFriends.value
-  }
-  return shownFriends.value.slice(0, FIRST_FRIENDS)
-})
-
-const hiddenCount = computed(() => shownFriends.value.length - visibleFriends.value.length)
+const visibleFriends = computed(() => shownFriends.value.slice(0, FIRST_FRIENDS))
 
 const shownFriends = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
-  if (text === '') {
-    return friends.value
-  }
   const result = []
   for (const f of friends.value) {
-    if (f.display_name.toLowerCase().includes(text)) {
+    // (Surya) edit mode: people already in the hangout show as chips above, not in the list
+    if (memberIds.value.includes(f.user_id)) {
+      continue
+    }
+    if (text === '' || f.display_name.toLowerCase().includes(text)) {
       result.push(f)
     }
   }
@@ -414,21 +473,29 @@ const peopleResults = ref([])
 const searchedText = ref('') // what the results are for, so old results hide when you type again
 const searchingPeople = ref(false)
 const peopleError = ref('')
-const requestedIds = ref([]) // people you just sent a friend request to
+const requestedIds = ref([]) // people you sent a friend request to (still waiting on them)
+const askedYouIds = ref([]) // people who sent you a friend request
 
 async function searchEveryone() {
   const text = friendSearch.value.trim()
   peopleError.value = ''
   if (text.length < 2) {
-    peopleError.value = 'Type at least 2 letters.'
+    peopleResults.value = []
+    searchedText.value = ''
+    searchingPeople.value = false
     return
   }
   searchingPeople.value = true
   try {
     const found = await searchPeople(text)
+    // (Surya) you kept typing while this search ran: a newer search will show its own results
+    if (text !== friendSearch.value.trim()) {
+      return
+    }
     const result = []
     for (const person of found) {
-      // skip yourself and people already in your list
+      // skip yourself and your friends (they come from your own list). People already in the
+      // hangout stay: the search list marks them "In hangout".
       const isMe = auth.user && person.user_id === auth.user.id
       if (!isMe && !friends.value.find((f) => f.user_id === person.user_id)) {
         result.push(person)
@@ -443,6 +510,51 @@ async function searchEveryone() {
   searchingPeople.value = false
 }
 
+// (Surya) Searching shows ONE list of everyone who matches, closest people first, like Instagram:
+// 1. friends (you can tick them), then people who asked you (Accept), people you asked
+//    (Requested), everyone else (Add friend), and last people already in the hangout
+// 2. inside each group: names that start with what you typed ("ry" → Ryan) before names that
+//    only contain it (Henry)
+// 3. then the most hangouts together, then A to Z
+const ORDER = { friend: 0, request: 1, pending: 2, none: 3, member: 4 }
+
+function statusOf(userId) {
+  if (memberIds.value.includes(userId)) return 'member'
+  if (friends.value.find((f) => f.user_id === userId)) return 'friend'
+  if (askedYouIds.value.includes(userId)) return 'request'
+  if (requestedIds.value.includes(userId)) return 'pending'
+  return 'none'
+}
+
+const searchRows = computed(() => {
+  const text = friendSearch.value.trim().toLowerCase()
+  let myId = null
+  if (auth.user) {
+    myId = auth.user.id
+  }
+  const rows = []
+  const seen = [] // each person once
+  for (const p of [...shownFriends.value, ...members.value, ...peopleResults.value]) {
+    if (seen.includes(p.user_id) || p.user_id === myId) {
+      continue
+    }
+    if (!p.display_name.toLowerCase().includes(text)) {
+      continue
+    }
+    seen.push(p.user_id)
+    rows.push({ ...p, status: statusOf(p.user_id) })
+  }
+  return sortPeople(rows, text, ORDER) // utils/peopleSearch.js
+})
+
+// (Surya) Search everyone on Fairpoint as you type (no extra button to press). It waits until
+// you stop typing for a moment, so it doesn't search after every letter.
+let searchTimer = null
+watch(friendSearch, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(searchEveryone, 400)
+})
+
 async function requestFriend(person) {
   peopleError.value = ''
   try {
@@ -454,7 +566,32 @@ async function requestFriend(person) {
     requestedIds.value.push(person.user_id)
   } catch (error) {
     console.error(error)
+    // (Surya) 23505 = the database already has a request between you two (one per pair)
+    if (error.code === '23505') {
+      peopleError.value = 'Friend request already sent.'
+      requestedIds.value.push(person.user_id)
+      return
+    }
     peopleError.value = `Couldn’t send a friend request to ${person.display_name}.`
+  }
+}
+
+// (Surya) They already sent you a request: accept it here, and they move up to "Your friends"
+// (the search still matches them) so you can tick them straight away
+async function acceptRequest(person) {
+  peopleError.value = ''
+  try {
+    let myId = null
+    if (auth.user) {
+      myId = auth.user.id
+    }
+    await acceptFriendRequest(myId, person.user_id)
+    friends.value.push({ ...person, together: 0 })
+    askedYouIds.value = askedYouIds.value.filter((id) => id !== person.user_id)
+    peopleResults.value = peopleResults.value.filter((p) => p.user_id !== person.user_id)
+  } catch (error) {
+    console.error(error)
+    peopleError.value = `Couldn’t accept ${person.display_name}’s request. Try again.`
   }
 }
 
@@ -474,7 +611,7 @@ function unselect(userId) {
   selectedFriends.value = selectedFriends.value.filter((id) => id !== userId)
 }
 
-// "Often with you" tag for people you've had 2 or more hangouts with
+// People you've had 2 or more hangouts with, who go to the top of the list
 function isOften(friend) {
   return friend.together >= 2
 }
@@ -513,11 +650,7 @@ const missingHint = computed(() => {
   if (missing.length === 0) {
     return ''
   }
-  if (missing.length === 1) {
-    return `Add ${missing[0]} to continue.`
-  }
-  const last = missing[missing.length - 1]
-  return `Add ${missing.slice(0, -1).join(', ')} and ${last} to continue.`
+  return `Add ${joinNames(missing)} to continue.`
 })
 
 // Part (d) Name idea, e.g. "Saturday chill" (the day you picked + the first vibe)
@@ -833,23 +966,35 @@ async function submit() {
       </section>
 
       <div class="side">
-        <!-- (Surya) edit mode: people are added and removed on 06 -->
-        <section v-if="isEdit" class="panel">
-          <h2 class="panel__title mb-1">Who’s coming</h2>
-          <p class="mb-2">{{ memberNames.join(', ') }}</p>
-          <RouterLink :to="{ name: 'starting-points', params: { id: editId } }">
-            Add or remove people on Starting points →
-          </RouterLink>
-        </section>
-
-        <!-- Who's coming? Ticked friends are added when the hangout is created -->
-        <section v-else class="panel">
+        <!-- Who's coming? Ticked friends are added when the hangout is created, or (edit mode)
+             when the host saves the changes -->
+        <section class="panel">
           <div class="d-flex justify-content-between align-items-baseline gap-2">
             <h2 class="panel__title mb-1">Who’s coming?</h2>
             <span v-if="selectedPeople.length > 0" class="small text-secondary"
               >{{ selectedPeople.length }} picked</span
             >
           </div>
+
+          <!-- (Surya) edit mode: everyone already in. ✕ removes them (after a confirm); the host
+               has no ✕ -->
+          <ul v-if="members.length > 0" class="picked" aria-label="Already in this hangout">
+            <li v-for="m in members" :key="m.user_id" class="picked__chip">
+              <MemberAvatar :name="m.display_name" :color="m.avatar_color" :size="24" />
+              <span class="picked__name">{{ m.display_name }}</span>
+              <span v-if="isHostChip(m)" class="picked__host">host</span>
+              <button
+                v-else
+                type="button"
+                class="picked__remove"
+                :aria-label="`Remove ${m.display_name} from this hangout`"
+                @click="removing = m"
+              >
+                ✕
+              </button>
+            </li>
+          </ul>
+          <p v-if="removeError" class="small text-danger" role="alert">{{ removeError }}</p>
 
           <!-- Picked friends first, as chips (✕ to remove), then the list to pick from -->
           <ul v-if="selectedPeople.length > 0" class="picked" aria-label="Picked friends">
@@ -867,7 +1012,11 @@ async function submit() {
             </li>
           </ul>
 
-          <p class="panel__sub">
+          <p v-if="isEdit" class="panel__sub">
+            Everyone above is already in (✕ removes someone). Tick friends to add them when you
+            save.
+          </p>
+          <p v-else class="panel__sub">
             Tick your friends and they’re added straight away. Anyone else can join with the Invite
             link on the next page.
           </p>
@@ -876,89 +1025,118 @@ async function submit() {
             Hanging out with <strong>{{ withFriend.display_name }}</strong> (ticked below)
           </p>
 
-          <label for="friend-search" class="visually-hidden">Search by name</label>
+          <label for="friend-search" class="visually-hidden">Search anyone on Fairpoint</label>
           <input
             id="friend-search"
             v-model="friendSearch"
             type="search"
             class="form-control mb-2"
-            placeholder="Search by name"
+            placeholder="Search anyone on Fairpoint"
             autocomplete="off"
             @keydown.enter.prevent="searchEveryone"
           />
 
           <p v-if="friendsLoading" class="panel__sub mb-0">Loading your friends…</p>
           <p v-else-if="friendsError" class="panel__sub mb-0">{{ friendsError }}</p>
-          <p v-else-if="friends.length === 0 && friendSearch.trim() === ''" class="panel__sub mb-0">
-            No friends yet. Search for people above, or invite them with the link on the next page.
-          </p>
-          <p v-else-if="shownFriends.length === 0" class="panel__sub mb-0">
-            No friends called “{{ friendSearch.trim() }}”.
-          </p>
-          <ul v-else class="people">
-            <li v-for="f in visibleFriends" :key="f.user_id">
-              <label class="person">
-                <input
-                  v-model="selectedFriends"
-                  type="checkbox"
-                  class="form-check-input"
-                  :value="f.user_id"
-                />
-                <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
-                <span class="person__name">{{ f.display_name }}</span>
-                <span v-if="isOften(f)" class="often">Often with you</span>
-              </label>
-            </li>
-          </ul>
-          <!-- More than 8 friends: the rest are one tap away -->
-          <button
-            v-if="hiddenCount > 0 || (showAllFriends && shownFriends.length > FIRST_FRIENDS)"
-            type="button"
-            class="btn btn-link show-all"
-            @click="showAllFriends = !showAllFriends"
-          >
-            {{ showAllFriends ? 'Show fewer ▴' : `Show all (${hiddenCount} more) ▾` }}
-          </button>
 
-          <!-- Search everyone on Fairpoint (shown while you're searching) -->
-          <button
-            v-if="friendSearch.trim().length >= 2"
-            type="button"
-            class="btn btn-link btn-sm search-all"
-            :disabled="searchingPeople"
-            @click="searchEveryone"
-          >
-            {{ searchingPeople ? 'Searching…' : `Search everyone for “${friendSearch.trim()}”` }}
-          </button>
-          <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
-
-          <template v-if="searchedText !== '' && searchedText === friendSearch.trim()">
-            <p v-if="peopleResults.length === 0" class="panel__sub mb-0">
-              Nobody else on Fairpoint matches “{{ searchedText }}”.
+          <!-- Not searching: "Suggested", your first 5 friends to tick -->
+          <template v-else-if="!searching">
+            <p v-if="friends.length === 0" class="panel__sub mb-0">
+              No friends yet. Search for people above, or invite them with the link on the next
+              page.
             </p>
-            <template v-else>
-              <p class="panel__sub mb-1">
-                Not your friends yet. Send a request, and once they accept you can add them to
-                hangouts. Or share the Invite link on the next page.
-              </p>
+            <template v-else-if="visibleFriends.length > 0">
+              <p class="list-label">Suggested</p>
               <ul class="people">
-                <li v-for="p in peopleResults" :key="p.user_id" class="person">
-                  <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
-                  <span class="person__name">{{ p.display_name }}</span>
-                  <span v-if="requestedIds.includes(p.user_id)" class="requested">Requested</span>
-                  <button
-                    v-else
-                    type="button"
-                    class="btn btn-outline-primary btn-sm request-btn"
-                    :aria-label="`Send ${p.display_name} a friend request`"
-                    @click="requestFriend(p)"
+                <li v-for="f in visibleFriends" :key="f.user_id">
+                  <label
+                    class="person"
+                    :class="{ 'is-picked': selectedFriends.includes(f.user_id) }"
                   >
-                    Add friend
-                  </button>
+                    <MemberAvatar :name="f.display_name" :color="f.avatar_color" :size="32" />
+                    <span class="person__name">{{ f.display_name }}</span>
+                    <input
+                      v-model="selectedFriends"
+                      type="checkbox"
+                      class="form-check-input person__tick"
+                      :value="f.user_id"
+                    />
+                  </label>
                 </li>
               </ul>
             </template>
+            <!-- (Surya) edit mode: every friend is already in the hangout -->
+            <p v-else class="panel__sub mb-0">
+              All your friends are already in. Search above to find someone else.
+            </p>
           </template>
+
+          <!-- (Surya) Searching: one list of everyone who matches, closest people first (like
+               Instagram). Each row shows what you can do with that person. -->
+          <template v-else>
+            <template v-if="searchRows.length > 0">
+              <p class="panel__sub mb-2">
+                Tick friends to add them. Others need to accept a friend request first.
+              </p>
+              <ul class="people">
+                <li v-for="p in searchRows" :key="p.user_id">
+                  <!-- a friend: tick to add, like Suggested -->
+                  <label
+                    v-if="p.status === 'friend'"
+                    class="person"
+                    :class="{ 'is-picked': selectedFriends.includes(p.user_id) }"
+                  >
+                    <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
+                    <span class="person__name">{{ p.display_name }}</span>
+                    <input
+                      v-model="selectedFriends"
+                      type="checkbox"
+                      class="form-check-input person__tick"
+                      :value="p.user_id"
+                    />
+                  </label>
+                  <div v-else class="person">
+                    <MemberAvatar :name="p.display_name" :color="p.avatar_color" :size="32" />
+                    <span class="person__name">{{ p.display_name }}</span>
+                    <span v-if="p.status === 'member'" class="requested">In hangout</span>
+                    <span v-else-if="p.status === 'pending'" class="requested">Requested</span>
+                    <!-- they asked you first: one tap makes you friends -->
+                    <button
+                      v-else-if="p.status === 'request'"
+                      type="button"
+                      class="btn btn-primary btn-sm request-btn"
+                      :aria-label="`Accept ${p.display_name}'s friend request`"
+                      @click="acceptRequest(p)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      class="btn btn-outline-primary btn-sm request-btn"
+                      :aria-label="`Send ${p.display_name} a friend request`"
+                      @click="requestFriend(p)"
+                    >
+                      Add friend
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </template>
+            <p v-else-if="friendSearch.trim().length < 2" class="panel__sub mb-0">
+              Keep typing to search everyone on Fairpoint.
+            </p>
+            <p
+              v-else-if="!searchingPeople && searchedText === friendSearch.trim()"
+              class="panel__sub mb-0"
+            >
+              Nobody on Fairpoint matches “{{ searchedText }}”.
+            </p>
+          </template>
+
+          <!-- (Surya) everyone else on Fairpoint who matches, found as you type -->
+          <p v-if="searchingPeople" class="panel__sub mb-0">Searching everyone on Fairpoint…</p>
+          <p v-if="peopleError" class="small text-danger mb-0" role="alert">{{ peopleError }}</p>
         </section>
 
         <!-- Summary: fills in as you type -->
@@ -972,7 +1150,7 @@ async function submit() {
             <dt>Vibe</dt>
             <dd>{{ vibeSummary }}</dd>
             <dt>Who</dt>
-            <dd v-if="isEdit">{{ memberNames.join(', ') }}</dd>
+            <dd v-if="isEdit">{{ [...memberNames, ...selectedNames].join(', ') }}</dd>
             <dd v-else>
               You<template v-if="selectedNames.length > 0"
                 >, {{ selectedNames.join(', ') }}</template
@@ -1009,6 +1187,17 @@ async function submit() {
         </section>
       </div>
     </form>
+
+    <!-- (Surya) "Remove Ryan?" before the host takes someone out of the hangout -->
+    <ConfirmDialog
+      :open="removing !== null"
+      :title="removing ? `Remove ${removing.display_name} from this hangout?` : ''"
+      text="Their starting point, transport and vote are removed. You can add them again later."
+      button="Remove"
+      danger
+      @confirm="confirmRemove"
+      @cancel="removing = null"
+    />
   </main>
 </template>
 
@@ -1195,15 +1384,6 @@ legend.form-label {
 }
 
 /* Search everyone */
-.search-all {
-  min-height: 44px;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
 .request-btn {
   flex-shrink: 0;
   min-height: 44px;
@@ -1269,6 +1449,14 @@ legend.form-label {
   white-space: nowrap;
 }
 
+/* (Surya) "host" on the host's own chip, where the others have ✕ */
+.picked__host {
+  padding-right: 0.5rem;
+  color: var(--fp-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .picked__remove {
   display: inline-grid;
   flex-shrink: 0;
@@ -1285,19 +1473,6 @@ legend.form-label {
 
 .picked__remove:hover {
   color: var(--fp-ink);
-}
-
-/* "Often with you" tag */
-.often {
-  flex-shrink: 0;
-  margin-left: auto;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--fp-accent) 14%, var(--fp-surface));
-  color: var(--fp-ink);
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 /* Right column: Who's coming? + Summary */
@@ -1321,19 +1496,28 @@ legend.form-label {
   }
 }
 
-.show-all {
-  min-height: 44px;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
+/* (Surya) "SUGGESTED", "YOUR FRIENDS", "OTHERS ON FAIRPOINT" above each list, like the step bar's
+   "CHOOSE" and "DECIDE" */
+.list-label {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--fp-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .people {
   max-height: 420px;
   padding: 0;
-  margin: 0.5rem 0 0;
+  margin: 0 0 0.5rem;
   overflow-y: auto;
   list-style: none;
+}
+
+/* (Surya) a thin line between people */
+.people li + li {
+  border-top: 1px solid var(--fp-border);
 }
 
 .person {
@@ -1341,7 +1525,19 @@ legend.form-label {
   align-items: center;
   gap: 0.75rem;
   min-height: 48px; /* big enough to tap with a finger */
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--fp-radius-sm);
   cursor: pointer;
+}
+
+label.person:hover {
+  background: var(--fp-bg);
+}
+
+/* (Surya) a ticked friend's row turns light green */
+.person.is-picked,
+.person.is-picked:hover {
+  background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 }
 
 .person .form-check-input {
@@ -1349,6 +1545,11 @@ legend.form-label {
   width: 1.25rem;
   height: 1.25rem;
   margin: 0;
+}
+
+/* the tick box sits on the right of the row */
+.person .person__tick {
+  margin-left: auto;
 }
 
 .person__name {

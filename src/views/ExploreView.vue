@@ -1,4 +1,4 @@
-﻿<template>
+<template>
    <div
     v-if="hangout.loading"
     class="d-flex align-items-center gap-2 text-secondary p-5"
@@ -15,20 +15,9 @@
     </div>
   </div>
   <!-- reached from the step bar before a midpoint has been picked: no filters, map or shortlist to show yet -->
-  <main v-else-if="noMidpoint" class="container py-4">
-    <h1 class="page-title mb-3">Spots near the midpoint</h1>
-    <div class="alert alert-info" role="status">
-      <p class="mb-2">
-        No midpoint yet. Pick one first, then Fairpoint finds cafes, activities and restaurants near it.
-      </p>
-      <router-link
-        :to="{ name: 'midpoint', params: { id: route.params.id } }"
-        class="btn btn-primary btn-sm"
-      >
-        Go to midpoint →
-      </router-link>
-    </div>
-  </main>
+  <div v-else-if="missingStep" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
+  </div>
 
   <div
     v-else
@@ -86,13 +75,13 @@
         >
           Go Vote!
         </button>
-        <router-link
+        <RouterLink
           v-else
           :to="{ name: 'vote', params: { id: route.params.id } }"
           class="btn btn-sm btn-primary mobile-vote-action"
         >
           Go Vote!
-        </router-link>
+        </RouterLink>
       </div>
     </section>
     <div class="mobile-toggles">
@@ -141,17 +130,6 @@
         </button>
       </div>
     </div>
-    <AskSpots
-      ref="askSpots"
-      v-if="hasMidpoint"
-      id="explore-ask"
-      class="ask-panel"
-      :class="{ 'is-mobile-visible': showMobileAsk }"
-      :hangout="hangout.hangout"
-      :members="hangout.members"
-      :memory="remembered.ask"
-      @found="onAskFound"
-    />
     <div
       v-if="showMobileFilters || showMobileAsk"
       class="mobile-filter-barrier"
@@ -174,48 +152,111 @@
     <p v-else-if="!askedSpots && hasMidpoint && !loadingSpots && spots.length && !sortedSpots.length" class="explore-status text-secondary" role="status">
       No spots match this filter.
     </p>
-    <div v-if="!askedSpots" class="filter-menu-container">
-      <button
-        type="button"
-        class="desktop-filter-toggle"
-        :aria-expanded="showDesktopFilters"
-        aria-controls="explore-filters"
-        @click="toggleDesktopFilters"
-      >
-        Filters
-      </button>
-      <div
-        id="explore-filters"
-        class="filters"
-        :class="{
-          'is-mobile-visible': showMobileFilters,
-          'is-desktop-visible': showDesktopFilters,
-        }"
-      >
-        <div class="filter-buttons">
-          <button
-            v-for="filter in filters"
-            :key="filter.value"
-            type="button"
-            class="btn btn-sm"
-            :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
-            @click="selectFilter(filter.value)"
-          >
-            {{ filter.label }}
-          </button>
-        </div>
-        <div class="filter-options">
-          <label class="match-filter">
-            <input v-model="hideZeroMatches" type="checkbox" />
-            <span>Hide 0% matches</span>
-          </label>
-          <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
-            <option v-for="option in sortOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+    <!-- (Surya) laptops: "Ask Fairpoint" and Filters side by side -->
+    <div class="tools-row">
+      <!-- (Surya) Ask, like on phones: a button opens the Ask box as a pop-up (laptops: under the
+           button, like Filters). The phone's own Ask button is in mobile-spots-controls above. -->
+      <div v-if="hasMidpoint" class="ask-menu-container" @keydown.esc="showMobileAsk = false">
+        <button
+          type="button"
+          class="desktop-filter-toggle"
+          :aria-expanded="showMobileAsk"
+          aria-controls="explore-ask"
+          :aria-label="
+            askedSpots
+              ? `Ask Fairpoint for something specific, ${askedSpots.length} found`
+              : 'Ask Fairpoint for something specific'
+          "
+          @click="toggleMobilePanel('ask')"
+        >
+          {{ askedSpots ? `Ask Fairpoint · ${askedSpots.length}` : 'Ask Fairpoint' }}
+        </button>
+        <button
+          v-if="askedSpots"
+          type="button"
+          class="desktop-filter-toggle"
+          @click="resetAskResults"
+        >
+          Reset
+        </button>
+        <AskSpots
+          ref="askSpots"
+          id="explore-ask"
+          class="ask-panel"
+          :class="{ 'is-mobile-visible': showMobileAsk }"
+          :hangout="hangout.hangout"
+          :members="hangout.members"
+          :memory="remembered.ask"
+          @found="onAskFound"
+        />
+      </div>
+      <div v-if="!askedSpots" class="filter-menu-container">
+        <button
+          type="button"
+          class="desktop-filter-toggle"
+          :aria-expanded="showDesktopFilters"
+          aria-controls="explore-filters"
+          @click="toggleDesktopFilters"
+        >
+          Filters
+        </button>
+        <div
+          id="explore-filters"
+          class="filters"
+          :class="{
+            'is-mobile-visible': showMobileFilters,
+            'is-desktop-visible': showDesktopFilters,
+          }"
+        >
+          <div class="filter-buttons">
+            <button
+              v-for="filter in filters"
+              :key="filter.value"
+              type="button"
+              class="btn btn-sm"
+              :class="activeFilter === filter.value ? 'btn-primary' : 'btn-outline-primary'"
+              @click="selectFilter(filter.value)"
+            >
+              {{ filter.label }}
+            </button>
+          </div>
+          <div class="filter-options">
+            <label class="match-filter">
+              <input v-model="hideZeroMatches" type="checkbox" />
+              <span>Hide 0% matches</span>
+            </label>
+            <select v-model="sortBy" class="form-select form-select-sm sort-select" aria-label="Sort spots">
+              <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
+      <button
+        v-if="googlePlacesEnabled && hasMidpoint"
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        :disabled="loadingSpots"
+        @click="refreshSpots"
+      >
+        Refresh spots
+      </button>
+      <button
+        v-if="shortlisted.length < 2"
+        type="button"
+        class="btn btn-sm btn-primary tools-vote-action"
+        disabled
+      >
+        Go Vote!
+      </button>
+      <router-link
+        v-else
+        :to="{ name: 'vote', params: { id: route.params.id } }"
+        class="btn btn-sm btn-primary tools-vote-action"
+      >
+        Go Vote!
+      </router-link>
     </div>
     <SpotCarousel ref="spotCarousel" :items="shownSpots">
       <template #default="{ item: spot }">
@@ -352,17 +393,27 @@
           >
             Go Vote!
           </button>
-          <router-link
+          <RouterLink
             v-else
             :to="{ name: 'vote', params: { id: route.params.id } }"
             class="btn btn-sm btn-primary shortlist-vote-action"
           >
             Go Vote!
-          </router-link>
+          </RouterLink>
         </div>
       </div>
     </div>
     </div>
+    <!-- (Surya) Ask Fairpoint found nothing: say so, and offer to search for another food -->
+    <ConfirmDialog
+      :open="noAskResults"
+      title="No spots found"
+      :text="`Nothing near ${hangout.hangout?.midpoint_name} matched that, or it isn't open at your hangout's time. Try another food, like prata, ramen or bubble tea.`"
+      button="Try another food"
+      cancel="Close"
+      @confirm="tryAnotherFood"
+      @cancel="noAskResults = false"
+    />
   </div>
 </template>
 
@@ -374,6 +425,7 @@ import BaseMap from '@/components/map/BaseMap.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import SpotCarousel from '@/components/spots/SpotCarousel.vue'
 import AskSpots from '@/components/assistant/AskSpots.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import {
   googlePlacesEnabled,
   loadSpots,
@@ -383,6 +435,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useShortlist } from '@/composables/useShortlist'
 import { useExploreMemory } from '@/composables/useExploreMemory'
 import {
+  distanceKm,
   hardVetoReason,
   matchScore,
   matchesHangoutVibe,
@@ -390,11 +443,14 @@ import {
 } from '@/utils/matchScore'
 import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
+const { missingStep } = useHangoutPrerequisites(() => hangout.hangout)
 
 // Filters, sort and Ask results are kept until a different hangout is opened
 const remembered = useExploreMemory(route.params.id)
@@ -406,11 +462,6 @@ const hasMidpoint = computed(
   () =>
     hangout.hangout?.midpoint_lat != null &&
     hangout.hangout?.midpoint_lng != null,
-)
-
-// The hangout has loaded but nobody has picked a midpoint yet, so there is nothing to search around
-const noMidpoint = computed(
-  () => hangout.hangout !== null && !hangout.loading && !hasMidpoint.value,
 )
 
 // Rain forecast for the hangout's start time near the midpoint, for matchScore's weather veto.
@@ -570,6 +621,13 @@ function selectMobileView(view) {
 }
 
 function closeMobileFiltersOutside(event) {
+  // (Surya) laptops: a click outside the Ask pop-up closes it (phones use the dark backdrop)
+  // (clicks inside the "No spots found" pop-up don't count, so "Try another food" can open it)
+  const outsideAsk =
+    !event.target.closest('.ask-menu-container') && !event.target.closest('.confirm-backdrop')
+  if (!mobileViewport.matches && outsideAsk) {
+    showMobileAsk.value = false
+  }
   if (event.target.closest('.filters')) return
   if (event.target.closest('.mobile-filter-toggle')) {
     showDesktopFilters.value = false
@@ -635,15 +693,7 @@ function matchesFilter(spot) {
 const radiusKm = toRef(remembered, 'radiusKm')
 
 function distanceFromMidpointKm(spot) {
-  const toRad = (deg) => (deg * Math.PI) / 180
-  const dLat = toRad(spot.lat - hangout.hangout.midpoint_lat)
-  const dLng = toRad(spot.lng - hangout.hangout.midpoint_lng)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(hangout.hangout.midpoint_lat)) *
-      Math.cos(toRad(spot.lat)) *
-      Math.sin(dLng / 2) ** 2
-  return 6371 * 2 * Math.asin(Math.sqrt(a))
+  return distanceKm({ lat: hangout.hangout.midpoint_lat, lng: hangout.hangout.midpoint_lng }, spot)
 }
 
 const filteredSpots = computed(() =>
@@ -691,10 +741,26 @@ const shownSpots = computed(() =>
   askedSpots.value ? askedSpots.value.map(scoreSpot) : sortedSpots.value,
 )
 
+// (Surya) the "No spots found" pop-up, when a search on Ask Fairpoint finds nothing
+const noAskResults = ref(false)
+
 async function onAskFound(found) {
+  // nothing found: keep the usual spots, close Ask and say so in a pop-up
+  if (found && found.length === 0) {
+    showMobileAsk.value = false
+    noAskResults.value = true
+    return
+  }
   askedSpots.value = found
-  if (found && window.matchMedia('(max-width: 767px)').matches) showMobileAsk.value = false
+  // (Surya) phones and laptops: close the pop-up after a search, so the cards show the results
+  if (found) showMobileAsk.value = false
   await resetCarouselOnMobile()
+}
+
+// "Try another food" in the pop-up: open Ask again to type something else
+function tryAnotherFood() {
+  noAskResults.value = false
+  showMobileAsk.value = true
 }
 
 const {
@@ -986,6 +1052,69 @@ async function selectSpot(id) {
 }
 
 @media (min-width: 768px) {
+  /* (Surya) laptops: "Ask Fairpoint", Reset and Filters on one line */
+  .tools-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+
+  .tools-row .filter-menu-container {
+    margin: 0;
+  }
+
+  /* pushed to the right end of the row, right beside the map column */
+  .tools-vote-action {
+    margin-left: auto;
+    display:flex;
+    align-items: center;
+    justify-content:center;
+  }
+
+  /* on laptops Refresh and Go Vote live in the tools row instead */
+  .shortlist-actions {
+    display: none;
+  }
+
+  /* Ask (and Reset), with the Ask box as a pop-up under them, like Filters */
+  .ask-menu-container {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* "Ask Fairpoint", Reset and Filters all in solid green */
+  .tools-row .desktop-filter-toggle,
+  .tools-row .desktop-filter-toggle[aria-expanded='true'] {
+    border-color: var(--fp-primary);
+    background: var(--fp-primary);
+    color: var(--fp-white);
+  }
+
+  .tools-row .desktop-filter-toggle:hover {
+    border-color: var(--fp-primary-dark);
+    background: var(--fp-primary-dark);
+  }
+
+  .ask-panel {
+    display: none;
+  }
+
+  .ask-panel.is-mobile-visible {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 8;
+    display: grid;
+    width: 32rem;
+    max-width: calc(100vw - 2rem);
+    margin: 0;
+    box-shadow: var(--fp-shadow);
+  }
+
   .shortlist-toggle {
     display: none;
   }
@@ -1034,6 +1163,7 @@ async function selectSpot(id) {
     gap: 12px;
     min-width: 0;
     min-height: 0;
+    max-height: 100%;
   }
 
   .map-section {
@@ -1044,13 +1174,16 @@ async function selectSpot(id) {
     width: 100%;
     height: auto;
     aspect-ratio: 1 / 1;
+    /* leaves room for the 300px shortlist so the column never overflows */
+    max-height: calc(max(100vh, 600px) - 120px - 312px);
+    min-height: 150px;
   }
 
   .shortlist-panel {
     position: static;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 300px; /* grows to the bottom of the card grid, never past it */
     width: auto;
     min-height: 0;
     padding: 0;
@@ -1063,6 +1196,7 @@ async function selectSpot(id) {
     flex-direction: column;
     min-height: 0;
     align-self: stretch;
+
   }
 
   .shortlist-content {
@@ -1090,8 +1224,10 @@ async function selectSpot(id) {
     overflow: hidden;
   }
 
-  .filter-menu-container {
-    display: contents;
+  .filter-menu-container,
+  .ask-menu-container,
+  .tools-row {
+    display: contents; /* (Surya) phones: the Ask box and Filters sit where they always did */
   }
 
   .desktop-filter-toggle {
@@ -1108,7 +1244,7 @@ async function selectSpot(id) {
      * hangout bar. The authenticated mobile tab bar is outside the page
      * flow and needs its own deduction below.
      */
-    height: calc(100dvh - 57px - 108px);
+    height: calc(100dvh);
     min-height: 0;
     padding: 0 !important;
     overflow: hidden;
@@ -1186,7 +1322,7 @@ async function selectSpot(id) {
     height: 44px;
     padding: 0;
     border: 0;
-    border-radius: 50%;
+    border-radius: 9px;
     background: rgb(0 0 0 / 45%);
     color: var(--fp-white);
     cursor: pointer;
@@ -1226,7 +1362,7 @@ async function selectSpot(id) {
     height: 44px;
     padding: 0 1rem;
     border: 0;
-    border-radius: 999px;
+    border-radius: 9px;
     background: rgb(0 0 0 / 45%);
     color: var(--fp-white);
     font-size: 0.875rem;

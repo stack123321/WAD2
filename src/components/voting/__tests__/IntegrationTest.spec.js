@@ -57,7 +57,7 @@ describe('TestSuite: CandidateList with CandidateCard', () => {
     const wrapper = mountList({ savingId: 's1' })
     const buttons = wrapper.findAll('button')
     expect(buttons[0].text()).toBe('Saving…')
-    expect(buttons[2].attributes('disabled')).toBeDefined()
+    expect(buttons[2].attributes()).toHaveProperty('disabled')
   })
 
   it('Test6: says so when nothing is shortlisted yet', () => {

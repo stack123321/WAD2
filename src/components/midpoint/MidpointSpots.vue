@@ -2,14 +2,15 @@
 // Owner: Surya. "Things to do near Bishan" on 08 Midpoint: photo cards of spots near a station
 // that match the hangout's vibe, so the group knows what they can do there before choosing.
 // Station tabs on top: tap another nearby station to PREVIEW its spots (nothing changes for the
-// group), see the trade-off ("Longest trip 49 min (+4)…"), and tap "Make ___ our midpoint" to
-// switch. Each card opens the spot's page (10). "See all spots" goes to 09.
+// group), see everyone's trip time there as chips ("Ryan 39 min"), and tap "Make ___ our
+// midpoint" to switch. Each card opens the spot's page (10). "See all spots" goes to 09.
 // Uses Hugo's searchNearby() (Google Places, 800 m around the station). Google Places calls are
 // off until someone switches them on (they count towards a free quota), so the switch is shown
 // right here. Each station's spots are loaded only when its tab is opened, and remembered.
 // Usage: <MidpointSpots :stations="tabs" :vibes="hangout.vibe" :hangout-id="hangout.id"
 //          @choose="chooseStation" />
-//   stations = [{ name, lat, lng, chosen, tag, compareText, station }], the chosen midpoint first
+//   stations = [{ name, lat, lng, chosen, tag, compare, station }], the chosen midpoint first
+//   compare = { people: [{ id, name, color, mins }] } (null on the midpoint's tab)
 //   choose → the ranked station to make the midpoint
 //   preview → { name, lat, lng } of the station being previewed (the map moves there), or null
 //   The page can call selectTab(name) (through a template ref) to go back to the midpoint's tab.
@@ -17,6 +18,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { googlePlacesEnabled, searchNearby } from '@/services/places'
 import { CATEGORY_EMOJI, categoriesForVibes } from '@/utils/vibes'
 import GooglePlacesToggle from '@/components/ui/GooglePlacesToggle.vue'
+import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 
 const props = defineProps({
   stations: { type: Array, required: true },
@@ -160,11 +162,16 @@ function priceLabel(spot) {
       </div>
 
       <!-- Previewing another station: the trade-off, and the button to switch -->
-      <div v-if="!station.chosen" class="preview-bar">
-        <span class="small"
-          >{{ station.compareText }}
-          <span class="text-secondary">(shown on the map below)</span></span
-        >
+      <!-- (Surya) one chip per person: their trip time there -->
+      <div v-if="!station.chosen && station.compare" class="preview-bar">
+        <p class="preview-title">Trip times if you meet at {{ station.name }}</p>
+        <ul class="trip-chips">
+          <li v-for="p in station.compare.people" :key="p.id" class="trip-chip">
+            <MemberAvatar :name="p.name" :color="p.color" :size="22" />
+            <span class="trip-chip__name">{{ p.name }}</span>
+            <strong>{{ p.mins }} min</strong>
+          </li>
+        </ul>
         <button
           type="button"
           class="btn btn-primary btn-sm make-btn"
@@ -208,7 +215,7 @@ function priceLabel(spot) {
             <!-- the whole card opens the spot's page (10) -->
             <RouterLink
               class="spot"
-              :to="{ name: 'spot-details', params: { id: hangoutId, spotId: s.source_place_id } }"
+              :to="{ name: 'spot-details', params: { id: hangoutId, spotId: s.source_place_id }, query: { from: 'midpoint' } }"
             >
               <img v-if="s.image_url" :src="s.image_url" alt="" class="spot__img" loading="lazy" />
               <div v-else class="spot__img spot__img--empty" aria-hidden="true">
@@ -283,15 +290,49 @@ function priceLabel(spot) {
 }
 
 .preview-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
   margin-bottom: 0.75rem;
-  padding: 0.6rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   border-radius: var(--fp-radius-sm);
   background: color-mix(in srgb, var(--fp-accent) 10%, var(--fp-surface));
+}
+
+/* (Surya) "Trip times if you meet at Dhoby Ghaut" */
+.preview-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* one white pill per person, wrapping onto more lines on phones */
+.trip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.trip-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.25rem 0.65rem 0.25rem 0.3rem;
+  border: 1px solid var(--fp-border);
+  border-radius: 999px;
+  background: var(--fp-surface);
+  font-size: 0.85rem;
+}
+
+/* long names are cut with … so a chip never pushes the page sideways */
+.trip-chip__name {
+  min-width: 0;
+  max-width: 10rem;
+  overflow: hidden;
+  color: var(--fp-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .make-btn {

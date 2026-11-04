@@ -14,10 +14,16 @@ import { matchScore, matchReasons } from '@/utils/matchScore'
 import { getStationCrowd } from '@/services/crowd'
 import { willRainAt } from '@/services/weather'
 import { getRoute } from '@/services/routing'
+import { getPublicHoliday } from '@/services/holidays'
+import { openingHoursOn } from '@/utils/openingHours'
+import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
 
 const route = useRoute()
 const hangout = useHangoutStore()
 hangout.load(route.params.id)
+const cameFromMidpoint = route.query.from === 'midpoint'
+const { missingStep } = useHangoutPrerequisites(() => hangout.hangout)
 const { error: shortlistError, isAdded, isMine, addSpot, removeSpot } = useShortlist(
   () => route.params.id,
 )
@@ -79,6 +85,21 @@ const price = computed(() => {
   if (level === undefined || level === null) return null
   return level === 0 ? 'Free' : '$'.repeat(level)
 })
+
+// Opening hours on the day of the hangout (null when Google has no hours for this spot)
+const hangoutDay = computed(() => hangout.hangout?.starts_at ?? null)
+const hoursOnHangoutDay = computed(() =>
+  hangoutDay.value ? openingHoursOn(spot.value?.openingHours, hangoutDay.value) : null,
+)
+const holidayName = ref(null)
+watch(
+  hangoutDay,
+  async (day) => {
+    holidayName.value = null
+    if (day) holidayName.value = await getPublicHoliday(day)
+  },
+  { immediate: true },
+)
 
 const imageUrls = computed(() => spot.value?.imageUrls ?? [])
 const travelRows = ref([])
@@ -240,11 +261,14 @@ const reasons = computed(() =>
 </script>
 
 <template>
-  <main class="container spot">
+  <div v-if="missingStep" class="container py-4">
+    <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
+  </div>
+  <main v-else class="container spot">
     <header class="spot__nav">
       <RouterLink
         class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
-        :to="{ name: 'explore', params: { id: route.params.id } }"
+        :to="{ name: cameFromMidpoint ? 'midpoint' : 'explore', params: { id: route.params.id } }"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -261,7 +285,7 @@ const reasons = computed(() =>
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="12 19 5 12 12 5" />
         </svg>
-        Back to exploring
+        {{ cameFromMidpoint ? 'Back to midpoint' : 'Back to exploring' }}
       </RouterLink>
     </header>
 
@@ -378,6 +402,20 @@ const reasons = computed(() =>
         <span v-if="spot.address" class="d-block">{{ spot.address }}</span>
         <span v-if="spot.openNow !== null" class="d-block">{{ spot.openNow ? 'Open now' : 'Closed now' }}</span>
       </p>
+      <div v-if="spot" class="spot__hours mt-2">
+        <template v-if="hoursOnHangoutDay">
+          <p class="mb-1">
+            <strong>Opening hours on the day:</strong>
+            {{ hoursOnHangoutDay.length ? hoursOnHangoutDay.join(', ') : 'Closed' }}
+          </p>
+        </template>
+        <p v-else class="text-secondary mb-0">
+          Opening hours not listed. Please check with the establishment.
+        </p>
+        <p v-if="holidayName" class="text-warning-emphasis mb-0 mt-1" role="note">
+          {{ holidayName }} falls on the day of your hangout. Hours may differ, please check.
+        </p>
+      </div>
       <p v-if="summaryLoading" class="text-secondary mb-2" role="status">Summarising this spot…</p>
       <template v-else-if="summary">
         <p class="mb-1">{{ summary.text }}</p>

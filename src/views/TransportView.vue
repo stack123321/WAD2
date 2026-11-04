@@ -5,7 +5,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
   import { useAuthStore } from '@/stores/auth'
-  import { rankStations } from '@/services/routing'
+  import { rankStations, saveTrip } from '@/services/routing'
   import { timesFor } from '@/utils/midpoint'
   import {
     getMyHangouts,
@@ -18,12 +18,16 @@
   import { hasSupabase } from '@/services/supabase'
   import PersonModeRow from '@/components/transport/PersonModeRow.vue'
   import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+  import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+  import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
+  import { joinNames } from '@/utils/joinNames'
 
   const route = useRoute()
   const router = useRouter()
   const optimiseFor = ref('fairest')
   const ranked = ref([])
   const store = useHangoutStore()
+  const missingStep = useHangoutPrerequisites(() => store.hangout, ['starting-points']).missingStep
   const missingMode = computed(() => store.members.filter((m) => !m.mode))
 
 
@@ -36,6 +40,16 @@
   // the last has finished; only the latest is allowed to update the page
   let latestRanking = 0
   const working = ref(false) // true while the travel times are being worked out
+  const progress = ref({ done: 0, total: 0 }) // (Surya) stations checked so far, for the progress bar
+  const rankError = ref('') // (Surya) shown with a Try again button when the times couldn't be worked out
+
+  // (Surya) how full the progress bar is, 0–100
+  const progressPercent = computed(() => {
+    if (progress.value.total === 0) {
+      return 0
+    }
+    return Math.round((progress.value.done / progress.value.total) * 100)
+  })
 
   async function scoreAreas() {
     const members = store.members.filter((m) => m.start_lat != null)
@@ -44,14 +58,22 @@
     latestRanking++
     const thisRanking = latestRanking
     working.value = true
+    rankError.value = ''
 
     const withModes = []
     for (const m of members) {
       withModes.push({ ...m, mode: m.mode || 'mrt' })
     }
 
+    // only the latest ranking moves the progress bar
+    function onProgress(done, total) {
+      if (thisRanking === latestRanking) {
+        progress.value = { done, total }
+      }
+    }
+
     try {
-      const result = await rankStations(withModes, optimiseFor.value)
+      const result = await rankStations(withModes, optimiseFor.value, onProgress)
       if (thisRanking !== latestRanking) return // a newer ranking started: throw this one away
 
       ranked.value = result
@@ -61,6 +83,12 @@
         m.travel_mins = best.travelMins[i]
         m.travel_cost = best.travelCosts[i]
       })
+    } catch (error) {
+      // (Surya) say so instead of leaving the button greyed out with no reason
+      console.error('Could not get travel times', error)
+      if (thisRanking === latestRanking) {
+        rankError.value = 'Couldn’t work out the travel times. Try again.'
+      }
     } finally {
       if (thisRanking === latestRanking) working.value = false // only the latest one turns it off
     }
@@ -144,6 +172,15 @@
     return m.user_id === myId.value
   }
 
+  // (Eashvar) Times are only saved for everyone when the midpoint is found, so if the group already
+  // has one, save my own trip to it by my new mode, for "Leave by" on 12. It doesn't change what
+  // this page shows (the times to the fairest station), and a failure is just logged.
+  function saveMyTrip(m) {
+    saveTrip(route.params.id, store.hangout, m).catch((e) => {
+      console.error('Could not save your trip time', e)
+    })
+  }
+
   // Pick your mode: show it straight away, save it so friends see it, then re-rank the stations
   const modeError = ref('')
 
@@ -160,6 +197,7 @@
       modeError.value = "Couldn't save your mode. Try again."
       return
     }
+    saveMyTrip(m)
     try {
       await scoreAreas()
     } catch (e) {
@@ -247,6 +285,7 @@
       if (!latest) return
       me.mode = latest.mode
       await updateMemberMode(route.params.id, me.user_id, latest.mode)
+      saveMyTrip(me)
       usualModeNote.value = `${modeName(latest.mode)}, like last time. Change it anytime.`
     } catch (e) {
       // only a shortcut: if it fails, you just pick your mode yourself
@@ -266,8 +305,7 @@
     if (names.length === 1) {
       return `${names[0]} hasn’t picked yet, so we’re assuming MRT for now.`
     }
-    const last = names[names.length - 1]
-    return `${names.slice(0, -1).join(', ')} and ${last} haven’t picked yet, so we’re assuming MRT for now.`
+    return `${joinNames(names)} haven’t picked yet, so we’re assuming MRT for now.`
   })
 
   // I can find the midpoint once I've picked my own mode (friends can pick later)
@@ -302,6 +340,10 @@
         Couldn't load this hangout. Check the link, or go back to
         <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
       </div>
+    </div>
+
+    <div v-else-if="missingStep" class="container py-4">
+      <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
     </div>
 
     <section v-else-if="store.hangout" class="container py-4">
@@ -354,13 +396,13 @@
                  Waits while the times are being worked out, so we never save a station that's
                  about to change -->
             <!-- (Ryan) locked on 08: there's nothing to find here, so the next step is to look at it -->
-            <router-link
+            <RouterLink
               v-if="midpointLocked"
               :to="{ name: 'midpoint', params: { id: route.params.id } }"
               class="btn btn-primary btn-lg w-100"
             >
               See the midpoint →
-            </router-link>
+            </RouterLink>
             <button
               v-else
               type="button"
@@ -369,8 +411,32 @@
               @click="onFindMidpoint()"
             >
               <span v-if="saving">Saving…</span>
+              <span v-else-if="working">Working out times…</span>
               <span v-else>Find our midpoint →</span>
             </button>
+            <!-- (Surya) why the button is greyed out: 8 stations × everyone's trip, from OneMap -->
+            <div v-if="working && !midpointLocked" class="rank-progress">
+              <div
+                class="progress"
+                role="progressbar"
+                aria-label="Working out travel times"
+                aria-valuemin="0"
+                :aria-valuemax="progress.total"
+                :aria-valuenow="progress.done"
+              >
+                <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
+              </div>
+              <p class="footnote mb-0">
+                Working out everyone’s travel times… {{ progress.done }} of
+                {{ progress.total }} stations
+              </p>
+            </div>
+            <div v-else-if="rankError && !midpointLocked" class="rank-error">
+              <p class="footnote text-danger mb-2" role="alert">{{ rankError }}</p>
+              <button type="button" class="btn btn-outline-primary w-100" @click="scoreAreas()">
+                Try again
+              </button>
+            </div>
             <p v-if="midpointLocked" class="footnote">🔒 {{ lockedNote }}</p>
             <p v-else-if="!myModePicked" class="footnote">Pick how you’re getting there first.</p>
             <p v-else-if="missingMode.length > 0" class="footnote">{{ waitingNote }}</p>
@@ -427,6 +493,29 @@
   border: 1px solid var(--fp-border);
   border-radius: var(--fp-radius);
   background: var(--fp-surface);
+}
+
+/* (Surya) thin bar under the button while the travel times are worked out */
+.rank-progress {
+  margin-top: 0.75rem;
+}
+
+/* Bootstrap's progress bar, thin and in our colours (like the vote bars on 11) */
+.rank-progress .progress {
+  height: 6px;
+  background: var(--fp-border);
+}
+
+.rank-progress .progress-bar {
+  background: var(--fp-primary);
+}
+
+.rank-error {
+  margin-top: 0.75rem;
+}
+
+.rank-error .btn {
+  min-height: 44px;
 }
 
 .next-title {

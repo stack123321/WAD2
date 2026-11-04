@@ -10,6 +10,8 @@ import { place, stubPlaces } from './helpers/places.js'
 import { onPhone } from './helpers/phone.js'
 
 const askBox = (page) => page.getByRole('textbox', { name: 'Ask for something specific' })
+// (Surya) on a laptop the Ask box is a pop-up: the Ask Fairpoint button opens it
+const askButton = (page) => page.getByRole('button', { name: 'Ask Fairpoint' })
 const reply = 'Sample results for "prata for dinner" near Bishan'
 
 // Two usual spots, so the phone carousel has a "Next spot" button. They're set before 09 opens,
@@ -30,17 +32,22 @@ async function ask(page, text) {
 
 test('asking shows a reply for the request', async ({ page }) => {
   await openExplore(page)
+  await askButton(page).click()
 
   await ask(page, 'prata for dinner')
 
-  await expect(page.getByText(reply)).toBeVisible()
+  // the pop-up closes so the cards show the results, and the button counts them
+  await expect(askButton(page)).toContainText('Ask Fairpoint ·')
   await expect(page.getByRole('button', { name: 'Reset', exact: true })).toBeVisible()
+  await askButton(page).click()
+  await expect(page.getByText(reply)).toBeVisible()
 })
 
 test('"Reset" goes back to the usual list', async ({ page }) => {
   await openExplore(page)
+  await askButton(page).click()
   await ask(page, 'prata for dinner')
-  await expect(page.getByText(reply)).toBeVisible()
+  await expect(askButton(page)).toContainText('Ask Fairpoint ·')
 
   await page.getByRole('button', { name: 'Reset', exact: true }).click()
 

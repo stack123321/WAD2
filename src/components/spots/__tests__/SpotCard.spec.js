@@ -53,16 +53,16 @@ describe('TestSuite: SpotCard', () => {
     const wrapper = mountCard()
     await wrapper.find('button').trigger('click')
     expect(wrapper.emitted('add')).toHaveLength(1)
-    expect(wrapper.emitted('remove')).toBeUndefined()
+    expect(wrapper.emitted('remove')).toBeFalsy()
   })
 
   it("Test5: once added by someone else, the button is off and can't remove it", async () => {
     const wrapper = mountCard({ added: true })
     const button = wrapper.find('button')
     expect(button.text()).toBe('Added to vote')
-    expect(button.attributes('disabled')).toBeDefined()
+    expect(button.attributes()).toHaveProperty('disabled')
     await button.trigger('click')
-    expect(wrapper.emitted('remove')).toBeUndefined()
+    expect(wrapper.emitted('remove')).toBeFalsy()
   })
 
   it('Test6: once added by me, the button emits remove', async () => {
@@ -89,9 +89,9 @@ describe('TestSuite: SpotCard', () => {
       priceLevel: null,
       stationDistanceM: null,
     })
-    expect(wrapper.find('.spot-card__rating').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__match').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__price').exists()).toBe(false)
+    expect(wrapper.findAll('.spot-card__rating')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__match')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__price')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('from Bishan')
   })
 })

@@ -10,6 +10,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { hasSupabase } from '@/services/supabase'
 import { joinByInviteCode } from '@/services/hangouts'
+import { freeName, isSameName } from '@/services/account'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +32,18 @@ const notice = ref('')
 const MIN_PASSWORD = 8
 const MAX_NAME = 50
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const MAX_PASSWORD = 72
+const PASSWORD_RULE = `Use ${MIN_PASSWORD}–${MAX_PASSWORD} characters with at least one letter and one number.`
+
+// (Surya) 8–72 characters, at least 1 letter and 1 number
+function isGoodPassword(password) {
+  return (
+    password.length >= MIN_PASSWORD &&
+    password.length <= MAX_PASSWORD &&
+    /[A-Za-z]/.test(password) &&
+    /\d/.test(password)
+  )
+}
 
 const touched = reactive({ name: false, email: false, password: false })
 
@@ -41,25 +54,35 @@ function emailError() {
   return ''
 }
 
-const fieldErrors = computed(() => {
+function nameError() {
   const name = form.name.trim()
-  return {
-    name: !isSignup.value
-      ? ''
-      : !name
-        ? 'Enter your name.'
-        : name.length > MAX_NAME
-          ? `Keep your name under ${MAX_NAME} characters.`
-          : '',
-    email: emailError(),
-    // Only sign up checks length: older accounts may have shorter passwords and still need to log in.
-    password: !form.password
-      ? 'Enter your password.'
-      : isSignup.value && form.password.length < MIN_PASSWORD
-        ? `Use at least ${MIN_PASSWORD} characters (${form.password.length} so far).`
-        : '',
+  if (!isSignup.value) return ''
+  if (!name) return 'Enter your name.'
+  if (name.length > MAX_NAME) return `Keep your name under ${MAX_NAME} characters.`
+  return ''
+}
+
+// A new password, on sign up and on the reset screen
+function newPasswordError(password) {
+  if (password.length < MIN_PASSWORD) {
+    return `Use at least ${MIN_PASSWORD} characters (${password.length} so far).`
   }
-})
+  if (!isGoodPassword(password)) return PASSWORD_RULE
+  return ''
+}
+
+function passwordError() {
+  if (!form.password) return 'Enter your password.'
+  // Only sign up checks the rule: older accounts may have shorter passwords and still need to log in.
+  if (!isSignup.value) return ''
+  return newPasswordError(form.password)
+}
+
+const fieldErrors = computed(() => ({
+  name: nameError(),
+  email: emailError(),
+  password: passwordError(),
+}))
 
 // The message to show under each field right now
 const shown = computed(() => ({
@@ -67,6 +90,46 @@ const shown = computed(() => ({
   email: touched.email ? fieldErrors.value.email : '',
   password: touched.password ? fieldErrors.value.password : '',
 }))
+
+// (Surya) Names are unique. While you type a name, check it and suggest the next free one
+// (Ryan → Ryan1). nameCheck.name is the name the answer is for, so an old answer never shows.
+const nameCheck = reactive({ name: '', free: null })
+let nameTimer = null
+
+watch(
+  () => form.name,
+  () => {
+    clearTimeout(nameTimer)
+    if (!isSignup.value || form.name.trim() === '') {
+      return
+    }
+    nameTimer = setTimeout(checkName, 400) // wait until they stop typing for a moment
+  },
+)
+
+async function checkName() {
+  const name = form.name.trim()
+  try {
+    const free = await freeName(name)
+    nameCheck.name = name
+    nameCheck.free = free
+  } catch (err) {
+    console.error(err) // can't check right now: sign up checks again anyway
+  }
+}
+
+// true once the check says someone already has the name in the box
+const nameTaken = computed(
+  () =>
+    isSignup.value &&
+    nameCheck.name !== '' &&
+    nameCheck.name === form.name.trim() &&
+    !isSameName(nameCheck.name, nameCheck.free),
+)
+
+function useSuggestedName() {
+  form.name = nameCheck.free
+}
 
 const fieldIds = { name: 'auth-name', email: 'auth-email', password: 'auth-password' }
 
@@ -92,9 +155,22 @@ function setMode(m) {
   router.replace({ query }) // also drops any #error=... left by an expired reset link
 }
 
+// (Surya) A new account always goes through the Preferences setup first, even when it came from
+// a page that needed a login (e.g. "Start a hangout" → /login?redirect=/hangouts/new). That page
+// is passed on as ?next=, and setup goes there when it's done.
 function nextRoute() {
-  if (typeof route.query.redirect === 'string') return route.query.redirect
-  return isSignup.value ? { name: 'preferences', query: { setup: '1' } } : { name: 'dashboard' }
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+  if (isSignup.value) {
+    const query = { setup: '1' }
+    if (redirect) {
+      query.next = redirect
+    }
+    return { name: 'preferences', query }
+  }
+  if (redirect) {
+    return redirect
+  }
+  return { name: 'dashboard' }
 }
 
 const inviteCode = typeof route.query.invite === 'string' ? route.query.invite : null
@@ -138,6 +214,11 @@ async function submit() {
   if (firstInvalid) {
     await nextTick()
     document.getElementById(fieldIds[firstInvalid])?.focus()
+    return
+  }
+  // (Surya) the name is taken: the suggestion is under the box
+  if (nameTaken.value) {
+    document.getElementById(fieldIds.name)?.focus()
     return
   }
 
@@ -204,17 +285,15 @@ watch(
   { immediate: true },
 )
 
+function confirmError() {
+  if (!reset.confirm) return 'Type the new password again.'
+  if (reset.confirm !== reset.password) return 'The two passwords don’t match.'
+  return ''
+}
+
 const resetErrors = computed(() => ({
-  password: !reset.password
-    ? 'Enter a new password.'
-    : reset.password.length < MIN_PASSWORD
-      ? `Use at least ${MIN_PASSWORD} characters (${reset.password.length} so far).`
-      : '',
-  confirm: !reset.confirm
-    ? 'Type the new password again.'
-    : reset.confirm !== reset.password
-      ? 'The two passwords don’t match.'
-      : '',
+  password: reset.password ? newPasswordError(reset.password) : 'Enter a new password.',
+  confirm: confirmError(),
 }))
 
 const resetShown = computed(() => ({
@@ -263,10 +342,7 @@ const avatars = [
 <template>
   <main class="auth">
     <aside class="brand-panel">
-      <RouterLink class="logo" :to="{ name: 'landing' }">
-        <span class="logo__mark" aria-hidden="true"> <span></span><span></span><span></span> </span>
-        Fairpoint
-      </RouterLink>
+      <RouterLink class="logo" :to="{ name: 'landing' }">Fairpoint</RouterLink>
 
       <div class="brand-panel__copy">
         <h1 class="brand-panel__title">Stop arguing about where to meet.</h1>
@@ -418,12 +494,12 @@ const avatars = [
               v-else
               id="reset-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': reset.password.length >= MIN_PASSWORD }"
+              :class="{ 'field-hint--ok': isGoodPassword(reset.password) }"
             >
               {{
-                reset.password.length >= MIN_PASSWORD
-                  ? '✓ Long enough'
-                  : `At least ${MIN_PASSWORD} characters`
+                isGoodPassword(reset.password)
+                  ? '✓ Looks good'
+                  : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
             </p>
           </div>
@@ -477,16 +553,27 @@ const avatars = [
               id="auth-name"
               v-model="form.name"
               class="form-control"
-              :class="{ 'is-invalid': shown.name }"
+              :class="{ 'is-invalid': shown.name || nameTaken }"
               type="text"
               autocomplete="name"
               placeholder="What friends call you"
               required
-              :aria-invalid="Boolean(shown.name)"
+              :aria-invalid="Boolean(shown.name) || nameTaken"
               aria-describedby="auth-name-error"
               @blur="touched.name = true"
             />
             <p v-if="shown.name" id="auth-name-error" class="field-error">{{ shown.name }}</p>
+            <!-- (Surya) someone already has this name: offer the next free one in one tap -->
+            <p v-else-if="nameTaken" id="auth-name-error" class="field-error" role="alert">
+              “{{ nameCheck.name }}” is taken.
+              <template v-if="nameCheck.free">
+                Try
+                <button type="button" class="name-suggestion" @click="useSuggestedName">
+                  {{ nameCheck.free }}
+                </button>
+              </template>
+              <template v-else>Try another name.</template>
+            </p>
           </div>
 
           <div class="field">
@@ -540,12 +627,12 @@ const avatars = [
               v-else-if="isSignup"
               id="auth-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': form.password.length >= MIN_PASSWORD }"
+              :class="{ 'field-hint--ok': isGoodPassword(form.password) }"
             >
               {{
-                form.password.length >= MIN_PASSWORD
-                  ? '✓ Long enough'
-                  : `At least ${MIN_PASSWORD} characters`
+                isGoodPassword(form.password)
+                  ? '✓ Looks good'
+                  : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
             </p>
           </div>
@@ -626,28 +713,6 @@ const avatars = [
   font-size: 1.25rem;
   font-weight: 800;
   text-decoration: none;
-}
-
-.logo__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--fp-surface);
-}
-
-.logo__mark span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--fp-primary);
-}
-
-.logo__mark span:nth-child(2) {
-  background: var(--fp-accent);
 }
 
 .brand-panel__copy {
@@ -833,6 +898,22 @@ const avatars = [
 
 .field-hint {
   color: var(--fp-muted);
+}
+
+/* (Surya) the suggested free name, e.g. "Ryan1": tap it to use it */
+.name-suggestion {
+  min-height: 32px;
+  margin-left: 0.25rem;
+  padding: 0.15rem 0.75rem;
+  border: 1px solid var(--fp-primary);
+  border-radius: 999px;
+  background: var(--fp-surface);
+  color: var(--fp-primary);
+  font-weight: 600;
+}
+
+.name-suggestion:hover {
+  background: color-mix(in srgb, var(--fp-primary) 10%, var(--fp-surface));
 }
 
 .field-hint--ok {

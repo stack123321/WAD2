@@ -35,7 +35,7 @@ describe('TestSuite: ClosePanel', () => {
 
   it('Test4: with no votes yet, closing is blocked and it says why', () => {
     const wrapper = mountPanel({ voteCount: 0 })
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toContain('Wait for at least one vote before closing.')
   })
 
@@ -48,7 +48,7 @@ describe('TestSuite: ClosePanel', () => {
     const wrapper = mountPanel({ closed: true, currentId: 's1' })
     const button = wrapper.find('button')
     expect(button.text()).toBe('Change the winner')
-    expect(button.attributes('disabled')).toBeDefined()
+    expect(button.attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toContain('Voting is closed. Pick another spot to change the winner.')
   })
 
