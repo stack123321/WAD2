@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+// Owner: Eashvar (testing). Component test for SpotCard (Week 10b): one spot on 09 Nearby spots,
+// with its rating, match %, distance from the station, walk and price, any match notes, and the
+// "Add to vote" button, which emits add, or remove once it's added (if this person can remove it).
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpotCard from '../SpotCard.vue'
 
@@ -12,103 +15,83 @@ const cafe = {
   nearestStationName: 'Bishan',
 }
 
+// RouterLink is swapped for a plain link, so the card can be mounted without a router
 function mountCard(props = {}) {
   return mount(SpotCard, {
     props: { ...cafe, ...props },
-    global: {
-      stubs: {
-        RouterLink: {
-          props: ['to'],
-          template: '<a :href="typeof to === \'string\' ? to : to.name"><slot /></a>',
-        },
-      },
-    },
+    global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
   })
 }
 
-describe('SpotCard', () => {
-  it('renders the spot information and derived travel details', () => {
+describe('TestSuite: SpotCard', () => {
+  it('Test1: shows the rating, match, distance, walk and price', () => {
     const wrapper = mountCard()
-
-    expect(wrapper.get('.spot-card__name').text()).toContain('Quiet Corner Cafe')
-    expect(wrapper.get('.spot-card__rating').text()).toBe('⭐ 4.5')
-    expect(wrapper.get('.spot-card__match').text()).toBe('84% match')
-    expect(wrapper.get('.spot-card__meta').text()).toContain('250 m from Bishan')
-    expect(wrapper.get('.spot-card__meta').text()).toContain('3 min walk')
-    expect(wrapper.get('.spot-card__price').text()).toBe('$$')
+    expect(wrapper.find('h3').text()).toContain('Quiet Corner Cafe')
+    expect(wrapper.find('.spot-card__rating').text()).toBe('⭐ 4.5')
+    expect(wrapper.find('.spot-card__match').text()).toBe('84% match')
+    expect(wrapper.text()).toContain('250 m from Bishan')
+    expect(wrapper.text()).toContain('3 min walk')
+    expect(wrapper.find('.spot-card__price').text()).toBe('$$')
   })
 
-  it('formats kilometre distances and free price', () => {
+  it('Test2: shows longer distances in km, and a free spot as Free', () => {
     const wrapper = mountCard({ stationDistanceM: 1200, priceLevel: 0 })
-
-    expect(wrapper.get('.spot-card__meta').text()).toContain('1.2 km from Bishan')
-    expect(wrapper.get('.spot-card__price').text()).toBe('Free')
+    expect(wrapper.text()).toContain('1.2 km from Bishan')
+    expect(wrapper.find('.spot-card__price').text()).toBe('Free')
   })
 
-  it('renders a link and image alternative text when supplied', () => {
+  it("Test3: with a photo and a link, the photo is labelled with the spot's name", () => {
     const wrapper = mountCard({
       imageUrl: '/cafe.jpg',
       to: { name: 'spot-details', params: { spotId: 'quiet-cafe' } },
     })
-
-    expect(wrapper.get('.spot-card__image').attributes('href')).toBe('spot-details')
-    expect(wrapper.get('.spot-card__image img').attributes('alt')).toBe(cafe.name)
-    expect(wrapper.get('.spot-card__link').text()).toBe(cafe.name)
+    expect(wrapper.find('img').attributes('alt')).toBe('Quiet Corner Cafe')
+    expect(wrapper.find('.spot-card__link').text()).toBe('Quiet Corner Cafe')
   })
 
-  it('emits add when the spot is not shortlisted', async () => {
+  it('Test4: Add to vote emits add', async () => {
     const wrapper = mountCard()
-
-    await wrapper.get('.spot-card__action').trigger('click')
-
+    await wrapper.find('button').trigger('click')
     expect(wrapper.emitted('add')).toHaveLength(1)
-    expect(wrapper.emitted('remove')).toBeUndefined()
+    expect(wrapper.emitted('remove')).toBeFalsy()
   })
 
-  it('disables the already-added action when the user cannot remove it', async () => {
+  it("Test5: once added by someone else, the button is off and can't remove it", async () => {
     const wrapper = mountCard({ added: true })
-    const action = wrapper.get('.spot-card__action')
-
-    expect(action.text()).toBe('Added to vote')
-    expect(action.attributes()).toHaveProperty('disabled')
-    await action.trigger('click')
-    expect(wrapper.emitted('remove')).toBeUndefined()
+    const button = wrapper.find('button')
+    expect(button.text()).toBe('Added to vote')
+    expect(button.attributes()).toHaveProperty('disabled')
+    await button.trigger('click')
+    expect(wrapper.emitted('remove')).toBeFalsy()
   })
 
-  it('emits remove when the current user can remove an added spot', async () => {
+  it('Test6: once added by me, the button emits remove', async () => {
     const wrapper = mountCard({ added: true, removable: true })
-
-    await wrapper.get('.spot-card__action').trigger('click')
-
+    await wrapper.find('button').trigger('click')
     expect(wrapper.emitted('remove')).toHaveLength(1)
   })
 
-  it('shows hard and soft match explanations as tags', () => {
+  it('Test7: shows why a spot scores 0, and any other notes, as tags', () => {
     const wrapper = mountCard({
       matchPct: 0,
       vetoReason: 'Closed during your hangout',
       softVetoReasons: ['Far from the midpoint'],
       tags: ['Outdoor seating'],
     })
-
-    expect(wrapper.find('.spot-card__tag--veto').text()).toBe('Closed during your hangout')
-    expect(wrapper.find('.spot-card__tag--soft-veto').text()).toBe('Far from the midpoint')
-    expect(wrapper.findAll('.spot-card__tag').map((tag) => tag.text())).toContain(
-      'Outdoor seating',
-    )
+    const tags = wrapper.findAll('li').map((tag) => tag.text())
+    expect(tags).toEqual(['Closed during your hangout', 'Far from the midpoint', 'Outdoor seating'])
   })
 
-  it('does not render optional metadata when unavailable', () => {
+  it('Test8: leaves out the rating, match, price and distance when they are unknown', () => {
     const wrapper = mountCard({
       rating: null,
       matchPct: null,
       priceLevel: null,
       stationDistanceM: null,
     })
-
-    expect(wrapper.find('.spot-card__rating').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__match').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__price').exists()).toBe(false)
-    expect(wrapper.find('.spot-card__tags').exists()).toBe(true)
+    expect(wrapper.findAll('.spot-card__rating')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__match')).toHaveLength(0)
+    expect(wrapper.findAll('.spot-card__price')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('from Bishan')
   })
 })

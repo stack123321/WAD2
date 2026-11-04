@@ -62,14 +62,10 @@ export async function copyInviteLink(page, context, name) {
 }
 
 /**
- * Fake Google Places answers, so spots can go on a real shortlist without calling Google. A new
- * hangout has no midpoint yet, so 09's "Google Places calls" switch isn't shown; addInitScript
- * turns it on before the page loads instead. Like page.route, it isn't covered in the course.
+ * Fake Google Places answers, so spots can go on a real shortlist without calling Google.
+ * page.route isn't covered in the course (same as tests/e2e/helpers/places.js).
  */
 export async function stubSpots(page, spots) {
-  await page.addInitScript(() =>
-    window.localStorage.setItem('fairpoint.googlePlacesEnabled', 'true'),
-  )
   await page.route('**/api/places**', (route) => {
     const url = new URL(route.request().url())
     if (url.searchParams.get('summary')) return route.fulfill({ json: null })

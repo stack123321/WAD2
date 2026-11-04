@@ -32,8 +32,18 @@ const notice = ref('')
 const MIN_PASSWORD = 8
 const MAX_NAME = 50
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/ // (Surya) 8–72 characters, at least 1 letter and 1 number
-const PASSWORD_RULE = 'Use 8–72 characters with at least one letter and one number.'
+const MAX_PASSWORD = 72
+const PASSWORD_RULE = `Use ${MIN_PASSWORD}–${MAX_PASSWORD} characters with at least one letter and one number.`
+
+// (Surya) 8–72 characters, at least 1 letter and 1 number
+function isGoodPassword(password) {
+  return (
+    password.length >= MIN_PASSWORD &&
+    password.length <= MAX_PASSWORD &&
+    /[A-Za-z]/.test(password) &&
+    /\d/.test(password)
+  )
+}
 
 const touched = reactive({ name: false, email: false, password: false })
 
@@ -44,27 +54,35 @@ function emailError() {
   return ''
 }
 
-const fieldErrors = computed(() => {
+function nameError() {
   const name = form.name.trim()
-  return {
-    name: !isSignup.value
-      ? ''
-      : !name
-        ? 'Enter your name.'
-        : name.length > MAX_NAME
-          ? `Keep your name under ${MAX_NAME} characters.`
-          : '',
-    email: emailError(),
-    // Only sign up checks length: older accounts may have shorter passwords and still need to log in.
-    password: !form.password
-      ? 'Enter your password.'
-      : isSignup.value && form.password.length < MIN_PASSWORD
-        ? `Use at least ${MIN_PASSWORD} characters (${form.password.length} so far).`
-        : isSignup.value && !PASSWORD_PATTERN.test(form.password)
-          ? PASSWORD_RULE
-          : '',
+  if (!isSignup.value) return ''
+  if (!name) return 'Enter your name.'
+  if (name.length > MAX_NAME) return `Keep your name under ${MAX_NAME} characters.`
+  return ''
+}
+
+// A new password, on sign up and on the reset screen
+function newPasswordError(password) {
+  if (password.length < MIN_PASSWORD) {
+    return `Use at least ${MIN_PASSWORD} characters (${password.length} so far).`
   }
-})
+  if (!isGoodPassword(password)) return PASSWORD_RULE
+  return ''
+}
+
+function passwordError() {
+  if (!form.password) return 'Enter your password.'
+  // Only sign up checks the rule: older accounts may have shorter passwords and still need to log in.
+  if (!isSignup.value) return ''
+  return newPasswordError(form.password)
+}
+
+const fieldErrors = computed(() => ({
+  name: nameError(),
+  email: emailError(),
+  password: passwordError(),
+}))
 
 // The message to show under each field right now
 const shown = computed(() => ({
@@ -267,19 +285,15 @@ watch(
   { immediate: true },
 )
 
+function confirmError() {
+  if (!reset.confirm) return 'Type the new password again.'
+  if (reset.confirm !== reset.password) return 'The two passwords don’t match.'
+  return ''
+}
+
 const resetErrors = computed(() => ({
-  password: !reset.password
-    ? 'Enter a new password.'
-    : reset.password.length < MIN_PASSWORD
-      ? `Use at least ${MIN_PASSWORD} characters (${reset.password.length} so far).`
-      : !PASSWORD_PATTERN.test(reset.password)
-        ? PASSWORD_RULE
-        : '',
-  confirm: !reset.confirm
-    ? 'Type the new password again.'
-    : reset.confirm !== reset.password
-      ? 'The two passwords don’t match.'
-      : '',
+  password: reset.password ? newPasswordError(reset.password) : 'Enter a new password.',
+  confirm: confirmError(),
 }))
 
 const resetShown = computed(() => ({
@@ -328,10 +342,7 @@ const avatars = [
 <template>
   <main class="auth">
     <aside class="brand-panel">
-      <RouterLink class="logo" :to="{ name: 'landing' }">
-        <span class="logo__mark" aria-hidden="true"> <span></span><span></span><span></span> </span>
-        Fairpoint
-      </RouterLink>
+      <RouterLink class="logo" :to="{ name: 'landing' }">Fairpoint</RouterLink>
 
       <div class="brand-panel__copy">
         <h1 class="brand-panel__title">Stop arguing about where to meet.</h1>
@@ -483,10 +494,10 @@ const avatars = [
               v-else
               id="reset-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': PASSWORD_PATTERN.test(reset.password) }"
+              :class="{ 'field-hint--ok': isGoodPassword(reset.password) }"
             >
               {{
-                PASSWORD_PATTERN.test(reset.password)
+                isGoodPassword(reset.password)
                   ? '✓ Looks good'
                   : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
@@ -616,10 +627,10 @@ const avatars = [
               v-else-if="isSignup"
               id="auth-password-help"
               class="field-hint"
-              :class="{ 'field-hint--ok': PASSWORD_PATTERN.test(form.password) }"
+              :class="{ 'field-hint--ok': isGoodPassword(form.password) }"
             >
               {{
-                PASSWORD_PATTERN.test(form.password)
+                isGoodPassword(form.password)
                   ? '✓ Looks good'
                   : `At least ${MIN_PASSWORD} characters, with a letter and a number`
               }}
@@ -702,28 +713,6 @@ const avatars = [
   font-size: 1.25rem;
   font-weight: 800;
   text-decoration: none;
-}
-
-.logo__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--fp-surface);
-}
-
-.logo__mark span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--fp-primary);
-}
-
-.logo__mark span:nth-child(2) {
-  background: var(--fp-accent);
 }
 
 .brand-panel__copy {

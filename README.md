@@ -14,7 +14,7 @@ Built for IS216 Web Application Development II. Team and page ownership: [CONTRI
 
 ## Test accounts
 
-Email confirmation is on in Supabase, so sign up needs a real inbox. Use these two accounts on the live app instead. <<FILL: confirm both accounts are email-confirmed in Supabase before submitting>>
+Email confirmation is on in Supabase, so sign up needs a real inbox. Use these two accounts on the live app instead. Both are already confirmed.
 
 | Account | Name | Email | Password | Role in the two-person test |
 |---|---|---|---|---|
@@ -38,6 +38,8 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 |  | My chats | `/chats` | `MyChatsView.vue` |
 |  | Hangout chat | `/chats/:hangoutId` | `ChatView.vue` |
 |  | One-to-one chat | `/chats/direct/:chatId` | `DirectChatView.vue` |
+|  | New friend group | `/groups/new` | `NewGroupView.vue` |
+|  | Friend group (its hangouts, chat and usual starting points) | `/groups/:groupId` | `GroupView.vue` |
 | 05 | Create hangout and invite | `/hangouts/new` | `CreateHangoutView.vue` |
 |  | Edit hangout details | `/hangouts/:id/edit` | `CreateHangoutView.vue` |
 | 06 | Starting points | `/hangouts/:id/start` | `StartingPointsView.vue` |
@@ -54,17 +56,17 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 | Requirement | Where |
 |---|---|
 | HTML, CSS, JavaScript, a framework | Vue 3 single-file components in `src/views/` and `src/components/`, built with Vite. Vue Router for the pages, Pinia for the hangout, login and alert stores. |
-| CSS framework | Bootstrap 5 for the grid, spacing and breakpoints. Colours, radius and fonts are tokens in `src/styles/tokens.css`; components use `<style scoped>`. |
-| Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 575 px found no sideways scrolling on any page. |
-| Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). Schema: [supabase/schema.sql](supabase/schema.sql). |
+| CSS framework | Bootstrap 5 for the grid, spacing and breakpoints. Colours, radius and fonts are tokens in `src/assets/tokens.css`; components use `<style scoped>`. |
+| Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 375 px (iPhone 6) found no sideways scrolling on any page. |
+| Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). See [Database](#database). |
 | External APIs, called asynchronously | See the table below. |
-| Tests | Vitest unit and component tests (160, in `__tests__` folders next to the code) and Playwright end-to-end tests (78, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
+| Tests | Vitest unit and component tests (197, in `__tests__` folders next to the code) and Playwright end-to-end tests (105, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
 ### External APIs
 
-Secret keys stay on the server: the browser only calls our own `/api/...` functions (Vercel serverless functions in `api/`).
+Secret keys stay on the server: every API that needs a key is called through our own `/api/...` functions (Vercel serverless functions in `api/`). The ones with no key (weather, public holidays and the map tiles) are called straight from the browser.
 
 | API | What it does for the user | Called from | Key | Caching and limits |
 |---|---|---|---|---|
@@ -74,7 +76,8 @@ Secret keys stay on the server: the browser only calls our own `/api/...` functi
 | OneMap map tiles | The base map on 06, 08 and `/crowds`, with OneMap's required credit shown on the map | `src/utils/mapSetup.js` | none | |
 | LTA DataMall | Crowd level at each MRT station (live platform crowd, or the forecast), and car park rates for the parking cost | `api/crowd.js`, `api/_parking.js` | `LTA_ACCOUNT_KEY` | Cached per line for 10 minutes (live) or 30 minutes (forecast) |
 | NEA via data.gov.sg and Open-Meteo | Weather, rain chance and haze for the hangout's time and place (04, 08, 12) | `src/services/weather.js` | none | |
-| Google Places (New) | Nearby cafes, restaurants and activities, photos, and a short summary (09, 10) | `api/places.js`, `api/place-photo.js` | `GOOGLE_PLACES_API_KEY` | Off until the user turns it on (the toggle on 09). The Google project allows 100 nearby searches a day and each category on 09 counts as one. Photos are cacheable for an hour |
+| data.gov.sg public holidays | Warns on 10 when the hangout falls on a public holiday, as opening hours may differ | `src/services/holidays.js` | none | Each year's list is fetched once per visit |
+| Google Places (New) | Nearby cafes, restaurants and activities, photos, and a short summary (09, 10) | `api/places.js`, `api/place-photo.js` | `GOOGLE_PLACES_API_KEY` | The Google project allows 100 nearby searches a day, and each category on 09 counts as one. Vercel's CDN keeps each nearby search for an hour, so the same meeting point reuses it. Photos are cacheable for an hour |
 | Gemini | The Ask box on 09: turns "prata for dinner, one of us is halal" into a search. It never names places, Google Places finds them. | `api/assistant.js`, `api/_gemini.js` | `GEMINI_API_KEY` | |
 
 ### The algorithm
@@ -92,8 +95,8 @@ On 08 the group can drag the pin; it snaps to the nearest station and the same t
 **Spot match score** ([src/utils/matchScore.js](src/utils/matchScore.js)), the percentage on each spot card on 09 and in the criteria list on 10:
 
 - *Hard vetoes, score 0:* closed at any point during the hangout (opening hours checked every 15 minutes), not step-free when a member needs step-free, or outdoors when rain is forecast and a member prefers indoors in the rain.
-- *Base score out of 100:* hangout vibe matches the place (34), share of members whose favourite activities match the place (17), how highly the place's type ranks in each member's past votes (16), and share of members whose budget covers the price level (33). Unknown prices and budgets do not penalise.
-- *Soft penalties:* every 7 minutes of walking from the midpoint takes 10% off (never below 20% of the score), and closing within an hour of the start or end halves the score.
+- *Base score out of 100:* hangout vibe matches the place (34), share of members whose favourite activities match the place (17), how highly the place's type ranks in each member's past votes (16), and share of members whose budget covers the price level (33), plus up to 5 when the place mentions a member's dietary need (for example halal). Unknown prices and budgets do not penalise, and the score never goes above 100.
+- *Soft penalties:* every 7 minutes of walking from the midpoint takes 10% off (never below 20% of the score), and closing within an hour of the start or end halves the score. If members set a maximum travel time, the score drops by up to 30% depending on how many of them would go over it, and if anyone prefers to avoid crowds and the station will be busy, it drops by 30%.
 
 ### Without any keys
 
@@ -112,12 +115,22 @@ The app still runs. Each service falls back to sample data when its key is missi
 
 You need Node 22.18 or newer (`node -v` to check).
 
+**From the submitted zip.** The zip includes `.env.local` with every key, so the app uses the real database and APIs. Don't copy `.env.example` over it.
+
+```bash
+cd <the unzipped folder>
+npm install
+npm run dev                   # http://localhost:5173 opens the landing page
+```
+
+**From GitHub.** The repository has no keys, so the app runs on the demo data (see [Without any keys](#without-any-keys)) until you add your own.
+
 ```bash
 git clone https://github.com/stack123321/WAD2.git
 cd WAD2
 npm install
-cp .env.example .env.local    # optional: paste in keys, see below
-npm run dev                   # http://localhost:5173 opens the landing page
+cp .env.example .env.local    # optional: paste in your own keys, see below
+npm run dev
 ```
 
 `npm run dev` also runs the functions in `api/` (through `scripts/devApi.js`), so `/api/route`, `/api/crowd` and the rest work locally. On Vercel the same files run as serverless functions.
@@ -146,7 +159,7 @@ Only the two `VITE_` values are sent to the browser. Every other key has no `VIT
 
 Testing follows the course's three kinds (Week 10): unit tests for plain functions and component tests for Vue components, both with Vitest, and one end-to-end test per user journey with Playwright.
 
-The tests need no keys and no account. The end-to-end tests start their own copy of the app on port 5198 with every key blanked, so the app uses the demo hangouts and the functions' sample data, and the tests answer the Google Places calls themselves.
+The tests need no keys and no account. The end-to-end tests start their own copy of the app on port 5198 with every key blanked, so the app uses the demo hangouts and the functions' sample data (routes, place search, the Ask box), and the tests answer the Google Places calls themselves.
 
 ```bash
 npm run test:unit                  # Vitest: unit and component tests, next to the code in __tests__ folders
@@ -172,7 +185,7 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 |---|---|
 | `smoke.spec.js` | Every page opens with the right heading; a new hangout from the landing page to the final plan; sign up to My hangouts |
 | `landing.spec.js` | 01: the hero button starts a hangout; "How it works" and the FAQ |
-| `auth.spec.js` | 02: log in and sign up say what is missing; logging in opens My hangouts |
+| `auth.spec.js`, `signupNext.spec.js` | 02: log in and sign up say what is missing; logging in opens My hangouts; signing up on the way to another page goes through the setup first |
 | `preferences.spec.js`, `deleteAccount.spec.js` | 03: saving preferences; the setup steps after sign up; Delete my account |
 | `dashboard.spec.js` | 04: both hangouts and their progress; a card opens its next step; pinning |
 | `createHangout.spec.js` | 05: Create says what is missing; creating opens 06 |
@@ -180,18 +193,32 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 | `startingPoints.spec.js` | 06: everyone's starting point; search and pick a place; no match |
 | `transport.spec.js` | 07: everyone's mode; Find our midpoint opens 08 |
 | `midpoint.spec.js`, `crowds.spec.js` | 08 and `/crowds`: the time slider; See nearby spots |
-| `explore.spec.js` | 09: spots appear once Google Places is on; filters; opening a spot |
-| `assistant.spec.js` | 09: the Ask box |
-| `spotDetails.spec.js` | 10: details; Add to Vote and Remove; back to 09 |
+| `explore.spec.js` | 09: spots near the midpoint; Filters; adding a spot to the shortlist; opening a spot; on a phone, the menu and the swipeable cards |
+| `assistant.spec.js` | 09: the Ask box, and Reset; on a phone, the Ask button |
+| `spotDetails.spec.js` | 10: details; the photos; each friend's travel time; Add to Vote and Remove; back to 09 |
 | `voting.spec.js` | 11 and 12: start the vote, change a vote, close it, the final plan shows the winner |
 | `debrief.spec.js`, `pastHangouts.spec.js` | After the hangout: the debrief, "Plan another with this group", Go again |
 | `friends.spec.js`, `chats.spec.js`, `groups.spec.js` | Friends and requests, chats, switching between hangouts |
+| `chatPopover.spec.js` | The 💬 group chat opening over a step and closing (✕, Esc, the button), on a laptop and a phone |
+| `friendGroups.spec.js` | Friend groups: My Chats, a group's page, usual starting points, planning with a group, adding and removing people, on a phone |
 
-**Unit and component tests** (`src/**/__tests__/`): the fair-midpoint algorithm (fairness, ranking, times per person), the match score, the voting helpers, dates, hangout status, avatar colours, vibes, weather and "Go again" logic, and the voting, transport, spot and weather components.
+**Unit and component tests** (`src/**/__tests__/` and `api/__tests__/`): the fair-midpoint algorithm (fairness, ranking, times per person), the match score, the voting helpers, dates, hangout status, avatar colours, vibes, weather, "Go again", friend groups' usual starting points and Google's error messages, and the voting, transport, spot and weather components.
+
+**What goes beyond the course.** Everything else uses only what Week 10 covers. These few extras are each needed for one thing, and each is in one place with a comment saying why:
+
+| Extra | Where | Why it's needed |
+|---|---|---|
+| A fixed date and time (`page.clock`) | `tests/e2e/helpers/clock.js` | The demo hangouts are dated October 2026; without it, voting and the countdowns would always show as over |
+| Fake Google Places answers (`page.route`) | `tests/e2e/helpers/places.js`, `tests/live/helpers.js` | Nearby spots are the only API with no sample data without a key |
+| A phone-sized screen (`page.setViewportSize`) | `tests/e2e/helpers/phone.js` | 09 and the chat work differently on a phone |
+| Pressing Esc (`page.keyboard.press`) | `tests/e2e/chatPopover.spec.js` | Esc closing the chat is the behaviour being tested |
+| Two people at once (`browser.newContext`), reading the invite link (clipboard) | `tests/live/` | The two-person live test needs two logged-in browsers, and the app only copies the link |
+
+Small extensions of what the course shows, used where they read more clearly: Vitest matchers such as `toContain` and `toHaveLength`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled` and `toBeChecked`; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()` and `.nth()` to pick one card or row; and `hover()`.
 
 ## AI and LLM usage
 
-The brief allows AI for lower-order work only: boilerplate, tidying, test cases, explanations, debugging hints and UI inspiration. Core logic and backend endpoints must be the team's own. Each member lists their own work below. Commits where an assistant is credited carry a `Co-Authored-By` line in the git history.
+The brief allows AI for lower-order work only: boilerplate, tidying, test cases, explanations, debugging hints and UI inspiration. Core logic and backend endpoints must be the team's own. Each member's table below says which parts AI helped with, and which parts they wrote themselves.
 
 **Parts that relied solely on AI:** <<FILL: none, or list them>>
 
@@ -231,13 +258,12 @@ Libraries (all in `package.json`):
 | Bootstrap 5 | Grid, spacing, buttons and forms | https://getbootstrap.com |
 | Leaflet | The maps | https://leafletjs.com |
 | Supabase JS | Database, login, realtime and storage | https://supabase.com/docs/reference/javascript |
-| axios | HTTP calls from the `api/` functions and scripts | https://axios-http.com |
-| qrcode | <<FILL: nothing in the code imports it. Remove it from package.json, or say where it is used>> | https://github.com/soldair/node-qrcode |
+| axios | HTTP calls, from the services in `src/services/`, the `api/` functions and scripts | https://axios-http.com |
 | Plus Jakarta Sans | The app's font, loaded from Google Fonts | https://fonts.google.com/specimen/Plus+Jakarta+Sans |
 
-Build and test tools: Vite, Playwright, ESLint, oxlint and Prettier.
+Build and test tools: Vite, Vitest with Vue Test Utils, Playwright, ESLint, oxlint and Prettier.
 
-Data and APIs: [OneMap](https://www.onemap.gov.sg/apidocs/) (search, reverse geocoding, routing and map tiles, © Singapore Land Authority and contributors), [LTA DataMall](https://datamall.lta.gov.sg) (station crowd levels and car parks), [data.gov.sg](https://data.gov.sg) (NEA weather and haze, and the mall car park rates in `api/_data/carparkRates.js`, from 2018), [Open-Meteo](https://open-meteo.com) (weather forecast), [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service) (nearby places, photos and summaries) and [Gemini](https://ai.google.dev) (the Ask box).
+Data and APIs: [OneMap](https://www.onemap.gov.sg/apidocs/) (search, reverse geocoding, routing and map tiles, © Singapore Land Authority and contributors), [LTA DataMall](https://datamall.lta.gov.sg) (station crowd levels and car parks), [data.gov.sg](https://data.gov.sg) (NEA weather and haze, public holidays, and the mall car park rates in `api/_data/carparkRates.js`, from 2018), [Open-Meteo](https://open-meteo.com) (weather forecast), [Google Places API (New)](https://developers.google.com/maps/documentation/places/web-service) (nearby places, photos and summaries) and [Gemini](https://ai.google.dev) (the Ask box).
 
 ## Project structure
 
@@ -250,15 +276,14 @@ src/              (a __tests__/ folder next to the code holds its Vitest tests)
   views/         One file per page
   components/    Page parts, grouped by feature (dashboard, map, spots, voting, ...)
     shared/      Parts used by several pages (trip table, spot hero)
-    chat/        The chat box and the latest-message preview
+    chat/        The chat box and the chat pop-up on the hangout steps
   composables/   Small reusable Vue helpers
   services/      Every call to an API or to Supabase
   stores/        Pinia stores: auth, hangout, alerts
   utils/         Plain functions with no Vue: midpoint.js, matchScore.js, voteHelpers.js, dates, status, and mapSetup.js (the Leaflet map)
   mocks/         Sample hangouts, addresses and place types
   router/        All routes, and the login redirect
-  styles/        tokens.css, the only global CSS
-supabase/        schema.sql (the full database) and migrations/ (dated changes already included in it)
+  assets/        tokens.css, the only global CSS
 tests/
   e2e/           The end-to-end Playwright tests (npm run test:e2e)
   live/          Optional tests against the real Supabase project
@@ -269,22 +294,16 @@ Conventions:
 
 - Services own every API and database call. Views and components never call `fetch` or Supabase directly.
 - Secret keys have no `VITE_` prefix and are used only in `api/`. The Supabase service-role key is never in the front end, and `.env.local` is never committed.
-- Colours, radius and shadows come from `var(--fp-...)` tokens in `src/styles/tokens.css`. Components use `<style scoped>`. The one exception is `src/utils/palette.js`, for colours that JavaScript has to hold itself (the avatar colours and the Leaflet map shapes).
+- Colours, radius and shadows come from `var(--fp-...)` tokens in `src/assets/tokens.css`. Components use `<style scoped>`. The one exception is `src/utils/palette.js`, for colours that JavaScript has to hold itself (the avatar colours and the Leaflet map shapes).
 - Components are `PascalCase.vue`, JavaScript modules in `src/` are `camelCase.js`, and files in `api/` are `kebab-case.js` because each one is a URL.
 
 ## Database
 
-[supabase/schema.sql](supabase/schema.sql) is the full schema: tables, row level security policies, database functions, the storage bucket and the realtime setup. The dated files in `supabase/migrations/` are the incremental changes that were made along the way; they are already included in `schema.sql`.
-
-To set up a fresh Supabase project:
-
-1. Create a project at https://supabase.com.
-2. Open SQL Editor, paste the whole of `supabase/schema.sql` and run it.
-3. Under Project Settings, API Keys, copy the project URL and the publishable key into `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local`.
+The database is hosted on Supabase (Postgres, Auth, Realtime and Storage). Its SQL (tables, row level security policies, database functions, the storage bucket and the realtime setup) is not included in this repository, so the database can't be recreated from these files. To see the app with real data, use the [live app](https://fairpoint-wad2.vercel.app) and the [test accounts](#test-accounts), or run the submitted zip, whose `.env.local` points at the same database. Without Supabase keys, the app uses the demo hangouts instead (see [Without any keys](#without-any-keys)).
 
 ## Known limitations
 
-- Google Places is off until the user turns it on (the toggle on 09). The Google project allows only 100 nearby searches a day (each category on 09 counts as one) and our server does not cache the results, so once the day's quota is used up 09 and 10 show an error until it resets. Without Google, 09 and 10 have no spots.
-- Preferences for avoiding crowds, maximum travel time and dietary needs are saved but do not change the match score, and "Sort: Crowd level" on 09 has no effect yet.
-- Page 10 still has some fixed placeholder text: "Travel time per friend" always shows, and "Photo / map preview" and "Description and details" show when no spot has loaded (for example when Google Places is off).
+- The Google project allows only 100 nearby searches a day (each category on 09 counts as one). Each search is reused for an hour per meeting point, but once the day's quota is used up, 09 and 10 show an error until it resets, and without Google they have no spots.
+- "Sort: Crowd level" on 09 has no effect yet: every spot shares the midpoint station's crowd level, so it can't reorder them.
+- Page 10 shows placeholder text ("Photo / map preview", "Description and details.") when no spot has loaded, for example when Google Places can't be reached.
 - Free Supabase projects pause after 7 idle days. A GitHub Action ([.github/workflows/keep-alive.yml](.github/workflows/keep-alive.yml)) pings the database every 3 days to keep it awake.

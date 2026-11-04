@@ -59,7 +59,7 @@ export function getStatus(h, myId) {
   if (h.status === 'confirmed') {
     return {
       tone: 'green', // green edge
-      text: 'Confirmed',
+      text: 'Plan confirmed',
       check: true, // show a tick before the text
       button: 'View plan',
       fill: false, // outline button, there's nothing urgent to do

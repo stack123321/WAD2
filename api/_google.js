@@ -174,11 +174,14 @@ export async function nearbyPlaces(key, centre, radiusM, categories) {
   )
   const results = settled.filter((r) => r.status === 'fulfilled').map((r) => r.value)
   if (results.length === 0) throw settled[0].reason
-  const seen = new Set()
-  return results
-    .flat()
-    .filter((p) => !seen.has(p.source_place_id) && seen.add(p.source_place_id))
-    .sort((a, b) => a.distance_m - b.distance_m)
+  // each place once (a cafe can turn up under two types), nearest first
+  const places = []
+  for (const list of results) {
+    for (const p of list) {
+      if (!places.find((q) => q.source_place_id === p.source_place_id)) places.push(p)
+    }
+  }
+  return places.sort((a, b) => a.distance_m - b.distance_m)
 }
 
 /**

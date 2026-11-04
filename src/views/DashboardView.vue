@@ -1,8 +1,14 @@
 <script setup>
 // 04 My hangouts
 // Owner: Ryan
-import { ref, computed, onMounted } from 'vue'
-import { deleteHangout, getMyHangouts, leaveHangout, setPinned } from '@/services/hangouts'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import {
+  deleteHangout,
+  getMyHangouts,
+  leaveHangout,
+  setPinned,
+  subscribeToMyHangouts,
+} from '@/services/hangouts'
 import { useAuthStore } from '@/stores/auth'
 import PageDrop from '@/components/ui/PageDrop.vue'
 import HangoutCard from '@/components/dashboard/HangoutCard.vue'
@@ -347,10 +353,8 @@ async function loadPhotos() {
   }
 }
 
-// runs once when the page opens
-onMounted(async () => {
-  loadWeather() // not awaited, so the hangouts don't wait for the weather
-  loading.value = true
+// every hangout i'm in, with my pins (when the page opens, and again on live changes below)
+async function loadHangouts() {
   try {
     hangouts.value = await getMyHangouts()
     // my pin is saved on my own member row of each hangout
@@ -365,9 +369,32 @@ onMounted(async () => {
     console.error(err)
     error.value = 'Could not load your hangouts.'
   }
+}
+
+// (Surya) Live: when the host confirms a plan or starts a re-vote, or anyone votes, load the
+// hangouts again so each card's status changes by itself. A burst of changes reloads once.
+let stopListening = () => {}
+let reloadTimer = null
+
+function onHangoutChanged() {
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(loadHangouts, 400)
+}
+
+// runs once when the page opens
+onMounted(async () => {
+  loadWeather() // not awaited, so the hangouts don't wait for the weather
+  loading.value = true
+  await loadHangouts()
   loading.value = false
   loadCrowds() // not awaited, the chips appear when the levels arrive
   loadPhotos() // not awaited either
+  stopListening = subscribeToMyHangouts('dashboard', onHangoutChanged)
+})
+
+onUnmounted(() => {
+  stopListening()
+  clearTimeout(reloadTimer)
 })
 </script>
 
@@ -379,12 +406,12 @@ onMounted(async () => {
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
           <h1 class="page-title mb-0">{{ heading }}</h1>
           <!-- d-none d-md-inline-flex: hidden on phones, where the tab bar has the + button instead -->
-          <router-link
+          <RouterLink
             :to="{ name: 'create-hangout' }"
             class="btn btn-primary fw-semibold d-none d-md-inline-flex align-items-center start-btn"
           >
             Start planning
-          </router-link>
+          </RouterLink>
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-2 mt-2">

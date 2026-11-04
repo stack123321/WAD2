@@ -3,7 +3,7 @@
 // Owner: Matrix
 // Figma frame "05". Left: hangout details (with quick date buttons and a name idea).
 // Right: "Who's coming?" (tick friends to add them straight away) and a live summary.
-// Anyone else can be invited with the Invite button in the step bar once the hangout exists.
+// Anyone else can join with "Copy invite link" in the hangout's ⋯ menu on My hangouts.
 // (Surya, improve/user-friendly-customised: friends list with search, quick dates, optional name
 // with a suggestion, short "why" notes, a remembered switch, a summary, and a hint saying what's
 // missing when Create is greyed out. "Voting closes" moved to 11 Vote, where the host starts it.)
@@ -44,6 +44,8 @@ import { useAuthStore } from '@/stores/auth'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import MemberAvatar from '@/components/shared/MemberAvatar.vue'
 import WeekForecast from '@/components/weather/WeekForecast.vue'
+import { sortPeople } from '@/utils/peopleSearch'
+import { joinNames } from '@/utils/joinNames'
 
 const route = useRoute()
 const router = useRouter()
@@ -428,10 +430,7 @@ const againNames = computed(() => {
       names.push(m.display_name)
     }
   }
-  if (names.length <= 1) {
-    return names.join('')
-  }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  return joinNames(names)
 })
 
 // The friend you came from on the Friends page or dashboard (?with=), or null (also when several
@@ -446,17 +445,12 @@ const withFriend = computed(() => {
 // Search: type a name to filter your friends
 const friendSearch = ref('')
 
-// (Surya) Only the first 5 friends show (the ones you hang out with most). Searching shows every
-// friend who matches, plus anyone else on Fairpoint (below).
+// (Surya) Not searching: only the first 5 friends show (the ones you hang out with most).
+// Searching shows one list of everyone who matches (searchRows, below).
 const FIRST_FRIENDS = 5
 const searching = computed(() => friendSearch.value.trim() !== '')
 
-const visibleFriends = computed(() => {
-  if (searching.value) {
-    return shownFriends.value
-  }
-  return shownFriends.value.slice(0, FIRST_FRIENDS)
-})
+const visibleFriends = computed(() => shownFriends.value.slice(0, FIRST_FRIENDS))
 
 const shownFriends = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
@@ -532,16 +526,6 @@ function statusOf(userId) {
   return 'none'
 }
 
-// 0 if the name, or a word in it, starts with what you typed, else 1
-function matchRank(name, text) {
-  for (const word of name.toLowerCase().split(' ')) {
-    if (word.startsWith(text)) {
-      return 0
-    }
-  }
-  return 1
-}
-
 const searchRows = computed(() => {
   const text = friendSearch.value.trim().toLowerCase()
   let myId = null
@@ -558,22 +542,9 @@ const searchRows = computed(() => {
       continue
     }
     seen.push(p.user_id)
-    rows.push({ ...p, status: statusOf(p.user_id), rank: matchRank(p.display_name, text) })
+    rows.push({ ...p, status: statusOf(p.user_id) })
   }
-  rows.sort((a, b) => {
-    if (ORDER[a.status] !== ORDER[b.status]) {
-      return ORDER[a.status] - ORDER[b.status]
-    }
-    if (a.rank !== b.rank) {
-      return a.rank - b.rank
-    }
-    const together = (b.together ?? 0) - (a.together ?? 0)
-    if (together !== 0) {
-      return together
-    }
-    return a.display_name.localeCompare(b.display_name)
-  })
-  return rows
+  return sortPeople(rows, text, ORDER) // utils/peopleSearch.js
 })
 
 // (Surya) Search everyone on Fairpoint as you type (no extra button to press). It waits until
@@ -679,11 +650,7 @@ const missingHint = computed(() => {
   if (missing.length === 0) {
     return ''
   }
-  if (missing.length === 1) {
-    return `Add ${missing[0]} to continue.`
-  }
-  const last = missing[missing.length - 1]
-  return `Add ${missing.slice(0, -1).join(', ')} and ${last} to continue.`
+  return `Add ${joinNames(missing)} to continue.`
 })
 
 // Part (d) Name idea, e.g. "Saturday chill" (the day you picked + the first vibe)

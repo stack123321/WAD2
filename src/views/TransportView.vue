@@ -5,7 +5,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useHangoutStore } from '@/stores/hangout'
   import { useAuthStore } from '@/stores/auth'
-  import { rankStations } from '@/services/routing'
+  import { rankStations, saveTrip } from '@/services/routing'
   import { timesFor } from '@/utils/midpoint'
   import {
     getMyHangouts,
@@ -18,12 +18,16 @@
   import { hasSupabase } from '@/services/supabase'
   import PersonModeRow from '@/components/transport/PersonModeRow.vue'
   import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+  import { useHangoutPrerequisites } from '@/composables/useHangoutPrerequisites'
+  import MissingPrerequisite from '@/components/hangout/MissingPrerequisite.vue'
+  import { joinNames } from '@/utils/joinNames'
 
   const route = useRoute()
   const router = useRouter()
   const optimiseFor = ref('fairest')
   const ranked = ref([])
   const store = useHangoutStore()
+  const missingStep = useHangoutPrerequisites(() => store.hangout, ['starting-points']).missingStep
   const missingMode = computed(() => store.members.filter((m) => !m.mode))
 
 
@@ -168,6 +172,15 @@
     return m.user_id === myId.value
   }
 
+  // (Eashvar) Times are only saved for everyone when the midpoint is found, so if the group already
+  // has one, save my own trip to it by my new mode, for "Leave by" on 12. It doesn't change what
+  // this page shows (the times to the fairest station), and a failure is just logged.
+  function saveMyTrip(m) {
+    saveTrip(route.params.id, store.hangout, m).catch((e) => {
+      console.error('Could not save your trip time', e)
+    })
+  }
+
   // Pick your mode: show it straight away, save it so friends see it, then re-rank the stations
   const modeError = ref('')
 
@@ -184,6 +197,7 @@
       modeError.value = "Couldn't save your mode. Try again."
       return
     }
+    saveMyTrip(m)
     try {
       await scoreAreas()
     } catch (e) {
@@ -271,6 +285,7 @@
       if (!latest) return
       me.mode = latest.mode
       await updateMemberMode(route.params.id, me.user_id, latest.mode)
+      saveMyTrip(me)
       usualModeNote.value = `${modeName(latest.mode)}, like last time. Change it anytime.`
     } catch (e) {
       // only a shortcut: if it fails, you just pick your mode yourself
@@ -290,8 +305,7 @@
     if (names.length === 1) {
       return `${names[0]} hasn’t picked yet, so we’re assuming MRT for now.`
     }
-    const last = names[names.length - 1]
-    return `${names.slice(0, -1).join(', ')} and ${last} haven’t picked yet, so we’re assuming MRT for now.`
+    return `${joinNames(names)} haven’t picked yet, so we’re assuming MRT for now.`
   })
 
   // I can find the midpoint once I've picked my own mode (friends can pick later)
@@ -326,6 +340,10 @@
         Couldn't load this hangout. Check the link, or go back to
         <RouterLink :to="{ name: 'dashboard' }">My hangouts</RouterLink>.
       </div>
+    </div>
+
+    <div v-else-if="missingStep" class="container py-4">
+      <MissingPrerequisite :hangout-id="String(route.params.id)" :step="missingStep" />
     </div>
 
     <section v-else-if="store.hangout" class="container py-4">
@@ -378,13 +396,13 @@
                  Waits while the times are being worked out, so we never save a station that's
                  about to change -->
             <!-- (Ryan) locked on 08: there's nothing to find here, so the next step is to look at it -->
-            <router-link
+            <RouterLink
               v-if="midpointLocked"
               :to="{ name: 'midpoint', params: { id: route.params.id } }"
               class="btn btn-primary btn-lg w-100"
             >
               See the midpoint →
-            </router-link>
+            </RouterLink>
             <button
               v-else
               type="button"

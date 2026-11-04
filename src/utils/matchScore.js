@@ -17,8 +17,8 @@ const WALK_KMH = 5
 const WALK_DETOUR = 1.25
 const MINUTES_PER_WEEK = 7 * 24 * 60
 
-/** Straight-line distance in km between two { lat, lng } points. */
-function distanceKm(a, b) {
+/** Straight-line distance in km between two { lat, lng } points. Also used by 09 Explore. */
+export function distanceKm(a, b) {
   const rad = (d) => (d * Math.PI) / 180
   const dLat = rad(b.lat - a.lat)
   const dLng = rad(b.lng - a.lng)

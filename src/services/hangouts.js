@@ -292,6 +292,31 @@ export async function addMember(hangoutId, userId) {
 }
 
 /**
+ * (Eashvar) Save someone's trip time and cost to the midpoint, for "Leave by" on 12. You can save
+ * your own; in host mode the host can save anyone's ("members: edit own row" in schema.sql).
+ * @param {number} mins whole minutes
+ * @param {number} cost in S$
+ */
+export async function updateMemberTrip(hangoutId, userId, mins, cost) {
+  if (hangoutId === 'demo' || !hasSupabase) {
+    return
+  }
+  const { data, error } = await supabase
+    .from('hangout_members')
+    .update({ travel_mins: mins, travel_cost: cost })
+    .eq('hangout_id', hangoutId)
+    .eq('user_id', userId)
+    .select()
+  if (error) {
+    throw error
+  }
+  // Blocked by the security rules: Supabase changes nothing instead of giving an error
+  if (data.length === 0) {
+    throw new Error('You can only save your own trip time.')
+  }
+}
+
+/**
  * Save how someone is travelling (07 Mode of transport). You can save your own; the security
  * rule "members: edit own row" in schema.sql enforces that.
  * @param {'mrt' | 'bus' | 'car' | 'walk'} mode
@@ -380,6 +405,25 @@ export function subscribeToHangout(hangoutId, onChange) {
       { event: 'UPDATE', schema: 'public', table: 'hangouts', filter: `id=eq.${hangoutId}` },
       (payload) => onChange(payload.new),
     )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+/**
+ * (Surya) Call onChange when any of my hangouts changes (e.g. the host confirms the plan or starts
+ * a re-vote) or anyone votes in one. No filter needed: the read rules ("hangouts: members read",
+ * "votes: members read") mean Supabase only sends changes to hangouts I'm in. Used by 01 and 04.
+ * @param {string} page which page is listening, e.g. 'dashboard'
+ * @returns {() => void} call this in onUnmounted to stop listening
+ */
+export function subscribeToMyHangouts(page, onChange) {
+  if (!hasSupabase) {
+    return () => {}
+  }
+  const channel = supabase
+    .channel(`my-hangouts:${page}`) // one channel per page, so leaving one page never stops the other's
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hangouts' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onChange)
     .subscribe()
   return () => supabase.removeChannel(channel)
 }
