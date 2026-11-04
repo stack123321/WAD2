@@ -12,6 +12,8 @@ const props = defineProps({
   zoom: { type: Number, default: 15 },
   // [{ id, lat, lng, label }]
   markers: { type: Array, default: () => [] },
+  // extra space around the map on phones; the Explore map turns it off
+  padded: { type: Boolean, default: true },
 })
 const emit = defineEmits(['marker-click'])
 
@@ -70,7 +72,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="el" class="base-map"></div>
+  <div ref="el" class="base-map" :class="{ 'is-padded': padded }"></div>
 </template>
 
 <style scoped>
@@ -78,5 +80,12 @@ onBeforeUnmount(() => {
   min-height: 240px;
   border-radius: var(--fp-radius-sm);
   z-index: 0;
+}
+
+/* room above and below the map to scroll past it with a thumb */
+@media (max-width: 767.98px) {
+  .base-map.is-padded {
+    margin: 1.25rem 0;
+  }
 }
 </style>

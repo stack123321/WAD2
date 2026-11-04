@@ -309,6 +309,7 @@
           <BaseMap
             v-if="mapCenter && !isMapCollapsed"
             class="map"
+            :padded="false"
             :center="mapCenter"
             :markers="mapMarkers"
             @marker-click="selectSpot"

@@ -335,6 +335,13 @@ defineExpose({ resetPin })
   position: relative;
 }
 
+/* room above and below the map to scroll past it with a thumb */
+@media (max-width: 767.98px) {
+  .map-box {
+    margin: 1.25rem 0;
+  }
+}
+
 .recenter-btn {
   position: absolute;
   top: 10px; /* top left: the zoom buttons are top right, the map credits along the bottom */

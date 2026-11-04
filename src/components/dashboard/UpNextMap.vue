@@ -101,7 +101,7 @@ function fit() {
 
 // leaflet needs the div to be on the page, so the map is made in onMounted and removed in onBeforeUnmount.
 onMounted(() => {
-  const created = createOneMap(mapEl.value) // the shared singapore map, drawn into my div
+  const created = createOneMap(mapEl.value, { tapToInteract: false }) // the shared singapore map, drawn into my div
   stopMap = created.stop
   map = created.map
 

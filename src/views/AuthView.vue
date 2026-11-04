@@ -548,7 +548,12 @@ const avatars = [
 
         <form novalidate @submit.prevent="submit">
           <div v-if="isSignup" class="field">
-            <label for="auth-name" class="form-label">Name</label>
+            <div class="name-label-row">
+              <label for="auth-name" class="form-label">Name</label>
+              <span class="name-counter" aria-live="polite">
+                {{ MAX_NAME - form.name.length }} left
+              </span>
+            </div>
             <input
               id="auth-name"
               v-model="form.name"
@@ -919,6 +924,17 @@ const avatars = [
 
 .field-hint--ok {
   color: var(--fp-primary);
+}
+
+.name-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.name-counter {
+  color: var(--fp-muted);
+  font-size: 0.8rem;
 }
 
 .password {

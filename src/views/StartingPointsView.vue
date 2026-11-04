@@ -647,6 +647,12 @@ const savedText = computed(() => {
   height: 60vh; /* phones and tablets: the map sits under the panel */
 }
 
+@media (max-width: 767.98px) {
+  .map-col {
+    margin: 1.5rem 0; /* room above and below to scroll past the map */
+  }
+}
+
 /* Laptops: the panel and map fill exactly the rest of the screen (--fill-height is measured in the
    script), like a map app. The map is always fully visible; if the panel has more in it than
    fits, only the panel scrolls. */
