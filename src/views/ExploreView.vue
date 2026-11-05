@@ -1541,7 +1541,7 @@ async function selectSpot(id) {
   }
 
   .nearby-page.has-mobile-tabbar {
-    height: calc(100dvh - 46px - 64px - 52px - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 46px - 64px - 67px - env(safe-area-inset-bottom, 0px));
   }
 
   .nearby-page.has-mobile-tabbar .map-shortlist-row.is-mobile-shortlist .shortlist-panel {
