@@ -35,6 +35,19 @@ export async function createHangout(page) {
   return { name, id }
 }
 
+/** Adds this person's starting point on 06 (the first OneMap match for Bishan) and picks MRT on 07. */
+export async function setMyTrip(page, id) {
+  await page.goto(`/hangouts/${id}/start`)
+  await page.getByRole('combobox').fill('Bishan')
+  await page.getByRole('option').first().click()
+  await expect(page.getByText('✓ Saved')).toBeVisible()
+
+  await page.goto(`/hangouts/${id}/transport`)
+  // only your own row's buttons can be clicked, so this is your MRT button
+  await page.getByRole('button', { name: 'MRT', disabled: false }).click()
+  await expect(page.getByRole('button', { name: 'MRT', disabled: false, pressed: true })).toBeVisible()
+}
+
 /** Deletes a hangout through its ⋯ menu on My hangouts (the host only). */
 export async function deleteHangout(page, name) {
   await page.goto('/dashboard')
@@ -64,13 +77,18 @@ export async function copyInviteLink(page, context, name) {
 /**
  * Fake Google Places answers, so spots can go on a real shortlist without calling Google.
  * page.route isn't covered in the course (same as tests/e2e/helpers/places.js).
+ * A nearby search gets the spots placed at the point it asked about (the group's midpoint), so
+ * they are always inside 09's walking-distance filter, whichever station OneMap's times pick.
  */
 export async function stubSpots(page, spots) {
   await page.route('**/api/places**', (route) => {
     const url = new URL(route.request().url())
     if (url.searchParams.get('summary')) return route.fulfill({ json: null })
     const id = url.searchParams.get('id')
-    return route.fulfill({ json: id ? spots.find((s) => s.source_place_id === id) : spots })
+    if (id) return route.fulfill({ json: spots.find((s) => s.source_place_id === id) })
+    const lat = Number(url.searchParams.get('lat'))
+    const lng = Number(url.searchParams.get('lng'))
+    return route.fulfill({ json: spots.map((s) => ({ ...s, lat, lng, distance_m: 0 })) })
   })
 }
 

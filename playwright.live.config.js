@@ -15,9 +15,13 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   reporter: 'html',
+  // a stuck step fails after 20 seconds instead of using up the whole test, so each test's
+  // finally block still has time to delete the hangout it made
+  expect: { timeout: 20 * 1000 },
   use: {
     baseURL: 'http://localhost:5175',
     headless: true,
+    actionTimeout: 20 * 1000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // its own port, so it never clashes with your dev server (5173) or the demo (5174)
