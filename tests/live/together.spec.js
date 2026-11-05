@@ -1,8 +1,9 @@
 // Owner: Eashvar (testing). Two real people in one hangout, against the real Supabase project
 // (npm run test:live), each in their own browser: someone who isn't in the hangout can't even
 // open it (the database only lets members read a hangout); the invite link adds them, and the
-// host sees them on 06 after reloading; and a whole vote (spots added, vote started, the friend
-// votes, the host sees it live and closes it) reaches the final plan for both. Needs
+// host sees them on 06 after reloading; both add a starting point and a mode and the host finds
+// the midpoint (09–12 need all three); and a whole vote (spots added on 09, vote started, the
+// friend votes, the host sees it live and closes it) reaches the final plan for both. Needs
 // E2E_EMAIL_2 / E2E_PASSWORD_2 too (tests/live/helpers.js); skipped without them (test.skip).
 // The hangout is deleted at the end. Each person gets their own browser (browser.newContext), so
 // two people are logged in at once; that isn't covered in the course, but it's the only way to
@@ -16,12 +17,14 @@ import {
   hasFriend,
   host,
   logIn,
+  setMyTrip,
   spot,
   stubSpots,
 } from './helpers.js'
 
 test.skip(!hasFriend, 'Add E2E_EMAIL_2 and E2E_PASSWORD_2 (a second test account) to .env.local')
-test.setTimeout(120000) // two people, the real database and live updates take longer
+// two people, the real database, OneMap's travel times and live updates take longer
+test.setTimeout(240000)
 
 const SPOT_A = spot('e2e-live-spot-a', 'E2E Live Spot A')
 const SPOT_B = spot('e2e-live-spot-b', 'E2E Live Spot B')
@@ -58,16 +61,29 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
     await hostPage.reload()
     await expect(hostPage.getByText('of 2 added', { exact: false })).toBeVisible()
 
-    // The host puts two spots on the shortlist from 10 Spot details (Google is faked)
+    // 09–12 open only once you have a starting point and a mode and the group has a midpoint
+    // (composables/useHangoutPrerequisites.js). OneMap's times pick the station, so stubSpots puts
+    // the fake spots wherever the midpoint ends up
+    await setMyTrip(hostPage, id)
+    await setMyTrip(friendPage, id)
+    await hostPage.goto(`/hangouts/${id}/transport`)
+    // the button stays greyed out while OneMap works out 8 stations × 2 trips, so it gets longer
+    await hostPage.getByRole('button', { name: /Find our midpoint/ }).click({ timeout: 90000 })
+    await expect(hostPage).toHaveURL(`/hangouts/${id}/midpoint`)
+
+    // The host puts two spots on the shortlist from 09 Nearby spots (Google is faked), then
+    // follows the Go Vote! link: a link doesn't reload the page, so both saves can finish
     await stubSpots(hostPage, [SPOT_A, SPOT_B])
+    await hostPage.goto(`/hangouts/${id}/explore`)
     for (const s of [SPOT_A, SPOT_B]) {
-      await hostPage.goto(`/hangouts/${id}/spots/${s.source_place_id}`)
-      await hostPage.getByRole('button', { name: 'Add to Vote' }).click()
-      await expect(hostPage.getByRole('button', { name: 'Remove from Vote' })).toBeVisible()
+      const card = hostPage.getByRole('article').filter({ hasText: s.name })
+      await card.getByRole('button', { name: 'Add to vote' }).click()
     }
+    await hostPage.getByRole('link', { name: 'Go Vote!' }).first().click()
+    await expect(hostPage).toHaveURL(`/hangouts/${id}/vote`)
+    await expect(hostPage.getByText('2 spots are on the shortlist')).toBeVisible()
 
     // The host starts the vote and keeps 11 open
-    await hostPage.goto(`/hangouts/${id}/vote`)
     await hostPage.getByRole('button', { name: 'Start the vote' }).click()
     await expect(hostPage.getByText('Closes in', { exact: false })).toBeVisible()
     await expect(hostPage.getByText('0 of 2 voted')).toBeVisible()
@@ -83,9 +99,10 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
 
     // The host sees it without reloading, then closes the vote
     await expect(hostPage.getByText('1 of 2 voted')).toBeVisible({ timeout: 15000 })
-    // spot B leads, so it's the winner the close card picks
+    // spot B leads, so it's the winner the close card picks. The host hasn't voted, so the
+    // pop-up's button says "Close anyway" instead of "Confirm"
     await hostPage.getByRole('button', { name: 'Close vote' }).click()
-    await hostPage.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+    await hostPage.getByRole('dialog').getByRole('button', { name: 'Close anyway' }).click()
     await expect(hostPage).toHaveURL(`/hangouts/${id}/plan`)
     await expect(hostPage.getByText('Confirmed spot')).toBeVisible()
 

@@ -683,6 +683,14 @@ const hostPage = await hostContext.newPage()
 ```
 Used in: [together.spec.js](../tests/live/together.spec.js) and [live/helpers.js](../tests/live/helpers.js).
 
+### Playwright: `actionTimeout`, `expect: { timeout }` and `click({ timeout })`
+How long a click or a check waits before it fails. Set in the config for every test, or on one step. The live tests use 20 seconds, so a stuck step fails quickly and the test's `finally` still has time to delete its hangout; the one slow step (waiting for OneMap's travel times) gets longer.
+```js
+use: { actionTimeout: 20 * 1000 }, expect: { timeout: 20 * 1000 } // in the config
+await page.getByRole('button', { name: /Find our midpoint/ }).click({ timeout: 90000 })
+```
+Used in: [playwright.live.config.js](../playwright.live.config.js) and [together.spec.js](../tests/live/together.spec.js).
+
 ## Folders and files
 
 The course's Vue project (Weeks 4–6 and 11) has `src/` with `assets/`, `components/`, `router/`, `stores/` and `views/` (plus `composables/` in Week 11 and `utils/` in Week 4), a Playwright test in `e2e/`, and a `__tests__/` folder next to the code it tests (Week 10). Ours follows that, with these differences:
