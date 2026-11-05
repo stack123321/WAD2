@@ -250,6 +250,14 @@ map.fitBounds([[1.35, 103.94], [1.33, 103.74], [1.35, 103.85]], { padding: [40, 
 ```
 Used in: [CrowdHeatmap.vue](../src/components/heatmap/CrowdHeatmap.vue) to show the midpoint and everyone's starting points together on 08.
 
+### `map.dragging.disable()` and `.enable()`
+Each way of moving the map (`dragging`, `touchZoom`, `doubleClickZoom`, `scrollWheelZoom`, `boxZoom`, `keyboard`) is a handler that can be switched off and on again. While it's off, a swipe or pinch over the map does nothing to the map.
+```js
+map.touchZoom.disable() // a pinch over the map no longer zooms it
+map.touchZoom.enable()
+```
+Used in: [mapSetup.js](../src/utils/mapSetup.js), so the "Tap to interact" cover on phones really stops the map moving until it's tapped.
+
 ## Browser features
 
 ### `new ResizeObserver(callback)` and `.observe(element)`
@@ -259,6 +267,16 @@ const watcher = new ResizeObserver(() => map.invalidateSize()) // "measure your 
 watcher.observe(document.getElementById('crowd-map'))
 ```
 Used in: [mapSetup.js](../src/utils/mapSetup.js), which every map in the app uses.
+
+### `new IntersectionObserver(callback)` and `.observe(element)`
+Calls `callback` when the element scrolls onto or off the screen. `entry.isIntersecting` says which: `true` when any of it is visible. `.disconnect()` stops watching.
+```js
+const watcher = new IntersectionObserver(([entry]) => {
+  if (!entry.isIntersecting) console.log('the map has scrolled off screen')
+})
+watcher.observe(document.getElementById('crowd-map'))
+```
+Used in: [mapSetup.js](../src/utils/mapSetup.js), which puts the "Tap to interact" cover back on a phone map once it's scrolled off screen.
 
 ### `setTimeout(fn, ms)`
 Runs `fn` once after `ms` milliseconds. "Seen": it appears in the lab-test snippets but isn't explained. We use it to wait one beat before starting a CSS transition, and to pause during the tie-break wheel.

@@ -185,8 +185,8 @@ function priceLabel(spot) {
       <!-- Google Places is off: say why, with the switch right here -->
       <div v-if="!googlePlacesEnabled" class="off-box">
         <p class="small text-secondary mb-2">
-          Switch on nearby spots to see cafes, food and activities around {{ station.name }}. (It's
-          off by default because Google limits free searches.)
+          Switch on nearby spots to see cafes, food and activities around {{ station.name }}. (It was
+          switched off on this device; Google limits free searches.)
         </p>
         <GooglePlacesToggle />
       </div>

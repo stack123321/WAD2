@@ -22,7 +22,7 @@ const ATTRIBUTION =
  * Create a OneMap map of Singapore in a <div>.
  * @param {HTMLElement | string} el the <div> (or its id)
  * @param {{ center?: [number, number], zoom?: number, zoomTopRight?: boolean, tapToInteract?: boolean }} [options]
- *   tapToInteract (default true): on phones, cover the map with "Click to Interact" until tapped
+ *   tapToInteract (default true): on phones, cover the map with "Tap to interact" until tapped
  * @returns {{ map: L.Map, stop: () => void }} stop() removes the map (call it when leaving the page)
  */
 export function createOneMap(el, options = {}) {
@@ -55,7 +55,7 @@ export function createOneMap(el, options = {}) {
   }).addTo(map)
 
   // On phones the map covers the screen, so a swipe over it moves the map instead of the page.
-  // Until it's tapped, a "Click to Interact" cover lets the swipe scroll the page; tapping outside
+  // Until it's tapped, a "Tap to interact" cover lets the swipe scroll the page; tapping outside
   // the map puts the cover back.
   const box = typeof el === 'string' ? document.getElementById(el) : el
   let removeCover = () => {}
@@ -63,10 +63,12 @@ export function createOneMap(el, options = {}) {
     const phone = window.matchMedia('(max-width: 767.98px)')
     const cover = document.createElement('button')
     cover.type = 'button'
-    cover.textContent = 'Click to Interact'
+    cover.textContent = 'Tap to interact'
+    // colours from tokens.css, like the rest of the app
     cover.style.cssText =
       'position:absolute;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;' +
-      'width:100%;border:0;background:rgba(0,0,0,0.35);color:#fff;font-weight:600;font-size:1rem;cursor:pointer;touch-action:pan-y;'
+      'width:100%;border:0;background:color-mix(in srgb, var(--fp-ink) 35%, transparent);color:var(--fp-white);' +
+      'font-weight:600;font-size:1rem;cursor:pointer;touch-action:pan-y;'
     let locked = true
     // Leaflet listens for touches on the map's own div, so the cover alone doesn't stop pinch-zoom
     // or dragging; switch the map's handlers off while it is covered

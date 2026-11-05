@@ -152,7 +152,8 @@ Only the two `VITE_` values are sent to the browser. Every other key has no `VIT
 | `npm run build` | Production build into `dist/` |
 | `npm run lint` | Check and auto-fix code style |
 | `npm run format` | Tidy formatting with Prettier |
-| `npm run test:e2e` | Run the tests (see below) |
+| `npm run test:unit` | Run the unit and component tests (see below) |
+| `npm run test:e2e` | Run the end-to-end tests (see below) |
 | `npm run test:live` | Run the optional live tests |
 
 ## Running the tests
@@ -223,37 +224,37 @@ Expected result: no failures. Both kinds of test run on GitHub for every pull re
 | Pressing Esc (`page.keyboard.press`) | `tests/e2e/chatPopover.spec.js` | Esc closing the chat is the behaviour being tested |
 | Two people at once (`browser.newContext`), reading the invite link (clipboard) | `tests/live/` | The two-person live test needs two logged-in browsers, and the app only copies the link |
 
-Small extensions of what the course shows, used where they read more clearly: the Vitest matchers `toBeGreaterThanOrEqual` and `toContainEqual`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled`, `toBeEnabled`, `toBeChecked`, `toHaveAttribute` and `toHaveValue`; `getByLabel` for fields with no role; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()`, `.last()` and `.nth()` to pick one card or row; and `hover()`. Each is explained, with where it's used, in [docs/beyond-the-syllabus.md](docs/beyond-the-syllabus.md#testing).
+Small extensions of what the course shows, used where they read more clearly: the Vitest matchers `toBeGreaterThanOrEqual` and `toContainEqual`; Playwright checks such as `toBeHidden`, `toContainText`, `toHaveCount`, `toBeDisabled`, `toBeEnabled`, `toBeChecked`, `toHaveAttribute` and `toHaveValue`; `getByLabel` for fields with no role; `getByRole` options (`exact`, `level`, `disabled`, `pressed`); `.filter({ hasText })`, `.first()`, `.last()` and `.nth()` to pick one card or row; and `hover()`.
 
 ## AI and LLM usage
 
 The brief allows AI for lower-order work only: boilerplate, tidying, test cases, explanations, debugging hints and UI inspiration. Core logic and backend endpoints must be the team's own. Each member's table below says which parts AI helped with, and which parts they wrote themselves.
 
-**Parts that relied solely on AI:** <<FILL: none, or list them>>
+**Parts that relied solely on AI:** the Supabase SQL (the tables, row level security policies and database functions). It isn't in this repository; see [Database](#database).
 
 **Ryan**
 
 | Area | Files | AI tool | What AI did | What I wrote myself |
 |---|---|---|---|---|
-| Dashboard (04) | `DashboardView.vue`, `components/dashboard/` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Crowd heat map (08, `/crowds`) | `CrowdHeatmap.vue`, `CrowdsView.vue`, `services/crowd.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Crowd API | `api/crowd.js`, `api/_data/stations.js`, `api/_mocks/crowd.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Dev server for `api/` | `scripts/devApi.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Friends and chats | `FriendsView.vue`, `MyChatsView.vue`, `ChatView.vue`, `DirectChatView.vue`, `services/friends.js`, `directChats.js`, `unread.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Router, store, helpers | `router/index.js`, `stores/hangout.js`, `stores/alerts.js`, `utils/hangoutStatus.js`, `avatarColor.js`, `dates.js` | <<FILL>> | <<FILL>> | <<FILL>> |
-| Tests | dashboard, chats, friends and midpoint e2e specs; avatarColor and hangoutStatus unit tests | <<FILL>> | <<FILL>> | <<FILL>> |
+| Dashboard (04) | `DashboardView.vue`, `components/dashboard/` | Claude | Debugging errors | The page, its cards and each hangout's next step |
+| Crowd heat map (08, `/crowds`) | `CrowdHeatmap.vue`, `CrowdsView.vue`, `services/crowd.js` | Claude | Debugging errors | The heat map, the time slider and the crowd service |
+| Crowd API | `api/crowd.js`, `api/_data/stations.js`, `api/_mocks/crowd.js` | Claude | Debugging errors, help connecting the function to LTA DataMall | The function, the caching and the sample crowd data |
+| Dev server for `api/` | `scripts/devApi.js` | Claude | Help running the `api/` functions inside the Vite dev server | The script |
+| Friends and chats | `FriendsView.vue`, `MyChatsView.vue`, `ChatView.vue`, `DirectChatView.vue`, `services/friends.js`, `directChats.js`, `unread.js` | Claude | Debugging errors, help connecting the pages to Supabase (queries and live updates) | The pages, the friend requests and the chat logic |
+| Router, store, helpers | `router/index.js`, `stores/hangout.js`, `stores/alerts.js`, `utils/hangoutStatus.js`, `avatarColor.js`, `dates.js` | Claude | Debugging errors | The routes and login redirect, the hangout store and the helpers |
+| Tests | dashboard, chats, friends and midpoint e2e specs; avatarColor and hangoutStatus unit tests | Claude | Debugging failing tests | The test cases |
 | Code explanations | study comments and notes | Claude | Wrote explanations and comments | Read and learned them |
 | Repository tidy-up before submission | file clean-up, README and CONTRIBUTORS drafts | Claude | Deleted unused files, drafted this README and the header comments | Reviewed and approved each step |
 
-**Matrix:** <<FILL: area / AI tool / what AI did / what I wrote myself>>
+**Matrix:** AI wrote the Supabase SQL (above). For log in and sign up, preferences, creating and inviting to a hangout, the hangouts service and the match score, AI was used for debugging errors and for help connecting the pages to Supabase; Matrix wrote the pages and the logic.
 
-**Surya:** <<FILL: area / AI tool / what AI did / what I wrote myself>>
+**Surya:** For starting points, OneMap search and reverse geocoding (`/api/search`, `/api/reverse`), the map and weather components and the deploy workflow, AI was used for debugging errors and for help connecting the `api/` functions to OneMap; Surya wrote the pages, the functions and the logic.
 
-**Nicole:** <<FILL: area / AI tool / what AI did / what I wrote myself>>
+**Nicole:** For mode of transport, travel times (`/api/route`), the fair-midpoint ranking and parking costs, AI was used for debugging errors and for help connecting `/api/route` to OneMap Routing; Nicole wrote the pages, the function and the ranking logic.
 
-**Hugo:** <<FILL: area / AI tool / what AI did / what I wrote myself>>
+**Hugo:** For nearby spots, spot details, `/api/places` and the design tokens, AI was used for debugging errors and for help connecting `/api/places` to Google Places; Hugo wrote the pages, the filters, the function and the styling.
 
-**Eashvar:** <<FILL: area / AI tool / what AI did / what I wrote myself>>
+**Eashvar:** For voting and the tie-break wheel, the final plan, the Ask box and the tests, AI was used for debugging errors and for help connecting the Ask box's function to Gemini and the votes to Supabase; Eashvar wrote the pages, the voting logic and the test cases.
 
 ## Credits
 
