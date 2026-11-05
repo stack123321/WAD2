@@ -450,9 +450,9 @@ a.step-arrow:hover {
   }
 }
 
-/* On phones everything stays on one line: name, ‹ step ›, Chat. The name gives way first and is
-   cut with … when there isn't room */
-@media (max-width: 767.98px) {
+/* Wider phones: everything stays on one line: name, ‹ step ›, Chat. The name gives way first and
+   is cut with … when there isn't room */
+@media (min-width: 576px) and (max-width: 767.98px) {
   .hangout-bar {
     flex-wrap: nowrap;
   }
@@ -468,6 +468,25 @@ a.step-arrow:hover {
 
   .step-compact {
     white-space: nowrap;
+  }
+}
+
+/* Small phones (iPhone 6 is 375px): one line doesn't fit, so ‹ step › gets its own line under the
+   name and Chat */
+@media (max-width: 575.98px) {
+  .name-group {
+    order: 1;
+    flex: 1 1 0; /* takes the space Chat leaves, and the name is cut with … if it is too long */
+  }
+
+  .invite-group {
+    order: 2;
+  }
+
+  .step-nav {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: space-between;
   }
 }
 
