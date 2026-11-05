@@ -24,7 +24,7 @@ export default defineConfig({
     actionTimeout: 20 * 1000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  // its own port, so it never clashes with your dev server (5173) or the demo (5174)
+  // its own port, so it never clashes with your dev server (5173) or the end-to-end tests (5198)
   webServer: {
     command: 'npx vite --port 5175 --strictPort',
     port: 5175,
