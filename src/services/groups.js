@@ -1,8 +1,8 @@
 // Owner: Eashvar. Friend groups (e.g. "Uni friends"): a group has its own chat, the hangouts
 // planned with it, and each person's usual starting point. "Plan a hangout with this group" opens
 // 05 with everyone ticked, and the usual starting points are copied into the new hangout.
-// Tables and security rules: "Friend groups" in supabase/schema.sql
-// (supabase/migrations/2026-11-01-friend-groups.sql). The chat itself is services/chat.js, kind 'group'.
+// Tables and security rules: the "Friend groups" part of the database (SQL kept outside this repo).
+// The chat itself is services/chat.js, kind 'group'.
 // Brings back Surya's groups from 17 Oct (taken out on 21 Oct when My Chats was made).
 import { supabase, hasSupabase } from './supabase'
 import { getPastFriends, updateMemberMode, updateMemberStart } from './hangouts'

@@ -128,7 +128,7 @@ export async function setMidpointLocked(id, locked) {
 /**
  * Save one member's starting point. Used by 06 Starting points (Surya).
  * You can save your own; in host mode the host can save anyone's. The security rules in
- * supabase/schema.sql ("members: edit own row") enforce that, not this function.
+ * the database ("members: edit own row") enforce that, not this function.
  * @param {string} hangoutId hangout uuid ("demo" is not saved)
  * @param {string} userId whose starting point it is
  * @param {{ label: string, lat: number, lng: number }} place
@@ -214,7 +214,7 @@ export async function leaveHangout(hangoutId, userId) {
 /**
  * (Surya) The host removes someone from the hangout (step 0 Details). Their vote goes too, which
  * only the database function can do (people may only delete their own vote).
- * Needs supabase/migrations/2026-11-03-remove-member.sql.
+ * Needs the remove_member database function.
  * @param {string} hangoutId
  * @param {string} userId the person to remove
  */
@@ -456,7 +456,7 @@ export async function saveMidpoint(hangoutId, midpoint) {
 
 /**
  * Join a hangout from an invite link (/login?invite=CODE). Uses the join_hangout
- * database function in supabase/schema.sql.
+ * database function.
  * @returns {Promise<string>} the hangout id
  */
 export async function joinByInviteCode(code) {
