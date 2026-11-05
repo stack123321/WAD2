@@ -431,9 +431,14 @@ async function remove() {
 .person {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.6rem 0;
+}
+
+/* everything but the name keeps its size, so a long name is cut with … instead of pushing
+   the buttons onto a second line */
+.person > :not(.name) {
+  flex-shrink: 0;
 }
 
 .person + .person {
