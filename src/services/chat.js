@@ -2,7 +2,7 @@
 //   'hangout' → one hangout's chat (06, 09, 11, 12), in the messages table
 //   'direct'  → a one to one chat between friends (My Chats), in the direct_messages table
 //   'group'   → a friend group's chat (/groups/:id), in the group_messages table (Eashvar)
-// New messages arrive live through Supabase Realtime, switched on for both tables in schema.sql.
+// New messages arrive live through Supabase Realtime, switched on for both tables in the database.
 import { supabase, hasSupabase } from './supabase'
 
 // Which table each kind of chat lives in, and the column that says which hangout/chat it's for

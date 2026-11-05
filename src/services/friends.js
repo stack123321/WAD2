@@ -107,7 +107,7 @@ export async function searchPeople(text) {
     )
   }
 
-  // rpc runs a function inside the database (see schema.sql), so emails are matched there and never sent to the browser
+  // rpc runs a function inside the database, so emails are matched there and never sent to the browser
   const { data, error } = await supabase.rpc('search_people', { q: text })
   if (error) {
     throw error

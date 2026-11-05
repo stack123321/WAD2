@@ -41,7 +41,7 @@ test('an invited friend joins, votes, and both see the final plan', async ({ bro
 
   try {
     // Before joining, the friend can't open the hangout's pages at all: the database only lets
-    // members read a hangout ("hangouts: members read" in supabase/schema.sql)
+    // members read a hangout ("hangouts: members read" in the database)
     await friendPage.goto(`/hangouts/${id}/start`)
     await expect(friendPage.getByText("Couldn't load this hangout", { exact: false })).toBeVisible()
     await friendPage.goto(`/hangouts/${id}/vote`)

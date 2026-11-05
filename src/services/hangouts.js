@@ -44,7 +44,7 @@ export async function getHangout(id) {
 export async function getMyHangouts() {
   if (!hasSupabase) return mockHangouts.map((h) => structuredClone(h))
 
-  // No filter needed: the security rules in schema.sql ("hangouts: members read") only let
+  // No filter needed: the security rules in the database ("hangouts: members read") only let
   // you read hangouts you host or are a member of, so Supabase returns just yours.
   const { data, error } = await supabase
     .from('hangouts')
@@ -157,7 +157,7 @@ export async function updateMemberStart(hangoutId, userId, place) {
 }
 
 /**
- * Delete a hangout. Its members, shortlist and votes go with it (on delete cascade in schema.sql).
+ * Delete a hangout. Its members, shortlist and votes go with it (on delete cascade in the database).
  * Only the host can: the security rules ("hangouts: host deletes") enforce that, not this function.
  * Used by 04 Dashboard.
  */
@@ -272,7 +272,7 @@ export async function getPastFriends(myId) {
 
 /**
  * Add someone to a hangout. Only the host can, and only people they've shared a hangout with
- * (security rule "members: host adds past friends" in schema.sql). Used by 06 Starting points.
+ * (security rule "members: host adds past friends" in the database). Used by 06 Starting points.
  */
 export async function addMember(hangoutId, userId) {
   if (hangoutId === 'demo' || !hasSupabase) {
@@ -293,7 +293,7 @@ export async function addMember(hangoutId, userId) {
 
 /**
  * (Eashvar) Save someone's trip time and cost to the midpoint, for "Leave by" on 12. You can save
- * your own; in host mode the host can save anyone's ("members: edit own row" in schema.sql).
+ * your own; in host mode the host can save anyone's ("members: edit own row" in the database).
  * @param {number} mins whole minutes
  * @param {number} cost in S$
  */
@@ -318,7 +318,7 @@ export async function updateMemberTrip(hangoutId, userId, mins, cost) {
 
 /**
  * Save how someone is travelling (07 Mode of transport). You can save your own; the security
- * rule "members: edit own row" in schema.sql enforces that.
+ * rule "members: edit own row" in the database enforces that.
  * @param {'mrt' | 'bus' | 'car' | 'walk'} mode
  */
 export async function updateMemberMode(hangoutId, userId, mode) {
@@ -342,7 +342,7 @@ export async function updateMemberMode(hangoutId, userId, mode) {
 
 /**
  * Pin or unpin a hangout on *your* My hangouts (04): pinned ones show first. It's saved on your
- * own member row, so each person pins for themselves ("members: edit own row" in schema.sql).
+ * own member row, so each person pins for themselves ("members: edit own row" in the database).
  * @param {boolean} pinned
  */
 export async function setPinned(hangoutId, userId, pinned) {
@@ -366,7 +366,7 @@ export async function setPinned(hangoutId, userId, pinned) {
 /**
  * Live updates: calls onChange(row) whenever someone in this hangout changes their member row
  * (e.g. picks a mode on 07 or a starting point on 06), so everyone's screen stays the same.
- * Uses Supabase Realtime, switched on for hangout_members in schema.sql.
+ * Uses Supabase Realtime, switched on for hangout_members in the database.
  * @returns {() => void} call it to stop listening (when leaving the page)
  */
 export function subscribeToMembers(hangoutId, onChange) {
@@ -391,7 +391,7 @@ export function subscribeToMembers(hangoutId, onChange) {
 
 /**
  * (Ryan) Call onChange with the hangout's new row whenever it changes, e.g. the host locks the
- * midpoint or someone moves it (Supabase Realtime; hangouts is in the publication in schema.sql).
+ * midpoint or someone moves it (Supabase Realtime; hangouts is in the publication in the database).
  * @returns {() => void} call this in onUnmounted to stop listening
  */
 export function subscribeToHangout(hangoutId, onChange) {
@@ -430,7 +430,7 @@ export function subscribeToMyHangouts(page, onChange) {
 
 /**
  * Save the group's midpoint (an MRT station). Any member can, through the set_midpoint database
- * function in schema.sql (normal updates to a hangout are host-only). Used by 07 and 08.
+ * function in the database (normal updates to a hangout are host-only). Used by 07 and 08.
  * @param {string} hangoutId
  * @param {{ name: string, lat: number, lng: number, avgMins: number | null, gapMins: number | null, times?: Array<{ user_id: string, mins: number, cost: number }> }} midpoint
  */

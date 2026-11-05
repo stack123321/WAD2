@@ -572,13 +572,14 @@ const avatars = [
             <!-- (Surya) someone already has this name: offer the next free one in one tap -->
             <p v-else-if="nameTaken" id="auth-name-error" class="field-error" role="alert">
               “{{ nameCheck.name }}” is taken.
-              <template v-if="nameCheck.free">
+              <!-- (Surya) only suggest a name that fits the limit, e.g. not "Alexandrina12" -->
+              <template v-if="nameCheck.free && nameCheck.free.length <= MAX_NAME">
                 Try
                 <button type="button" class="name-suggestion" @click="useSuggestedName">
                   {{ nameCheck.free }}
                 </button>
               </template>
-              <template v-else>Try another name.</template>
+              <template v-else>Try another or a shorter name.</template>
             </p>
           </div>
 
