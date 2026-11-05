@@ -9,7 +9,7 @@ Built for IS216 Web Application Development II. Team and page ownership: [CONTRI
 | | |
 |---|---|
 | Live app | https://fairpoint-wad2.vercel.app |
-| Video | <<FILL: YouTube URL>> |
+| Video | https://www.youtube.com/watch?v=Q1BeE9gDpRY |
 
 ## Test accounts
 
