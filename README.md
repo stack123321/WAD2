@@ -99,7 +99,7 @@ On 08 the group can drag the pin; it snaps to the nearest station and the same t
 
 ### Without any keys
 
-The app still runs. Each service falls back to sample data when its key is missing, and sample answers are labelled "sample" so they are never mistaken for real data.
+The app still runs. Most services fall back to sample data when their key is missing (Google Places has none, see the table), and sample answers are labelled "sample" so they are never mistaken for real data.
 
 | Data | Real source | With no key |
 |---|---|---|
@@ -293,5 +293,4 @@ The database is hosted on Supabase (Postgres, Auth, Realtime and Storage). Its S
 ## Known limitations
 
 - The Google project allows only 100 nearby searches a day (each category on 09 counts as one). Each search is reused for an hour per meeting point, but once the day's quota is used up, 09 and 10 show an error until it resets, and without Google they have no spots.
-- Page 10 shows placeholder text ("Photo / map preview", "Description and details.") when no spot has loaded, for example when Google Places can't be reached.
 - Free Supabase projects pause after 7 idle days. A GitHub Action ([.github/workflows/keep-alive.yml](.github/workflows/keep-alive.yml)) pings the database every 3 days to keep it awake.

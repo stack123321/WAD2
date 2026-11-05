@@ -1,5 +1,5 @@
 // Owner: Surya. "Delete my account" on 03 Preferences, and unique names on 02 Sign up.
-// Needs supabase/migrations/2026-10-31-delete-account.sql and 2026-11-03-unique-names.sql.
+// Needs the delete-account and unique-names database functions (SQL kept outside this repo).
 import { supabase, hasSupabase } from './supabase'
 
 const PHOTO_BUCKET = 'hangout-photos'

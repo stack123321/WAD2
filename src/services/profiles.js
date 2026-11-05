@@ -4,7 +4,7 @@ import { supabase, hasSupabase } from './supabase'
 
 const MOCK_KEY = 'fairpoint:mock-profile'
 
-/** What a brand-new profile starts with (matches the column defaults in supabase/schema.sql). */
+/** What a brand-new profile starts with (matches the column defaults in the database). */
 export const defaultPreferences = {
   activities: [],
   dietary: [],

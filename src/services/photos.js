@@ -1,7 +1,7 @@
 // Owner: Surya. Photos on past hangouts (Debrief, and the Past cards on 04).
 // The files are in a private Supabase Storage bucket, "hangout-photos", at
 // "<hangout id>/<user id>-<time>.jpg", with one row each in the hangout_photos table.
-// Only people in the hangout can see, add or remove them (rules in supabase/schema.sql), so
+// Only people in the hangout can see, add or remove them (rules in the database), so
 // photos are shown through signed links that stop working after an hour.
 // The sample hangouts (and no keys) have no database, so there are no photos there.
 import { supabase } from './supabase'

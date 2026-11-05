@@ -1,6 +1,6 @@
 // Owner: Ryan
 // unread chat messages, for the badge on Chats in the navbar and the counts and order on My Chats
-// (each person's "read up to" time per chat lives in the chat_reads table, see supabase/schema.sql)
+// (each person's "read up to" time per chat lives in the chat_reads table)
 import { supabase, hasSupabase } from './supabase'
 
 // [{ chat_id, unread, last_at }] for every chat with messages: how many I haven't seen, and when

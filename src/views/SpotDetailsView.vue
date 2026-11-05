@@ -347,12 +347,17 @@ const reasons = computed(() =>
         :center="[spot.lat, spot.lng]"
         :markers="[{ id: spot.id, lat: spot.lat, lng: spot.lng, label: spot.name }]"
       />
-      <div v-else class="preview-placeholder">Photo / map preview</div>
+      <!-- (Surya) still loading, or it couldn't load (spotError says why above) -->
+      <div v-else class="preview-placeholder">
+        {{ spotError ? 'No photo or map for this spot' : 'Loading photos…' }}
+      </div>
     </section>
 
     <section class="spot__info d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div>
-        <h1 class="page-title mb-1">{{ spot?.name ?? 'Spot not found' }}</h1>
+        <h1 class="page-title mb-1">
+          {{ spot?.name ?? (spotError ? 'Spot not found' : 'Loading…') }}
+        </h1>
         <div v-if="spot" class="d-flex flex-wrap align-items-center column-gap-3">
           <p class="text-secondary mb-0">{{ categoryLabels[spot.category] ?? spot.category }}</p>
           <p v-if="spot.rating !== null" class="mb-0">&#9733; {{ spot.rating.toFixed(1) }} · {{ spot.reviewCount }} reviews</p>
@@ -421,7 +426,9 @@ const reasons = computed(() =>
         <p class="mb-1">{{ summary.text }}</p>
         <p class="text-secondary small mb-2">{{ summary.disclosure }}</p>
       </template>
-      <p v-if="!spot" class="text-secondary mb-0">Description and details.</p>
+      <p v-if="!spot" class="text-secondary mb-0">
+        {{ spotError ? 'No details for this spot.' : 'Loading details…' }}
+      </p>
     </section>
 
 

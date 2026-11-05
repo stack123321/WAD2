@@ -56,7 +56,7 @@ export async function addFriendToHangout(hangoutId, userId) {
   await addMember(hangoutId, userId)
 }
 
-// friend requests, kept in the friendships table (see supabase/schema.sql)
+// friend requests, kept in the friendships table (its security rules are in the database)
 
 // demo only: requests kept in memory, reset on reload
 let demoFriendships = [
