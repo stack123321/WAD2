@@ -448,6 +448,7 @@ const friendSearch = ref('')
 // (Surya) Not searching: only the first 5 friends show (the ones you hang out with most).
 // Searching shows one list of everyone who matches (searchRows, below).
 const FIRST_FRIENDS = 5
+const MAX_HANGOUT_NAME = 32
 const searching = computed(() => friendSearch.value.trim() !== '')
 
 const visibleFriends = computed(() => shownFriends.value.slice(0, FIRST_FRIENDS))
@@ -867,11 +868,14 @@ async function submit() {
             v-model="form.name"
             class="form-control"
             type="text"
-            maxlength="80"
+            maxlength="32"
             :placeholder="nameIdea"
             aria-describedby="name-hint"
           />
-          <p id="name-hint" class="field-hint mt-1 mb-0">Leave it blank to use this name.</p>
+          <p id="name-hint" class="field-hint mt-1 mb-0 d-flex justify-content-between">
+            <span>Leave it blank to use this name.</span>
+            <span aria-live="polite">{{ MAX_HANGOUT_NAME - form.name.length }} left</span>
+          </p>
         </div>
 
         <!-- When: quick date buttons + date and time -->
