@@ -60,7 +60,7 @@ Every route in [src/router/index.js](src/router/index.js). Pages 01–12 are the
 | Responsive design | Bootstrap's breakpoints (576, 768, 992 and 1200 px). A script check at 375 px (iPhone 6) found no sideways scrolling on any page. |
 | Data store | Supabase: Postgres (14 tables, row level security on every one), Auth (email and password), Realtime (votes, members, chat) and Storage (private bucket for hangout photos). See [Database](#database). |
 | External APIs, called asynchronously | See the table below. |
-| Tests | Vitest unit and component tests (197, in `__tests__` folders next to the code) and Playwright end-to-end tests (105, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
+| Tests | Vitest unit and component tests (199, in `__tests__` folders next to the code) and Playwright end-to-end tests (105, one per user journey, in `tests/e2e/`). See [Running the tests](#running-the-tests). |
 
 Tables: `profiles`, `hangouts`, `hangout_members`, `shortlist`, `votes`, `friendships`, `messages`, `groups`, `group_members`, `group_messages`, `direct_chats`, `direct_messages`, `chat_reads`, `hangout_photos`.
 
@@ -302,6 +302,5 @@ The database is hosted on Supabase (Postgres, Auth, Realtime and Storage). Its S
 ## Known limitations
 
 - The Google project allows only 100 nearby searches a day (each category on 09 counts as one). Each search is reused for an hour per meeting point, but once the day's quota is used up, 09 and 10 show an error until it resets, and without Google they have no spots.
-- "Sort: Crowd level" on 09 has no effect yet: every spot shares the midpoint station's crowd level, so it can't reorder them.
 - Page 10 shows placeholder text ("Photo / map preview", "Description and details.") when no spot has loaded, for example when Google Places can't be reached.
 - Free Supabase projects pause after 7 idle days. A GitHub Action ([.github/workflows/keep-alive.yml](.github/workflows/keep-alive.yml)) pings the database every 3 days to keep it awake.
