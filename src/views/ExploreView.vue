@@ -712,12 +712,10 @@ const sortOptions = [
   { label: 'Price level (ascending)', value: 'price-asc' },
   { label: 'Price level (descending)', value: 'price-desc' },
   { label: 'Distance from station', value: 'distance' },
-  { label: 'Crowd level', value: 'crowd' },
 ]
 const sortBy = toRef(remembered, 'sortBy')
 
 // Every sort keeps vibe-compatible spots first, then applies its selected criterion.
-// Crowd level sorts quietest first.
 function prioritiseVibeMatch(comparator) {
   return (a, b) => {
     if (a.vibeMatch !== b.vibeMatch) return a.vibeMatch ? -1 : 1
@@ -734,7 +732,6 @@ const comparators = {
   distance: prioritiseVibeMatch(
     (a, b) => (a.stationDistanceM ?? Infinity) - (b.stationDistanceM ?? Infinity),
   ),
-  crowd: prioritiseVibeMatch((a, b) => a.crowdLevel - b.crowdLevel),
 }
 const sortedSpots = computed(() => [...filteredSpots.value].sort(comparators[sortBy.value]))
 const askedSpots = toRef(remembered, 'askedSpots')

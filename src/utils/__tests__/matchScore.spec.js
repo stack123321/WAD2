@@ -2,8 +2,9 @@
 // a place fits the group, out of 100. The score adds up four parts: the hangout's vibe (34),
 // members' preferred activities (17), what the group has voted for before (16) and budget (33).
 // A spot closed during the hangout, not step-free for a member who needs it, or outdoors in the
-// rain scores 0. A long walk from the midpoint or closing soon lowers the score. matchReasons
-// explains the same score in words, for 10 Spot details' "Criteria" list.
+// rain scores 0. A long walk from the midpoint, closing soon, or a busy station for someone who
+// avoids crowds lowers the score. matchReasons explains the same score in words, for 10 Spot
+// details' "Criteria" list.
 import { describe, it, expect } from 'vitest'
 import {
   matchScore,
@@ -12,6 +13,7 @@ import {
   matchesHangoutVibe,
   matchReasons,
 } from '../matchScore.js'
+import { cacheSpots } from '../../services/places.js'
 
 // A cafe at Bishan that fits the group in every way: a "study" vibe (cafes fit it), everyone
 // likes cafes, cafes top everyone's vote history, and it's cheap ($, within every budget).
@@ -86,6 +88,32 @@ describe('TestSuite: hard vetoes (a score of 0)', () => {
 
   it('Test4: a place that scores normally has no veto reason', () => {
     expect(hardVetoReason(cafe, group, studyHangout)).toBe(null)
+  })
+})
+
+describe('TestSuite: avoiding crowds (a soft veto)', () => {
+  const avoidsCrowds = [cafeLover, { ...cafeLover, avoid_crowds: true }]
+
+  it('Test1: a busy station takes 30% off when a member avoids crowds', () => {
+    expect(matchScore(cafe, avoidsCrowds, { ...studyHangout, crowdLevel: 'h' })).toBe(70)
+    expect(matchScore(cafe, avoidsCrowds, { ...studyHangout, crowdLevel: 'l' })).toBe(100)
+    expect(matchScore(cafe, group, { ...studyHangout, crowdLevel: 'h' })).toBe(100)
+  })
+
+  it('Test2: a spot made from a Google answer uses the station’s crowd level', () => {
+    // a spot gets no crowd level of its own, so the busy station still counts
+    const [spot] = cacheSpots([
+      {
+        source_place_id: 'busy-cafe',
+        name: 'Busy Cafe',
+        category: 'cafe',
+        types: ['cafe'],
+        price_level: 1,
+        lat: 1.3508,
+        lng: 103.8485,
+      },
+    ])
+    expect(matchScore(spot, avoidsCrowds, { ...studyHangout, crowdLevel: 'h' })).toBe(70)
   })
 })
 

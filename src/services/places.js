@@ -65,7 +65,7 @@ function toSpot(p) {
     description: p.description ?? null,
     tags: p.tags ?? [],
     matchPct: 0,
-    crowdLevel: 0,
+    // no crowdLevel: Google doesn't give one, so the match score uses the midpoint station's
   }
 }
 
