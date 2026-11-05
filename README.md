@@ -9,7 +9,6 @@ Built for IS216 Web Application Development II. Team and page ownership: [CONTRI
 | | |
 |---|---|
 | Live app | https://fairpoint-wad2.vercel.app |
-| GitHub | https://github.com/stack123321/WAD2 |
 | Video | <<FILL: YouTube URL>> |
 
 ## Test accounts
@@ -113,6 +112,8 @@ The app still runs. Each service falls back to sample data when its key is missi
 
 ## Setup
 
+The quickest way to try Fairpoint is the [live app](https://fairpoint-wad2.vercel.app) with the [test accounts](#test-accounts); nothing to install. To run it on your own computer (also needed for the tests), use the submitted zip.
+
 You need Node 22.18 or newer (`node -v` to check).
 
 **From the submitted zip.** The zip includes `.env.local` with every key, so the app uses the real database and APIs. Don't copy `.env.example` over it.
@@ -121,16 +122,6 @@ You need Node 22.18 or newer (`node -v` to check).
 cd <the unzipped folder>
 npm install
 npm run dev                   # http://localhost:5173 opens the landing page
-```
-
-**From GitHub.** The repository has no keys, so copy the `.env.local` from the submitted zip into the cloned folder. Without it, the app runs on the demo data (see [Without any keys](#without-any-keys)).
-
-```bash
-git clone https://github.com/stack123321/WAD2.git
-cd WAD2
-npm install
-cp <the unzipped folder>/.env.local .    # the keys from the zip
-npm run dev
 ```
 
 `npm run dev` also runs the functions in `api/` (through `scripts/devApi.js`), so `/api/route`, `/api/crowd` and the rest work locally. On Vercel the same files run as serverless functions.
